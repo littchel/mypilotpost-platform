@@ -1,0 +1,13 @@
+# OS
+.DS_Store
+
+# Node
+node_modules/
+package-lock.json
+
+# Cloudflare / Wrangler
+.databases/
+.wrangler/
+
+# Build artifacts
+dist/
