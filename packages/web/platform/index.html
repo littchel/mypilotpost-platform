@@ -1,0 +1,4524 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>
+   myPilotPost | Strategic Mission Control
+  </title>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com" rel="preconnect"/>
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
+  <style>
+   :root {
+            --bg-body: #f8fafc; 
+            --sidebar-bg: #ffffff; 
+            --text-main: #475569; 
+            --text-heading: #0f172a; 
+            --text-muted: #94a3b8; 
+            --border-subtle: #e2e8f0; 
+            --pilot-blue: #2563eb; 
+            --pilot-blue-light: #eff6ff; 
+            --status-success: #10b981;
+            --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); 
+            --radius-lg: 12px; 
+            --radius-md: 8px;
+        }
+
+        /* STRICT INTER FONT OVERRIDE */
+        * { 
+            font-family: 'Inter', sans-serif !important; 
+            box-sizing: border-box;
+        }
+
+        /* ICON FIXES */
+        .icon-svg { 
+            width: 18px; 
+            height: 18px; 
+            vertical-align: middle; 
+            margin-right: 10px; 
+        }
+        .icon-brand { 
+            width: 22px; 
+            height: 22px; 
+            color: var(--pilot-blue); 
+            margin-right: 10px; 
+        }
+        .icon-large { 
+            width: 32px; 
+            height: 32px; 
+            font-size: 32px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        /* SURGICAL FIX: Placeholders */
+        ::placeholder { 
+            font-size: 0.9em !important; 
+            opacity: 0.7; 
+        }
+        ::-webkit-input-placeholder { 
+            font-size: 0.9em !important; 
+        }
+
+        /* ARTICLE TITLE: 21px Bold */
+        .article-title-input { 
+            font-size: 21px !important; 
+            font-weight: 700 !important; 
+            border: none; 
+            background: transparent; 
+            width: 100%; 
+            outline: none; 
+        }
+        .article-title-input::placeholder { 
+            font-size: 21px !important; 
+            font-weight: 700 !important; 
+            color: var(--text-heading); 
+            opacity: 0.4; 
+        }
+
+        body { 
+            background-color: var(--bg-body); 
+            color: var(--text-main); 
+            margin: 0; 
+            display: flex; 
+            height: 100vh; 
+            overflow: hidden; 
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        /* Sidebar - REDUCED PADDING */
+        .sidebar { 
+            width: 260px; 
+            background: var(--sidebar-bg); 
+            border-right: 1px solid var(--border-subtle); 
+            display: flex; 
+            flex-direction: column; 
+            padding: 1rem 0.75rem; 
+            z-index: 100; 
+        }
+        .nav-brand { 
+            display: flex; 
+            align-items: center; 
+            padding: 0 0.5rem 1.5rem; 
+            text-decoration: none; 
+            color: var(--pilot-blue); 
+            font-weight: 800; 
+            font-size: 1.3rem; 
+        }
+        .nav-group-title { 
+            font-size: 0.65rem; 
+            font-weight: 700; 
+            color: var(--text-muted); 
+            text-transform: uppercase; 
+            letter-spacing: 0.1em; 
+            padding: 0.75rem 0.5rem 0.25rem; 
+        }
+        .nav-link { 
+            display: flex; 
+            align-items: center; 
+            padding: 0.6rem 0.6rem; 
+            color: var(--text-main); 
+            text-decoration: none; 
+            font-size: 0.85rem; 
+            font-weight: 500; 
+            border-radius: var(--radius-md); 
+            transition: 0.2s; 
+            margin-bottom: 2px; 
+            cursor: pointer; 
+        }
+        .nav-link:hover { 
+            background-color: #f1f5f9; 
+            color: var(--pilot-blue); 
+        }
+        .nav-link.active { 
+            background-color: var(--pilot-blue-light); 
+            color: var(--pilot-blue); 
+            font-weight: 600; 
+        }
+
+        /* Main Layout - REDUCED PADDING */
+        .wrapper { 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden; 
+        }
+        header { 
+            height: 56px; 
+            background: #fff; 
+            border-bottom: 1px solid var(--border-subtle); 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 0 1.25rem; 
+        }
+        main { 
+            display: grid; 
+            grid-template-columns: 1fr 180px; 
+            gap: 0; 
+            padding: 0; 
+            overflow: hidden; 
+            flex: 1; 
+        }
+        #workspace-area { 
+            padding: 1rem; 
+            overflow-y: auto; 
+            height: 100%; 
+            border-right: 1px solid var(--border-subtle); 
+            background: #fdfdfd;
+        }
+
+        /* Cards & Components - REDUCED PADDING */
+        .card-workspace { 
+            background: #fff; 
+            border: 1px solid var(--border-subtle); 
+            border-radius: var(--radius-lg); 
+            padding: 1rem; 
+            margin-bottom: 0.75rem; 
+            box-shadow: var(--card-shadow); 
+        }
+        .input-pill { 
+            background: #fff; 
+            border: 1px solid var(--border-subtle); 
+            border-radius: var(--radius-md); 
+            padding: 0.5rem 0.75rem; 
+            width: 100%; 
+            outline: none; 
+            font-size: 0.85rem; 
+            transition: 0.2s; 
+        }
+        
+        .btn-pilot { 
+            background: var(--pilot-blue); 
+            color: #fff; 
+            border: none; 
+            padding: 0.5rem 1rem; 
+            border-radius: var(--radius-md); 
+            font-weight: 600; 
+            font-size: 0.8rem; 
+            transition: 0.3s; 
+        }
+        .btn-pilot:hover {
+            background: #1d4ed8;
+        }
+        .btn-grey { 
+            background: #f8fafc; 
+            color: var(--text-main); 
+            border: 1px solid var(--border-subtle); 
+            border-radius: var(--radius-md); 
+            padding: 0.4rem 0.75rem; 
+            font-weight: 500; 
+            font-size: 0.75rem; 
+        }
+        .btn-grey.active {
+            background: var(--pilot-blue-light);
+            color: var(--pilot-blue);
+            border-color: var(--pilot-blue);
+        }
+
+        .plat-btn { 
+            border: 1px solid var(--border-subtle); 
+            background: #fff; 
+            padding: 0.6rem; 
+            border-radius: var(--radius-md); 
+            cursor: pointer; 
+            text-align: center; 
+            color: var(--text-muted); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            transition: 0.2s;
+        }
+        .plat-btn.active { 
+            background: var(--pilot-blue-light); 
+            color: var(--pilot-blue); 
+            border-color: var(--pilot-blue); 
+        }
+        .plat-btn:hover {
+            border-color: var(--pilot-blue);
+            color: var(--pilot-blue);
+        }
+
+        .preview-window { 
+            background: #fff; 
+            border: 1px solid var(--border-subtle); 
+            border-radius: 8px; 
+            padding: 0.75rem; 
+            box-shadow: var(--card-shadow); 
+        }
+        .preview-header { 
+            display: flex; 
+            align-items: center; 
+            gap: 6px; 
+            margin-bottom: 8px; 
+        }
+
+        /* Intel Sidebar - REDUCED PADDING */
+        .intel-sidebar { 
+            background: #fff; 
+            padding: 0.75rem 0.5rem; 
+            overflow-y: auto; 
+            width: 180px; 
+        }
+        .stat-card { 
+            background: #f8fafc; 
+            border: 1px solid var(--border-subtle); 
+            padding: 0.5rem; 
+            border-radius: var(--radius-md); 
+            text-align: center; 
+            margin-bottom: 0.5rem; 
+        }
+        .stat-val { 
+            font-size: 1rem; 
+            font-weight: 800; 
+            color: var(--pilot-blue); 
+            display: block; 
+        }
+        .stat-label { 
+            font-size: 0.55rem; 
+            font-weight: 700; 
+            text-transform: uppercase; 
+            color: var(--text-muted); 
+            line-height: 1.2;
+        }
+
+        .user-dropdown-menu { 
+            min-width: 200px; 
+            padding: 0.6rem; 
+            border-radius: 10px; 
+            box-shadow: 0 8px 12px -3px rgba(0,0,0,0.1); 
+            border: 1px solid var(--border-subtle); 
+        }
+        .user-dropdown-menu a { 
+            font-size: 0.8rem; 
+            color: var(--text-main); 
+            padding: 6px 10px; 
+            display: flex; 
+            align-items: center; 
+            text-decoration: none; 
+            border-radius: 6px; 
+        }
+        .user-dropdown-menu a:hover { 
+            background: #f1f5f9; 
+            color: var(--pilot-blue); 
+        }
+
+        .accordion-item { 
+            border: 1px solid var(--border-subtle) !important; 
+            margin-bottom: 0.4rem; 
+            border-radius: var(--radius-md) !important; 
+            overflow: hidden; 
+        }
+        .accordion-button { 
+            padding: 0.75rem 1rem !important; 
+            font-size: 0.85rem !important;
+        }
+        .accordion-button:not(.collapsed) { 
+            background: var(--pilot-blue-light); 
+            color: var(--pilot-blue); 
+        }
+        .accordion-body {
+            padding: 1rem !important;
+        }
+
+        /* Temporary Success Indicator */
+        .indicator-dot { 
+            width: 8px; 
+            height: 8px; 
+            border-radius: 50%; 
+            display: inline-block; 
+            margin-right: 4px; 
+            background: var(--status-success); 
+        }
+        .temp-success {
+            color: var(--status-success);
+            font-weight: 600;
+        }
+        .cursor-pointer { 
+            cursor: pointer; 
+        }
+
+        /* Calendar styling */
+        .calendar-table { 
+            width: 100%; 
+            border: 1px solid var(--border-subtle); 
+            border-radius: 8px; 
+        }
+        .calendar-table th { 
+            padding: 0.4rem; 
+            font-size: 0.65rem; 
+            font-weight: 600; 
+            color: var(--text-muted); 
+            text-align: center; 
+            border-bottom: 1px solid var(--border-subtle); 
+        }
+        .calendar-table td { 
+            height: 65px; 
+            border: 1px solid var(--border-subtle); 
+            vertical-align: top; 
+            padding: 4px; 
+            font-size: 0.65rem; 
+        }
+        .cal-plus { 
+            color: var(--pilot-blue); 
+            cursor: pointer; 
+            float: right; 
+            margin-top: 20px; 
+            font-size: 1rem; 
+        }
+
+        /* === Assistant Wizard Styles === */
+        .wizard-steps {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .wizard-steps::before {
+            content: '';
+            position: absolute;
+            top: 16px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--border-subtle);
+            z-index: 1;
+        }
+
+        .wizard-step {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            flex: 1;
+        }
+
+        .step-circle {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--border-subtle);
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 0.5rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            transition: all 0.3s ease;
+        }
+
+        .step-circle.active {
+            background: var(--pilot-blue);
+            color: white;
+        }
+
+        .step-circle.completed {
+            background: var(--status-success);
+            color: white;
+        }
+
+        .step-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .step-label.active {
+            color: var(--pilot-blue);
+            font-weight: 600;
+        }
+
+        /* Grid utilities for assistant */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Modal enhancements */
+        .modal-lg .modal-content {
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-subtle);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-lg .modal-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border-subtle);
+            background: white;
+        }
+
+        .modal-lg .modal-body {
+            padding: 1.5rem;
+        }
+
+        /* Assistant button styles */
+        .btn-secondary {
+            background: #f8fafc;
+            color: var(--text-main);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 0.75rem 1rem;
+            font-weight: 500;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            text-align: left;
+            width: 100%;
+        }
+
+        .btn-secondary:hover {
+            background: #f1f5f9;
+            border-color: var(--border-strong);
+        }
+
+        .btn-primary {
+            background: var(--pilot-blue);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+            transform: translateY(-1px);
+        }
+
+        /* Form elements for assistant */
+        .form-check {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .form-check-input {
+            margin-right: 0.5rem;
+        }
+
+        .input-enterprise {
+            background: #fff;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 0.75rem 1rem;
+            width: 100%;
+            outline: none;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+
+        .input-enterprise:focus {
+            border-color: var(--pilot-blue);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        /* Platform grid for assistant */
+        .platform-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* NEW: 2×2 Grid System */
+        .grid-2x2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        
+        /* NEW: 4×2 Platform Grid */
+        .platform-grid-4x2 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.4rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        /* Platform-specific previews */
+        .platform-preview {
+            display: none;
+            margin-top: 0.75rem;
+        }
+        .platform-preview.active {
+            display: block;
+        }
+        
+        /* Media Library grid */
+        .media-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+        }
+        
+        /* Badge styling */
+        .badge {
+            font-weight: 600;
+            font-size: 0.7rem !important;
+            padding: 0.25rem 0.5rem !important;
+        }
+        .badge-success {
+            background-color: var(--status-success) !important;
+        }
+        .badge-secondary {
+            background-color: var(--text-muted) !important;
+            color: white;
+        }
+        
+        /* Integration cards - CENTERED ICONS */
+        .integration-card {
+            text-align: center;
+            padding: 0.75rem !important;
+        }
+        .integration-icon {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 auto 0.5rem !important;
+            width: 32px;
+            height: 32px;
+        }
+        .integration-icon svg {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Table styling - TIGHTER */
+        .table th, .table td {
+            padding: 0.5rem 0.75rem !important;
+            font-size: 0.8rem !important;
+        }
+        .table-sm th, .table-sm td {
+            padding: 0.4rem 0.5rem !important;
+            font-size: 0.75rem !important;
+        }
+        
+        /* Modal styling */
+        .modal-content {
+            padding: 1rem !important;
+        }
+        .modal-header, .modal-footer {
+            padding: 0.75rem 1rem !important;
+        }
+        .modal-body {
+            padding: 1rem !important;
+        }
+        
+        /* Fix for scrollbars */
+        #workspace-area {
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-subtle) transparent;
+        }
+        #workspace-area::-webkit-scrollbar {
+            width: 6px;
+        }
+        #workspace-area::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #workspace-area::-webkit-scrollbar-thumb {
+            background-color: var(--border-subtle);
+            border-radius: 3px;
+        }
+        
+        /* Week View Calendar - TIGHTER */
+        .calendar-week-view {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 0.4rem;
+            margin-bottom: 1rem;
+        }
+        .day-box {
+            background: #fff;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 0.75rem;
+            text-align: center;
+            min-height: 100px;
+            position: relative;
+        }
+        
+        /* Ensure all content fits without zoom */
+        body, html {
+            max-height: 100vh;
+            max-width: 100vw;
+        }
+        
+        /* Fix for Font Awesome icons */
+        .fas, .fab, .far {
+            font-family: "Font Awesome 6 Free" !important;
+        }
+        
+        /* Content Tab Styles */
+        .content-table th {
+            background-color: #f8fafc;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+        
+        .content-table td {
+            vertical-align: middle;
+            font-size: 0.85rem;
+        }
+        
+        .content-preview-modal .modal-body {
+            padding: 0 !important;
+        }
+        
+        .content-preview-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .content-preview-body {
+            padding: 1rem;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        
+        .content-preview-footer {
+            padding: 1rem;
+            border-top: 1px solid var(--border-subtle);
+            background: #f8fafc;
+        }
+        
+        .comments-section {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-subtle);
+        }
+        
+        .comment-item {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        
+        .comment-author {
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        
+        .comment-time {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+  </style>
+  <style>
+   /* === Sidebar Compact Layout Adjustment === */
+.sidebar {
+  padding: 0.5rem 0.6rem !important; /* Reduced padding */
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.sidebar hr {
+  margin: 0.35rem 0 !important; /* Compact divider spacing */
+}
+
+.nav-link {
+  margin-bottom: 1px !important;
+  font-size: 0.8rem !important; /* Slightly smaller text */
+}
+
+.nav-group-title {
+  font-size: 0.6rem !important; /* Compact section titles */
+}
+  </style>
+  <style>
+   /* === Final Sidebar Fit + SVG Display Fix === */
+.sidebar {
+  padding: 0.3rem 0.5rem !important;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.sidebar hr {
+  margin: 0.25rem 0 !important;
+}
+
+.nav-link {
+  margin-bottom: 1px !important;
+  font-size: 0.8rem !important;
+  line-height: 1.1rem !important;
+}
+
+.nav-group-title {
+  font-size: 0.6rem !important;
+  margin-top: 0.2rem !important;
+  margin-bottom: 0.1rem !important;
+}
+
+.icon-svg {
+  display: inline-block !important;
+  width: 24px !important;
+  height: 24px !important;
+  vertical-align: middle !important;
+}
+  </style>
+ </head>
+ <body>
+  <aside class="sidebar">
+   <a class="nav-brand" href="#">
+    <i class="fas fa-paper-plane icon-brand">
+    </i>
+    myPilotPost
+   </a>
+   <div class="nav-group-title">
+    Brands
+   </div>
+   <hr style="margin: 6px 0; border-color: #e2e8f0;"/>
+   <div id="brand-switcher-list">
+    <div class="nav-link active" onclick="switchBrand('demo')">
+     <i class="fas fa-briefcase icon-svg">
+     </i>
+     Demo Brand
+     <span class="badge badge-success ms-auto" id="demo-brand-badge" style="font-size:0.6rem;">
+      Active
+     </span>
+    </div>
+   </div>
+   <a class="nav-link text-primary mt-2" href="javascript:void(0)" onclick="showNewBrandModal()" title="New Brand">
+    <i class="fas fa-plus icon-svg">
+    </i>
+    New Brand
+   </a>
+   <hr style="margin: 4px 0; border-color: #e2e8f0; opacity: 0.6;"/>
+   <div class="nav-group-title">
+    Workspace
+   </div>
+   <hr style="margin: 6px 0; border-color: #e2e8f0;"/>
+   <a class="nav-link active" href="javascript:void(0)" id="nav-dashboard" onclick="switchTab('dashboard')" title="Dashboard">
+    <i class="fas fa-tachometer-alt icon-svg">
+    </i>
+    Dashboard
+   </a>
+   <hr style="margin: 4px 0; border-color: #e2e8f0; opacity: 0.6;"/>
+   <a class="nav-link" href="javascript:void(0)" id="nav-social" onclick="switchTab('social')" title="Create Social Post">
+    <i class="fas fa-edit icon-svg">
+    </i>
+    Create Social Post
+   </a>
+   <hr style="margin: 4px 0; border-color: #e2e8f0; opacity: 0.6;"/>
+   <a class="nav-link" href="javascript:void(0)" id="nav-blog" onclick="switchTab('blog')" title="Create Article">
+    <i class="fas fa-file-alt icon-svg">
+    </i>
+    Create Article
+   </a>
+   <hr style="margin: 4px 0; border-color: #e2e8f0; opacity: 0.6;"/>
+   <a class="nav-link" href="javascript:void(0)" id="nav-campaign" onclick="switchTab('campaign')" title="Campaigns">
+    <i class="fas fa-bullhorn icon-svg">
+    </i>
+    Campaigns
+   </a>
+   <hr style="margin: 4px 0; border-color: #e2e8f0; opacity: 0.6;"/>
+   <!-- NEW: Content Tab Navigation -->
+   <a class="nav-link" href="javascript:void(0)" id="nav-content" onclick="switchTab('content')" title="Content">
+    <i class="fas fa-copy icon-svg"></i>
+    Content
+   </a>
+   <hr style="margin: 4px 0; border-color: #e2e8f0; opacity: 0.6;"/>
+   <a class="nav-link" href="javascript:void(0)" id="nav-schedule" onclick="switchTab('schedule')" title="Schedule">
+    <i class="fas fa-calendar-alt icon-svg">
+    </i>
+    Schedule
+   </a>
+   <hr style="margin: 4px 0; border-color: #e2e8f0; opacity: 0.6;"/>
+   <a class="nav-link" href="javascript:void(0)" id="nav-seo" onclick="switchTab('seo')" title="SEO Center">
+    <i class="fas fa-search icon-svg">
+    </i>
+    SEO Center
+   </a>
+   <hr style="margin: 4px 0; border-color: #e2e8f0; opacity: 0.6;"/>
+   <a class="nav-link" href="javascript:void(0)" id="nav-canva" onclick="switchTab('canva')" title="Canva Design">
+    <i class="fas fa-palette icon-svg">
+    </i>
+    Canva Design
+   </a>
+   <hr style="margin: 4px 0; border-color: #e2e8f0; opacity: 0.6;"/>
+   <a class="nav-link" href="javascript:void(0)" id="nav-media" onclick="switchTab('media')" title="Media Library">
+    <i class="fas fa-photo-video icon-svg">
+    </i>
+    Media Library
+   </a>
+   <hr style="margin: 4px 0; border-color: #e2e8f0; opacity: 0.6;"/>
+   <a class="nav-link" href="javascript:void(0)" id="nav-analytics" onclick="switchTab('analytics')" title="Analytics">
+    <i class="fas fa-chart-line icon-svg">
+    </i>
+    Analytics
+   </a>
+   <hr style="margin: 4px 0; border-color: #e2e8f0; opacity: 0.6;"/>
+   <div class="nav-group-title">
+    Management
+   </div>
+   <a class="nav-link" href="javascript:void(0)" id="nav-integrations" onclick="switchTab('integrations')" title="Integrations">
+    <i class="fas fa-plug icon-svg">
+    </i>
+    Integrations
+   </a>
+   <hr style="margin: 4px 0; border-color: #e2e8f0; opacity: 0.6;"/>
+  </aside>
+  <div class="wrapper">
+   <header>
+    <div class="small fw-bold" id="header-brand-display">
+     <span id="current-brand-name">
+      Brand: Demo Brand
+     </span>
+     <span class="badge badge-success" id="current-brand-badge">
+      Active
+     </span>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+     <i class="fas fa-bell icon-svg text-muted cursor-pointer" onclick="showNotifications()" title="Notifications">
+     </i>
+     <i class="fas fa-inbox icon-svg text-muted cursor-pointer" onclick="showInbox()" title="Inbox">
+     </i>
+     <div class="dropdown">
+      <img class="rounded-circle border cursor-pointer" data-bs-toggle="dropdown" height="28" id="avatarDrop" src="https://ui-avatars.com/api/?name=Pilot&amp;background=2563eb&amp;color=fff" width="28"/>
+      <div aria-labelledby="avatarDrop" class="dropdown-menu dropdown-menu-end user-dropdown-menu">
+       <a href="#">
+        <i class="fas fa-user icon-svg">
+        </i>
+        Profile
+       </a>
+       <a href="#">
+        <i class="fas fa-cog icon-svg">
+        </i>
+        Settings
+       </a>
+       <hr class="my-1"/>
+       <a href="#">
+        <i class="fas fa-sign-out-alt icon-svg">
+        </i>
+        Logout
+       </a>
+      </div>
+     </div>
+    </div>
+   </header>
+   <main>
+    <div id="workspace-area">
+     <!-- Dashboard Tab -->
+     <div id="tab-dashboard">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+       <h5 class="fw-bold mb-0">
+        Dashboard Overview
+       </h5>
+       <div class="d-flex gap-1">
+        <button class="btn-grey active">
+         7d
+        </button>
+        <button class="btn-grey">
+         30d
+        </button>
+       </div>
+      </div>
+      <!-- 2×2 Grid Metrics -->
+      <div class="grid-2x2">
+       <div class="card-workspace">
+        <div class="d-flex justify-content-between align-items-start">
+         <div>
+          <div class="small text-muted mb-1">
+           POSTS TODAY
+          </div>
+          <div class="h4 fw-bold mb-0">
+           8
+          </div>
+          <div class="small temp-success" id="posts-change">
+           +2 from yesterday
+          </div>
+         </div>
+         <i class="fas fa-pen-fancy" style="font-size: 1.5rem; color: var(--pilot-blue)">
+         </i>
+        </div>
+       </div>
+       <div class="card-workspace">
+        <div class="d-flex justify-content-between align-items-start">
+         <div>
+          <div class="small text-muted mb-1">
+           ENGAGEMENT RATE
+          </div>
+          <div class="h4 fw-bold mb-0">
+           4.2%
+          </div>
+          <div class="small temp-success" id="engagement-change">
+           +0.8% this week
+          </div>
+         </div>
+         <i class="fas fa-chart-line" style="font-size: 1.5rem; color: var(--pilot-blue)">
+         </i>
+        </div>
+       </div>
+       <div class="card-workspace">
+        <div class="d-flex justify-content-between align-items-start">
+         <div>
+          <div class="small text-muted mb-1">
+           TOTAL REACH
+          </div>
+          <div class="h4 fw-bold mb-0">
+           24.8K
+          </div>
+          <div class="small temp-success" id="reach-change">
+           +12.4% growth
+          </div>
+         </div>
+         <i class="fas fa-eye" style="font-size: 1.5rem; color: var(--pilot-blue)">
+         </i>
+        </div>
+       </div>
+       <div class="card-workspace">
+        <div class="d-flex justify-content-between align-items-start">
+         <div>
+          <div class="small text-muted mb-1">
+           ACTIVE CAMPAIGNS
+          </div>
+          <div class="h4 fw-bold mb-0">
+           3
+          </div>
+          <div class="small text-muted">
+           All on track
+          </div>
+         </div>
+         <i class="fas fa-bullhorn" style="font-size: 1.5rem; color: var(--pilot-blue)">
+         </i>
+        </div>
+       </div>
+      </div>
+      <div class="row g-3">
+       <div class="col-md-8">
+        <div class="card-workspace">
+         <h6 class="fw-bold mb-2">
+          Scheduled This Week
+         </h6>
+         <div class="table-responsive">
+          <table class="table table-sm mb-0">
+           <thead>
+            <tr>
+             <th>
+              Date
+             </th>
+             <th>
+              Platform
+             </th>
+             <th>
+              Content
+             </th>
+             <th>
+              Status
+             </th>
+            </tr>
+           </thead>
+           <tbody>
+            <tr>
+             <td>
+              Today, 10:00 AM
+             </td>
+             <td>
+              <svg style="width: 16px; height: 16px; vertical-align: middle; margin-right: 6px;" viewbox="0 0 24 24">
+               <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1V12h3l-.5 3H13v6.8c4.56-.93 8-4.96 8-9.8z" fill="#1877F2">
+               </path>
+              </svg>
+              Facebook
+             </td>
+             <td>
+              Product Launch
+             </td>
+             <td>
+              <span class="badge badge-success">
+               Ready
+              </span>
+             </td>
+            </tr>
+            <tr>
+             <td>
+              Tomorrow, 2:00 PM
+             </td>
+             <td>
+              <svg style="width: 16px; height: 16px; vertical-align: middle; margin-right: 6px;" viewbox="0 0 24 24">
+               <path d="M7.8 2h8.4C19.4 2 22 4.6 22 7.8v8.4a5.8 5.8 0 0 1-5.8 5.8H7.8C4.6 22 2 19.4 2 16.2V7.8A5.8 5.8 0 0 1 7.8 2m-.2 2A3.6 3.6 0 0 0 4 7.6v8.8A3.6 3.6 0 0 0 7.6 20h8.8a3.6 3.6 0 0 0 3.6-3.6V7.6A3.6 3.6 0 0 0 16.4 4H7.6m9.65 1.5a1.25 1.25 0 0 1 1.25 1.25A1.25 1.25 0 0 1 17.25 8 1.25 1.25 0 0 1 16 6.75a1.25 1.25 0 0 1 1.25-1.25M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3z" fill="#E4405F">
+               </path>
+              </svg>
+              Instagram
+             </td>
+             <td>
+              Behind the Scenes
+             </td>
+             <td>
+              <span class="badge badge-secondary">
+               Draft
+              </span>
+             </td>
+            </tr>
+            <tr>
+             <td>
+              Jan 22, 9:00 AM
+             </td>
+             <td>
+              <svg style="width: 16px; height: 16px; vertical-align: middle; margin-right: 6px;" viewbox="0 0 24 24">
+               <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z" fill="#0A66C2">
+               </path>
+              </svg>
+              LinkedIn
+             </td>
+             <td>
+              Industry Insights
+             </td>
+             <td>
+              <span class="badge badge-success">
+               Ready
+              </span>
+             </td>
+            </tr>
+           </tbody>
+          </table>
+         </div>
+        </div>
+       </div>
+       <div class="col-md-4">
+        <div class="card-workspace">
+         <h6 class="fw-bold mb-2">
+          Quick Actions
+         </h6>
+         <div class="d-grid gap-2">
+          <button class="btn-pilot" onclick="switchTab('social')">
+           <i class="fas fa-plus me-2">
+           </i>
+           Create Post
+          </button>
+          <button class="btn-grey" onclick="switchTab('schedule')">
+           <i class="fas fa-calendar me-2">
+           </i>
+           View Schedule
+          </button>
+          <button class="btn-grey" onclick="switchTab('analytics')">
+           <i class="fas fa-chart-bar me-2">
+           </i>
+           View Analytics
+          </button>
+         </div>
+        </div>
+       </div>
+      </div>
+     </div>
+     <!-- Create Social Post Tab -->
+     <div id="tab-social" style="display:none;">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+       <div class="d-flex gap-1">
+        <button class="btn-grey active">
+         Drafts
+        </button>
+        <button class="btn-grey">
+         Scheduled
+        </button>
+       </div>
+       <button class="btn-pilot" onclick="openAssistant('social')">
+        <i class="fas fa-robot me-1">
+        </i>
+        myPilotPost Assistant
+       </button>
+      </div>
+      <div class="row g-3">
+       <div class="col-md-7">
+        <div class="card-workspace">
+         <div class="d-flex gap-1 mb-2">
+          <button class="btn-grey btn-sm" onclick="showAssistant('image')">
+           <i class="fas fa-image me-1">
+           </i>
+           Image
+          </button>
+          <button class="btn-grey btn-sm" onclick="showAssistant('video')">
+           <i class="fas fa-video me-1">
+           </i>
+           Video
+          </button>
+          <button class="btn-grey btn-sm" onclick="showAssistant('blog')">
+           <i class="fas fa-blog me-1">
+           </i>
+           Add Blog
+          </button>
+          <button class="btn-grey btn-sm ms-auto" onclick="showAssistant('hashtag')">
+           <i class="fas fa-hashtag me-1">
+           </i>
+           Hashtag Generator
+          </button>
+         </div>
+         <textarea class="form-control border-0 bg-light p-2" id="social-editor" oninput="updateAllPreviews()" placeholder="Start to create your post here or generate using myPilotPost Assistant." rows="8"></textarea>
+        </div>
+        <div class="d-flex gap-2 mt-2">
+         <button class="btn-pilot flex-grow-1" onclick="schedulePost()">
+          Schedule Post
+         </button>
+         <button class="btn-grey">
+          Share Approval
+         </button>
+        </div>
+       </div>
+       <div class="col-md-5">
+        <div id="preview-container">
+         <div class="preview-window mb-3" id="default-preview">
+          <div class="preview-header">
+           <div style="width:28px;height:28px;background:#eee;border-radius:50%">
+           </div>
+           <span class="small fw-bold">
+            Brand Feed
+           </span>
+          </div>
+          <p class="small text-dark mb-0" id="preview-text">
+           Preview text will appear here...
+          </p>
+         </div>
+         <!-- Platform-specific previews -->
+         <div class="preview-window mb-3 platform-preview" id="facebook-preview">
+          <div class="preview-header">
+           <svg class="icon-svg" viewbox="0 0 24 24">
+            <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1V12h3l-.5 3H13v6.8c4.56-.93 8-4.96 8-9.8z" fill="#1877F2">
+            </path>
+           </svg>
+           <span class="small fw-bold">
+            Facebook
+           </span>
+          </div>
+          <p class="small text-dark mb-1">
+           This is how your post appears on Facebook.
+          </p>
+          <div class="small text-muted">
+           <i class="far fa-thumbs-up">
+           </i>
+           Like ·
+           <i class="far fa-comment">
+           </i>
+           Comment ·
+           <i class="far fa-share-square">
+           </i>
+           Share
+          </div>
+         </div>
+         <div class="preview-window mb-3 platform-preview" id="instagram-preview">
+          <div class="preview-header">
+           <svg class="icon-svg" viewbox="0 0 24 24">
+            <path d="M7.8 2h8.4C19.4 2 22 4.6 22 7.8v8.4a5.8 5.8 0 0 1-5.8 5.8H7.8C4.6 22 2 19.4 2 16.2V7.8A5.8 5.8 0 0 1 7.8 2z" fill="#E4405F">
+            </path>
+           </svg>
+           <span class="small fw-bold">
+            Instagram
+           </span>
+          </div>
+          <div class="mb-1" style="background:#f3f3f3;height:160px;border-radius:8px;">
+          </div>
+          <p class="small text-dark mb-0">
+           Your caption will appear here.
+          </p>
+          <div class="small text-muted">
+           <i class="far fa-heart">
+           </i>
+           128 likes
+          </div>
+         </div>
+         <div class="preview-window mb-3 platform-preview" id="twitter-preview">
+          <div class="preview-header">
+           <svg class="icon-svg" viewbox="0 0 24 24">
+            <path d="M18.24 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.446-6.231z" fill="#000000">
+            </path>
+           </svg>
+           <span class="small fw-bold">
+            X (Twitter)
+           </span>
+          </div>
+          <p class="small text-dark mb-1">
+           This is how your tweet will appear.
+          </p>
+          <div class="small text-muted">
+           <i class="far fa-heart">
+           </i>
+           23 ·
+           <i class="fas fa-retweet">
+           </i>
+           4 ·
+           <i class="far fa-comment">
+           </i>
+           1
+          </div>
+         </div>
+         <div class="preview-window mb-3 platform-preview" id="linkedin-preview">
+          <div class="preview-header">
+           <svg class="icon-svg" viewbox="0 0 24 24">
+            <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14z" fill="#0A66C2">
+            </path>
+           </svg>
+           <span class="small fw-bold">
+            LinkedIn
+           </span>
+          </div>
+          <p class="small text-dark mb-1">
+           This is a sample LinkedIn professional post.
+          </p>
+          <div class="small text-muted" style="border:1px solid #ddd;border-radius:6px;padding:6px;">
+           Link preview or article snippet here.
+          </div>
+         </div>
+         <div class="preview-window mb-3 platform-preview" id="pinterest-preview">
+          <div class="preview-header">
+           <svg class="icon-svg" viewbox="0 0 24 24">
+            <path d="M9.04 21.54c.96.29 1.93.46 2.96.46a10 10 0 0 0 10-10A10 10 0 0 0 12 2A10 10 0 0 0 2 12c0 4.25 2.67 7.9 6.44 9.34-.09-.78-.18-2.07 0-2.96l1.15-4.94z" fill="#E60023">
+            </path>
+           </svg>
+           <span class="small fw-bold">
+            Pinterest
+           </span>
+          </div>
+          <div class="mb-1" style="background:#eee;height:180px;border-radius:8px;">
+          </div>
+          <p class="small text-dark mb-0">
+           Pin description preview.
+          </p>
+         </div>
+         <div class="preview-window mb-3 platform-preview" id="youtube-preview">
+          <div class="preview-header">
+           <svg class="icon-svg" viewbox="0 0 24 24">
+            <path d="M10 15l5.19-3L10 9v6z" fill="#FF0000">
+            </path>
+           </svg>
+           <span class="small fw-bold">
+            YouTube
+           </span>
+          </div>
+          <div class="d-flex align-items-center justify-content-center mb-1 text-white" style="background:#000;height:140px;border-radius:8px;">
+           <i class="fas fa-play">
+           </i>
+          </div>
+          <p class="small text-dark mb-0">
+           Your video title here
+          </p>
+         </div>
+         <div class="preview-window mb-3 platform-preview" id="tiktok-preview">
+          <div class="preview-header">
+           <svg class="icon-svg" viewbox="0 0 24 24">
+            <path d="M16.6 5.82A4.278 4.278 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6c0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64c0 3.33 2.76 5.7 5.69 5.7c3.14 0 5.69-2.55 5.69-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48z" fill="#000000">
+            </path>
+           </svg>
+           <span class="small fw-bold">
+            TikTok
+           </span>
+          </div>
+          <div class="d-flex align-items-center justify-content-center mb-1 text-white" style="background:#111;height:200px;border-radius:8px;">
+           <i class="fas fa-music me-2">
+           </i>
+           Trending sound
+          </div>
+          <p class="small text-dark mb-0">
+           TikTok caption example.
+          </p>
+         </div>
+         <div class="preview-window mb-3 platform-preview" id="threads-preview">
+          <div class="preview-header">
+           <svg class="icon-svg" viewbox="0 0 24 24">
+            <path d="M18 2c-2.21 0-4 1.79-4 4v12c0 1.1-.9 2-2 2s-2-.9-2-2V6c0-2.21-1.79-4-4-4S2 3.79 2 6v12c0 2.21 1.79 4 4 4h12c2.21 0 4-1.79 4-4V6c0-2.21-1.79-4-4-4z" fill="#000000">
+            </path>
+           </svg>
+           <span class="small fw-bold">
+            Threads
+           </span>
+          </div>
+          <p class="small text-dark mb-0">
+           Your Threads post text appears here.
+          </p>
+          <div class="small text-muted">
+           <i class="far fa-heart">
+           </i>
+           10 ·
+           <i class="far fa-comment">
+           </i>
+           3
+          </div>
+         </div>
+        </div>
+        <h6 class="small fw-bold mb-2">
+         Post to:
+        </h6>
+        <!-- 4×2 Grid for 8 Platforms -->
+        <div class="platform-grid-4x2">
+         <div class="plat-btn active" onclick="togglePlatform('facebook', this)">
+          <svg style="width: 24px; height: 24px; color: #1877F2;" viewbox="0 0 24 24">
+           <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1V12h3l-.5 3H13v6.8c4.56-.93 8-4.96 8-9.8z">
+           </path>
+          </svg>
+         </div>
+         <div class="plat-btn" onclick="togglePlatform('instagram', this)">
+          <svg style="width: 24px; height: 24px; color: #E4405F;" viewbox="0 0 24 24">
+           <path d="M7.8 2h8.4C19.4 2 22 4.6 22 7.8v8.4a5.8 5.8 0 0 1-5.8 5.8H7.8C4.6 22 2 19.4 2 16.2V7.8A5.8 5.8 0 0 1 7.8 2m-.2 2A3.6 3.6 0 0 0 4 7.6v8.8A3.6 3.6 0 0 0 7.6 20h8.8a3.6 3.6 0 0 0 3.6-3.6V7.6A3.6 3.6 0 0 0 16.4 4H7.6m9.65 1.5a1.25 1.25 0 0 1 1.25 1.25A1.25 1.25 0 0 1 17.25 8 1.25 1.25 0 0 1 16 6.75a1.25 1.25 0 0 1 1.25-1.25M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3z">
+           </path>
+          </svg>
+         </div>
+         <div class="plat-btn" onclick="togglePlatform('twitter', this)">
+          <svg style="width: 24px; height: 24px; color: #000;" viewbox="0 0 24 24">
+           <path d="M18.24 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.446-6.231zm-1.161 17.52h1.833L7.084 4.126H5.117L17.079 19.77z">
+           </path>
+          </svg>
+         </div>
+         <div class="plat-btn" onclick="togglePlatform('linkedin', this)">
+          <svg style="width: 24px; height: 24px; color: #0A66C2;" viewbox="0 0 24 24">
+           <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z">
+           </path>
+          </svg>
+         </div>
+         <div class="plat-btn" onclick="togglePlatform('pinterest', this)">
+          <svg style="width: 24px; height: 24px; color: #E60023;" viewbox="0 0 24 24">
+           <path d="M9.04 21.54c.96.29 1.93.46 2.96.46a10 10 0 0 0 10-10A10 10 0 0 0 12 2A10 10 0 0 0 2 12c0 4.25 2.67 7.9 6.44 9.34c-.09-.78-.18-2.07 0-2.96l1.15-4.94s-.29-.58-.29-1.5c0-1.38.86-2.41 1.84-2.41c.86 0 1.26.63 1.26 1.44c0 .86-.57 2.09-.86 3.27c-.17.98.52 1.84 1.52 1.84c1.78 0 3.16-1.9 3.16-4.58c0-2.4-1.72-4.04-4.19-4.04c-2.82 0-4.48 2.1-4.48 4.31c0 .86.28 1.73.74 2.3c.09.06.09.14.06.29l-.29 1.09c0 .17-.11.23-.28.11c-1.28-.56-2.02-2.38-2.02-3.85c0-3.16 2.24-6.03 6.56-6.03c3.44 0 6.12 2.47 6.12 5.75c0 3.44-2.13 6.2-5.18 6.2c-.98 0-1.92-.52-2.26-1.13l-.67 2.37c-.24.86-.86 2.01-1.29 2.7v-.03z">
+           </path>
+          </svg>
+         </div>
+         <div class="plat-btn" onclick="togglePlatform('youtube', this)">
+          <svg style="width: 24px; height: 24px; color: #FF0000;" viewbox="0 0 24 24">
+           <path d="M10 15l5.19-3L10 9v6m11.56-7.83c.13.47.22 1.1.28 1.9.07.8.1 1.49.1 2.09L22 12c0 2.19-.16 3.8-.44 4.83-.25.9-.83 1.48-1.73 1.73-.47.13-1.33.22-2.65.28-1.3.07-2.49.1-3.59.1L12 19c-4.19 0-6.8-.16-7.83-.44-.9-.25-1.48-.83-1.73-1.73-.13-.47-.22-1.1-.28-1.9-.07-.8-.1-1.49-.1-2.09L2 12c0-2.19.16-3.8.44-4.83.25-.9.83-1.48 1.73-1.73.47-.13 1.33.22-2.65.28 1.3-.07 2.49-.1 3.59-.1L12 5c4.19 0 6.8.16 7.83.44.9.25 1.48.83 1.73 1.73z">
+           </path>
+          </svg>
+         </div>
+         <div class="plat-btn" onclick="togglePlatform('tiktok', this)">
+          <svg style="width: 24px; height: 24px; color: #000;" viewbox="0 0 24 24">
+           <path d="M16.6 5.82s.51.5 0 0A4.278 4.278 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6c0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64c0 3.33 2.76 5.7 5.69 5.7c3.14 0 5.69-2.55 5.69-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48z">
+           </path>
+          </svg>
+         </div>
+         <div class="plat-btn" onclick="togglePlatform('whatsapp', this)">
+          <svg style="width: 24px; height: 24px; color: #000;" viewbox="0 0 24 24">
+           <path d="M18 2c-2.21 0-4 1.79-4 4v12c0 1.1-.9 2-2 2s-2-.9-2-2V6c0-2.21-1.79-4-4-4S2 3.79 2 6v12c0 2.21 1.79 4 4 4h12c2.21 0 4-1.79 4-4V6c0-2.21-1.79-4-4-4zm-2 14H8c-1.1 0-2-.9-2-2V8c0-1.1.9-2 2-2h8c1.1 0 2 .9 2 2v6c0 1.1-.9 2-2 2z">
+           </path>
+          </svg>
+         </div>
+        </div>
+       </div>
+      </div>
+     </div>
+     <!-- Create Article Tab -->
+     <div id="tab-blog" style="display:none;">
+      <div class="d-flex align-items-center gap-2 border-bottom pb-2 mb-3">
+       <input class="article-title-input" placeholder="Article Title..." type="text"/>
+       <button class="btn-pilot" onclick="openAssistant('blog')">
+        myPilotPost Assistant
+       </button>
+      </div>
+      <div class="row g-3">
+       <div class="col-md-9">
+        <div class="card-workspace p-3 border-0 shadow-sm" contenteditable="true" id="art-editor" style="min-height:500px">
+         Start writing your masterpiece or generate data-driven content with myPilotPost Assistant.
+        </div>
+       </div>
+       <div class="col-md-3">
+        <div class="card-workspace p-2">
+         <h6 class="small fw-bold mb-2">
+          Article Health
+         </h6>
+         <div class="small mb-1">
+          <span class="indicator-dot">
+          </span>
+          SEO &amp; GEO: Good
+         </div>
+         <div class="small mb-2">
+          <span class="indicator-dot">
+          </span>
+          Readability: Clear
+         </div>
+         <hr class="my-1"/>
+         <label class="small fw-bold text-muted mb-1">
+          Localization
+         </label>
+         <select class="form-select form-select-sm mb-1">
+          <option>
+           google.co.za
+          </option>
+          <option>
+           google.com.ng
+          </option>
+          <option>
+           google.co.ke
+          </option>
+         </select>
+         <input class="input-pill mb-2 w-100" placeholder="Add focus keywords" type="text"/>
+         <button class="btn-grey btn-sm w-100 mb-1" onclick="showAssistant('grammar')">
+          Grammar Check
+         </button>
+        </div>
+        <div class="d-grid gap-2">
+         <button class="btn-pilot" onclick="handleSchedule('blog')">
+          Schedule Dispatch
+         </button>
+         <button class="btn-grey" onclick="copyContent('art-editor', this)">
+          Copy
+         </button>
+        </div>
+       </div>
+      </div>
+     </div>
+     <!-- Campaigns Tab -->
+     <div id="tab-campaign" style="display:none;">
+      <div class="d-flex justify-content-between mb-3 align-items-center">
+       <h5 class="fw-bold mb-0">
+        Campaign Command Center
+       </h5>
+       <button class="btn-pilot btn-sm" data-bs-target="#campaignModal" data-bs-toggle="modal">
+        <i class="fas fa-plus me-1">
+        </i>
+        Create Campaign
+       </button>
+      </div>
+      <div class="card-workspace">
+       <div class="table-responsive">
+        <table class="table table-hover mb-0">
+         <thead class="bg-light">
+          <tr>
+           <th>
+            Campaign Name
+           </th>
+           <th>
+            Objective
+           </th>
+           <th>
+            Status
+           </th>
+           <th>
+            Start Date
+           </th>
+           <th>
+            Performance
+           </th>
+           <th>
+            Actions
+           </th>
+          </tr>
+         </thead>
+         <tbody>
+          <tr>
+           <td class="fw-bold">
+            Summer Promo 2026
+           </td>
+           <td>
+            Lead Generation
+           </td>
+           <td>
+            <span class="badge badge-success">
+             Active
+            </span>
+           </td>
+           <td>
+            Jan 15, 2026
+           </td>
+           <td>
+            <span class="temp-success">
+             +12.4%
+            </span>
+           </td>
+           <td>
+            <button class="btn-grey btn-sm">
+             View
+            </button>
+           </td>
+          </tr>
+          <tr>
+           <td class="fw-bold">
+            Product Launch
+           </td>
+           <td>
+            Brand Awareness
+           </td>
+           <td>
+            <span class="badge badge-secondary">
+             Pending
+            </span>
+           </td>
+           <td>
+            Feb 1, 2026
+           </td>
+           <td>
+            --
+           </td>
+           <td>
+            <button class="btn-grey btn-sm">
+             Edit
+            </button>
+           </td>
+          </tr>
+          <tr>
+           <td class="fw-bold">
+            Q1 Newsletter
+           </td>
+           <td>
+            Engagement
+           </td>
+           <td>
+            <span class="badge badge-secondary">
+             Draft
+            </span>
+           </td>
+           <td>
+            Mar 1, 2026
+           </td>
+           <td>
+            --
+           </td>
+           <td>
+            <button class="btn-grey btn-sm">
+             Continue
+            </button>
+           </td>
+          </tr>
+         </tbody>
+        </table>
+       </div>
+      </div>
+     </div>
+     <!-- NEW: Content Tab -->
+     <div id="tab-content" style="display:none;">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+       <h5 class="fw-bold mb-0">
+        Content Management
+       </h5>
+       <button class="btn-pilot btn-sm" onclick="createNewContent()">
+        <i class="fas fa-plus me-1"></i>
+        Create New
+       </button>
+      </div>
+      
+      <!-- Subtabs Navigation -->
+      <div class="d-flex gap-1 mb-3" id="content-subtabs">
+       <button class="btn-grey active" onclick="switchContentSubTab('draft-content')">
+        Draft Content
+       </button>
+       <button class="btn-grey" onclick="switchContentSubTab('draft-articles')">
+        Draft Articles
+       </button>
+       <button class="btn-grey" onclick="switchContentSubTab('content-approval')">
+        Content Approval
+       </button>
+      </div>
+      
+      <!-- Draft Content (Social Media Posts) -->
+      <div id="subtab-draft-content" class="content-subtab">
+       <div class="card-workspace">
+        <div class="table-responsive">
+         <table class="table table-hover content-table mb-0">
+          <thead class="bg-light">
+           <tr>
+            <th>Content Title</th>
+            <th>Social Media Platform</th>
+            <th>Objective</th>
+            <th>Status</th>
+            <th>Actions</th>
+           </tr>
+          </thead>
+          <tbody>
+           <tr>
+            <td class="fw-bold">Summer Product Launch</td>
+            <td>
+             <div class="d-flex gap-1">
+              <svg style="width: 16px; height: 16px; color: #1877F2;" viewbox="0 0 24 24">
+               <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1V12h3l-.5 3H13v6.8c4.56-.93 8-4.96 8-9.8z"></path>
+              </svg>
+              <svg style="width: 16px; height: 16px; color: #E4405F;" viewbox="0 0 24 24">
+               <path d="M7.8 2h8.4C19.4 2 22 4.6 22 7.8v8.4a5.8 5.8 0 0 1-5.8 5.8H7.8C4.6 22 2 19.4 2 16.2V7.8A5.8 5.8 0 0 1 7.8 2m-.2 2A3.6 3.6 0 0 0 4 7.6v8.8A3.6 3.6 0 0 0 7.6 20h8.8a3.6 3.6 0 0 0 3.6-3.6V7.6A3.6 3.6 0 0 0 16.4 4H7.6m9.65 1.5a1.25 1.25 0 0 1 1.25 1.25A1.25 1.25 0 0 1 17.25 8 1.25 1.25 0 0 1 16 6.75a1.25 1.25 0 0 1 1.25-1.25M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3z"></path>
+              </svg>
+             </div>
+            </td>
+            <td>Brand Awareness</td>
+            <td><span class="badge badge-secondary">Draft</span></td>
+            <td>
+             <button class="btn-grey btn-sm me-1" onclick="previewSocialContent('summer-launch')">
+              Preview
+             </button>
+             <button class="btn-grey btn-sm" onclick="editContent('summer-launch')">
+              Edit
+             </button>
+            </td>
+           </tr>
+           <tr>
+            <td class="fw-bold">Behind the Scenes</td>
+            <td>
+             <div class="d-flex gap-1">
+              <svg style="width: 16px; height: 16px; color: #E4405F;" viewbox="0 0 24 24">
+               <path d="M7.8 2h8.4C19.4 2 22 4.6 22 7.8v8.4a5.8 5.8 0 0 1-5.8 5.8H7.8C4.6 22 2 19.4 2 16.2V7.8A5.8 5.8 0 0 1 7.8 2m-.2 2A3.6 3.6 0 0 0 4 7.6v8.8A3.6 3.6 0 0 0 7.6 20h8.8a3.6 3.6 0 0 0 3.6-3.6V7.6A3.6 3.6 0 0 0 16.4 4H7.6m9.65 1.5a1.25 1.25 0 0 1 1.25 1.25A1.25 1.25 0 0 1 17.25 8 1.25 1.25 0 0 1 16 6.75a1.25 1.25 0 0 1 1.25-1.25M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3z"></path>
+              </svg>
+             </div>
+            </td>
+            <td>Engagement</td>
+            <td><span class="badge badge-secondary">Draft</span></td>
+            <td>
+             <button class="btn-grey btn-sm me-1" onclick="previewSocialContent('behind-scenes')">
+              Preview
+             </button>
+             <button class="btn-grey btn-sm" onclick="editContent('behind-scenes')">
+              Edit
+             </button>
+            </td>
+           </tr>
+           <tr>
+            <td class="fw-bold">Industry Insights</td>
+            <td>
+             <div class="d-flex gap-1">
+              <svg style="width: 16px; height: 16px; color: #0A66C2;" viewbox="0 0 24 24">
+               <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"></path>
+              </svg>
+             </div>
+            </td>
+            <td>Thought Leadership</td>
+            <td><span class="badge badge-success">Ready</span></td>
+            <td>
+             <button class="btn-grey btn-sm me-1" onclick="previewSocialContent('industry-insights')">
+              Preview
+             </button>
+             <button class="btn-pilot btn-sm" onclick="scheduleContent('industry-insights')">
+              Schedule
+             </button>
+            </td>
+           </tr>
+          </tbody>
+         </table>
+        </div>
+       </div>
+      </div>
+      
+      <!-- Draft Articles (Blog Posts) -->
+      <div id="subtab-draft-articles" class="content-subtab" style="display:none;">
+       <div class="card-workspace">
+        <div class="table-responsive">
+         <table class="table table-hover content-table mb-0">
+          <thead class="bg-light">
+           <tr>
+            <th>Article Title</th>
+            <th>SEO Score</th>
+            <th>Readability</th>
+            <th>Status</th>
+            <th>Actions</th>
+           </tr>
+          </thead>
+          <tbody>
+           <tr>
+            <td class="fw-bold">The Future of Social Media Marketing</td>
+            <td>
+             <div class="d-flex align-items-center">
+              <span class="temp-success me-1">92</span>
+              <div class="progress" style="width: 60px; height: 4px;">
+               <div class="progress-bar bg-success" style="width: 92%"></div>
+              </div>
+             </div>
+            </td>
+            <td><span class="temp-success">Excellent</span></td>
+            <td><span class="badge badge-secondary">Draft</span></td>
+            <td>
+             <button class="btn-grey btn-sm me-1" onclick="previewArticleContent('future-social-media')">
+              Preview
+             </button>
+             <button class="btn-grey btn-sm" onclick="editArticle('future-social-media')">
+              Edit
+             </button>
+            </td>
+           </tr>
+           <tr>
+            <td class="fw-bold">How AI is Changing Content Creation</td>
+            <td>
+             <div class="d-flex align-items-center">
+              <span class="temp-success me-1">85</span>
+              <div class="progress" style="width: 60px; height: 4px;">
+               <div class="progress-bar bg-success" style="width: 85%"></div>
+              </div>
+             </div>
+            </td>
+            <td><span class="temp-success">Good</span></td>
+            <td><span class="badge badge-secondary">Draft</span></td>
+            <td>
+             <button class="btn-grey btn-sm me-1" onclick="previewArticleContent('ai-content-creation')">
+              Preview
+             </button>
+             <button class="btn-grey btn-sm" onclick="editArticle('ai-content-creation')">
+              Edit
+             </button>
+            </td>
+           </tr>
+           <tr>
+            <td class="fw-bold">SEO Best Practices for 2026</td>
+            <td>
+             <div class="d-flex align-items-center">
+              <span class="temp-success me-1">96</span>
+              <div class="progress" style="width: 60px; height: 4px;">
+               <div class="progress-bar bg-success" style="width: 96%"></div>
+              </div>
+             </div>
+            </td>
+            <td><span class="temp-success">Excellent</span></td>
+            <td><span class="badge badge-success">Ready</span></td>
+            <td>
+             <button class="btn-grey btn-sm me-1" onclick="previewArticleContent('seo-best-practices')">
+              Preview
+             </button>
+             <button class="btn-pilot btn-sm" onclick="scheduleArticle('seo-best-practices')">
+              Schedule
+             </button>
+            </td>
+           </tr>
+          </tbody>
+         </table>
+        </div>
+       </div>
+      </div>
+      
+      <!-- Content Approval -->
+      <div id="subtab-content-approval" class="content-subtab" style="display:none;">
+       <div class="card-workspace">
+        <h6 class="fw-bold mb-3">Pending Approval</h6>
+        <div class="table-responsive">
+         <table class="table table-hover content-table mb-0">
+          <thead class="bg-light">
+           <tr>
+            <th>Content</th>
+            <th>Type</th>
+            <th>Submitted By</th>
+            <th>Submitted Date</th>
+            <th>Actions</th>
+           </tr>
+          </thead>
+          <tbody>
+           <tr>
+            <td class="fw-bold">Q1 Product Announcement</td>
+            <td><span class="badge badge-secondary">Social Post</span></td>
+            <td>John Doe</td>
+            <td>Jan 20, 2026</td>
+            <td>
+             <button class="btn-grey btn-sm me-1" onclick="previewForApproval('q1-announcement')">
+              Review
+             </button>
+             <button class="btn-pilot btn-sm me-1" onclick="approveContent('q1-announcement')">
+              Approve
+             </button>
+             <button class="btn-grey btn-sm" onclick="rejectContent('q1-announcement')">
+              Reject
+             </button>
+            </td>
+           </tr>
+           <tr>
+            <td class="fw-bold">Case Study: Customer Success</td>
+            <td><span class="badge badge-secondary">Article</span></td>
+            <td>Jane Smith</td>
+            <td>Jan 19, 2026</td>
+            <td>
+             <button class="btn-grey btn-sm me-1" onclick="previewForApproval('case-study')">
+              Review
+             </button>
+             <button class="btn-pilot btn-sm me-1" onclick="approveContent('case-study')">
+              Approve
+             </button>
+             <button class="btn-grey btn-sm" onclick="rejectContent('case-study')">
+              Reject
+             </button>
+            </td>
+           </tr>
+          </tbody>
+         </table>
+        </div>
+       </div>
+      </div>
+     </div>
+     <!-- Schedule Tab -->
+     <div id="tab-schedule" style="display:none;">
+      <div class="d-flex justify-content-between mb-3 align-items-center" style="font-family:'Inter',sans-serif!important;">
+       <div style="font-family:'Inter',sans-serif!important;">
+        <h5 class="fw-bold mb-0" style="font-family:'Inter',sans-serif!important;font-weight:700;font-size:1rem;color:var(--text-heading)!important;">
+         Schedule Calendar
+        </h5>
+        <div class="small text-muted" style="font-family:'Inter',sans-serif!important;">
+         Week of January 18-24, 2026
+        </div>
+       </div>
+       <div class="d-flex gap-1" style="font-family:'Inter',sans-serif!important;">
+        <button class="btn-grey btn-sm" style="font-family:'Inter',sans-serif!important;font-weight:600;font-size:0.8rem;color:var(--pilot-blue)!important;font-family:'Inter',sans-serif!important;">
+         <i class="fas fa-chevron-left" style="font-family:'Inter',sans-serif!important;">
+         </i>
+        </button>
+        <button class="btn-grey btn-sm active" style="font-family:'Inter',sans-serif!important;font-weight:600;font-size:0.8rem;color:var(--pilot-blue)!important;font-family:'Inter',sans-serif!important;">
+         Week
+        </button>
+        <button class="btn-grey btn-sm" style="font-family:'Inter',sans-serif!important;font-weight:600;font-size:0.8rem;color:var(--pilot-blue)!important;font-family:'Inter',sans-serif!important;">
+         Month
+        </button>
+        <button class="btn-grey btn-sm" style="font-family:'Inter',sans-serif!important;font-weight:600;font-size:0.8rem;color:var(--pilot-blue)!important;font-family:'Inter',sans-serif!important;">
+         <i class="fas fa-chevron-right" style="font-family:'Inter',sans-serif!important;">
+         </i>
+        </button>
+       </div>
+      </div>
+      <!-- Week View Calendar -->
+      <div class="calendar-week-view" style="font-family:'Inter',sans-serif!important;">
+       <!-- Monday -->
+       <div class="day-box" style="font-family:'Inter',sans-serif!important;">
+        <span class="day-label" style="font-family:'Inter',sans-serif!important;">
+         Monday
+        </span>
+        <span class="day-number" style="font-family:'Inter',sans-serif!important;">
+         18
+        </span>
+        <span class="schedule-count" style="font-family:'Inter',sans-serif!important;">
+         0 scheduled
+        </span>
+        <div class="cal-plus" onclick="scheduleForDay('Monday', 18)" style="font-family:'Inter',sans-serif!important;">
+         <i class="fas fa-plus" style="font-family:'Inter',sans-serif!important;">
+         </i>
+        </div>
+       </div>
+       <!-- Tuesday -->
+       <div class="day-box" style="font-family:'Inter',sans-serif!important;">
+        <span class="day-label" style="font-family:'Inter',sans-serif!important;">
+         Tuesday
+        </span>
+        <span class="day-number" style="font-family:'Inter',sans-serif!important;">
+         19
+        </span>
+        <span class="schedule-count" style="font-family:'Inter',sans-serif!important;">
+         0 scheduled
+        </span>
+        <div class="cal-plus" onclick="scheduleForDay('Tuesday', 19)" style="font-family:'Inter',sans-serif!important;">
+         <i class="fas fa-plus" style="font-family:'Inter',sans-serif!important;">
+         </i>
+        </div>
+       </div>
+       <!-- Wednesday -->
+       <div class="day-box" style="font-family:'Inter',sans-serif!important;">
+        <span class="day-label" style="font-family:'Inter',sans-serif!important;">
+         Wednesday
+        </span>
+        <span class="day-number" style="font-family:'Inter',sans-serif!important;">
+         20
+        </span>
+        <span class="schedule-count" style="font-family:'Inter',sans-serif!important;">
+         0 scheduled
+        </span>
+        <div class="cal-plus" onclick="scheduleForDay('Wednesday', 20)" style="font-family:'Inter',sans-serif!important;">
+         <i class="fas fa-plus" style="font-family:'Inter',sans-serif!important;">
+         </i>
+        </div>
+       </div>
+       <!-- Thursday -->
+       <div class="day-box" style="font-family:'Inter',sans-serif!important;">
+        <span class="day-label" style="font-family:'Inter',sans-serif!important;">
+         Thursday
+        </span>
+        <span class="day-number" style="font-family:'Inter',sans-serif!important;">
+         21
+        </span>
+        <span class="schedule-count" style="font-family:'Inter',sans-serif!important;">
+         0 scheduled
+        </span>
+        <div class="cal-plus" onclick="scheduleForDay('Thursday', 21)" style="font-family:'Inter',sans-serif!important;">
+         <i class="fas fa-plus" style="font-family:'Inter',sans-serif!important;">
+         </i>
+        </div>
+       </div>
+       <!-- Friday -->
+       <div class="day-box" style="font-family:'Inter',sans-serif!important;">
+        <span class="day-label" style="font-family:'Inter',sans-serif!important;">
+         Friday
+        </span>
+        <span class="day-number" style="font-family:'Inter',sans-serif!important;">
+         22
+        </span>
+        <span class="schedule-count" style="font-family:'Inter',sans-serif!important;">
+         0 scheduled
+        </span>
+        <div class="cal-plus" onclick="scheduleForDay('Friday', 22)" style="font-family:'Inter',sans-serif!important;">
+         <i class="fas fa-plus" style="font-family:'Inter',sans-serif!important;">
+         </i>
+        </div>
+       </div>
+       <!-- Saturday -->
+       <div class="day-box" style="font-family:'Inter',sans-serif!important;">
+        <span class="day-label" style="font-family:'Inter',sans-serif!important;">
+         Saturday
+        </span>
+        <span class="day-number" style="font-family:'Inter',sans-serif!important;">
+         23
+        </span>
+        <span class="schedule-count" style="font-family:'Inter',sans-serif!important;">
+         0 scheduled
+        </span>
+        <div class="cal-plus" onclick="scheduleForDay('Saturday', 23)" style="font-family:'Inter',sans-serif!important;">
+         <i class="fas fa-plus" style="font-family:'Inter',sans-serif!important;">
+         </i>
+        </div>
+       </div>
+       <!-- Sunday -->
+       <div class="day-box" style="font-family:'Inter',sans-serif!important;">
+        <span class="day-label" style="font-family:'Inter',sans-serif!important;">
+         Sunday
+        </span>
+        <span class="day-number" style="font-family:'Inter',sans-serif!important;">
+         24
+        </span>
+        <span class="schedule-count" style="font-family:'Inter',sans-serif!important;">
+         0 scheduled
+        </span>
+        <div class="cal-plus" onclick="scheduleForDay('Sunday', 24)" style="font-family:'Inter',sans-serif!important;">
+         <i class="fas fa-plus" style="font-family:'Inter',sans-serif!important;">
+         </i>
+        </div>
+       </div>
+      </div>
+      <!-- Scheduled Content -->
+      <div class="card-workspace mt-3" style="font-family:'Inter',sans-serif!important;">
+       <h6 class="fw-bold mb-2" style="font-family:'Inter',sans-serif!important;font-weight:700;font-size:1rem;color:var(--text-heading)!important;">
+        Scheduled Content This Week
+       </h6>
+       <div class="text-center py-3" style="font-family:'Inter',sans-serif!important;">
+        <i class="fas fa-calendar-times fa-2x text-muted mb-2" style="font-family:'Inter',sans-serif!important;">
+        </i>
+        <p class="text-muted mb-0" style="font-family:'Inter',sans-serif!important;">
+         No content scheduled for this week
+        </p>
+        <button class="btn-pilot btn-sm mt-1" onclick="switchTab('social')" style="font-family:'Inter',sans-serif!important;font-weight:600;font-size:0.8rem;color:var(--pilot-blue)!important;font-family:'Inter',sans-serif!important;">
+         <i class="fas fa-plus me-1" style="font-family:'Inter',sans-serif!important;">
+         </i>
+         Schedule Content
+        </button>
+       </div>
+      </div>
+     </div>
+     <!-- SEO Center Tab -->
+     <div id="tab-seo" style="display:none;">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+       <h5 class="fw-bold mb-0">
+        SEO Intelligence Center
+       </h5>
+      </div>
+      <!-- 2×2 Grid -->
+      <div class="grid-2x2">
+       <div class="card-workspace text-center">
+        <div class="h2 fw-bold mb-1" style="color: var(--status-success)">
+         92
+        </div>
+        <div class="fw-bold mb-1">
+         Audit Score
+        </div>
+        <div class="small text-muted">
+         Performance Overview
+        </div>
+       </div>
+       <div class="card-workspace text-center">
+        <div class="h2 fw-bold mb-1">
+         4.2K
+        </div>
+        <div class="fw-bold mb-1">
+         Organic Traffic
+        </div>
+        <div class="small text-muted">
+         Last 30 Days
+        </div>
+       </div>
+       <div class="card-workspace text-center">
+        <div class="h2 fw-bold mb-1">
+         127
+        </div>
+        <div class="fw-bold mb-1">
+         Backlinks
+        </div>
+        <div class="small text-muted">
+         Total
+        </div>
+       </div>
+       <div class="card-workspace text-center">
+        <div class="h2 fw-bold mb-1">
+         85%
+        </div>
+        <div class="fw-bold mb-1">
+         Core Web Vitals
+        </div>
+        <div class="small text-muted">
+         Performance
+        </div>
+       </div>
+      </div>
+      <!-- Keyword Opportunities -->
+      <div class="card-workspace">
+       <h6 class="fw-bold mb-2">
+        Top Keyword Opportunities
+       </h6>
+       <div class="table-responsive">
+        <table class="table table-sm mb-0">
+         <thead>
+          <tr>
+           <th>
+            Keyword
+           </th>
+           <th>
+            Position
+           </th>
+           <th>
+            Volume
+           </th>
+           <th>
+            Difficulty
+           </th>
+           <th>
+            Opportunity
+           </th>
+          </tr>
+         </thead>
+         <tbody>
+          <tr>
+           <td class="fw-bold">
+            SaaS Automation
+           </td>
+           <td>
+            4
+           </td>
+           <td>
+            2,400
+           </td>
+           <td>
+            <span class="badge badge-secondary">
+             Medium
+            </span>
+           </td>
+           <td>
+            <span class="temp-success">
+             High
+            </span>
+           </td>
+          </tr>
+          <tr>
+           <td class="fw-bold">
+            Social Media Marketing
+           </td>
+           <td>
+            7
+           </td>
+           <td>
+            3,800
+           </td>
+           <td>
+            <span class="badge badge-secondary">
+             Hard
+            </span>
+           </td>
+           <td>
+            <span class="text-muted">
+             Medium
+            </span>
+           </td>
+          </tr>
+         </tbody>
+        </table>
+       </div>
+      </div>
+     </div>
+     <!-- Canva Design Tab -->
+     <div id="tab-canva" style="display: none;">
+      <div class="card-workspace text-center" style="min-height: 400px;">
+       <div class="d-flex flex-column align-items-center justify-content-center py-4">
+        <i class="fas fa-paint-brush text-muted mb-3" style="font-size: 3rem;">
+        </i>
+        <h4 class="fw-bold mb-2">
+         Canva Design Studio
+        </h4>
+        <p class="text-muted mb-3" style="max-width: 400px;">
+         Connect your Canva account to create stunning visuals.
+        </p>
+        <button class="btn-pilot mb-3" onclick="connectCanva()">
+         <i class="fas fa-plug me-2">
+         </i>
+         Connect Canva
+        </button>
+        <div class="grid-2x2" style="width: 100%;">
+         <div class="card-workspace text-center">
+          <i class="fas fa-history text-primary mb-2">
+          </i>
+          <h6 class="fw-bold">
+           Recent Designs
+          </h6>
+          <p class="small text-muted">
+           Access recent creations
+          </p>
+         </div>
+         <div class="card-workspace text-center">
+          <i class="fas fa-layer-group text-primary mb-2">
+          </i>
+          <h6 class="fw-bold">
+           Templates
+          </h6>
+          <p class="small text-muted">
+           Professional templates
+          </p>
+         </div>
+        </div>
+       </div>
+      </div>
+     </div>
+     <!-- Media Library Tab -->
+     <div id="tab-media" style="display:none;">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+       <h5 class="fw-bold mb-0">
+        Media Library
+       </h5>
+       <button class="btn-pilot btn-sm" onclick="showUploadModal()">
+        <i class="fas fa-upload me-1">
+        </i>
+        Upload
+       </button>
+      </div>
+      <div class="card-workspace">
+       <div class="d-flex justify-content-between mb-2">
+        <div class="d-flex gap-1">
+         <button class="btn-grey btn-sm active">
+          All
+         </button>
+         <button class="btn-grey btn-sm">
+          Images
+         </button>
+         <button class="btn-grey btn-sm">
+          Videos
+         </button>
+        </div>
+        <input class="input-pill" placeholder="Search media..." style="width: 180px;" type="text"/>
+       </div>
+       <div class="media-grid">
+        <!-- Sample media items -->
+        <div class="card-workspace p-1 text-center">
+         <div style="height: 90px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; color: white; margin-bottom: 0.25rem;">
+          <i class="fas fa-image fa-2x">
+          </i>
+         </div>
+         <div class="small fw-bold">
+          brand-logo.png
+         </div>
+         <div class="small text-muted">
+          512 KB
+         </div>
+        </div>
+        <div class="card-workspace p-1 text-center">
+         <div style="height: 90px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; color: white; margin-bottom: 0.25rem;">
+          <i class="fas fa-video fa-2x">
+          </i>
+         </div>
+         <div class="small fw-bold">
+          product-demo.mp4
+         </div>
+         <div class="small text-muted">
+          15.2 MB
+         </div>
+        </div>
+        <div class="card-workspace p-1 text-center">
+         <div style="height: 90px; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; color: white; margin-bottom: 0.25rem;">
+          <i class="fas fa-file-pdf fa-2x">
+          </i>
+         </div>
+         <div class="small fw-bold">
+          whitepaper.pdf
+         </div>
+         <div class="small text-muted">
+          2.1 MB
+         </div>
+        </div>
+       </div>
+       <div class="text-center mt-2">
+        <button class="btn-grey btn-sm" onclick="showUploadModal()">
+         <i class="fas fa-plus me-1">
+         </i>
+         Load More
+        </button>
+       </div>
+      </div>
+     </div>
+     <!-- Analytics Tab -->
+     <div id="tab-analytics" style="display:none;">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+       <h5 class="fw-bold mb-0">
+        Performance Analytics
+       </h5>
+       <div class="d-flex gap-1">
+        <button class="btn-grey btn-sm active">
+         7d
+        </button>
+        <button class="btn-grey btn-sm">
+         30d
+        </button>
+        <button class="btn-grey btn-sm">
+         Custom
+        </button>
+       </div>
+      </div>
+      <!-- 2×2 Grid -->
+      <div class="grid-2x2">
+       <div class="card-workspace">
+        <div class="d-flex justify-content-between align-items-start">
+         <div>
+          <div class="small text-muted mb-1">
+           Total Impressions
+          </div>
+          <div class="h4 fw-bold mb-0">
+           1,248
+          </div>
+          <div class="small temp-success">
+           +12.4%
+          </div>
+         </div>
+         <i class="fas fa-eye" style="font-size: 1.5rem; color: var(--pilot-blue)">
+         </i>
+        </div>
+       </div>
+       <div class="card-workspace">
+        <div class="d-flex justify-content-between align-items-start">
+         <div>
+          <div class="small text-muted mb-1">
+           Total Engagements
+          </div>
+          <div class="h4 fw-bold mb-0">
+           342
+          </div>
+          <div class="small temp-success">
+           +8.2%
+          </div>
+         </div>
+         <i class="fas fa-heart" style="font-size: 1.5rem; color: var(--pilot-blue)">
+         </i>
+        </div>
+       </div>
+       <div class="card-workspace">
+        <div class="d-flex justify-content-between align-items-start">
+         <div>
+          <div class="small text-muted mb-1">
+           Engagement Rate
+          </div>
+          <div class="h4 fw-bold mb-0">
+           4.2%
+          </div>
+          <div class="small temp-success">
+           +0.8%
+          </div>
+         </div>
+         <i class="fas fa-chart-line" style="font-size: 1.5rem; color: var(--pilot-blue)">
+         </i>
+        </div>
+       </div>
+       <div class="card-workspace">
+        <div class="d-flex justify-content-between align-items-start">
+         <div>
+          <div class="small text-muted mb-1">
+           Link Clicks
+          </div>
+          <div class="h4 fw-bold mb-0">
+           89
+          </div>
+          <div class="small text-muted">
+           No change
+          </div>
+         </div>
+         <i class="fas fa-mouse-pointer" style="font-size: 1.5rem; color: var(--pilot-blue)">
+         </i>
+        </div>
+       </div>
+      </div>
+      <div class="card-workspace">
+       <h6 class="fw-bold mb-2">
+        Engagement Over Time
+       </h6>
+       <div style="height: 200px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); background: #f8fafc; border-radius: var(--radius-md);">
+        <div class="text-center">
+         <i class="fas fa-chart-line fa-2x mb-1">
+         </i>
+         <p>
+          Engagement Chart
+         </p>
+         <p class="small">
+          Data visualization
+         </p>
+        </div>
+       </div>
+      </div>
+     </div>
+     <!-- INTEGRATIONS TAB - VISIBLE NOW -->
+     <div id="tab-integrations" style="display:none;">
+      <div class="accordion" id="intAcc">
+       <!-- Social Media Platforms -->
+       <div class="accordion-item">
+        <h2 class="accordion-header">
+         <button class="accordion-button" data-bs-target="#socialMedia" data-bs-toggle="collapse" type="button">
+          Social Media Platforms
+         </button>
+        </h2>
+        <div class="accordion-collapse collapse show" id="socialMedia">
+         <div class="accordion-body p-2">
+          <div class="row g-2" id="social-platforms-grid">
+           <!-- Facebook -->
+           <div class="col-6">
+            <div class="integration-card">
+             <div class="integration-icon">
+              <svg style="color: #1877F2;" viewbox="0 0 24 24">
+               <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1V12h3l-.5 3H13v6.8c4.56-.93 8-4.96 8-9.8z">
+               </path>
+              </svg>
+             </div>
+             <h6 class="mb-1">
+              Facebook
+             </h6>
+             <span class="badge bg-success mb-1" id="facebook-status">
+              Connected
+             </span>
+             <button class="btn btn-outline-danger btn-sm w-100" onclick="revokeIntegration('facebook')">
+              Revoke
+             </button>
+            </div>
+           </div>
+           <!-- Instagram -->
+           <div class="col-6">
+            <div class="integration-card">
+             <div class="integration-icon">
+              <svg style="color: #E4405F;" viewbox="0 0 24 24">
+               <path d="M7.8 2h8.4C19.4 2 22 4.6 22 7.8v8.4a5.8 5.8 0 0 1-5.8 5.8H7.8C4.6 22 2 19.4 2 16.2V7.8A5.8 5.8 0 0 1 7.8 2m-.2 2A3.6 3.6 0 0 0 4 7.6v8.8A3.6 3.6 0 0 0 7.6 20h8.8a3.6 3.6 0 0 0 3.6-3.6V7.6A3.6 3.6 0 0 0 16.4 4H7.6m9.65 1.5a1.25 1.25 0 0 1 1.25 1.25A1.25 1.25 0 0 1 17.25 8 1.25 1.25 0 0 1 16 6.75a1.25 1.25 0 0 1 1.25-1.25M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3z">
+               </path>
+              </svg>
+             </div>
+             <h6 class="mb-1">
+              Instagram
+             </h6>
+             <span class="badge bg-secondary mb-1" id="instagram-status">
+              Not Connected
+             </span>
+             <button class="btn-pilot btn-sm w-100" onclick="connectIntegration('instagram')">
+              Connect
+             </button>
+            </div>
+           </div>
+           <!-- LinkedIn -->
+           <div class="col-6">
+            <div class="integration-card">
+             <div class="integration-icon">
+              <svg style="color: #0A66C2;" viewbox="0 0 24 24">
+               <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z">
+               </path>
+              </svg>
+             </div>
+             <h6 class="mb-1">
+              LinkedIn
+             </h6>
+             <span class="badge bg-secondary mb-1" id="linkedin-status">
+              Not Connected
+             </span>
+             <button class="btn-pilot btn-sm w-100" onclick="connectIntegration('linkedin')">
+              Connect
+             </button>
+            </div>
+           </div>
+           <!-- X (Twitter) -->
+           <div class="col-6">
+            <div class="integration-card">
+             <div class="integration-icon">
+              <svg style="color: #000000;" viewbox="0 0 24 24">
+               <path d="M18.24 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.446-6.231zm-1.161 17.52h1.833L7.084 4.126H5.117L17.079 19.77z">
+               </path>
+              </svg>
+             </div>
+             <h6 class="mb-1">
+              X (Twitter)
+             </h6>
+             <span class="badge bg-secondary mb-1" id="twitter-status">
+              Not Connected
+             </span>
+             <button class="btn-pilot btn-sm w-100" onclick="connectIntegration('twitter')">
+              Connect
+             </button>
+            </div>
+           </div>
+           <!-- YouTube -->
+           <div class="col-6">
+            <div class="integration-card">
+             <div class="integration-icon">
+              <svg style="color: #FF0000;" viewbox="0 0 24 24">
+               <path d="M10 15l5.19-3L10 9v6m11.56-7.83c.13.47.22 1.1.28 1.9.07.8.1 1.49.1 2.09L22 12c0 2.19-.16 3.8-.44 4.83-.25.9-.83 1.48-1.73 1.73-.47.13-1.33.22-2.65.28-1.3.07-2.49.1-3.59.1L12 19c-4.19 0-6.8-.16-7.83-.44-.9-.25-1.48-.83-1.73-1.73-.13-.47-.22-1.1-.28-1.9-.07-.8-.1-1.49-.1-2.09L2 12c0-2.19.16-3.8.44-4.83.25-.9.83-1.48 1.73-1.73.47-.13 1.33.22-2.65.28 1.3-.07 2.49-.1 3.59-.1L12 5c4.19 0 6.8.16 7.83.44.9.25 1.48.83 1.73 1.73z">
+               </path>
+              </svg>
+             </div>
+             <h6 class="mb-1">
+              YouTube
+             </h6>
+             <span class="badge bg-secondary mb-1" id="youtube-status">
+              Not Connected
+             </span>
+             <button class="btn-pilot btn-sm w-100" onclick="connectIntegration('youtube')">
+              Connect
+             </button>
+            </div>
+           </div>
+           <!-- TikTok -->
+           <div class="col-6">
+            <div class="integration-card">
+             <div class="integration-icon">
+              <svg style="color: #000000;" viewbox="0 0 24 24">
+               <path d="M16.6 5.82s.51.5 0 0A4.278 4.278 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6c0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64c0 3.33 2.76 5.7 5.69 5.7c3.14 0 5.69-2.55 5.69-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48z">
+               </path>
+              </svg>
+             </div>
+             <h6 class="mb-1">
+              TikTok
+             </h6>
+             <span class="badge bg-secondary mb-1" id="tiktok-status">
+              Not Connected
+             </span>
+             <button class="btn-pilot btn-sm w-100" onclick="connectIntegration('tiktok')">
+              Connect
+             </button>
+            </div>
+           </div>
+           <!-- Pinterest -->
+           <div class="col-6">
+            <div class="integration-card">
+             <div class="integration-icon">
+              <svg style="color: #E60023;" viewbox="0 0 24 24">
+               <path d="M9.04 21.54c.96.29 1.93.46 2.96.46a10 10 0 0 0 10-10A10 10 0 0 0 12 2A10 10 0 0 0 2 12c0 4.25 2.67 7.9 6.44 9.34c-.09-.78-.18-2.07 0-2.96l1.15-4.94s-.29-.58-.29-1.5c0-1.38.86-2.41 1.84-2.41c.86 0 1.26.63 1.26 1.44c0 .86-.57 2.09-.86 3.27c-.17.98.52 1.84 1.52 1.84c1.78 0 3.16-1.9 3.16-4.58c0-2.4-1.72-4.04-4.19-4.04c-2.82 0-4.48 2.1-4.48 4.31c0 .86.28 1.73.74 2.3c.09.06.09.14.06.29l-.29 1.09c0 .17-.11.23-.28.11c-1.28-.56-2.02-2.38-2.02-3.85c0-3.16 2.24-6.03 6.56-6.03c3.44 0 6.12 2.47 6.12 5.75c0 3.44-2.13 6.2-5.18 6.2c-.98 0-1.92-.52-2.26-1.13l-.67 2.37c-.24.86-.86 2.01-1.29 2.7v-.03z">
+               </path>
+              </svg>
+             </div>
+             <h6 class="mb-1">
+              Pinterest
+             </h6>
+             <span class="badge bg-secondary mb-1" id="pinterest-status">
+              Not Connected
+             </span>
+             <button class="btn-pilot btn-sm w-100" onclick="connectIntegration('pinterest')">
+              Connect
+             </button>
+            </div>
+           </div>
+           <!-- Threads -->
+           <div class="col-6">
+            <div class="integration-card">
+             <div class="integration-icon">
+              <svg style="color: #000000;" viewbox="0 0 24 24">
+               <path d="M18 2c-2.21 0-4 1.79-4 4v12c0 1.1-.9 2-2 2s-2-.9-2-2V6c0-2.21-1.79-4-4-4S2 3.79 2 6v12c0 2.21 1.79 4 4 4h12c2.21 0 4-1.79 4-4V6c0-2.21-1.79-4-4-4zm-2 14H8c-1.1 0-2-.9-2-2V8c0-1.1.9-2 2-2h8c1.1 0 2 .9 2 2v6c0 1.1-.9 2-2 2z">
+               </path>
+              </svg>
+             </div>
+             <h6 class="mb-1">
+              Threads
+             </h6>
+             <span class="badge bg-secondary mb-1" id="threads-status">
+              Not Connected
+             </span>
+             <button class="btn-pilot btn-sm w-100" onclick="connectIntegration('threads')">
+              Connect
+             </button>
+            </div>
+           </div>
+          </div>
+         </div>
+        </div>
+       </div>
+       <!-- Analytics Platforms -->
+       <div class="accordion-item">
+        <h2 class="accordion-header">
+         <button class="accordion-button collapsed" data-bs-target="#analyticsPlatforms" data-bs-toggle="collapse" type="button">
+          Analytics &amp; Search
+         </button>
+        </h2>
+        <div class="accordion-collapse collapse" id="analyticsPlatforms">
+         <div class="accordion-body p-2">
+          <!-- Google Analytics 4 -->
+          <div class="mb-3 p-2 border rounded">
+           <div class="integration-icon mb-1">
+           </div>
+           <label class="small fw-bold d-block mb-1">
+            Google Analytics 4
+           </label>
+           <input class="input-pill mb-1" id="ga4-id" placeholder="GA4 Measurement ID" type="text"/>
+           <button class="btn-pilot btn-sm" onclick="connectGA4()">
+            Connect GA4
+           </button>
+          </div>
+          <!-- Bing Webmaster Tools -->
+          <div class="mb-3 p-2 border rounded">
+           <div class="integration-icon mb-1">
+           </div>
+           <label class="small fw-bold d-block mb-1">
+            Bing Webmaster Tools
+           </label>
+           <input class="input-pill mb-1" id="bing-key" placeholder="Bing API Key" type="text"/>
+           <button class="btn-pilot btn-sm" onclick="connectBing()">
+            Connect Bing
+           </button>
+          </div>
+          <!-- Google Search Console -->
+          <div class="mb-3 p-2 border rounded">
+           <div class="integration-icon mb-1">
+           </div>
+           <label class="small fw-bold d-block mb-1">
+            Google Search Console
+           </label>
+           <button class="btn-pilot btn-sm w-100" onclick="connectSearchConsole()">
+            Connect
+           </button>
+          </div>
+          <!-- Google My Business -->
+          <div class="mb-3 p-2 border rounded">
+           <div class="integration-icon mb-1">
+           </div>
+           <label class="small fw-bold d-block mb-1">
+            Google My Business
+           </label>
+           <button class="btn-pilot btn-sm w-100" onclick="connectGoogleBusiness()">
+            Connect GMB
+           </button>
+          </div>
+         </div>
+        </div>
+       </div>
+       <!-- WordPress CMS -->
+       <div class="accordion-item">
+        <h2 class="accordion-header">
+         <button class="accordion-button collapsed" data-bs-target="#wp" data-bs-toggle="collapse" type="button">
+          WordPress CMS
+         </button>
+        </h2>
+        <div class="accordion-collapse collapse" id="wp">
+         <div class="accordion-body p-2">
+          <div class="integration-icon mb-2">
+          </div>
+          <input class="input-pill mb-1" id="wp-url" placeholder="Site URL"/>
+          <input class="input-pill mb-1" id="wp-key" placeholder="API Key"/>
+          <button class="btn-pilot btn-sm" onclick="saveWP()">
+           Save WP
+          </button>
+         </div>
+        </div>
+       </div>
+       <!-- Other Integrations -->
+       <div class="accordion-item">
+        <h2 class="accordion-header">
+         <button class="accordion-button collapsed" data-bs-target="#otherIntegrations" data-bs-toggle="collapse" type="button">
+          Other Integrations
+         </button>
+        </h2>
+        <div class="accordion-collapse collapse" id="otherIntegrations">
+         <div class="accordion-body p-2">
+          <div class="row g-2">
+           <!-- Zapier -->
+           <div class="col-6">
+            <div class="integration-card">
+             <div class="integration-icon">
+             </div>
+             <h6 class="mb-1">
+              Zapier
+             </h6>
+             <button class="btn-grey btn-sm w-100" onclick="connectZapier()">
+              Connect
+             </button>
+            </div>
+           </div>
+           <!-- Canva -->
+           <div class="col-6">
+            <div class="integration-card">
+             <div class="integration-icon">
+             </div>
+             <h6 class="mb-1">
+              Canva
+             </h6>
+             <button class="btn-grey btn-sm w-100" onclick="connectCanva()">
+              Connect
+             </button>
+            </div>
+           </div>
+           <!-- Google Drive -->
+           <div class="col-6">
+            <div class="integration-card">
+             <div class="integration-icon">
+             </div>
+             <h6 class="mb-1">
+              Google Drive
+             </h6>
+             <button class="btn-grey btn-sm w-100" onclick="connectGoogleDrive()">
+              Connect
+             </button>
+            </div>
+           </div>
+           <!-- Dropbox -->
+           <div class="col-6">
+            <div class="integration-card">
+             <div class="integration-icon">
+             </div>
+             <h6 class="mb-1">
+              Dropbox
+             </h6>
+             <button class="btn-grey btn-sm w-100" onclick="connectDropbox()">
+              Connect
+             </button>
+            </div>
+           </div>
+          </div>
+         </div>
+        </div>
+       </div>
+      </div>
+     </div>
+    </div>
+    <!-- Intel Sidebar -->
+    <aside class="intel-sidebar">
+     <div class="nav-group-title mb-1">
+      Fleet Stats
+     </div>
+     <div class="stat-card">
+      <span class="stat-val">
+       24
+      </span>
+      <span class="stat-label">
+       Socials
+      </span>
+     </div>
+     <div class="stat-card">
+      <span class="stat-val">
+       12
+      </span>
+      <span class="stat-label">
+       Blogs
+      </span>
+     </div>
+     <div class="stat-card">
+      <span class="stat-val">
+       3
+      </span>
+      <span class="stat-label">
+       Campaigns
+      </span>
+     </div>
+     <div class="nav-group-title mt-3 mb-1">
+      Brand Intelligence
+     </div>
+     <div class="stat-card text-start">
+      <div class="fw-bold text-dark mb-1" style="font-size:0.7rem">
+       Engagement Score
+      </div>
+      <div class="text-primary fw-bold" style="font-size:0.55rem; color: var(--pilot-blue) !important">
+       86/100
+      </div>
+     </div>
+    </aside>
+   </main>
+  </div>
+  <!-- Brand Modal -->
+  <div aria-hidden="true" class="modal fade" id="brandModal" tabindex="-1">
+   <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+     <div class="modal-header">
+      <h5 class="modal-title fw-bold">
+       Create New Brand
+      </h5>
+      <button class="btn-close" data-bs-dismiss="modal" type="button">
+      </button>
+     </div>
+     <div class="modal-body">
+      <div class="mb-2">
+       <label class="form-label small">
+        Brand Name *
+       </label>
+       <input class="input-pill" id="newBrandName" placeholder="Enter brand name" type="text"/>
+      </div>
+     </div>
+     <div class="modal-footer">
+      <button class="btn-grey btn-sm" data-bs-dismiss="modal" type="button">
+       Cancel
+      </button>
+      <button class="btn-pilot btn-sm" onclick="createNewBrand()" type="button">
+       Create
+      </button>
+     </div>
+    </div>
+   </div>
+  </div>
+  <!-- Campaign Modal - CONVERTED TO WIZARD FORMAT -->
+    <div class="modal fade" id="campaignModal" tabindex="-1" aria-labelledby="campaignModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content" style="border-radius: var(--radius-lg); border: 1px solid var(--border-subtle); box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
+                <div class="modal-header" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-subtle);">
+                    <h5 class="modal-title fw-bold" id="campaignModalLabel" style="color: var(--text-heading);">
+                        <i class="fas fa-bullhorn me-2" style="color: var(--pilot-blue);"></i> Create Campaign
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" style="padding: 1.5rem;" id="campaign-wizard-content">
+                    <!-- Wizard content will be loaded here dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+  <!-- Assistant Modal (Original - Simple Chat) -->
+  <div aria-hidden="true" class="modal fade" id="assistantModal" tabindex="-1">
+   <div class="modal-dialog">
+    <div class="modal-content">
+     <div class="modal-header">
+      <h5 class="modal-title fw-bold">
+       myPilotPost Assistant
+      </h5>
+      <button class="btn-close" data-bs-dismiss="modal" type="button">
+      </button>
+     </div>
+     <div class="modal-body">
+      <div class="mb-2" id="assistantMessage">
+       How can I help you today?
+      </div>
+      <div class="input-group">
+       <input class="input-pill" id="assistantInput" placeholder="Ask me anything..." type="text"/>
+       <button class="btn-pilot btn-sm" onclick="sendAssistantMessage()">
+        <i class="fas fa-paper-plane">
+        </i>
+       </button>
+      </div>
+     </div>
+    </div>
+   </div>
+  </div>
+
+  <!-- NEW: Social Assistant Modal (1-to-1 from canon) -->
+<div aria-hidden="true" class="modal fade" id="assistantModalSocial" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold">
+          <i class="fas fa-robot me-2" style="color: var(--pilot-blue);"></i> myPilotPost Assistant - Social
+        </h5>
+        <button class="btn-close" data-bs-dismiss="modal" type="button"></button>
+      </div>
+      <div class="modal-body" id="assistant-social-content">
+        <!-- Content will be loaded here dynamically -->
+      </div>
+    </div>
+  </div>
+</div>
+
+  <!-- NEW: Blog Assistant Modal (1-to-1 from canon) -->
+<div aria-hidden="true" class="modal fade" id="assistantModalBlog" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold">
+          <i class="fas fa-robot me-2" style="color: var(--pilot-blue);"></i> myPilotPost Assistant - Blog
+        </h5>
+        <button class="btn-close" data-bs-dismiss="modal" type="button"></button>
+      </div>
+      <div class="modal-body" id="assistant-blog-content">
+        <!-- Content will be loaded here dynamically -->
+      </div>
+    </div>
+  </div>
+</div>
+
+  <!-- NEW: Content Preview Modal -->
+  <div aria-hidden="true" class="modal fade content-preview-modal" id="contentPreviewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="content-preview-header">
+          <h5 class="modal-title fw-bold mb-0" id="contentPreviewTitle">Content Preview</h5>
+          <div>
+            <button class="btn-grey btn-sm me-1" id="editContentBtn">
+              <i class="fas fa-edit me-1"></i>Edit Post
+            </button>
+            <button class="btn-pilot btn-sm" id="scheduleContentBtn">
+              <i class="fas fa-calendar me-1"></i>Schedule Post
+            </button>
+          </div>
+        </div>
+        <div class="content-preview-body" id="contentPreviewBody">
+          <!-- Content preview will be loaded here -->
+        </div>
+        <div class="content-preview-footer">
+          <div class="comments-section">
+            <h6 class="fw-bold mb-2">Comments</h6>
+            <div class="mb-3">
+              <div class="comment-item">
+                <div class="comment-author">John Doe</div>
+                <div class="small text-muted comment-time">2 hours ago</div>
+                <p class="mb-0 small">Great content! Just a small typo in the second paragraph.</p>
+              </div>
+              <div class="comment-item">
+                <div class="comment-author">Jane Smith</div>
+                <div class="small text-muted comment-time">1 day ago</div>
+                <p class="mb-0 small">Can we add more hashtags for better reach?</p>
+              </div>
+            </div>
+            <div class="input-group">
+              <input type="text" class="input-pill" placeholder="Add a comment...">
+              <button class="btn-grey btn-sm">
+                <i class="fas fa-paper-plane"></i>
+              </button>
+            </div>
+          </div>
+          <div class="d-flex justify-content-between align-items-center mt-3">
+            <button class="btn-grey btn-sm" onclick="requestChanges()">
+              <i class="fas fa-redo me-1"></i>Request Changes
+            </button>
+            <button class="btn-pilot btn-sm" onclick="markAsApproved()">
+              <i class="fas fa-check me-1"></i>Mark as Approved
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEW: Article Preview Modal -->
+  <div aria-hidden="true" class="modal fade content-preview-modal" id="articlePreviewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="content-preview-header">
+          <h5 class="modal-title fw-bold mb-0" id="articlePreviewTitle">Article Preview</h5>
+          <div>
+            <button class="btn-grey btn-sm me-1" id="editArticleBtn">
+              <i class="fas fa-edit me-1"></i>Edit Article
+            </button>
+            <button class="btn-pilot btn-sm" id="scheduleArticleBtn">
+              <i class="fas fa-calendar me-1"></i>Schedule Article
+            </button>
+          </div>
+        </div>
+        <div class="content-preview-body" id="articlePreviewBody">
+          <!-- Article preview will be loaded here -->
+        </div>
+        <div class="content-preview-footer">
+          <div class="comments-section">
+            <h6 class="fw-bold mb-2">Comments</h6>
+            <div class="mb-3">
+              <div class="comment-item">
+                <div class="comment-author">Alex Johnson</div>
+                <div class="small text-muted comment-time">3 hours ago</div>
+                <p class="mb-0 small">SEO score looks good. Consider adding more internal links.</p>
+              </div>
+              <div class="comment-item">
+                <div class="comment-author">Sarah Miller</div>
+                <div class="small text-muted comment-time">2 days ago</div>
+                <p class="mb-0 small">The introduction could be more engaging.</p>
+              </div>
+            </div>
+            <div class="input-group">
+              <input type="text" class="input-pill" placeholder="Add a comment...">
+              <button class="btn-grey btn-sm">
+                <i class="fas fa-paper-plane"></i>
+              </button>
+            </div>
+          </div>
+          <div class="d-flex justify-content-between align-items-center mt-3">
+            <button class="btn-grey btn-sm" onclick="requestArticleChanges()">
+              <i class="fas fa-redo me-1"></i>Request Changes
+            </button>
+            <button class="btn-pilot btn-sm" onclick="markArticleAsApproved()">
+              <i class="fas fa-check me-1"></i>Mark as Approved
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
+  </script>
+  <script>
+   // State management for assistants
+        let assistantState = {
+            social: {
+                step: 1,
+                data: {
+                    intention: '',
+                    platforms: [],
+                    tone: '',
+                    emoji: false,
+                    cta: 'Learn More'
+                }
+            },
+            blog: {
+                step: 1,
+                data: {
+                    goal: '',
+                    audience: '',
+                    keywords: [],
+                    localization: 'google.com',
+                    length: 'medium',
+                    include_stats: false,
+                    include_examples: false
+                }
+            }
+        };
+
+        // Content Tab State
+        let contentState = {
+            currentSubTab: 'draft-content',
+            selectedContent: null
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            switchTab('dashboard');
+        });
+        
+        // Tab Switching
+        function switchTab(tab) {
+            // Update navigation
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            document.getElementById('nav-' + tab).classList.add('active');
+            
+            // Show/hide tabs
+            const tabs = ['dashboard', 'social', 'blog', 'campaign', 'content', 'schedule', 'seo', 'canva', 'media', 'analytics', 'integrations'];
+            tabs.forEach(id => {
+                const el = document.getElementById('tab-' + id);
+                if (el) el.style.display = (id === tab ? 'block' : 'none');
+            });
+            
+            // If switching to content tab, ensure first subtab is active
+            if (tab === 'content') {
+                switchContentSubTab('draft-content');
+            }
+        }
+        
+        // Content Subtab Switching
+        function switchContentSubTab(subtab) {
+            contentState.currentSubTab = subtab;
+            
+            // Update subtab buttons
+            document.querySelectorAll('#content-subtabs .btn-grey').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Show/hide subtabs
+            const subtabs = ['draft-content', 'draft-articles', 'content-approval'];
+            subtabs.forEach(id => {
+                const el = document.getElementById('subtab-' + id);
+                if (el) el.style.display = (id === subtab ? 'block' : 'none');
+            });
+        }
+        
+        // Brand Management
+        function showNewBrandModal() {
+            new bootstrap.Modal(document.getElementById('brandModal')).show();
+        }
+        
+        function createNewBrand() {
+            const name = document.getElementById('newBrandName').value.trim();
+            if (!name) return;
+            bootstrap.Modal.getInstance(document.getElementById('brandModal')).hide();
+            showTempSuccess(`Brand "${name}" created`);
+            document.getElementById('newBrandName').value = '';
+        }
+        
+        // Platform Management
+        let activePlatforms = ['facebook'];
+        
+        function togglePlatform(platform, element) {
+            element.classList.toggle('active');
+            if (element.classList.contains('active')) {
+                if (!activePlatforms.includes(platform)) activePlatforms.push(platform);
+            } else {
+                const index = activePlatforms.indexOf(platform);
+                if (index > -1) activePlatforms.splice(index, 1);
+            }
+            updatePlatformPreviews();
+        }
+        
+        function updateAllPreviews() {
+            const text = document.getElementById('social-editor').value;
+            document.getElementById('preview-text').textContent = text || 'Preview text...';
+            updatePlatformPreviews();
+        }
+        
+        function updatePlatformPreviews() {
+            document.querySelectorAll('.platform-preview').forEach(preview => preview.classList.remove('active'));
+            if (activePlatforms.length === 0) {
+                document.getElementById('default-preview').style.display = 'block';
+                return;
+            }
+            document.getElementById('default-preview').style.display = 'none';
+            const firstPlatform = activePlatforms[0];
+            if (document.getElementById(`${firstPlatform}-preview`)) {
+                document.getElementById(`${firstPlatform}-preview`).classList.add('active');
+            }
+        }
+
+        // Campaign Assistant State
+let campaignState = {
+    step: 1,
+    data: {
+        name: '',
+        objective: '',
+        startDate: '',
+        endDate: '',
+        platforms: [],
+        contentTypes: [],
+        kpis: []
+    }
+};
+
+function loadCampaignWizard() {
+    const steps = [
+        {
+            title: "Campaign Basics",
+            content: `
+                <div class="wizard-steps mb-4">
+                    ${[1, 2, 3, 4, 5].map(i => `
+                        <div class="wizard-step">
+                            <div class="step-circle ${i === 1 ? 'active' : ''}">${i}</div>
+                            <div class="step-label ${i === 1 ? 'active' : ''}">Step ${i}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <h6 class="fw-semibold mb-3" style="color: var(--text-heading);">Campaign Basics (Required)</h6>
+                
+                <div class="mb-4">
+                    <label class="form-label small fw-semibold" style="color: var(--text-muted); margin-bottom: 0.5rem; display: block;">
+                        Campaign Name *
+                    </label>
+                    <input type="text" class="input-pill" id="campaignName" placeholder="Enter campaign name" required
+                           style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); outline: none; transition: 0.2s;"
+                           onfocus="this.style.borderColor='var(--pilot-blue)'; this.style.boxShadow='0 0 0 3px rgba(37, 99, 235, 0.1)'"
+                           onblur="this.style.borderColor='var(--border-subtle)'; this.style.boxShadow='none'">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="form-label small fw-semibold" style="color: var(--text-muted); margin-bottom: 0.5rem; display: block;">
+                        Objective *
+                    </label>
+                    <select class="input-pill" id="campaignObjective" required
+                            style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); outline: none; transition: 0.2s;"
+                            onfocus="this.style.borderColor='var(--pilot-blue)'; this.style.boxShadow='0 0 0 3px rgba(37, 99, 235, 0.1)'"
+                            onblur="this.style.borderColor='var(--border-subtle)'; this.style.boxShadow='none'">
+                        <option value="">Select objective</option>
+                        <option value="Brand Awareness">Brand Awareness</option>
+                        <option value="Engagement">Engagement</option>
+                        <option value="Traffic">Traffic</option>
+                        <option value="Lead Generation">Lead Generation</option>
+                        <option value="Sales">Sales</option>
+                        <option value="Loyalty">Loyalty</option>
+                        <option value="Event Promotion">Event Promotion</option>
+                        <option value="Thought Leadership">Thought Leadership</option>
+                        <option value="Customer Support">Customer Support</option>
+                        <option value="Recruitment">Recruitment</option>
+                    </select>
+                </div>
+                
+                <div class="grid-2 gap-3 mb-4">
+                    <div>
+                        <label class="form-label small fw-semibold" style="color: var(--text-muted); margin-bottom: 0.5rem; display: block;">
+                            Start Date *
+                        </label>
+                        <input type="date" class="input-pill" id="startDate" required
+                               style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); outline: none; transition: 0.2s;"
+                               onfocus="this.style.borderColor='var(--pilot-blue)'; this.style.boxShadow='0 0 0 3px rgba(37, 99, 235, 0.1)'"
+                               onblur="this.style.borderColor='var(--border-subtle)'; this.style.boxShadow='none'">
+                    </div>
+                    <div>
+                        <label class="form-label small fw-semibold" style="color: var(--text-muted); margin-bottom: 0.5rem; display: block;">
+                            End Date
+                        </label>
+                        <input type="date" class="input-pill" id="endDate"
+                               style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); outline: none; transition: 0.2s;"
+                               onfocus="this.style.borderColor='var(--pilot-blue)'; this.style.boxShadow='0 0 0 3px rgba(37, 99, 235, 0.1)'"
+                               onblur="this.style.borderColor='var(--border-subtle)'; this.style.boxShadow='none'">
+                    </div>
+                </div>
+            `
+        },
+        {
+            title: "Platform Selection",
+            content: `
+                <div class="wizard-steps mb-4">
+                    ${[1, 2, 3, 4, 5].map(i => `
+                        <div class="wizard-step">
+                            <div class="step-circle ${i <= 2 ? 'completed' : ''} ${i === 2 ? 'active' : ''}">${i}</div>
+                            <div class="step-label ${i === 2 ? 'active' : ''}">Step ${i}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <h6 class="fw-semibold mb-3" style="color: var(--text-heading);">Select Target Platforms *</h6>
+                <p class="small mb-4" style="color: var(--text-muted);">Choose which platforms this campaign will run on</p>
+                
+                <div class="platform-grid mb-4">
+                    ${['facebook', 'instagram', 'twitter', 'linkedin', 'youtube', 'tiktok', 'pinterest', 'threads'].map(platform => `
+                        <button class="plat-btn ${campaignState.data.platforms.includes(platform) ? 'active' : ''}" 
+                                onclick="toggleCampaignPlatform('${platform}')" 
+                                id="campaign-platform-${platform}"
+                                style="border: 1px solid var(--border-subtle); padding: 0.75rem; border-radius: var(--radius-md); text-align: center; transition: 0.2s;">
+                            <div style="margin-bottom: 0.25rem;">
+                                <svg style="width: 24px; height: 24px; ${platform === 'facebook' ? 'color: #1877F2;' : platform === 'instagram' ? 'color: #E4405F;' : platform === 'twitter' ? 'color: #000000;' : platform === 'linkedin' ? 'color: #0A66C2;' : platform === 'youtube' ? 'color: #FF0000;' : platform === 'tiktok' ? 'color: #000000;' : platform === 'pinterest' ? 'color: #E60023;' : 'color: #000000;'}">
+                                    <use href="#${platform}-icon"></use>
+                                </svg>
+                            </div>
+                            <span style="font-size: 0.75rem; font-weight: 500;">${platform.charAt(0).toUpperCase() + platform.slice(1)}</span>
+                        </button>
+                    `).join('')}
+                </div>
+                
+                <p class="small mb-4" style="color: var(--text-muted);">
+                    Selected: <span id="campaign-selected-platforms" style="font-weight: 600; color: var(--text-heading);">${campaignState.data.platforms.length > 0 ? campaignState.data.platforms.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(', ') : 'None'}</span>
+                </p>
+            `
+        },
+        {
+            title: "Content Types",
+            content: `
+                <div class="wizard-steps mb-4">
+                    ${[1, 2, 3, 4, 5].map(i => `
+                        <div class="wizard-step">
+                            <div class="step-circle ${i <= 3 ? 'completed' : ''} ${i === 3 ? 'active' : ''}">${i}</div>
+                            <div class="step-label ${i === 3 ? 'active' : ''}">Step ${i}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <h6 class="fw-semibold mb-3" style="color: var(--text-heading);">Content Types *</h6>
+                <p class="small mb-4" style="color: var(--text-muted);">What type of content will this campaign include?</p>
+                
+                <div class="grid-2 gap-3 mb-4">
+                    <button class="btn-grey ${campaignState.data.contentTypes.includes('social') ? 'active' : ''}" 
+                            onclick="toggleCampaignContent('social')"
+                            style="padding: 1rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); text-align: center; transition: 0.2s;">
+                        <i class="fas fa-share-alt fa-2x mb-2" style="color: var(--pilot-blue);"></i>
+                        <div class="fw-semibold">Social Posts</div>
+                        <div class="small" style="color: var(--text-muted);">Platform-specific content</div>
+                    </button>
+                    
+                    <button class="btn-grey ${campaignState.data.contentTypes.includes('blog') ? 'active' : ''}" 
+                            onclick="toggleCampaignContent('blog')"
+                            style="padding: 1rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); text-align: center; transition: 0.2s;">
+                        <i class="fas fa-file-alt fa-2x mb-2" style="color: var(--pilot-blue);"></i>
+                        <div class="fw-semibold">Blog Articles</div>
+                        <div class="small" style="color: var(--text-muted);">SEO-optimized long-form</div>
+                    </button>
+                </div>
+                
+                <p class="small mb-4" style="color: var(--text-muted);">
+                    Selected: <span id="campaign-selected-content" style="font-weight: 600; color: var(--text-heading);">
+                        ${campaignState.data.contentTypes.length > 0 ? 
+                            campaignState.data.contentTypes.map(c => c === 'social' ? 'Social Posts' : 'Blog Articles').join(', ') : 
+                            'None'}
+                    </span>
+                </p>
+            `
+        },
+        {
+            title: "KPI & Metrics",
+            content: `
+                <div class="wizard-steps mb-4">
+                    ${[1, 2, 3, 4, 5].map(i => `
+                        <div class="wizard-step">
+                            <div class="step-circle ${i <= 4 ? 'completed' : ''} ${i === 4 ? 'active' : ''}">${i}</div>
+                            <div class="step-label ${i === 4 ? 'active' : ''}">Step ${i}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <h6 class="fw-semibold mb-3" style="color: var(--text-heading);">KPI Intent (Multi-select)</h6>
+                <p class="small mb-4" style="color: var(--text-muted);">What metrics will you track for this campaign?</p>
+                
+                <div class="grid-2 gap-2 mb-4">
+                    ${[
+                        {id: 'reach', label: 'Reach', desc: 'Total audience reached'},
+                        {id: 'engagement', label: 'Engagement', desc: 'Likes, comments, shares'},
+                        {id: 'clicks', label: 'Clicks', desc: 'Link clicks and CTR'},
+                        {id: 'conversions', label: 'Conversions', desc: 'Lead/sales conversions'},
+                        {id: 'delivery_success', label: 'Delivery Success', desc: 'Post delivery rate'},
+                        {id: 'brand_sentiment', label: 'Brand Sentiment', desc: 'Audience perception'}
+                    ].map(kpi => `
+                        <button class="btn-grey ${campaignState.data.kpis.includes(kpi.id) ? 'active' : ''}" 
+                                onclick="toggleCampaignKPI('${kpi.id}')"
+                                style="padding: 0.75rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); text-align: left; transition: 0.2s;">
+                            <div class="fw-semibold">${kpi.label}</div>
+                            <div class="small" style="color: var(--text-muted);">${kpi.desc}</div>
+                        </button>
+                    `).join('')}
+                </div>
+                
+                <p class="small mb-4" style="color: var(--text-muted);">
+                    Selected: <span id="campaign-selected-kpis" style="font-weight: 600; color: var(--text-heading);">
+                        ${campaignState.data.kpis.length > 0 ? 
+                            campaignState.data.kpis.map(k => {
+                                const labels = {
+                                    'reach': 'Reach',
+                                    'engagement': 'Engagement',
+                                    'clicks': 'Clicks',
+                                    'conversions': 'Conversions',
+                                    'delivery_success': 'Delivery Success',
+                                    'brand_sentiment': 'Brand Sentiment'
+                                };
+                                return labels[k] || k;
+                            }).join(', ') : 
+                            'None'}
+                    </span>
+                </p>
+            `
+        },
+        {
+            title: "Campaign Summary",
+            content: `
+                <div class="wizard-steps mb-4">
+                    ${[1, 2, 3, 4, 5].map(i => `
+                        <div class="wizard-step">
+                            <div class="step-circle ${i <= 5 ? 'completed' : ''} ${i === 5 ? 'active' : ''}">${i}</div>
+                            <div class="step-label ${i === 5 ? 'active' : ''}">Step ${i}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <h6 class="fw-semibold mb-3" style="color: var(--text-heading);">Campaign Summary</h6>
+                
+                <div class="card-workspace mb-4">
+                    <div class="grid-2 gap-3">
+                        <div>
+                            <div class="small" style="color: var(--text-muted); margin-bottom: 0.25rem;">Campaign Name</div>
+                            <div class="fw-semibold" id="summaryName" style="color: var(--text-heading);">${campaignState.data.name || 'Not set'}</div>
+                        </div>
+                        <div>
+                            <div class="small" style="color: var(--text-muted); margin-bottom: 0.25rem;">Objective</div>
+                            <div class="fw-semibold" id="summaryObjective" style="color: var(--text-heading);">${campaignState.data.objective || 'Not set'}</div>
+                        </div>
+                        <div>
+                            <div class="small" style="color: var(--text-muted); margin-bottom: 0.25rem;">Dates</div>
+                            <div class="fw-semibold" id="summaryDates" style="color: var(--text-heading);">
+                                ${campaignState.data.startDate ? new Date(campaignState.data.startDate).toLocaleDateString() : 'Not set'}
+                                ${campaignState.data.endDate ? ` - ${new Date(campaignState.data.endDate).toLocaleDateString()}` : ''}
+                            </div>
+                        </div>
+                        <div>
+                            <div class="small" style="color: var(--text-muted); margin-bottom: 0.25rem;">Duration</div>
+                            <div class="fw-semibold" id="summaryDuration" style="color: var(--text-heading);">
+                                ${campaignState.data.startDate && campaignState.data.endDate ? 
+                                    `${Math.ceil((new Date(campaignState.data.endDate) - new Date(campaignState.data.startDate)) / (1000 * 60 * 60 * 24))} days` : 
+                                    'Not set'}
+                            </div>
+                        </div>
+                        <div>
+                            <div class="small" style="color: var(--text-muted); margin-bottom: 0.25rem;">Platforms</div>
+                            <div class="fw-semibold" id="summaryPlatforms" style="color: var(--text-heading);">
+                                ${campaignState.data.platforms.length > 0 ? 
+                                    campaignState.data.platforms.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(', ') : 
+                                    'None selected'}
+                            </div>
+                        </div>
+                        <div>
+                            <div class="small" style="color: var(--text-muted); margin-bottom: 0.25rem;">Content Types</div>
+                            <div class="fw-semibold" id="summaryContentTypes" style="color: var(--text-heading);">
+                                ${campaignState.data.contentTypes.length > 0 ? 
+                                    campaignState.data.contentTypes.map(c => c === 'social' ? 'Social Posts' : 'Blog Articles').join(', ') : 
+                                    'None selected'}
+                            </div>
+                        </div>
+                        <div>
+                            <div class="small" style="color: var(--text-muted); margin-bottom: 0.25rem;">KPI Metrics</div>
+                            <div class="fw-semibold" id="summaryKPI" style="color: var(--text-heading);">
+                                ${campaignState.data.kpis.length > 0 ? 
+                                    campaignState.data.kpis.map(k => {
+                                        const labels = {
+                                            'reach': 'Reach',
+                                            'engagement': 'Engagement',
+                                            'clicks': 'Clicks',
+                                            'conversions': 'Conversions',
+                                            'delivery_success': 'Delivery Success',
+                                            'brand_sentiment': 'Brand Sentiment'
+                                        };
+                                        return labels[k] || k;
+                                    }).join(', ') : 
+                                    'None selected'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info small mb-4" style="background: var(--pilot-blue-light); border: 1px solid var(--pilot-blue); border-radius: var(--radius-md); padding: 0.75rem; color: var(--pilot-blue);">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Campaign will be created as a draft. You can schedule content and set budgets later.
+                </div>
+                
+                <button class="btn-pilot w-100 py-3" onclick="createCampaignFinal()"
+                        style="background: var(--pilot-blue); color: white; border: none; border-radius: var(--radius-md); font-weight: 600; transition: 0.2s;">
+                    <i class="fas fa-check-circle me-2"></i> Create Campaign
+                </button>
+            `
+        }
+    ];
+    
+    const step = steps[campaignState.step - 1];
+    const container = document.getElementById('campaign-wizard-content');
+    container.innerHTML = `
+        <h5 class="fw-bold mb-4" style="color: var(--text-heading);">${step.title}</h5>
+        ${step.content}
+        <div class="d-flex justify-content-between mt-4">
+            ${campaignState.step > 1 ? `
+                <button class="btn-grey" onclick="prevCampaignStep()"
+                        style="padding: 0.75rem 1.5rem; background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); color: var(--text-main); font-weight: 500;">
+                    <i class="fas fa-arrow-left me-2"></i> Previous
+                </button>
+            ` : '<div></div>'}
+            
+            ${campaignState.step < 5 ? `
+                <button class="btn-pilot" onclick="nextCampaignStep()"
+                        style="padding: 0.75rem 1.5rem; background: var(--pilot-blue); border: none; border-radius: var(--radius-md); color: white; font-weight: 600;">
+                    Next <i class="fas fa-arrow-right ms-2"></i>
+                </button>
+            ` : '<div></div>'}
+        </div>
+    `;
+    
+    // Update summary section if we're on step 5
+    if (campaignState.step === 5) {
+        updateCampaignSummary();
+    }
+}
+
+    // Campaign Wizard Functions
+    function nextCampaignStep() {
+        // Save current step data
+        if (campaignState.step === 1) {
+            const name = document.getElementById('campaignName')?.value || '';
+            const objective = document.getElementById('campaignObjective')?.value || '';
+            const startDate = document.getElementById('startDate')?.value || '';
+            const endDate = document.getElementById('endDate')?.value || '';
+            
+            if (!name || !objective || !startDate) {
+                showTempSuccess('Please fill in all required fields');
+                return;
+            }
+            
+            campaignState.data.name = name;
+            campaignState.data.objective = objective;
+            campaignState.data.startDate = startDate;
+            campaignState.data.endDate = endDate;
+        }
+        
+        if (campaignState.step < 5) {
+            campaignState.step++;
+            loadCampaignWizard();
+        }
+    }
+
+    function prevCampaignStep() {
+        if (campaignState.step > 1) {
+            campaignState.step--;
+            loadCampaignWizard();
+        }
+    }
+
+    function toggleCampaignPlatform(platform) {
+        const index = campaignState.data.platforms.indexOf(platform);
+        const btn = document.getElementById(`campaign-platform-${platform}`);
+        
+        if (index > -1) {
+            campaignState.data.platforms.splice(index, 1);
+            btn.classList.remove('active');
+        } else {
+            campaignState.data.platforms.push(platform);
+            btn.classList.add('active');
+        }
+        
+        document.getElementById('campaign-selected-platforms').textContent = 
+            campaignState.data.platforms.length > 0 
+                ? campaignState.data.platforms.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(', ')
+                : 'None';
+    }
+
+    function toggleCampaignContent(type) {
+        const index = campaignState.data.contentTypes.indexOf(type);
+        
+        if (index > -1) {
+            campaignState.data.contentTypes.splice(index, 1);
+        } else {
+            campaignState.data.contentTypes.push(type);
+        }
+        
+        document.getElementById('campaign-selected-content').textContent = 
+            campaignState.data.contentTypes.length > 0 
+                ? campaignState.data.contentTypes.map(c => c === 'social' ? 'Social Posts' : 'Blog Articles').join(', ')
+                : 'None';
+        
+        // Update button active state
+        document.querySelectorAll(`[onclick="toggleCampaignContent('${type}')"]`).forEach(btn => {
+            if (campaignState.data.contentTypes.includes(type)) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
+    function toggleCampaignKPI(kpi) {
+        const index = campaignState.data.kpis.indexOf(kpi);
+        
+        if (index > -1) {
+            campaignState.data.kpis.splice(index, 1);
+        } else {
+            campaignState.data.kpis.push(kpi);
+        }
+        
+        document.getElementById('campaign-selected-kpis').textContent = 
+            campaignState.data.kpis.length > 0 
+                ? campaignState.data.kpis.map(k => {
+                    const labels = {
+                        'reach': 'Reach',
+                        'engagement': 'Engagement',
+                        'clicks': 'Clicks',
+                        'conversions': 'Conversions',
+                        'delivery_success': 'Delivery Success',
+                        'brand_sentiment': 'Brand Sentiment'
+                    };
+                    return labels[k] || k;
+                }).join(', ')
+                : 'None';
+        
+        // Update button active state
+        document.querySelectorAll(`[onclick="toggleCampaignKPI('${kpi}')"]`).forEach(btn => {
+            if (campaignState.data.kpis.includes(kpi)) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
+    function updateCampaignSummary() {
+        document.getElementById('summaryName').textContent = campaignState.data.name || 'Not set';
+        document.getElementById('summaryObjective').textContent = campaignState.data.objective || 'Not set';
+        
+        if (campaignState.data.startDate) {
+            const startDate = new Date(campaignState.data.startDate);
+            const endDate = campaignState.data.endDate ? new Date(campaignState.data.endDate) : null;
+            
+            document.getElementById('summaryDates').textContent = 
+                startDate.toLocaleDateString() + (endDate ? ` - ${endDate.toLocaleDateString()}` : '');
+            
+            if (endDate) {
+                const duration = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+                document.getElementById('summaryDuration').textContent = `${duration} days`;
+            }
+        }
+        
+        document.getElementById('summaryPlatforms').textContent = 
+            campaignState.data.platforms.length > 0 
+                ? campaignState.data.platforms.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(', ')
+                : 'None selected';
+        
+        document.getElementById('summaryContentTypes').textContent = 
+            campaignState.data.contentTypes.length > 0 
+                ? campaignState.data.contentTypes.map(c => c === 'social' ? 'Social Posts' : 'Blog Articles').join(', ')
+                : 'None selected';
+        
+        document.getElementById('summaryKPI').textContent = 
+            campaignState.data.kpis.length > 0 
+                ? campaignState.data.kpis.map(k => {
+                    const labels = {
+                        'reach': 'Reach',
+                        'engagement': 'Engagement',
+                        'clicks': 'Clicks',
+                        'conversions': 'Conversions',
+                        'delivery_success': 'Delivery Success',
+                        'brand_sentiment': 'Brand Sentiment'
+                    };
+                    return labels[k] || k;
+                }).join(', ')
+                : 'None selected';
+    }
+
+    function createCampaignFinal() {
+        // Validate all required fields
+        if (!campaignState.data.name || !campaignState.data.objective || !campaignState.data.startDate) {
+            showTempSuccess('Please fill in all required fields');
+            return;
+        }
+        
+        if (campaignState.data.platforms.length === 0) {
+            showTempSuccess('Please select at least one platform');
+            return;
+        }
+        
+        if (campaignState.data.contentTypes.length === 0) {
+            showTempSuccess('Please select at least one content type');
+            return;
+        }
+        
+        // Show success message
+        showTempSuccess(`Campaign "${campaignState.data.name}" created successfully!`);
+        
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('campaignModal'));
+        modal.hide();
+        
+        // Reset state for next use
+        campaignState = {
+            step: 1,
+            data: {
+                name: '',
+                objective: '',
+                startDate: '',
+                endDate: '',
+                platforms: [],
+                contentTypes: [],
+                kpis: []
+            }
+        };
+    }
+
+    // Update the button click handler to use wizard
+    document.addEventListener('DOMContentLoaded', function() {
+        // Replace existing campaign button click handler
+        const campaignBtn = document.querySelector('[data-bs-target="#campaignModal"]');
+        if (campaignBtn) {
+            campaignBtn.addEventListener('click', function() {
+                // Reset campaign state
+                campaignState = {
+                    step: 1,
+                    data: {
+                        name: '',
+                        objective: '',
+                        startDate: '',
+                        endDate: '',
+                        platforms: [],
+                        contentTypes: [],
+                        kpis: []
+                    }
+                };
+                loadCampaignWizard();
+            });
+        }
+    });
+        
+        // NEW: Content Tab Functions
+        function createNewContent() {
+            // Determine which subtab is active
+            if (contentState.currentSubTab === 'draft-content') {
+                switchTab('social');
+            } else if (contentState.currentSubTab === 'draft-articles') {
+                switchTab('blog');
+            } else {
+                showTempSuccess('Create new content from draft tabs');
+            }
+        }
+        
+        function previewSocialContent(contentId) {
+            contentState.selectedContent = contentId;
+            const modal = new bootstrap.Modal(document.getElementById('contentPreviewModal'));
+            const titleMap = {
+                'summer-launch': 'Summer Product Launch',
+                'behind-scenes': 'Behind the Scenes',
+                'industry-insights': 'Industry Insights'
+            };
+            
+            document.getElementById('contentPreviewTitle').textContent = titleMap[contentId] || 'Social Content Preview';
+            document.getElementById('editContentBtn').onclick = () => editContent(contentId);
+            document.getElementById('scheduleContentBtn').onclick = () => scheduleContent(contentId);
+            
+            // Load social post preview
+            const previewHtml = `
+                <div class="preview-window">
+                    <div class="preview-header">
+                        <div style="width:28px;height:28px;background:#eee;border-radius:50%"></div>
+                        <span class="small fw-bold">Demo Brand</span>
+                        <span class="small text-muted ms-1">• Just now</span>
+                    </div>
+                    <p class="small text-dark mb-2">
+                        ${contentId === 'summer-launch' ? '🎉 Get ready for our biggest summer launch yet! New products dropping soon. Stay tuned for exclusive early access offers and special promotions. #SummerLaunch #NewProducts #ExclusiveAccess' : 
+                          contentId === 'behind-scenes' ? '👀 Sneak peek behind the scenes! Our team working hard to bring you the best content and products. See how the magic happens! #BehindTheScenes #TeamWork #MakingMagic' :
+                          '💼 Industry insights: The future of digital marketing is here. Learn how AI is changing content creation and distribution. #IndustryInsights #DigitalMarketing #AI'}
+                    </p>
+                    <div class="d-flex gap-2 mb-2">
+                        <svg style="width: 20px; height: 20px; color: #1877F2;" viewbox="0 0 24 24">
+                            <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1V12h3l-.5 3H13v6.8c4.56-.93 8-4.96 8-9.8z"></path>
+                        </svg>
+                        ${contentId === 'summer-launch' ? `
+                        <svg style="width: 20px; height: 20px; color: #E4405F;" viewbox="0 0 24 24">
+                            <path d="M7.8 2h8.4C19.4 2 22 4.6 22 7.8v8.4a5.8 5.8 0 0 1-5.8 5.8H7.8C4.6 22 2 19.4 2 16.2V7.8A5.8 5.8 0 0 1 7.8 2m-.2 2A3.6 3.6 0 0 0 4 7.6v8.8A3.6 3.6 0 0 0 7.6 20h8.8a3.6 3.6 0 0 0 3.6-3.6V7.6A3.6 3.6 0 0 0 16.4 4H7.6m9.65 1.5a1.25 1.25 0 0 1 1.25 1.25A1.25 1.25 0 0 1 17.25 8 1.25 1.25 0 0 1 16 6.75a1.25 1.25 0 0 1 1.25-1.25M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3z"></path>
+                        </svg>
+                        ` : ''}
+                    </div>
+                    <div class="small text-muted">
+                        <i class="far fa-thumbs-up"></i> 128 likes · 
+                        <i class="far fa-comment"></i> 24 comments · 
+                        <i class="far fa-share-square"></i> 8 shares
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('contentPreviewBody').innerHTML = previewHtml;
+            modal.show();
+        }
+        
+        function previewArticleContent(articleId) {
+            contentState.selectedContent = articleId;
+            const modal = new bootstrap.Modal(document.getElementById('articlePreviewModal'));
+            const titleMap = {
+                'future-social-media': 'The Future of Social Media Marketing',
+                'ai-content-creation': 'How AI is Changing Content Creation',
+                'seo-best-practices': 'SEO Best Practices for 2026'
+            };
+            
+            document.getElementById('articlePreviewTitle').textContent = titleMap[articleId] || 'Article Preview';
+            document.getElementById('editArticleBtn').onclick = () => editArticle(articleId);
+            document.getElementById('scheduleArticleBtn').onclick = () => scheduleArticle(articleId);
+            
+            // Load article preview
+            const previewHtml = `
+                <div class="card-workspace p-3">
+                    <h4 class="fw-bold mb-3">${titleMap[articleId]}</h4>
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="d-flex align-items-center">
+                            <img src="https://ui-avatars.com/api/?name=Demo+Brand&background=2563eb&color=fff" class="rounded-circle me-2" width="32" height="32">
+                            <div>
+                                <div class="small fw-bold">Demo Brand</div>
+                                <div class="small text-muted">January 20, 2026 • 8 min read</div>
+                            </div>
+                        </div>
+                        <div class="ms-auto">
+                            <span class="badge badge-success">SEO Score: 92</span>
+                        </div>
+                    </div>
+                    <div class="article-content">
+                        <p>${articleId === 'future-social-media' ? 
+                            'The landscape of social media marketing is evolving at an unprecedented pace. With the integration of AI, augmented reality, and predictive analytics, marketers need to adapt their strategies to stay ahead. This article explores the key trends shaping the future of social media marketing and provides actionable insights for businesses looking to thrive in this new era.' :
+                            articleId === 'ai-content-creation' ?
+                            'Artificial Intelligence is revolutionizing how content is created, distributed, and consumed. From automated content generation to personalized recommendations, AI tools are becoming essential for modern content creators. This article examines the impact of AI on content creation workflows and how businesses can leverage these technologies to improve efficiency and engagement.' :
+                            'Search Engine Optimization continues to be a critical component of digital marketing success. As algorithms evolve and user behavior changes, SEO strategies must adapt. This comprehensive guide covers the latest SEO best practices for 2026, including technical optimization, content quality signals, and user experience factors that influence search rankings.'}</p>
+                        
+                        <h5 class="mt-4 mb-2">Key Takeaways</h5>
+                        <ul>
+                            <li>${articleId === 'future-social-media' ? 
+                                'Video content will dominate social media platforms' :
+                                articleId === 'ai-content-creation' ?
+                                'AI can reduce content creation time by up to 60%' :
+                                'Core Web Vitals are now critical ranking factors'}
+                            </li>
+                            <li>${articleId === 'future-social-media' ? 
+                                'Personalization will be driven by AI and machine learning' :
+                                articleId === 'ai-content-creation' ?
+                                'Natural language processing improves content quality' :
+                                'Mobile-first indexing is now standard'}
+                            </li>
+                            <li>${articleId === 'future-social-media' ? 
+                                'Social commerce will become a primary revenue channel' :
+                                articleId === 'ai-content-creation' ?
+                                'AI-powered analytics provide deeper audience insights' :
+                                'E-A-T (Expertise, Authoritativeness, Trustworthiness) matters more than ever'}
+                            </li>
+                        </ul>
+                        
+                        <div class="mt-4 p-3 bg-light rounded">
+                            <h6 class="fw-bold mb-2">Article Health Metrics</h6>
+                            <div class="row">
+                                <div class="col-4">
+                                    <div class="small text-muted">Readability</div>
+                                    <div class="fw-bold temp-success">Excellent</div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="small text-muted">Word Count</div>
+                                    <div class="fw-bold">1,248</div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="small text-muted">Reading Time</div>
+                                    <div class="fw-bold">8 minutes</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('articlePreviewBody').innerHTML = previewHtml;
+            modal.show();
+        }
+        
+        function editContent(contentId) {
+            switchTab('social');
+            showTempSuccess(`Editing content: ${contentId}`);
+        }
+        
+        function editArticle(articleId) {
+            switchTab('blog');
+            showTempSuccess(`Editing article: ${articleId}`);
+        }
+        
+        function scheduleContent(contentId) {
+            switchTab('schedule');
+            showTempSuccess(`Scheduling content: ${contentId}`);
+        }
+        
+        function scheduleArticle(articleId) {
+            switchTab('schedule');
+            showTempSuccess(`Scheduling article: ${articleId}`);
+        }
+        
+        function previewForApproval(contentId) {
+            if (contentId === 'q1-announcement') {
+                previewSocialContent('summer-launch');
+            } else {
+                previewArticleContent('case-study');
+            }
+        }
+        
+        function approveContent(contentId) {
+            showTempSuccess(`Content "${contentId}" approved successfully!`);
+        }
+        
+        function rejectContent(contentId) {
+            showTempSuccess(`Content "${contentId}" rejected. Feedback sent to creator.`);
+        }
+        
+        function markAsApproved() {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('contentPreviewModal'));
+            modal.hide();
+            showTempSuccess('Content marked as approved!');
+        }
+        
+        function markArticleAsApproved() {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('articlePreviewModal'));
+            modal.hide();
+            showTempSuccess('Article marked as approved!');
+        }
+        
+        function requestChanges() {
+            showTempSuccess('Change request sent to content creator');
+        }
+        
+        function requestArticleChanges() {
+            showTempSuccess('Change request sent to article author');
+        }
+        
+        // NEW: Assistant Functions (from canon)
+        function openAssistant(type) {
+            if (type === 'social') {
+                loadSocialAssistant();
+                new bootstrap.Modal(document.getElementById('assistantModalSocial')).show();
+            } else if (type === 'blog') {
+                loadBlogAssistant();
+                new bootstrap.Modal(document.getElementById('assistantModalBlog')).show();
+            }
+        }
+        
+        function loadSocialAssistant() {
+            const steps = [
+                {
+                    title: "Primary Intention",
+                    content: `
+                        <div class="wizard-steps mb-4">
+                            ${[1, 2, 3, 4, 5].map(i => `
+                                <div class="wizard-step">
+                                    <div class="step-circle ${i === 1 ? 'active' : ''}">${i}</div>
+                                    <div class="step-label ${i === 1 ? 'active' : ''}">Step ${i}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <h6 class="fw-semibold mb-3" style="color: var(--text-heading);">What's the primary goal for this post?</h6>
+                        <div class="grid-2 gap-2 mb-4">
+                            ${[
+                                'Brand Awareness & Recognition',
+                                'Engagement & Community Building',
+                                'Website Traffic & Conversions',
+                                'Lead Generation',
+                                'Sales & Revenue',
+                                'Customer Loyalty & Retention',
+                                'Event Promotion',
+                                'Thought Leadership & Authority',
+                                'Customer Service & Support',
+                                'Recruitment & Talent Attraction'
+                            ].map(intention => `
+                                <button class="btn-grey text-start" 
+                                        onclick="selectIntention('${intention}')"
+                                        style="background: #f8fafc; border: 1px solid var(--border-subtle); padding: 0.75rem; border-radius: var(--radius-md); transition: 0.2s;">
+                                    ${intention}
+                                </button>
+                            `).join('')}
+                        </div>
+                    `
+                },
+                {
+                    title: "Platform Selection",
+                    content: `
+                        <div class="wizard-steps mb-4">
+                            ${[1, 2, 3, 4, 5].map(i => `
+                                <div class="wizard-step">
+                                    <div class="step-circle ${i <= 2 ? 'completed' : ''} ${i === 2 ? 'active' : ''}">${i}</div>
+                                    <div class="step-label ${i === 2 ? 'active' : ''}">Step ${i}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <h6 class="fw-semibold mb-3" style="color: var(--text-heading);">Select target platforms</h6>
+                        <div class="platform-grid mb-4">
+                            ${['facebook', 'instagram', 'twitter', 'linkedin', 'youtube', 'tiktok', 'pinterest', 'threads'].map(platform => `
+                                <button class="plat-btn ${assistantState.social.data.platforms.includes(platform) ? 'active' : ''}" 
+                                        onclick="toggleAssistantPlatform('${platform}')" 
+                                        id="assist-platform-${platform}"
+                                        style="border: 1px solid var(--border-subtle); padding: 0.75rem; border-radius: var(--radius-md); text-align: center;">
+                                    <div style="margin-bottom: 0.25rem;">
+                                        <svg style="width: 24px; height: 24px; ${platform === 'facebook' ? 'color: #1877F2;' : platform === 'instagram' ? 'color: #E4405F;' : platform === 'twitter' ? 'color: #000000;' : platform === 'linkedin' ? 'color: #0A66C2;' : platform === 'youtube' ? 'color: #FF0000;' : platform === 'tiktok' ? 'color: #000000;' : platform === 'pinterest' ? 'color: #E60023;' : 'color: #000000;'}">
+                                            <use href="#${platform}-icon"></use>
+                                        </svg>
+                                    </div>
+                                    <span style="font-size: 0.75rem; font-weight: 500;">${platform.charAt(0).toUpperCase() + platform.slice(1)}</span>
+                                </button>
+                            `).join('')}
+                        </div>
+                        <p class="small mb-4" style="color: var(--text-muted);">
+                            Selected: <span id="selected-platforms" style="font-weight: 600; color: var(--text-heading);">${assistantState.social.data.platforms.length > 0 ? assistantState.social.data.platforms.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(', ') : 'None'}</span>
+                        </p>
+                    `
+                },
+                {
+                    title: "Tone & Style",
+                    content: `
+                        <div class="wizard-steps mb-4">
+                            ${[1, 2, 3, 4, 5].map(i => `
+                                <div class="wizard-step">
+                                    <div class="step-circle ${i <= 3 ? 'completed' : ''} ${i === 3 ? 'active' : ''}">${i}</div>
+                                    <div class="step-label ${i === 3 ? 'active' : ''}">Step ${i}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <h6 class="fw-semibold mb-3" style="color: var(--text-heading);">Select tone and style</h6>
+                        <div class="grid-3 gap-2 mb-4">
+                            ${['Professional', 'Casual', 'Friendly', 'Authoritative', 'Inspirational', 'Humorous'].map(tone => `
+                                <button class="btn-grey" onclick="selectTone('${tone}')"
+                                        style="background: #f8fafc; border: 1px solid var(--border-subtle); padding: 0.75rem; border-radius: var(--radius-md); transition: 0.2s;">
+                                    ${tone}
+                                </button>
+                            `).join('')}
+                        </div>
+                        
+                        <div class="form-check mb-4" style="display: flex; align-items: center;">
+                            <input class="form-check-input" type="checkbox" id="include-emoji" style="margin-right: 0.5rem;">
+                            <label class="form-check-label" for="include-emoji" style="font-size: 0.875rem; color: var(--text-main);">
+                                Include relevant emojis
+                            </label>
+                        </div>
+                    `
+                },
+                {
+                    title: "Call to Action",
+                    content: `
+                        <div class="wizard-steps mb-4">
+                            ${[1, 2, 3, 4, 5].map(i => `
+                                <div class="wizard-step">
+                                    <div class="step-circle ${i <= 4 ? 'completed' : ''} ${i === 4 ? 'active' : ''}">${i}</div>
+                                    <div class="step-label ${i === 4 ? 'active' : ''}">Step ${i}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <h6 class="fw-semibold mb-3" style="color: var(--text-heading);">Select a call to action</h6>
+                        <select class="input-pill mb-4" id="cta-select" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-md);">
+                            <option>Learn More</option>
+                            <option>Shop Now</option>
+                            <option>Sign Up</option>
+                            <option>Download</option>
+                            <option>Contact Us</option>
+                            <option>Book Now</option>
+                        </select>
+                    `
+                },
+                {
+                    title: "Generate Content",
+                    content: `
+                        <div class="wizard-steps mb-4">
+                            ${[1, 2, 3, 4, 5].map(i => `
+                                <div class="wizard-step">
+                                    <div class="step-circle ${i <= 5 ? 'completed' : ''} ${i === 5 ? 'active' : ''}">${i}</div>
+                                    <div class="step-label ${i === 5 ? 'active' : ''}">Step ${i}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <h6 class="fw-semibold mb-3" style="color: var(--text-heading);">Review and Generate</h6>
+                        <div class="card-workspace mb-4">
+                            <div class="grid-2 gap-3">
+                                <div>
+                                    <div class="small" style="color: var(--text-muted); margin-bottom: 0.25rem;">Intention</div>
+                                    <div class="fw-semibold" id="review-intention" style="color: var(--text-heading);">${assistantState.social.data.intention || 'Not selected'}</div>
+                                </div>
+                                <div>
+                                    <div class="small" style="color: var(--text-muted); margin-bottom: 0.25rem;">Platforms</div>
+                                    <div class="fw-semibold" id="review-platforms" style="color: var(--text-heading);">${assistantState.social.data.platforms.length > 0 ? assistantState.social.data.platforms.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(', ') : 'Not selected'}</div>
+                                </div>
+                                <div>
+                                    <div class="small" style="color: var(--text-muted); margin-bottom: 0.25rem;">Tone</div>
+                                    <div class="fw-semibold" id="review-tone" style="color: var(--text-heading);">${assistantState.social.data.tone || 'Not selected'}</div>
+                                </div>
+                                <div>
+                                    <div class="small" style="color: var(--text-muted); margin-bottom: 0.25rem;">CTA</div>
+                                    <div class="fw-semibold" id="review-cta" style="color: var(--text-heading);">${assistantState.social.data.cta || 'Not selected'}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button class="btn-pilot w-100 py-3" onclick="generateSocialContent()" style="background: var(--pilot-blue); color: white; border: none; border-radius: var(--radius-md); font-weight: 600;">
+                            <i class="fas fa-magic me-2"></i> Generate Content for All Platforms
+                        </button>
+                    `
+                }
+            ];
+            
+            const step = steps[assistantState.social.step - 1];
+            const container = document.getElementById('assistant-social-content');
+            container.innerHTML = `
+                <h5 class="fw-bold mb-4" style="color: var(--text-heading);">${step.title}</h5>
+                ${step.content}
+                <div class="d-flex justify-content-between mt-4">
+                    ${assistantState.social.step > 1 ? `
+                        <button class="btn-grey" onclick="prevSocialAssistantStep()" style="padding: 0.75rem 1.5rem;">
+                            <i class="fas fa-arrow-left me-2"></i> Previous
+                        </button>
+                    ` : '<div></div>'}
+                    
+                    ${assistantState.social.step < 5 ? `
+                        <button class="btn-pilot" onclick="nextSocialAssistantStep()" style="padding: 0.75rem 1.5rem;">
+                            Next <i class="fas fa-arrow-right ms-2"></i>
+                        </button>
+                    ` : '<div></div>'}
+                </div>
+            `;
+            
+            // Update review section if we're on step 5
+            if (assistantState.social.step === 5) {
+                updateReviewSection();
+            }
+        }
+        
+        function loadBlogAssistant() {
+            const steps = [
+                {
+                    title: "Article Goal",
+                    content: `
+                        <div class="wizard-steps mb-4">
+                            ${[1, 2, 3, 4, 5].map(i => `
+                                <div class="wizard-step">
+                                    <div class="step-circle ${i === 1 ? 'active' : ''}">${i}</div>
+                                    <div class="step-label ${i === 1 ? 'active' : ''}">Step ${i}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <h6 class="fw-semibold mb-3" style="color: var(--text-heading);">What's the goal of this article?</h6>
+                        <div class="grid-2 gap-2 mb-4">
+                            ${[
+                                'Educate & Inform',
+                                'Generate Leads',
+                                'Build Authority',
+                                'Improve SEO',
+                                'Drive Traffic',
+                                'Product Announcement',
+                                'Thought Leadership',
+                                'Tutorial/How-to'
+                            ].map(goal => `
+                                <button class="btn-grey text-start" onclick="selectArticleGoal('${goal}')"
+                                        style="background: #f8fafc; border: 1px solid var(--border-subtle); padding: 0.75rem; border-radius: var(--radius-md); transition: 0.2s;">
+                                    ${goal}
+                                </button>
+                            `).join('')}
+                        </div>
+                    `
+                },
+                {
+                    title: "Target Audience",
+                    content: `
+                        <div class="wizard-steps mb-4">
+                            ${[1, 2, 3, 4, 5].map(i => `
+                                <div class="wizard-step">
+                                    <div class="step-circle ${i <= 2 ? 'completed' : ''} ${i === 2 ? 'active' : ''}">${i}</div>
+                                    <div class="step-label ${i === 2 ? 'active' : ''}">Step ${i}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <h6 class="fw-semibold mb-3" style="color: var(--text-heading);">Who is your target audience?</h6>
+                        <div class="grid-2 gap-2 mb-4">
+                            ${[
+                                'Industry Professionals',
+                                'Small Business Owners',
+                                'Marketing Executives',
+                                'General Consumers',
+                                'Tech Enthusiasts',
+                                'Students',
+                                'Entrepreneurs',
+                                'Senior Management'
+                            ].map(audience => `
+                                <button class="btn-grey text-start" onclick="selectAudience('${audience}')"
+                                        style="background: #f8fafc; border: 1px solid var(--border-subtle); padding: 0.75rem; border-radius: var(--radius-md); transition: 0.2s;">
+                                    ${audience}
+                                </button>
+                            `).join('')}
+                        </div>
+                    `
+                },
+                {
+                    title: "Focus Keywords",
+                    content: `
+                        <div class="wizard-steps mb-4">
+                            ${[1, 2, 3, 4, 5].map(i => `
+                                <div class="wizard-step">
+                                    <div class="step-circle ${i <= 3 ? 'completed' : ''} ${i === 3 ? 'active' : ''}">${i}</div>
+                                    <div class="step-label ${i === 3 ? 'active' : ''}">Step ${i}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <h6 class="fw-semibold mb-3" style="color: var(--text-heading);">Primary focus keywords</h6>
+                        <div class="mb-4">
+                            <input type="text" class="input-pill mb-3" id="primary-keyword" 
+                                   placeholder="Enter primary keyword"
+                                   style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); outline: none; transition: 0.2s;"
+                                   onfocus="this.style.borderColor='var(--pilot-blue)'; this.style.boxShadow='0 0 0 3px rgba(37, 99, 235, 0.1)'"
+                                   onblur="this.style.borderColor='var(--border-subtle)'; this.style.boxShadow='none'">
+                            <input type="text" class="input-pill" id="secondary-keywords" 
+                                   placeholder="Enter secondary keywords (comma-separated)"
+                                   style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); outline: none; transition: 0.2s;"
+                                   onfocus="this.style.borderColor='var(--pilot-blue)'; this.style.boxShadow='0 0 0 3px rgba(37, 99, 235, 0.1)'"
+                                   onblur="this.style.borderColor='var(--border-subtle)'; this.style.boxShadow='none'">
+                        </div>
+                        <div class="small" style="color: var(--text-muted);">
+                            <i class="fas fa-info-circle me-1"></i> Separate multiple keywords with commas
+                        </div>
+                    `
+                },
+                {
+                    title: "Localization",
+                    content: `
+                        <div class="wizard-steps mb-4">
+                            ${[1, 2, 3, 4, 5].map(i => `
+                                <div class="wizard-step">
+                                    <div class="step-circle ${i <= 4 ? 'completed' : ''} ${i === 4 ? 'active' : ''}">${i}</div>
+                                    <div class="step-label ${i === 4 ? 'active' : ''}">Step ${i}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <h6 class="fw-semibold mb-3" style="color: var(--text-heading);">Target localization</h6>
+                        <select class="input-pill mb-4" id="assistant-localization"
+                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); outline: none; transition: 0.2s;"
+                                onfocus="this.style.borderColor='var(--pilot-blue)'; this.style.boxShadow='0 0 0 3px rgba(37, 99, 235, 0.1)'"
+                                onblur="this.style.borderColor='var(--border-subtle)'; this.style.boxShadow='none'">
+                            <option value="google.co.za">South Africa (google.co.za)</option>
+                            <option value="google.com.ng">Nigeria (google.com.ng)</option>
+                            <option value="google.co.ke">Kenya (google.co.ke)</option>
+                            <option value="google.com.eg">Egypt (google.com.eg)</option>
+                            <option value="google.com" selected>Global (google.com)</option>
+                            <option value="google.co.uk">UK (google.co.uk)</option>
+                            <option value="google.ca">Canada (google.ca)</option>
+                            <option value="google.com.au">Australia (google.com.au)</option>
+                        </select>
+                        <div class="small" style="color: var(--text-muted);">
+                            <i class="fas fa-info-circle me-1"></i> Select regional Google domain for SEO optimization
+                        </div>
+                    `
+                },
+                {
+                    title: "Length & Depth",
+                    content: `
+                        <div class="wizard-steps mb-4">
+                            ${[1, 2, 3, 4, 5].map(i => `
+                                <div class="wizard-step">
+                                    <div class="step-circle ${i <= 5 ? 'completed' : ''} ${i === 5 ? 'active' : ''}">${i}</div>
+                                    <div class="step-label ${i === 5 ? 'active' : ''}">Step ${i}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <h6 class="fw-semibold mb-3" style="color: var(--text-heading);">Article length and depth</h6>
+                        <div class="grid-2 gap-2 mb-4">
+                            ${[
+                                {label: 'Short (300-500 words)', value: 'short'},
+                                {label: 'Medium (800-1200 words)', value: 'medium'},
+                                {label: 'Long (1500-2000 words)', value: 'long'},
+                                {label: 'Comprehensive (2500+ words)', value: 'comprehensive'}
+                            ].map(option => `
+                                <button class="btn-grey text-start" onclick="selectLength('${option.value}')"
+                                        style="background: #f8fafc; border: 1px solid var(--border-subtle); padding: 0.75rem; border-radius: var(--radius-md); transition: 0.2s;">
+                                    ${option.label}
+                                </button>
+                            `).join('')}
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h6 class="fw-semibold mb-2" style="color: var(--text-heading);">Additional Options</h6>
+                            <div class="form-check mb-2" style="display: flex; align-items: center;">
+                                <input class="form-check-input" type="checkbox" id="include-stats" style="margin-right: 0.5rem;">
+                                <label class="form-check-label" for="include-stats" style="font-size: 0.875rem; color: var(--text-main);">
+                                    Include statistics and data
+                                </label>
+                            </div>
+                            <div class="form-check" style="display: flex; align-items: center;">
+                                <input class="form-check-input" type="checkbox" id="include-examples" style="margin-right: 0.5rem;">
+                                <label class="form-check-label" for="include-examples" style="font-size: 0.875rem; color: var(--text-main);">
+                                    Include real-world examples
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="card-workspace mb-4" style="background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1rem;">
+                            <h6 class="fw-semibold mb-2" style="color: var(--text-heading);">Summary</h6>
+                            <div class="small" style="color: var(--text-muted);">
+                                <div class="mb-1">
+                                    <i class="fas fa-bullseye me-1"></i>
+                                    <span id="blog-review-goal" style="font-weight: 600; color: var(--text-heading);">${assistantState.blog.data.goal || 'Not selected'}</span>
+                                </div>
+                                <div class="mb-1">
+                                    <i class="fas fa-users me-1"></i>
+                                    <span id="blog-review-audience" style="font-weight: 600; color: var(--text-heading);">${assistantState.blog.data.audience || 'Not selected'}</span>
+                                </div>
+                                <div>
+                                    <i class="fas fa-globe me-1"></i>
+                                    <span id="blog-review-localization" style="font-weight: 600; color: var(--text-heading);">${assistantState.blog.data.localization || 'google.com'}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button class="btn-pilot w-100 py-3" onclick="generateBlogContent()"
+                                style="background: var(--pilot-blue); color: white; border: none; border-radius: var(--radius-md); font-weight: 600; transition: 0.2s;">
+                            <i class="fas fa-magic me-2"></i> Generate Article
+                        </button>
+                    `
+                }
+            ];
+            
+            const step = steps[assistantState.blog.step - 1];
+            const container = document.getElementById('assistant-blog-content');
+            container.innerHTML = `
+                <h5 class="fw-bold mb-4" style="color: var(--text-heading);">${step.title}</h5>
+                ${step.content}
+                <div class="d-flex justify-content-between mt-4">
+                    ${assistantState.blog.step > 1 ? `
+                        <button class="btn-grey" onclick="prevBlogAssistantStep()"
+                                style="padding: 0.75rem 1.5rem; background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); color: var(--text-main); font-weight: 500;">
+                            <i class="fas fa-arrow-left me-2"></i> Previous
+                        </button>
+                    ` : '<div></div>'}
+                    
+                    ${assistantState.blog.step < 5 ? `
+                        <button class="btn-pilot" onclick="nextBlogAssistantStep()"
+                                style="padding: 0.75rem 1.5rem; background: var(--pilot-blue); border: none; border-radius: var(--radius-md); color: white; font-weight: 600;">
+                            Next <i class="fas fa-arrow-right ms-2"></i>
+                        </button>
+                    ` : '<div></div>'}
+                </div>
+            `;
+            
+            // Update summary section if we're on step 5
+            if (assistantState.blog.step === 5) {
+                updateBlogReviewSection();
+            }
+        }
+        
+        function selectIntention(intention) {
+            assistantState.social.data.intention = intention;
+            nextSocialAssistantStep();
+        }
+        
+        function toggleAssistantPlatform(platform) {
+            if (!assistantState.social.data.platforms) {
+                assistantState.social.data.platforms = [];
+            }
+            
+            const index = assistantState.social.data.platforms.indexOf(platform);
+            const btn = document.getElementById(`assist-platform-${platform}`);
+            
+            if (index > -1) {
+                assistantState.social.data.platforms.splice(index, 1);
+                btn.classList.remove('active');
+            } else {
+                assistantState.social.data.platforms.push(platform);
+                btn.classList.add('active');
+            }
+            
+            document.getElementById('selected-platforms').textContent = 
+                assistantState.social.data.platforms.length > 0 
+                    ? assistantState.social.data.platforms.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(', ')
+                    : 'None';
+        }
+        
+        function selectTone(tone) {
+            assistantState.social.data.tone = tone;
+            nextSocialAssistantStep();
+        }
+        
+        function selectArticleGoal(goal) {
+            assistantState.blog.data.goal = goal;
+            nextBlogAssistantStep();
+        }
+        
+        function selectAudience(audience) {
+            assistantState.blog.data.audience = audience;
+            nextBlogAssistantStep();
+        }
+        
+        function selectLength(length) {
+            assistantState.blog.data.length = length;
+        }
+        
+        function nextSocialAssistantStep() {
+            if (assistantState.social.step < 5) {
+                assistantState.social.step++;
+                loadSocialAssistant();
+            }
+        }
+        
+        function prevSocialAssistantStep() {
+            if (assistantState.social.step > 1) {
+                assistantState.social.step--;
+                loadSocialAssistant();
+            }
+        }
+        
+        function nextBlogAssistantStep() {
+            // Save current step data
+            if (assistantState.blog.step === 3) { // Keywords step
+                const primary = document.getElementById('primary-keyword')?.value || '';
+                const secondary = document.getElementById('secondary-keywords')?.value || '';
+                assistantState.blog.data.keywords = [
+                    primary,
+                    ...(secondary.split(',').map(k => k.trim()).filter(k => k))
+                ];
+            } else if (assistantState.blog.step === 4) { // Localization step
+                const select = document.getElementById('assistant-localization');
+                if (select) assistantState.blog.data.localization = select.value;
+            }
+            
+            if (assistantState.blog.step < 5) {
+                assistantState.blog.step++;
+                loadBlogAssistant();
+            }
+        }
+
+        function prevBlogAssistantStep() {
+            if (assistantState.blog.step > 1) {
+                assistantState.blog.step--;
+                loadBlogAssistant();
+            }
+        }
+
+        function selectArticleGoal(goal) {
+            assistantState.blog.data.goal = goal;
+            nextBlogAssistantStep();
+        }
+
+        function selectAudience(audience) {
+            assistantState.blog.data.audience = audience;
+            nextBlogAssistantStep();
+        }
+
+        function selectLength(length) {
+            assistantState.blog.data.length = length;
+        }
+        
+        function prevBlogAssistantStep() {
+            if (assistantState.blog.step > 1) {
+                assistantState.blog.step--;
+                loadBlogAssistant();
+            }
+        }
+        
+        function updateBlogReviewSection() {
+            const goalEl = document.getElementById('blog-review-goal');
+            const audienceEl = document.getElementById('blog-review-audience');
+            const localizationEl = document.getElementById('blog-review-localization');
+            
+            if (goalEl) goalEl.textContent = assistantState.blog.data.goal || 'Not selected';
+            if (audienceEl) audienceEl.textContent = assistantState.blog.data.audience || 'Not selected';
+            if (localizationEl) localizationEl.textContent = assistantState.blog.data.localization || 'google.com';
+        }
+        
+        function generateSocialContent() {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('assistantModalSocial'));
+            showTempSuccess('Generating social content for all platforms...');
+            setTimeout(() => {
+                modal.hide();
+                showTempSuccess('Content generated successfully!');
+                // Reset for next use
+                assistantState.social = {
+                    step: 1,
+                    data: {
+                        intention: '',
+                        platforms: [],
+                        tone: '',
+                        emoji: false,
+                        cta: 'Learn More'
+                    }
+                };
+            }, 1500);
+        }
+        
+        function generateBlogContent() {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('assistantModalBlog'));
+            showTempSuccess('Generating blog article...');
+            setTimeout(() => {
+                modal.hide();
+                showTempSuccess('Article generated successfully!');
+                // Reset for next use
+                assistantState.blog = {
+                    step: 1,
+                    data: {
+                        goal: '',
+                        audience: '',
+                        keywords: [],
+                        localization: 'google.com',
+                        length: 'medium',
+                        include_stats: false,
+                        include_examples: false
+                    }
+                };
+            }, 1500);
+        }
+        
+        // Original Assistant Functions (kept for backward compatibility)
+        function showAssistant(context) {
+            const modal = new bootstrap.Modal(document.getElementById('assistantModal'));
+            const message = document.getElementById('assistantMessage');
+            const messages = {
+                'dashboard': 'I can help you analyze dashboard metrics.',
+                'social': 'I can help you create engaging social media posts.',
+                'article': 'I can help you write, optimize, or generate article content.',
+                'seo': 'Analyzing SEO opportunities...',
+                'schedule': 'I can help you schedule posts.',
+                'integrations': 'I can help you set up integrations.'
+            };
+            message.textContent = messages[context] || 'How can I help you today?';
+            modal.show();
+        }
+        
+        function sendAssistantMessage() {
+            const input = document.getElementById('assistantInput');
+            const message = document.getElementById('assistantMessage');
+            if (input.value.trim()) {
+                message.innerHTML = `<div class="mb-1"><strong>You:</strong> ${input.value}</div>
+                                   <div><strong>Assistant:</strong> Processing your request...</div>`;
+                input.value = '';
+                setTimeout(() => {
+                    message.innerHTML += `<div class="mt-1"><strong>Assistant:</strong> Request processed successfully!</div>`;
+                }, 1000);
+            }
+        }
+        
+        // Campaign Functions
+        function createCampaign() {
+            const name = document.getElementById('campaignName').value;
+            if (!name) return;
+            showTempSuccess(`Campaign "${name}" created`);
+            bootstrap.Modal.getInstance(document.getElementById('campaignModal')).hide();
+            document.getElementById('campaignName').value = '';
+        }
+        
+        // Schedule Functions
+        function scheduleForDay(day, date) {
+            showAssistant('schedule');
+            showTempSuccess(`Opening scheduler for ${day}, January ${date}`);
+        }
+        
+        // Integration Functions
+        function connectIntegration(platform) {
+            showTempSuccess(`Connecting to ${platform}...`);
+        }
+        
+        function revokeIntegration(platform) {
+            showTempSuccess(`${platform} integration revoked`);
+        }
+        
+        function connectGA4() {
+            showTempSuccess('Connecting Google Analytics 4...');
+        }
+        
+        function connectBing() {
+            showTempSuccess('Connecting Bing Webmaster Tools...');
+        }
+        
+        function connectSearchConsole() {
+            showTempSuccess('Connecting Google Search Console...');
+        }
+        
+        function connectGoogleBusiness() {
+            showTempSuccess('Connecting Google My Business...');
+        }
+        
+        function saveWP() {
+            showTempSuccess('WordPress saved');
+        }
+        
+        function connectZapier() {
+            showTempSuccess('Connecting Zapier...');
+        }
+        
+        function connectCanva() {
+            showTempSuccess('Connecting Canva...');
+        }
+        
+        function connectGoogleDrive() {
+            showTempSuccess('Connecting Google Drive...');
+        }
+        
+        function connectDropbox() {
+            showTempSuccess('Connecting Dropbox...');
+        }
+        
+        // Utility Functions
+        function showTempSuccess(message) {
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-success alert-dismissible fade show position-fixed';
+            alert.style.cssText = 'top: 60px; right: 10px; z-index: 9999; background-color: var(--status-success); color: white; border: none; font-size: 0.8rem; padding: 0.5rem 1rem;';
+            alert.innerHTML = `${message}<button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>`;
+            document.body.appendChild(alert);
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.classList.remove('show');
+                    setTimeout(() => alert.remove(), 300);
+                }
+            }, 3000);
+        }
+        
+        function copyContent(id, btn) {
+            const element = document.getElementById(id);
+            const text = element.innerText || element.value;
+            navigator.clipboard.writeText(text);
+            const original = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check me-1"></i>Copied';
+            btn.classList.add('btn-pilot');
+            btn.classList.remove('btn-grey');
+            setTimeout(() => {
+                btn.innerHTML = original;
+                btn.classList.remove('btn-pilot');
+                btn.classList.add('btn-grey');
+            }, 2000);
+        }
+        
+        function handleSchedule(type) {
+            showTempSuccess(`${type === 'blog' ? 'Article' : 'Content'} scheduled!`);
+        }
+        
+        function schedulePost() {
+            if (activePlatforms.length === 0) {
+                alert('Please select at least one platform.');
+                return;
+            }
+            showAssistant('schedule');
+        }
+        
+        // Initialize platform previews
+        updateAllPreviews();
+  </script>
+ </body>
+</html>

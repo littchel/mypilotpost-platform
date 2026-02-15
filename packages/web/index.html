@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>myPilotPost - Your Flight Deck for Content Marketing</title>
+    
+    <!-- Meta Tags for SEO -->
+    <meta name="description" content="Plan, create, design, approve, schedule, and analyze high-performing content across social and search — from a single, intelligent control plane.">
+    <meta name="keywords" content="content marketing, social media management, content management system, marketing platform">
+    <meta name="author" content="myPilotPost">
+    
+    <!-- Open Graph / Social Media Meta Tags -->
+    <meta property="og:title" content="myPilotPost - Your Flight Deck for Content Marketing">
+    <meta property="og:description" content="Plan, create, design, approve, schedule, and analyze high-performing content across social and search — from a single, intelligent control plane.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://mypilotpost.com">
+    <meta property="og:image" content="images/og-image.jpg">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="myPilotPost - Your Flight Deck for Content Marketing">
+    <meta name="twitter:description" content="Plan, create, design, approve, schedule, and analyze high-performing content across social and search.">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="images/favicon-32x32.png">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- CSS -->
+    <style>
+        /* ===== CSS RESET ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            line-height: 1.15;
+            -webkit-text-size-adjust: 100%;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            font-weight: 300;
+            color: #1a1a1a;
+            background: #ffffff;
+            overflow-x: hidden;
+        }
+
+        /* ===== CSS VARIABLES ===== */
+        :root {
+            /* Colors */
+            --primary-blue: #2563EB;
+            --dark-blue: #1D4ED8;
+            --text-dark: #000000;
+            --text-gray: #646565;
+            --light-gray: #EEF0F1;
+            --border-gray: #CECECE;
+            --white: #FFFFFF;
+            --success-green: #35C961;
+            
+            /* Typography */
+            --h1-size: 61px;
+            --h2-size: 49px;
+            --h3-size: 39px;
+            --h4-size: 31px;
+            --h5-size: 25px;
+            --h6-size: 20px;
+            --body-size: 16px;
+            
+            /* Spacing */
+            --space-unit: 16px;
+            --space-half: 8px;
+            --space-onehalf: 24px;
+            --space-two: 32px;
+            --space-three: 48px;
+            --space-four: 64px;
+            --space-five: 80px;
+            --space-six: 96px;
+            
+            /* Border Radius */
+            --radius-small: 4px;
+            --radius-medium: 8px;
+            --radius-large: 14px;
+            --radius-xl: 24px;
+            --radius-round: 50%;
+            
+            /* Container */
+            --container-width: 1280px;
+            --container-padding: 20px;
+        }
+
+        /* ===== UTILITY CLASSES ===== */
+        .container {
+            max-width: var(--container-width);
+            margin: 0 auto;
+            padding: 0 var(--container-padding);
+            width: 100%;
+        }
+
+        .section {
+            padding: var(--space-five) 0;
+            width: 100%;
+        }
+
+        .section--dark {
+            background-color: #1D4ED8;
+            color: var(--white);
+            /* Improves text rendering on dark backgrounds */
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .section--light {
+            background-color: var(--white);
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-four);
+            align-items: center;
+            padding: 0 var(--space-four);
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-three);
+        }
+
+        .grid-3-f {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-three);
+            /* Add these lines: */
+            background-color: #2563EB; 
+            padding: var(--space-three); /* Adds space inside the blue box */
+            border-radius: 12px;         /* Optional: softens the corners */
+        }
+
+        .feature-block {
+            padding: 0 var(--space-three); /* Adds space inside the blocks so text doesn't touch the lines */
+        }
+
+        /* Add the thin white line to the first two blocks */
+        .feature-block:not(:last-child) {
+            border-right: 1px solid rgba(255, 255, 255, 0.3); /* Semi-transparent white looks more professional */
+        }
+
+        @media (max-width: 768px) {
+            .grid-3-f {
+                grid-template-columns: 1fr;
+                gap: var(--space-four);
+            }
+
+            .feature-block:not(:last-child) {
+                border-right: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+                padding-bottom: var(--space-three);
+                padding-left: 0;
+            }
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-three);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 8px 20px;
+            background: rgba(239, 246, 255, 1);
+            border: 0.5px solid var(--border-gray);
+            border-radius: var(--radius-large);
+            color: var(--text-gray);
+            font-size: 16px;
+            margin-bottom: var(--space-onehalf);
+        }
+
+        .badge--white {
+            background: var(--white);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: var(--radius-medium);
+            font-weight: 500;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            text-decoration: none;
+        }
+
+        .btn--primary {
+            background: var(--primary-blue);
+            color: var(--white);
+        }
+
+        .btn--primary:hover {
+            background: var(--dark-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn--secondary {
+            background: transparent;
+            border: 1px solid var(--border-gray);
+            color: var(--text-gray);
+        }
+
+        .btn--secondary-3 {
+            background: whitesmoke;
+            border: 1px solid var(--border-gray);
+            color: var(--text-gray);
+        }
+
+        .btn--secondary-4 {
+            background: #2CBC57;
+            border: 1px solid var(--border-gray);
+            color: #ffffff; /* Sets text to white */
+            transition: background 0.3s ease; /* Smoothly fades the color change */
+            cursor: pointer;
+        }
+
+        .btn--secondary-4:hover {
+            background: #2B8847; /* Your requested hover green */
+            color: #ffffff;      /* Keeps text white on hover */
+        }
+
+        .btn--secondary:hover {
+            background: var(--light-gray);
+            transform: translateY(-2px);
+        }
+
+        .btn--large {
+            padding: 15px 30px;
+            font-size: 21px;
+        }
+
+        /* Typography */
+        h1, .h1 {
+            font-size: var(--h1-size);
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: var(--space-onehalf);
+        }
+
+        h2, .h2 {
+            font-size: var(--h2-size);
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: var(--space-onehalf);
+        }
+
+        h3, .h3 {
+            font-size: var(--h3-size);
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        h4, .h4 {
+            font-size: var(--h4-size);
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        h5, .h5 {
+            font-size: var(--h5-size);
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .body-text {
+            font-size: 16px;
+            line-height: 24px;
+            color: var(--text-gray);
+        }
+
+        .text-white {
+            color: var(--white);
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--white);
+            border: 0.5px solid var(--border-gray);
+            border-radius: var(--radius-medium);
+            padding: var(--space-two);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 30px rgba(0, 0, 0, 0.05);
+        }
+
+        .card__icon {
+            width: 58px;
+            height: 58px;
+            margin-bottom: var(--space-unit);
+        }
+
+        .card__title {
+            font-size: var(--h5-size);
+            font-weight: 700;
+            margin-bottom: var(--space-half);
+        }
+
+        .card__description {
+            color: var(--text-gray);
+            line-height: 24px;
+        }
+
+        /* Feature Cards with Icons */
+        .feature-card {
+            background: var(--white);
+            border: 0.5px solid var(--border-gray);
+            border-radius: var(--radius-medium);
+            padding: 12px 43px;
+            height: 330px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .feature-card__icon-wrapper {
+            padding: 60px 0;
+        }
+
+        .feature-card__title {
+            font-size: var(--h5-size);
+            font-weight: 700;
+            margin-bottom: var(--space-unit);
+        }
+
+        /* Header */
+        .header {
+            position: sticky;
+            top: 0;
+            background: var(--white);
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.05);
+            z-index: 1000;
+            padding: 20px 0;
+        }
+
+        .header__container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            width: 272px;
+            height: 54px;
+            background-image: url('images/myPilotPost-Logo.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 28px;
+            align-items: center;
+        }
+
+        .nav-menu__item {
+            font-size: 18px;
+            color: var(--text-gray);
+            cursor: pointer;
+            transition: color 0.3s;
+            text-decoration: none;
+        }
+
+        .nav-menu__item:hover {
+            color: var(--primary-blue);
+        }
+
+        .header__buttons {
+            display: flex;
+            gap: 20px;
+        }
+
+        .mobile-toggle {
+            display: none;
+            flex-direction: column;
+            cursor: pointer;
+            padding: 10px;
+        }
+
+        .mobile-toggle span {
+            width: 25px;
+            height: 3px;
+            background: var(--text-dark);
+            margin: 3px 0;
+            transition: 0.3s;
+        }
+
+        .mobile-menu {
+            display: none;
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: var(--space-five) 0;
+            /* background image: */
+            background-image: url('images/backgrounds/Home-Hero-BG.png');
+            background-position: center;
+            background-size: cover;
+            background-repeat: no-repeat;
+        }
+
+        .hero__content {
+            max-width: 1042px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .hero__badge {
+            margin-bottom: var(--space-onehalf);
+        }
+
+        .hero__subtitle {
+            font-size: 24px;
+            font-weight: 100;
+            color: var(--text-gray);
+            margin: var(--space-three) 0;
+            line-height: 1.2;
+        }
+
+        .hero__cta {
+            display: flex;
+            gap: var(--space-unit);
+            justify-content: center;
+            margin-bottom: var(--space-three);
+        }
+
+        .hero__trust {
+            display: flex;
+            gap: var(--space-two);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .trust-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .trust-item__text {
+            font-size: 14px;
+            font-weight: 300;
+            color: var(--text-gray);
+        }
+
+        /* Features Section */
+        .features__header {
+            text-align: center;
+            margin-bottom: var(--space-four);
+        }
+
+        .features__grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 59px;
+            margin-top: var(--space-four);
+        }
+
+        .feature-block__title {
+            font-size: var(--h5-size);
+            font-weight: 700;
+            margin-bottom: var(--space-onehalf);
+        }
+
+        .feature-block__list {
+            list-style: none;
+        }
+
+        .feature-block__list li {
+            margin-bottom: var(--space-half);
+            line-height: 24px;
+        }
+
+        .feature-divider {
+            display: flex;
+            align-items: center;
+            gap: 68px;
+        }
+
+        .divider-line {
+            width: 289px;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Content Marketing Section */
+        .content-marketing {
+            padding: var(--space-five) 0;
+        }
+
+        .content-marketing__image {
+            width: 100%;
+            height: 606px;
+            background-size: cover;
+            background-position: center;
+            border-radius: var(--radius-medium);
+        }
+
+        /* Social Media Section */
+        .social-media {
+            padding: var(--space-three) 0;
+            padding-right: var(--space-four);
+            padding-top: var(--space-half);
+            padding-bottom: var(--space-zero);
+        }
+
+        .social-media__image {
+            width: 100%;
+            height: 685px;
+            background-size: cover;
+            background-position: center;
+            border-radius: 32px;
+        }
+
+        /* About Section */
+        .about__header {
+            text-align: center;
+            margin-bottom: var(--space-four);
+        }
+
+        .about__description {
+            max-width: 1042px;
+            margin: 0 auto var(--space-four);
+            text-align: center;
+            font-size: var(--h5-size);
+            line-height: 1.5;
+            font-weight: 500;
+        }
+
+        /* CTA Section */
+        .cta {
+            background: var(--primary-blue);
+            border-radius: 32px;
+            padding: 60px;
+            margin-top: 160px; /* Added extra margin here so the image doesn't hit the section above */
+            overflow: visible; 
+        }
+
+        .cta__content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-four);
+            align-items: center; /* Keeps text centered relative to the box */
+        }
+
+        .cta__title {
+            font-size: 44px;
+            font-weight: 700;
+            color: var(--white);
+            margin-bottom: var(--space-onehalf);
+        }
+
+        .cta__subtitle {
+            font-size: 21px;
+            color: var(--white);
+            margin-bottom: var(--space-two);
+        }
+
+        .cta__image {
+            width: 100%;
+            height: 462px;
+            background-size: cover;
+            background-position: center;
+            border-radius: 32px;
+            
+            /* The Overlap Logic */
+            margin-top: -150px;    /* Pulls it up 120px past the blue box */
+            margin-bottom: 20px;   /* Keeps it from overlapping the bottom */
+            
+            /* Adds depth so it looks 3D */
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Footer */
+        .footer {
+            background: #002F86;
+            color: var(--white);
+            padding: var(--space-five) 0 var(--space-three);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .footer__grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: var(--space-four);
+            margin-bottom: var(--space-four);
+        }
+
+        .footer__logo {
+            width: 302px;
+            height: 49px;
+            background-image: url('images/myPilotPost-Logo.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: left;
+            margin-bottom: var(--space-unit);
+        }
+
+        .footer__tagline {
+            /* Increased visibility for better readability on deep blue */
+            color: rgba(255, 255, 255, 0.9); 
+            margin-bottom: var(--space-unit);
+        }
+
+        .social-links {
+            display: flex;
+            gap: 18px;
+        }
+
+        .social-link {
+            cursor: pointer;
+            transition: transform 0.3s, filter 0.3s;
+        }
+
+        .social-link:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.2); /* Makes icons pop on hover */
+        }
+
+        .footer__column-title {
+            font-size: 24px;
+            font-weight: 700;
+            /* Cleaned up the opacity for a more professional "muted" look */
+            color: rgba(255, 255, 255, 0.85); 
+            margin-bottom: var(--space-onehalf);
+        }
+
+        .footer__link {
+            display: block;
+            color: rgba(255, 255, 255, 0.75);
+            text-decoration: none;
+            margin-bottom: var(--space-half);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .footer__link:hover {
+            color: #ffffff; /* Switches to pure white on hover */
+            opacity: 1;
+            padding-left: 4px; /* Subtle "slide" effect on hover */
+        }
+
+        .footer__divider {
+            width: 100%;
+            height: 1px;
+            /* Made the divider slightly more subtle so it's not a harsh line */
+            background: rgba(255, 255, 255, 0.15); 
+            margin: var(--space-three) 0 var(--space-two);
+        }
+
+        .footer__copyright {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 18px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .grid-3, .features__grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .footer__grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: var(--space-three);
+            }
+        }
+
+        @media (max-width: 768px) {
+            :root {
+                --h1-size: 40px;
+                --h2-size: 32px;
+                --h3-size: 28px;
+            }
+
+            .nav-menu, .header__buttons {
+                display: none;
+            }
+
+            .mobile-toggle {
+                display: flex;
+            }
+
+            .mobile-menu {
+                display: block;
+                position: fixed;
+                top: 0;
+                right: -100%;
+                width: 80%;
+                max-width: 400px;
+                height: 100vh;
+                background: var(--white);
+                box-shadow: -2px 0 20px rgba(0, 0, 0, 0.1);
+                z-index: 1001;
+                padding: 80px 30px;
+                transition: right 0.3s ease;
+            }
+
+            .mobile-menu.active {
+                right: 0;
+            }
+
+            .mobile-menu__item {
+                display: block;
+                padding: 15px 0;
+                font-size: 18px;
+                color: var(--text-dark);
+                text-decoration: none;
+                border-bottom: 1px solid var(--border-gray);
+            }
+
+            .mobile-menu__buttons {
+                margin-top: 30px;
+                display: flex;
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .grid-2, .cta__content {
+                grid-template-columns: 1fr;
+            }
+
+            .hero__cta {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .hero__trust {
+                flex-direction: column;
+                gap: var(--space-unit);
+            }
+
+            .grid-3, .features__grid {
+                grid-template-columns: 1fr;
+            }
+
+            .feature-divider {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .divider-line {
+                transform: rotate(90deg);
+            }
+
+            .footer__grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .btn {
+                width: 100%;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fadeInUp {
+            animation: fadeInUp 0.6s ease forwards;
+        }
+    </style>
+</head>
+<body>
+    <!-- Mobile Menu -->
+    <div class="mobile-menu" id="mobileMenu">
+        <a href="index.html" class="mobile-menu__item">Home</a>
+        <a href="features.html" class="mobile-menu__item">Features</a>
+        <a href="solutions.html" class="mobile-menu__item">Solutions</a>
+        <a href="resources.html" class="mobile-menu__item">Resources</a>
+        <div class="mobile-menu__buttons">
+            <a href="sign-in.html"><button class="btn btn--secondary">Sign In →</button></a>
+            <a href="register.html"><button class="btn btn--primary">Get Started</button></a>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="container header__container">
+            <a href="index.html" class="nav-menu__item"><div class="logo" aria-label="myPilotPost Logo"></div></a>
+            
+            <nav class="nav-menu" aria-label="Main Navigation">
+                <a href="index.html" class="nav-menu__item">Home</a>
+                <a href="features.html" class="nav-menu__item">Features</a>
+                <a href="solutions.html" class="nav-menu__item">Solutions</a>
+                <a href="resources.html" class="nav-menu__item">Resources</a>
+            </nav>
+
+            <div class="header__buttons">
+                <button class="btn btn--secondary" onclick="window.location.href='sign-in.html'">
+                    Sign In
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M4.1665 10H15.8332" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M10 4.16667L15.8333 10L10 15.8333" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <button class="btn btn--primary" onclick="window.location.href='register.html'">
+                    Get Started
+                </button>
+            </div>
+
+            <div class="mobile-toggle" onclick="toggleMobileMenu()" aria-label="Toggle mobile menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Hero Section -->
+        <section class="hero section">
+            <div class="container">
+                <div class="hero__content animate-fadeInUp">
+                    <span class="badge hero__badge">A co-pilot for your creative vision</span>
+                    <h1>Your flight deck<br>for landing the right message,<br>every time.</h1>
+                    <p class="hero__subtitle">Plan, create, design, approve, schedule, and analyze high-performing content across social and search — from a single, intelligent control plane.</p>
+                    
+                    <div class="hero__cta">
+                        <button class="btn btn--primary btn--large" onclick="window.location.href='register.html'">
+                            Get Started
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M5 12H19" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M12 5L19 12L12 19" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                        <button class="btn btn--secondary btn--large" onclick="window.location.href='features.html'">
+                            Learn more
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M12 5L19 12L12 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="hero__trust">
+                        <div class="trust-item">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="12" cy="12" r="9" stroke="#35C961" stroke-width="1.5"/>
+                                <path d="M8 12L11 15L16 9" stroke="#35C961" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                            <span class="trust-item__text">Cancel Anytime</span>
+                        </div>
+                        <div class="trust-item">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="12" cy="12" r="9" stroke="#35C961" stroke-width="1.5"/>
+                                <path d="M8 12L11 15L16 9" stroke="#35C961" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                            <span class="trust-item__text">Easy Setup</span>
+                        </div>
+                        <div class="trust-item">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="12" cy="12" r="9" stroke="#35C961" stroke-width="1.5"/>
+                                <path d="M8 12L11 15L16 9" stroke="#35C961" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                            <span class="trust-item__text">No credit card required</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- About Us Section -->
+        <section class="section">
+            <div class="container">
+                <div class="about__header">
+                    <span class="badge">About Us</span>
+                    <p class="about__description">
+                        myPilotPost helps brands and agencies run content as a coherent system, not a collection of disconnected tools. It connects strategy, creation, design, delivery, and learning into one intentional workflow — so every piece of content is brand-aligned, measurable, and purposeful. myPilotPost acts as a co-pilot, not a replacement for human judgment. Intelligence is built in, explainable, and advisory — never opaque or autonomous.
+                    </p>
+                </div>
+
+                <div class="grid-3" style="margin-top: var(--space-four);">
+                    <div class="card">
+                        <h4 style="color: var(--primary-black); margin-bottom: var(--space-unit);">Create content faster without sacrificing quality</h4>
+                        <p class="body-text">Intelligence assists creation — it never replaces judgment.</p>
+                    </div>
+
+                    <div class="card">
+                        <h4 style="color: var(--primary-black); margin-bottom: var(--space-unit);">Maintain consistent brand voice across platforms</h4>
+                        <p class="body-text">Brand context is preserved across every channel.</p>
+                    </div>
+
+                    <div class="card">
+                        <h4 style="color: var(--primary-black); margin-bottom: var(--space-unit);">Publish reliably and predictably</h4>
+                        <p class="body-text">Scheduling and delivery are transparent and dependable.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- Features Section -->
+        <section class="section section--dark">
+            <div class="container">
+                <div class="features__header">
+                    <span class="badge badge--white">Features</span>
+                    <h2 class="text-white">Everything You Need to Run Your Social Media</h2>
+                    <p class="body-text text-white" style="font-size: 18px; font-style: italic; font-weight: 100;">More coming — without breaking what already works.</p>
+                </div>
+
+                <!-- Features Grid from PDF Page 2 -->
+                <div class="grid-3-f">
+                    <div class="feature-block">
+                        <h5 class="feature-block__title text-white">Strategy & Planning <br>(Flight Plan)</h5>
+                        <p class="body-text text-white">Plan content with purpose — not guesswork.
+                        <br><br>
+                        ▪   Unified planning for social media and campaigns<br>
+                        ▪   Clear objectives per initiative<br>
+                        ▪   Visibility across channels and timelines</p>
+                    </div>
+
+                    <div class="feature-block">
+                        <h5 class="feature-block__title text-white">Assisted Content Creation (Autopilot)</h5>
+                        <p class="body-text text-white">Create content faster with intelligence that assists, not replaces.
+                        <br><br>
+                        • Platform-aware social media contentAI assistant.<br> 
+                        • Structured blog and article creation<br>
+                        • Drafts, revisions, and version control</p>
+                    </div>
+
+                    <div class="feature-block">
+                        <h5 class="feature-block__title text-white">Design via Canva <br>(Integrated)</h5>
+                        <p class="body-text text-white">Designs, edit and import design where your team already works.
+                        <br><br>
+                            ▪   Launch Canva directly from myPilotPostwith one click.<br>
+                            ▪   Use existing templates and brand kits<br>
+                            ▪   Keep assets attached to content</p>
+                    </div>
+                </div>
+
+                <div style="margin-top: var(--space-four); text-align: center;">
+                    <button class="btn btn--secondary-3 btn--large" style="margin-top: var(--space-two);" onclick="window.location.href='features.html'">Learn more</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Content Marketing Section -->
+        <section class="content-marketing section">
+            <div class="container">
+                <div class="grid-2">
+                    <div>
+                        <h2>Content Management<br>Systems for Modern<br>Marketing</h2>
+                        <p class="body-text" style="margin-top: var(--space-onehalf);">
+                            Marketing content has become more complex — not because teams are doing more, but because content now spans social media, blogs, SEO, campaigns, and analytics. A content management system for marketing isn't just about storing content.<br><br>
+                            It's about running content as a coordinated system.
+                        </p>
+                    </div>
+                    <div class="content-marketing__image" style="background-image: url('images/tq_c97qkclgpt-0iq-700h.png');"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Social Media Section -->
+        <section class="social-media section">
+            <div class="container">
+                <div class="grid-2">
+                    <div class="social-media__image" style="background-image: url('images/tq_jr6gy_foeg-bx9i-700w.png');"></div>
+                    <div>
+                        <h2>Run Social Media<br>With Clarity and<br>Control</h2>
+                        <p class="body-text" style="margin-top: var(--space-onehalf);">
+                            We believe content should not feel chaotic, fragile, or disconnected from outcomes. It should be intentional, measurable, and continuously improving. The long-term vision is for myPilotPost to become the default dashboard businesses use to navigate social media and AI-driven discovery — reducing complexity while increasing clarity and control.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA Section -->
+        <section class="section">
+            <div class="container">
+                <div class="cta">
+                    <div class="cta__content">
+                        <div>
+                            <h3 class="cta__title">Smarter content.<br>Real control.<br>One command center.</h3>
+                            <p class="cta__subtitle">Create your first piece of content</p>
+                            <button class="btn btn--secondary-4 btn--large" onclick="window.location.href='register.html'">
+                                Get Started
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M5 12H19" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M12 5L19 12L12 19" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="cta__image" style="background-image: url('images/tq_xk32pib2_w-k0w-700w.png');"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Latest Articles -->
+        <section class="section">
+            <div class="container">
+                <h2 class="text-center">News & Updates</h2>
+                <div class="grid-3" style="margin-top: var(--space-four);">
+                    <div class="card" style="padding: 0; overflow: hidden;">
+                        <div style="height: 200px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
+                        <div style="padding: var(--space-onehalf);">
+                            <p class="body-text" style="margin-bottom: var(--space-half);">by Admin February 9, 2026</p>
+                            <h5>Managing content across channels</h5>
+                            <button class="btn btn--secondary" style="margin-top: var(--space-unit);">Read more</button>
+                        </div>
+                    </div>
+
+                    <div class="card" style="padding: 0; overflow: hidden;">
+                        <div style="height: 200px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);"></div>
+                        <div style="padding: var(--space-onehalf);">
+                            <p class="body-text" style="margin-bottom: var(--space-half);">by Admin February 3, 2026</p>
+                            <h5>Content systems vs tools</h5>
+                            <button class="btn btn--secondary" style="margin-top: var(--space-unit);">Read more</button>
+                        </div>
+                    </div>
+
+                    <div class="card" style="padding: 0; overflow: hidden;">
+                        <div style="height: 200px; background: linear-gradient(135deg, #10b981 0%, #059669 100%);"></div>
+                        <div style="padding: var(--space-onehalf);">
+                            <p class="body-text" style="margin-bottom: var(--space-half);">by Admin January 28, 2026</p>
+                            <h5>Building repeatable workflows</h5>
+                            <button class="btn btn--secondary" style="margin-top: var(--space-unit);">Read more</button>
+                        </div>
+                    </div>
+
+                    <div class="card" style="padding: 0; overflow: hidden;">
+                        <div style="height: 200px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);"></div>
+                        <div style="padding: var(--space-onehalf);">
+                            <p class="body-text" style="margin-bottom: var(--space-half);">by Admin January 18, 2026</p>
+                            <h5>Planning social and blog together</h5>
+                            <button class="btn btn--secondary" style="margin-top: var(--space-unit);">Read more</button>
+                        </div>
+                    </div>
+
+                    <div class="card" style="padding: 0; overflow: hidden;">
+                        <div style="height: 200px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);"></div>
+                        <div style="padding: var(--space-onehalf);">
+                            <p class="body-text" style="margin-bottom: var(--space-half);">by Admin January 11, 2026</p>
+                            <h5>Campaign-led content planning</h5>
+                            <button class="btn btn--secondary" style="margin-top: var(--space-unit);">Read more</button>
+                        </div>
+                    </div>
+
+                    <div class="card" style="padding: 0; overflow: hidden;">
+                        <div style="height: 200px; background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);"></div>
+                        <div style="padding: var(--space-onehalf);">
+                            <p class="body-text" style="margin-bottom: var(--space-half);">by Admin January 7, 2026</p>
+                            <h5>Team collaboration on content</h5>
+                            <button class="btn btn--secondary" style="margin-top: var(--space-unit);">Read more</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer__grid">
+                <div>
+                    <div class="footer__logo" aria-label="myPilotPost Logo"></div>
+                    <p class="footer__tagline">Unified content marketing platform</p>
+                    <div class="social-links">
+                        <a href="#" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M18 2H15C13.6739 2 12.4021 2.52678 11.4645 3.46447C10.5268 4.40215 10 5.67392 10 7V10H7V14H10V22H14V14H17L18 10H14V7C14 6.73478 14.1054 6.48043 14.2929 6.29289C14.4804 6.10536 14.7348 6 15 6H18V2Z"/>
+                            </svg>
+                        </a>
+                        <a href="#" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="2" y="2" width="20" height="20" rx="5" stroke="white" stroke-width="1.5"/>
+                                <circle cx="18" cy="6" r="1.5" fill="white"/>
+                                <circle cx="12" cy="12" r="4" stroke="white" stroke-width="1.5"/>
+                            </svg>
+                        </a>
+                        <a href="#" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M16 8C17.5913 8 19.1174 8.63214 20.2426 9.75736C21.3679 10.8826 22 12.4087 22 14V21H18V14C18 13.4696 17.7893 12.9609 17.4142 12.5858C17.0391 12.2107 16.5304 12 16 12C15.4696 12 14.9609 12.2107 14.5858 12.5858C14.2107 12.9609 14 13.4696 14 14V21H10V14C10 12.4087 10.6321 10.8826 11.7574 9.75736C12.8826 8.63214 14.4087 8 16 8Z"/>
+                                <path d="M6 9H2V21H6V9Z"/>
+                                <circle cx="4" cy="4" r="2" fill="white"/>
+                            </svg>
+                        </a>
+                        <a href="#" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 2C6.48 2 2 6.48 2 12C2 16.84 5.44 20.87 10 21.8V15H8V12H10V9.5C10 6.9 11.9 5 14.5 5C15.03 5 16 5.1 16 5.1V8H15.5C14.5 8 14 8.5 14 9.5V12H16L15.5 15H14V21.8C18.56 20.87 22 16.84 22 12C22 6.48 17.52 2 12 2Z"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <h6 class="footer__column-title">PRODUCT</h6>
+                    <a href="features.html" class="footer__link">Features</a>
+                    <a href="solutions.html" class="footer__link">Solutions</a>
+                    <a href="#" class="footer__link">Pricing</a>
+                    <a href="#" class="footer__link">Integrations</a>
+                </div>
+
+                <div>
+                    <h6 class="footer__column-title">RESOURCES</h6>
+                    <a href="resources.html" class="footer__link">Training</a>
+                    <a href="resources.html" class="footer__link">News & Updates</a>
+                    <a href="resources.html" class="footer__link">Blog</a>
+                    <a href="mailto:support@mypilotpost.com" class="footer__link">Request a Feature</a>
+                </div>
+
+                <div>
+                    <h6 class="footer__column-title">COMPANY</h6>
+                    <a href="#" class="footer__link">About Us</a>
+                    <a href="mailto:support@mypilotpost.com" class="footer__link">Support</a>
+                    <a href="images/PAIA_Manual.pdf" class="footer__link">PAIA_Manual</a>
+                    <a href="privacy%20policy.html" class="footer__link">Privacy Policy</a>
+                    <a href="refund-policy.html" class="footer__link">Refund Policy</a>
+                    <a href="terms%20and%20conditions.html" class="footer__link">Terms of Service</a>
+                    <a href="gdpr-compliance.html" class="footer__link">GDPR Compliance</a>
+                </div>
+            </div>
+
+            <div class="footer__divider"></div>
+            <p class="footer__copyright">© 2026 myPilotPost. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // Mobile Menu Toggle
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            menu.classList.toggle('active');
+            document.body.style.overflow = menu.classList.contains('active') ? 'hidden' : 'auto';
+        }
+
+        function closeMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            menu.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Close menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const menu = document.getElementById('mobileMenu');
+            const toggle = document.querySelector('.mobile-toggle');
+            
+            if (!menu.contains(event.target) && !toggle.contains(event.target) && menu.classList.contains('active')) {
+                closeMobileMenu();
+            }
+        });
+
+        // Close menu on link click
+        document.querySelectorAll('.mobile-menu__item, .mobile-menu__buttons .btn').forEach(link => {
+            link.addEventListener('click', closeMobileMenu);
+        });
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // Animation on scroll
+        const animateElements = document.querySelectorAll('.animate-fadeInUp');
+        
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, { threshold: 0.1 });
+
+        animateElements.forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(30px)';
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>

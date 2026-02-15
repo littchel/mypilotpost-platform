@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Publish Article — myPilotPost</title>
+
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --pilot-blue: #2563eb;
+      --pilot-blue-light: #eff6ff;
+      --pilot-blue-dark: #1d4ed8;
+      --bg-body: #f8fafc;
+      --text-heading: #0f172a;
+      --text-main: #475569;
+      --border-subtle: #e2e8f0;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+
+    * {
+      font-family: 'Inter', sans-serif;
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg-body);
+      padding: 2rem;
+    }
+
+    h1 {
+      font-size: 2rem;
+      color: var(--text-heading);
+      margin-bottom: 1.5rem;
+    }
+
+    .card {
+      background: white;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .input {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      font-size: 0.875rem;
+      margin-bottom: 1rem;
+    }
+
+    textarea {
+      min-height: 200px;
+      resize: vertical;
+    }
+
+    .btn {
+      padding: 0.6rem 1.2rem;
+      border-radius: var(--radius-md);
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      margin-right: 0.5rem;
+    }
+
+    .btn-primary {
+      background: var(--pilot-blue);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--pilot-blue-dark);
+    }
+
+    .btn-secondary {
+      background: #f8fafc;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+    }
+
+    .status {
+      margin-top: 1rem;
+      font-size: 0.875rem;
+      color: var(--text-main);
+    }
+
+  </style>
+</head>
+<body>
+
+<h1>Publish New Article</h1>
+
+<div class="card">
+  <input id="title" class="input" placeholder="Article Title" />
+  <input id="slug" class="input" placeholder="Slug (e.g. managing-content)" />
+  <input id="excerpt" class="input" placeholder="Short excerpt..." />
+  <input id="seoTitle" class="input" placeholder="SEO Title" />
+  <input id="seoDescription" class="input" placeholder="SEO Description" />
+  <input id="featuredImage" class="input" placeholder="Featured Image URL" />
+  <textarea id="content" class="input" placeholder="Write your article in HTML..."></textarea>
+
+  <button class="btn btn-secondary" onclick="saveDraft()">Save Draft</button>
+  <button class="btn btn-secondary" onclick="markReady()">Mark Ready</button>
+  <button class="btn btn-primary" onclick="publishNow()">Publish Now</button>
+
+  <div id="status" class="status"></div>
+</div>
+
+<script>
+let articleId = null;
+
+const API_BASE = "https://api.mypilotpost.com";
+const token = localStorage.getItem("token"); // your JWT
+
+async function saveDraft() {
+  const payload = collectData();
+
+  if (!articleId) {
+    const res = await fetch(`${API_BASE}/api/customer/content/blog`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    articleId = data.id;
+  } else {
+    await fetch(`${API_BASE}/api/customer/content/blog/${articleId}`, {
+      method: "PATCH",
+      headers: authHeaders(),
+      body: JSON.stringify(payload)
+    });
+  }
+
+  setStatus("Draft saved.");
+}
+
+async function markReady() {
+  if (!articleId) return setStatus("Save draft first.");
+
+  await fetch(`${API_BASE}/api/customer/content/blog/${articleId}/ready`, {
+    method: "POST",
+    headers: authHeaders()
+  });
+
+  setStatus("Marked as ready.");
+}
+
+async function publishNow() {
+  if (!articleId) return setStatus("Save draft first.");
+
+  await fetch(`${API_BASE}/api/customer/content/blog/${articleId}/publish`, {
+    method: "POST",
+    headers: authHeaders()
+  });
+
+  setStatus("Article published successfully!");
+}
+
+function collectData() {
+  return {
+    title: document.getElementById("title").value,
+    slug: document.getElementById("slug").value,
+    excerpt: document.getElementById("excerpt").value,
+    seo_title: document.getElementById("seoTitle").value,
+    seo_description: document.getElementById("seoDescription").value,
+    featured_image_url: document.getElementById("featuredImage").value,
+    content_html: document.getElementById("content").value
+  };
+}
+
+function authHeaders() {
+  return {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${token}`
+  };
+}
+
+function setStatus(message) {
+  document.getElementById("status").innerText = message;
+}
+</script>
+
+</body>
+</html>

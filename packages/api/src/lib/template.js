@@ -1,0 +1,3 @@
+export function renderTemplate() {
+  return "<html><body><h1>Report</h1></body></html>";
+}

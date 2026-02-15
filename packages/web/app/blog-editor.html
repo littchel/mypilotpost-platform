@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Blog Editor — myPilotPost</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!--
+    Rich text editor (WYSIWYG)
+    Used instead of raw textarea so editors don’t need HTML knowledge.
+    Output is saved as HTML.
+  -->
+  <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+    }
+
+    header {
+      height: 56px;
+      background: white;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      padding: 0 1.25rem;
+      font-weight: 600;
+    }
+
+    main {
+      max-width: 900px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+
+    .field {
+      margin-bottom: 1.25rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .help {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-bottom: 0.25rem;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+
+    #editor {
+      height: 300px;
+      background: white;
+      border-radius: 8px;
+    }
+
+    .divider {
+      border-top: 1px solid #e2e8f0;
+      margin: 2rem 0;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 1.5rem;
+    }
+
+    button {
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: #2563eb;
+      color: white;
+    }
+
+    .btn-secondary {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+    }
+
+    .btn-warning {
+      background: #f59e0b;
+      color: white;
+    }
+
+    .btn-primary[disabled] {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .status {
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-top: 0.75rem;
+    }
+
+    pre {
+      background: #020617;
+      color: #e5e7eb;
+      padding: 1rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  Blog Editor
+</header>
+
+<main>
+
+  <!-- =============================
+       BASIC POST INFORMATION
+       ============================= -->
+
+  <div class="field">
+    <label>Title</label>
+    <div class="help">
+      Main article headline. Used on the blog page and in search results if no SEO title is set.
+    </div>
+    <input id="title" placeholder="How to build a content engine" />
+  </div>
+
+  <div class="field">
+    <label>Slug</label>
+    <div class="help">
+      URL identifier. Should be short, lowercase, and stable.
+      Example: <code>how-to-build-a-content-engine</code>
+    </div>
+    <input id="slug" />
+  </div>
+
+  <div class="field">
+    <label>Excerpt</label>
+    <div class="help">
+      Short summary shown on the blog homepage, category pages, and previews.
+    </div>
+    <textarea id="excerpt"></textarea>
+  </div>
+
+  <!-- =============================
+       MAIN CONTENT
+       ============================= -->
+
+  <div class="field">
+    <label>Article Content</label>
+    <div class="help">
+      Full article body. Rich text editor outputs clean HTML for the public blog.
+    </div>
+    <div id="editor"></div>
+  </div>
+
+  <!-- =============================
+       SCHEDULING
+       ============================= -->
+
+  <div class="field">
+    <label>Publish At (optional)</label>
+    <div class="help">
+      Leave empty to publish immediately.
+      Set a future date/time to schedule automatic publishing.
+    </div>
+    <input id="publish_at" type="datetime-local" />
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- =============================
+       CATEGORIES & TAGS
+       ============================= -->
+
+  <div class="field">
+    <label>Categories</label>
+    <div class="help">
+      High-level grouping (used for navigation).
+      Comma-separated. Example: Marketing, SEO
+    </div>
+    <input id="categories" />
+  </div>
+
+  <div class="field">
+    <label>Tags</label>
+    <div class="help">
+      Specific topics for filtering and discovery.
+      Comma-separated. Example: Instagram, Growth
+    </div>
+    <input id="tags" />
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- =============================
+       SEO METADATA
+       ============================= -->
+
+  <div class="field">
+    <label>Meta Title</label>
+    <div class="help">
+      Optional SEO title. If empty, the post title is used.
+    </div>
+    <input id="meta_title" />
+  </div>
+
+  <div class="field">
+    <label>Meta Description</label>
+    <div class="help">
+      Short description for search engines and social previews.
+    </div>
+    <textarea id="meta_description"></textarea>
+  </div>
+
+  <!-- =============================
+       ACTIONS
+       ============================= -->
+
+  <div class="actions">
+    <!-- Save without publishing -->
+    <button class="btn-secondary" onclick="saveDraft()">Save Draft</button>
+
+    <!-- Publish (disabled for authors) -->
+    <button class="btn-primary" id="publishBtn" onclick="publish()">Publish</button>
+
+    <!-- Preview using public blog renderer -->
+    <button class="btn-secondary" onclick="preview()">Preview</button>
+
+    <!-- Request editorial approval -->
+    <button class="btn-warning" onclick="requestApproval()">Request Approval</button>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="divider"></div>
+
+  <!-- =============================
+       ANALYTICS (READ-ONLY)
+       ============================= -->
+
+  <h3>Article Analytics</h3>
+  <div class="help">
+    Daily page views for this article. Used by myPilotPost intelligence later.
+  </div>
+  <pre id="analytics">No data yet</pre>
+
+</main>
+
+<script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+
+<script>
+  let postId = null;
+  const userRole = localStorage.getItem("role") || "editor";
+
+  const quill = new Quill("#editor", { theme: "snow" });
+
+  if (userRole === "author") {
+    publishBtn.disabled = true;
+  }
+
+  async function api(url, method, body) {
+    const res = await fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${localStorage.getItem("token")}`
+      },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    if (!res.ok) throw new Error("API error");
+    return res.json();
+  }
+
+  async function saveDraft() {
+    const payload = collectPayload();
+    if (!postId) {
+      const res = await api("/api/customer/content/blog", "POST", payload);
+      postId = res.id;
+    } else {
+      await api(`/api/customer/content/blog/${postId}`, "PATCH", payload);
+    }
+    await saveTaxonomies();
+    setStatus("Draft saved");
+  }
+
+  async function publish() {
+    if (userRole === "author") {
+      alert("Authors cannot publish directly.");
+      return;
+    }
+    if (!postId) await saveDraft();
+    await api(`/api/customer/content/blog/${postId}`, "PATCH", { status: "published" });
+    setStatus("Post published");
+  }
+
+  async function requestApproval() {
+    if (!postId) return alert("Save draft first");
+    await api("/api/customer/approvals", "POST", {
+      type: "blog_post",
+      entity_id: postId
+    });
+    setStatus("Approval requested");
+  }
+
+  async function saveTaxonomies() {
+    if (!postId) return;
+    await api(`/api/customer/content/blog/${postId}/taxonomies`, "POST", {
+      categories: categories.value.split(",").map(s => s.trim()).filter(Boolean),
+      tags: tags.value.split(",").map(s => s.trim()).filter(Boolean)
+    });
+  }
+
+  async function loadAnalytics() {
+    if (!postId) return;
+    const data = await api(`/api/customer/content/blog/${postId}/analytics`, "GET");
+    analytics.textContent = JSON.stringify(data, null, 2);
+  }
+
+  function preview() {
+    if (!postId) return alert("Save draft first");
+    window.open(`/blog/post.html?slug=${slug.value}`);
+  }
+
+  function collectPayload() {
+    return {
+      title: title.value,
+      slug: slug.value,
+      excerpt: excerpt.value,
+      content_html: quill.root.innerHTML,
+      publish_at: publish_at.value || null,
+      meta_title: meta_title.value,
+      meta_description: meta_description.value
+    };
+  }
+
+  function setStatus(text) {
+    status.textContent = text;
+  }
+</script>
+
+</body>
+</html>

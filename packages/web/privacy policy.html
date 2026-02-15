@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy - myPilotPost</title>
+    
+    <!-- Meta Tags for SEO -->
+    <meta name="description" content="myPilotPost Privacy Policy - Learn how we collect, use, and protect your personal information in compliance with POPIA and GDPR.">
+    <meta name="keywords" content="privacy policy, data protection, POPIA, GDPR, personal information">
+    <meta name="author" content="myPilotPost">
+    
+    <!-- Open Graph / Social Media Meta Tags -->
+    <meta property="og:title" content="Privacy Policy - myPilotPost">
+    <meta property="og:description" content="Learn how we collect, use, and protect your personal information.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://mypilotpost.com/privacy-policy">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Privacy Policy - myPilotPost">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="images/favicon-32x32.png">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* ===== CSS RESET ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            line-height: 1.15;
+            -webkit-text-size-adjust: 100%;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            font-weight: 300;
+            color: #1a1a1a;
+            background: #ffffff;
+            overflow-x: hidden;
+        }
+
+        /* ===== CSS VARIABLES ===== */
+        :root {
+            /* Colors */
+            --primary-blue: #2563EB;
+            --dark-blue: #1D4ED8;
+            --text-dark: #000000;
+            --text-gray: #646565;
+            --light-gray: #EEF0F1;
+            --border-gray: #CECECE;
+            --white: #FFFFFF;
+            --success-green: #35C961;
+            --hover-bg: #E6EEFF;
+            
+            /* Typography */
+            --h1-size: 61px;
+            --h2-size: 49px;
+            --h3-size: 39px;
+            --h4-size: 31px;
+            --h5-size: 25px;
+            --h6-size: 20px;
+            --body-size: 16px;
+            
+            /* Spacing */
+            --space-unit: 16px;
+            --space-half: 8px;
+            --space-onehalf: 24px;
+            --space-two: 32px;
+            --space-three: 48px;
+            --space-four: 64px;
+            --space-five: 80px;
+            --space-six: 96px;
+            
+            /* Border Radius */
+            --radius-small: 4px;
+            --radius-medium: 8px;
+            --radius-large: 14px;
+            --radius-xl: 24px;
+            --radius-round: 50%;
+            
+            /* Container */
+            --container-width: 1280px;
+            --container-padding: 20px;
+        }
+
+        /* ===== UTILITY CLASSES ===== */
+        .container {
+            max-width: var(--container-width);
+            margin: 0 auto;
+            padding: 0 var(--container-padding);
+            width: 100%;
+        }
+
+        .section {
+            padding: var(--space-five) 0;
+            width: 100%;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 8px 20px;
+            background: rgba(239, 246, 255, 1);
+            border: 0.5px solid var(--border-gray);
+            border-radius: var(--radius-large);
+            color: var(--text-gray);
+            font-size: 16px;
+            margin-bottom: var(--space-onehalf);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: var(--radius-medium);
+            font-weight: 500;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            text-decoration: none;
+        }
+
+        .btn--primary {
+            background: var(--primary-blue);
+            color: var(--white);
+        }
+
+        .btn--primary:hover {
+            background: var(--dark-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn--secondary {
+            background: transparent;
+            border: 1px solid var(--border-gray);
+            color: var(--text-gray);
+        }
+
+        .btn--secondary:hover {
+            background: var(--light-gray);
+            transform: translateY(-2px);
+        }
+
+        .btn--large {
+            padding: 15px 30px;
+            font-size: 21px;
+        }
+
+        /* Typography */
+        h1, .h1 {
+            font-size: var(--h1-size);
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: var(--space-onehalf);
+        }
+
+        h2, .h2 {
+            font-size: var(--h2-size);
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: var(--space-onehalf);
+        }
+
+        .body-text {
+            font-size: 16px;
+            line-height: 24px;
+            color: var(--text-gray);
+        }
+
+        .text-white {
+            color: var(--white);
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        /* Header */
+        .header {
+            position: sticky;
+            top: 0;
+            background: var(--white);
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.05);
+            z-index: 1000;
+            padding: 20px 0;
+        }
+
+        .header__container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            width: 272px;
+            height: 54px;
+            background-image: url('images/myPilotPost-Logo.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 28px;
+            align-items: center;
+        }
+
+        .nav-menu__item {
+            font-size: 18px;
+            color: var(--text-gray);
+            cursor: pointer;
+            transition: color 0.3s;
+            text-decoration: none;
+        }
+
+        .nav-menu__item:hover {
+            color: var(--primary-blue);
+        }
+
+        .header__buttons {
+            display: flex;
+            gap: 20px;
+        }
+
+        .mobile-toggle {
+            display: none;
+            flex-direction: column;
+            cursor: pointer;
+            padding: 10px;
+        }
+
+        .mobile-toggle span {
+            width: 25px;
+            height: 3px;
+            background: var(--text-dark);
+            margin: 3px 0;
+            transition: 0.3s;
+        }
+
+        .mobile-menu {
+            display: none;
+        }
+
+        /* Legal Pages Specific Styles */
+        .legal-header {
+            padding: var(--space-five) 0 var(--space-three);
+            text-align: center;
+            background: linear-gradient(135deg, #F9FAFB 0%, #FFFFFF 100%);
+        }
+
+        .legal-header__title {
+            font-size: 48px;
+            margin-bottom: var(--space-half);
+        }
+
+        .legal-header__subtitle {
+            font-size: 18px;
+            color: var(--text-gray);
+        }
+
+        .legal-content {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 var(--container-padding) var(--space-five);
+        }
+
+        .legal-section {
+            margin-bottom: var(--space-four);
+        }
+
+        .legal-section__title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: var(--space-unit);
+            color: var(--text-dark);
+        }
+
+        .legal-section__subtitle {
+            font-size: 22px;
+            font-weight: 600;
+            margin: var(--space-two) 0 var(--space-unit);
+            color: var(--text-dark);
+        }
+
+        .legal-section__text {
+            font-size: 16px;
+            line-height: 1.6;
+            color: var(--text-gray);
+            margin-bottom: var(--space-unit);
+        }
+
+        .legal-section__list {
+            list-style: none;
+            margin: var(--space-unit) 0 var(--space-two);
+            padding-left: var(--space-unit);
+        }
+
+        .legal-section__list li {
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+            color: var(--text-gray);
+            line-height: 1.6;
+        }
+
+        .legal-section__list li:before {
+            content: "•";
+            color: var(--primary-blue);
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+
+        .legal-highlight {
+            background: #E6EEFF;
+            padding: var(--space-two);
+            border-radius: var(--radius-medium);
+            margin: var(--space-two) 0;
+        }
+
+        .legal-highlight__title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: var(--space-unit);
+            color: var(--primary-blue);
+        }
+
+        .legal-divider {
+            width: 100%;
+            height: 1px;
+            background: var(--border-gray);
+            margin: var(--space-three) 0;
+        }
+
+        .legal-footer-note {
+            text-align: center;
+            margin-top: var(--space-four);
+            padding: var(--space-two);
+            background: #F9FAFB;
+            border-radius: var(--radius-medium);
+            font-size: 14px;
+            color: var(--text-gray);
+        }
+
+        /* Footer */
+        .footer {
+            background: #002F86;
+            color: var(--white);
+            padding: var(--space-five) 0 var(--space-three);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .footer__grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: var(--space-four);
+            margin-bottom: var(--space-four);
+        }
+
+        .footer__logo {
+            width: 302px;
+            height: 49px;
+            background-image: url('images/myPilotPost-Logo.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: left;
+            margin-bottom: var(--space-unit);
+        }
+
+        .footer__tagline {
+            color: rgba(255, 255, 255, 0.9); 
+            margin-bottom: var(--space-unit);
+        }
+
+        .social-links {
+            display: flex;
+            gap: 18px;
+        }
+
+        .social-link {
+            cursor: pointer;
+            transition: transform 0.3s, filter 0.3s;
+        }
+
+        .social-link:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.2);
+        }
+
+        .footer__column-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.85); 
+            margin-bottom: var(--space-onehalf);
+        }
+
+        .footer__link {
+            display: block;
+            color: rgba(255, 255, 255, 0.75);
+            text-decoration: none;
+            margin-bottom: var(--space-half);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .footer__link:hover {
+            color: #ffffff;
+            opacity: 1;
+            padding-left: 4px;
+        }
+
+        .footer__divider {
+            width: 100%;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.15); 
+            margin: var(--space-three) 0 var(--space-two);
+        }
+
+        .footer__copyright {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 18px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .footer__grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: var(--space-three);
+            }
+        }
+
+        @media (max-width: 768px) {
+            :root {
+                --h1-size: 40px;
+                --h2-size: 32px;
+                --h3-size: 28px;
+            }
+
+            .nav-menu, .header__buttons {
+                display: none;
+            }
+
+            .mobile-toggle {
+                display: flex;
+            }
+
+            .mobile-menu {
+                display: block;
+                position: fixed;
+                top: 0;
+                right: -100%;
+                width: 80%;
+                max-width: 400px;
+                height: 100vh;
+                background: var(--white);
+                box-shadow: -2px 0 20px rgba(0, 0, 0, 0.1);
+                z-index: 1001;
+                padding: 80px 30px;
+                transition: right 0.3s ease;
+            }
+
+            .mobile-menu.active {
+                right: 0;
+            }
+
+            .mobile-menu__item {
+                display: block;
+                padding: 15px 0;
+                font-size: 18px;
+                color: var(--text-dark);
+                text-decoration: none;
+                border-bottom: 1px solid var(--border-gray);
+            }
+
+            .mobile-menu__buttons {
+                margin-top: 30px;
+                display: flex;
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .footer__grid {
+                grid-template-columns: 1fr;
+            }
+
+            .legal-header__title {
+                font-size: 36px;
+            }
+
+            .legal-section__title {
+                font-size: 24px;
+            }
+
+            .legal-section__subtitle {
+                font-size: 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Mobile Menu -->
+    <div class="mobile-menu" id="mobileMenu">
+        <a href="index.html" class="mobile-menu__item">Home</a>
+        <a href="features.html" class="mobile-menu__item">Features</a>
+        <a href="solutions.html" class="mobile-menu__item">Solutions</a>
+        <a href="resources.html" class="mobile-menu__item">Resources</a>
+        <div class="mobile-menu__buttons">
+            <a href="sign-in.html"><button class="btn btn--secondary">Sign In →</button></a>
+            <a href="register.html"><button class="btn btn--primary">Get Started</button></a>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="container header__container">
+            <a href="index.html" class="logo" aria-label="myPilotPost Logo"></a>
+            
+            <nav class="nav-menu" aria-label="Main Navigation">
+                <a href="index.html" class="nav-menu__item">Home</a>
+                <a href="features.html" class="nav-menu__item">Features</a>
+                <a href="solutions.html" class="nav-menu__item">Solutions</a>
+                <a href="resources.html" class="nav-menu__item">Resources</a>
+            </nav>
+
+            <div class="header__buttons">
+                <button class="btn btn--secondary" onclick="window.location.href='sign-in.html'">
+                    Sign In
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M4.1665 10H15.8332" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M10 4.16667L15.8333 10L10 15.8333" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <button class="btn btn--primary" onclick="window.location.href='register.html'">
+                    Get Started
+                </button>
+            </div>
+
+            <div class="mobile-toggle" onclick="toggleMobileMenu()" aria-label="Toggle mobile menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Legal Header -->
+        <section class="legal-header">
+            <div class="container">
+                <span class="badge">Legal</span>
+                <h1 class="legal-header__title">Privacy Policy</h1>
+                <p class="legal-header__subtitle">myPilotPost · Effective Date: February 07, 2026</p>
+            </div>
+        </section>
+
+        <!-- Legal Content -->
+        <div class="legal-content">
+            <!-- Company Information -->
+            <div class="legal-section">
+                <p class="legal-section__text"><strong>Thuthu (Pty) Ltd</strong> · Registration Number: 2025/102758/07</p>
+                <p class="legal-section__text">23 Fielding Crescent, Mondeor Green, Johannesburg, Gauteng, 2091, South Africa</p>
+            </div>
+
+            <div class="legal-divider"></div>
+
+            <!-- 1. Introduction -->
+            <div class="legal-section">
+                <h2 class="legal-section__title">1. Introduction</h2>
+                <p class="legal-section__text">Welcome to myPilotPost. This Privacy Policy explains how Thuthu (Pty) Ltd ("we," "us," "our," or "myPilotPost"), registered in South Africa, collects, uses, discloses, and protects your personal information.</p>
+                <p class="legal-section__text">This Privacy Policy complies with:</p>
+                <ul class="legal-section__list">
+                    <li>The Protection of Personal Information Act, 2013 (POPIA) - South Africa</li>
+                    <li>The General Data Protection Regulation (GDPR) - European Union (for EU residents)</li>
+                    <li>Other applicable data protection laws and regulations</li>
+                </ul>
+                <p class="legal-section__text">By using myPilotPost services, you agree to the collection and use of information in accordance with this policy.</p>
+            </div>
+
+            <!-- 2. Information Officer & Contact Details -->
+            <div class="legal-section">
+                <h2 class="legal-section__title">2. Information Officer & Contact Details</h2>
+                <p class="legal-section__text"><strong>Company Name:</strong> Thuthu (Pty) Ltd t/a myPilotPost</p>
+                <p class="legal-section__text"><strong>Registration Number:</strong> 2025/102758/07</p>
+                <p class="legal-section__text"><strong>Registered Address:</strong> 23 Fielding Crescent, Mondeor Green, Johannesburg, Gauteng, 2091, South Africa</p>
+                <p class="legal-section__text"><strong>Email:</strong> legal@mypilotpost.com</p>
+                <p class="legal-section__text"><strong>Information Officer:</strong> Littchel Nhlalo Mathuthu</p>
+            </div>
+
+            <!-- 3. Information We Collect -->
+            <div class="legal-section">
+                <h2 class="legal-section__title">3. Information We Collect</h2>
+                
+                <h3 class="legal-section__subtitle">3.1 Personal Information</h3>
+                <p class="legal-section__text">We may collect the following types of personal information:</p>
+                <ul class="legal-section__list">
+                    <li>Name and surname</li>
+                    <li>Email address</li>
+                    <li>Phone number</li>
+                    <li>Postal and physical address</li>
+                    <li>Company name and details</li>
+                    <li>Job title and role</li>
+                    <li>Date of birth</li>
+                    <li>Identity or passport number (where legally required)</li>
+                    <li>Financial and payment information</li>
+                    <li>Social media account information (if you connect your accounts)</li>
+                    <li>Profile picture and other content you provide</li>
+                </ul>
+
+                <h3 class="legal-section__subtitle">3.2 Usage Information</h3>
+                <p class="legal-section__text">We automatically collect information about how you use our services:</p>
+                <ul class="legal-section__list">
+                    <li>IP address and device information</li>
+                    <li>Browser type and version</li>
+                    <li>Operating system</li>
+                    <li>Pages visited and time spent on our platform</li>
+                    <li>Referring/exit pages</li>
+                    <li>Clickstream data</li>
+                    <li>Cookies and similar tracking technologies</li>
+                    <li>Location data (with your permission)</li>
+                </ul>
+            </div>
+
+            <!-- 4. How We Use Your Information -->
+            <div class="legal-section">
+                <h2 class="legal-section__title">4. How We Use Your Information</h2>
+                <p class="legal-section__text">We use your personal information for the following purposes:</p>
+                <ul class="legal-section__list">
+                    <li>To provide, maintain, and improve our services</li>
+                    <li>To process transactions and send related information</li>
+                    <li>To send you technical notices, updates, security alerts, and support messages</li>
+                    <li>To respond to your comments, questions, and customer service requests</li>
+                    <li>To communicate with you about products, services, offers, and events</li>
+                    <li>To monitor and analyze trends, usage, and activities</li>
+                    <li>To detect, prevent, and address technical issues and fraudulent activity</li>
+                    <li>To comply with legal obligations and protect our rights</li>
+                    <li>To personalize and improve your experience</li>
+                    <li>For any other purpose with your consent</li>
+                </ul>
+            </div>
+
+            <!-- 5. Legal Basis for Processing (GDPR) -->
+            <div class="legal-section">
+                <h2 class="legal-section__title">5. Legal Basis for Processing (GDPR)</h2>
+                <p class="legal-section__text">For EU residents, we process your personal data based on the following legal grounds:</p>
+                <ul class="legal-section__list">
+                    <li><strong>Consent:</strong> You have given clear consent for us to process your personal data for specific purposes</li>
+                    <li><strong>Contract:</strong> Processing is necessary for a contract we have with you</li>
+                    <li><strong>Legal obligation:</strong> Processing is necessary for us to comply with the law</li>
+                    <li><strong>Legitimate interests:</strong> Processing is necessary for our legitimate interests</li>
+                </ul>
+            </div>
+
+            <!-- GDPR Compliance Highlight -->
+            <div class="legal-highlight">
+                <h3 class="legal-highlight__title">📋 GDPR Compliance</h3>
+                <p class="legal-section__text">myPilotPost is fully compliant with GDPR requirements for EU residents. We have implemented appropriate safeguards including Standard Contractual Clauses for international data transfers.</p>
+                <p class="legal-section__text">For more details, view our <a href="gdpr-compliance.html" style="color: var(--primary-blue); text-decoration: none;">GDPR Compliance Statement</a>.</p>
+            </div>
+
+            <!-- 6. Information Sharing -->
+            <div class="legal-section">
+                <h2 class="legal-section__title">6. Information Sharing and Disclosure</h2>
+                <p class="legal-section__text">We may share your information in the following circumstances:</p>
+                <ul class="legal-section__list">
+                    <li><strong>Service Providers:</strong> With third-party vendors who perform services on our behalf</li>
+                    <li><strong>Business Transfers:</strong> In connection with any merger, sale, or acquisition</li>
+                    <li><strong>Legal Requirements:</strong> To comply with applicable laws and regulations</li>
+                    <li><strong>Protection of Rights:</strong> To protect the rights, property, or safety of myPilotPost</li>
+                    <li><strong>With Your Consent:</strong> With your explicit consent or at your direction</li>
+                </ul>
+                <p class="legal-section__text" style="font-weight: 500; color: var(--primary-blue);"><strong>We do not sell your personal information to third parties.</strong></p>
+            </div>
+
+            <!-- 7. Data Security -->
+            <div class="legal-section">
+                <h2 class="legal-section__title">7. Data Security</h2>
+                <p class="legal-section__text">We implement appropriate technical and organizational security measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction. These measures include:</p>
+                <ul class="legal-section__list">
+                    <li>Encryption of data in transit and at rest</li>
+                    <li>Regular security assessments and audits</li>
+                    <li>Access controls and authentication mechanisms</li>
+                    <li>Employee training on data protection</li>
+                    <li>Incident response and breach notification procedures</li>
+                    <li>Regular backups and disaster recovery plans</li>
+                </ul>
+            </div>
+
+            <!-- 8. Your Privacy Rights -->
+            <div class="legal-section">
+                <h2 class="legal-section__title">8. Your Privacy Rights</h2>
+                
+                <h3 class="legal-section__subtitle">8.1 Rights Under POPIA (South African Users)</h3>
+                <ul class="legal-section__list">
+                    <li>Request access to your personal information</li>
+                    <li>Request correction of inaccurate information</li>
+                    <li>Object to the processing of your personal information</li>
+                    <li>Request deletion of your personal information</li>
+                    <li>Lodge a complaint with the Information Regulator</li>
+                </ul>
+
+                <h3 class="legal-section__subtitle">8.2 Rights Under GDPR (EU Users)</h3>
+                <ul class="legal-section__list">
+                    <li>Right to access your personal data</li>
+                    <li>Right to rectification of inaccurate data</li>
+                    <li>Right to erasure ("right to be forgotten")</li>
+                    <li>Right to restrict processing</li>
+                    <li>Right to data portability</li>
+                    <li>Right to object to processing</li>
+                    <li>Right to withdraw consent at any time</li>
+                    <li>Right to lodge a complaint with your local supervisory authority</li>
+                </ul>
+
+                <div class="legal-highlight" style="margin-top: var(--space-unit);">
+                    <p class="legal-section__text"><strong>To exercise your rights:</strong> Email us at <strong>legal@mypilotpost.com</strong>. We will respond within 30 days.</p>
+                </div>
+            </div>
+
+            <!-- 9. Cookies -->
+            <div class="legal-section">
+                <h2 class="legal-section__title">9. Cookies and Tracking Technologies</h2>
+                <p class="legal-section__text">We use cookies and similar tracking technologies. Types of cookies we use:</p>
+                <ul class="legal-section__list">
+                    <li><strong>Essential Cookies:</strong> Necessary for operation of our service</li>
+                    <li><strong>Preference Cookies:</strong> Remember your preferences</li>
+                    <li><strong>Analytics Cookies:</strong> Help us understand usage</li>
+                    <li><strong>Marketing Cookies:</strong> Used to deliver relevant advertisements</li>
+                </ul>
+            </div>
+
+            <!-- 10. Complaints -->
+            <div class="legal-section">
+                <h2 class="legal-section__title">10. Complaints and Regulatory Authorities</h2>
+                <p class="legal-section__text"><strong>South African Users:</strong> Information Regulator (South Africa)</p>
+                <p class="legal-section__text">Email: inforegulator@justice.gov.za · Website: www.justice.gov.za/inforeg</p>
+                <p class="legal-section__text"><strong>EU Users:</strong> Your local data protection supervisory authority</p>
+            </div>
+
+            <!-- Footer Note -->
+            <div class="legal-footer-note">
+                <p>© 2026 Thuthu (Pty) Ltd t/a myPilotPost. All rights reserved.</p>
+                <p style="margin-top: 8px;">This Privacy Policy is governed by the laws of South Africa. Last updated: February 07, 2026</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer__grid">
+                <div>
+                    <div class="footer__logo" aria-label="myPilotPost Logo"></div>
+                    <p class="footer__tagline">Unified content marketing platform</p>
+                    <div class="social-links">
+                        <a href="#" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M18 2H15C13.6739 2 12.4021 2.52678 11.4645 3.46447C10.5268 4.40215 10 5.67392 10 7V10H7V14H10V22H14V14H17L18 10H14V7C14 6.73478 14.1054 6.48043 14.2929 6.29289C14.4804 6.10536 14.7348 6 15 6H18V2Z"/>
+                            </svg>
+                        </a>
+                        <a href="#" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="2" y="2" width="20" height="20" rx="5" stroke="white" stroke-width="1.5"/>
+                                <circle cx="18" cy="6" r="1.5" fill="white"/>
+                                <circle cx="12" cy="12" r="4" stroke="white" stroke-width="1.5"/>
+                            </svg>
+                        </a>
+                        <a href="#" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M16 8C17.5913 8 19.1174 8.63214 20.2426 9.75736C21.3679 10.8826 22 12.4087 22 14V21H18V14C18 13.4696 17.7893 12.9609 17.4142 12.5858C17.0391 12.2107 16.5304 12 16 12C15.4696 12 14.9609 12.2107 14.5858 12.5858C14.2107 12.9609 14 13.4696 14 14V21H10V14C10 12.4087 10.6321 10.8826 11.7574 9.75736C12.8826 8.63214 14.4087 8 16 8Z"/>
+                                <path d="M6 9H2V21H6V9Z"/>
+                                <circle cx="4" cy="4" r="2" fill="white"/>
+                            </svg>
+                        </a>
+                        <a href="#" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 2C6.48 2 2 6.48 2 12C2 16.84 5.44 20.87 10 21.8V15H8V12H10V9.5C10 6.9 11.9 5 14.5 5C15.03 5 16 5.1 16 5.1V8H15.5C14.5 8 14 8.5 14 9.5V12H16L15.5 15H14V21.8C18.56 20.87 22 16.84 22 12C22 6.48 17.52 2 12 2Z"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <h6 class="footer__column-title">PRODUCT</h6>
+                    <a href="features.html" class="footer__link">Features</a>
+                    <a href="solutions.html" class="footer__link">Solutions</a>
+                    <a href="#" class="footer__link">Pricing</a>
+                    <a href="#" class="footer__link">Integrations</a>
+                </div>
+
+                <div>
+                    <h6 class="footer__column-title">RESOURCES</h6>
+                    <a href="resources.html" class="footer__link">Blog</a>
+                    <a href="resources.html" class="footer__link">News & Updates</a>
+                    <a href="resources.html" class="footer__link">Training</a>
+                    <a href="mailto:support@mypilotpost.com" class="footer__link">Request a Feature</a>
+                </div>
+
+                <div>
+                    <h6 class="footer__column-title">COMPANY</h6>
+                    <a href="#" class="footer__link">About Us</a>
+                    <a href="mailto:support@mypilotpost.com" class="footer__link">Support</a>
+                    <a href="images/PAIA_Manual.pdf" class="footer__link">PAIA_Manual</a>
+                    <a href="privacy-policy.html" class="footer__link">Privacy Policy</a>
+                    <a href="refund-policy.html" class="footer__link">Refund Policy</a>
+                    <a href="terms%20and%20conditions.html" class="footer__link">Terms of Service</a>
+                    <a href="gdpr-compliance.html" class="footer__link">GDPR Compliance</a>
+                </div>
+            </div>
+
+            <div class="footer__divider"></div>
+            <p class="footer__copyright">© 2026 myPilotPost. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            menu.classList.toggle('active');
+            document.body.style.overflow = menu.classList.contains('active') ? 'hidden' : 'auto';
+        }
+
+        function closeMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            menu.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        document.addEventListener('click', function(event) {
+            const menu = document.getElementById('mobileMenu');
+            const toggle = document.querySelector('.mobile-toggle');
+            
+            if (!menu.contains(event.target) && !toggle.contains(event.target) && menu.classList.contains('active')) {
+                closeMobileMenu();
+            }
+        });
+
+        document.querySelectorAll('.mobile-menu__item, .mobile-menu__buttons .btn').forEach(link => {
+            link.addEventListener('click', closeMobileMenu);
+        });
+    </script>
+</body>
+</html>
