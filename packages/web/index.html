@@ -329,6 +329,67 @@
             line-height: 24px;
         }
 
+        /* Blog Cards - Matching resources.html style */
+        .blog-card {
+            background: var(--white);
+            border: 0.5px solid var(--border-gray);
+            border-radius: var(--radius-medium);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .blog-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 30px rgba(0, 0, 0, 0.05);
+        }
+
+        .blog-card__image {
+            height: 200px;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        .blog-card__content {
+            padding: var(--space-onehalf);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .blog-card__meta {
+            font-size: 14px;
+            color: var(--text-gray);
+            margin-bottom: var(--space-half);
+        }
+
+        .blog-card__title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: var(--space-unit);
+            line-height: 1.3;
+        }
+
+        .blog-card__excerpt {
+            color: var(--text-gray);
+            margin-bottom: var(--space-unit);
+            line-height: 1.5;
+            flex: 1;
+        }
+
+        .blog-card .btn {
+            align-self: flex-start;
+            margin-top: auto;
+        }
+
+        .blog-card a {
+            text-decoration: none;
+            color: inherit;
+        }
+
         /* Feature Cards with Icons */
         .feature-card {
             background: var(--white);
@@ -373,6 +434,7 @@
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
+            cursor: pointer;
         }
 
         .nav-menu {
@@ -600,6 +662,36 @@
             z-index: 10;
         }
 
+        /* Loading States */
+        .loading {
+            text-align: center;
+            padding: var(--space-four);
+            color: var(--text-gray);
+            grid-column: 1 / -1;
+        }
+
+        .loading-spinner {
+            border: 4px solid var(--light-gray);
+            border-top: 4px solid var(--primary-blue);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto var(--space-unit);
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            text-align: center;
+            padding: var(--space-four);
+            color: #EF4444;
+            grid-column: 1 / -1;
+        }
+
         /* Footer */
         .footer {
             background: #002F86;
@@ -623,6 +715,7 @@
             background-repeat: no-repeat;
             background-position: left;
             margin-bottom: var(--space-unit);
+            cursor: pointer;
         }
 
         .footer__tagline {
@@ -808,7 +901,7 @@
         <a href="solutions.html" class="mobile-menu__item">Solutions</a>
         <a href="resources.html" class="mobile-menu__item">Resources</a>
         <div class="mobile-menu__buttons">
-            <a href="sign-in.html"><button class="btn btn--secondary">Sign In →</button></a>
+            <a href="signin.html"><button class="btn btn--secondary">Sign In →</button></a>
             <a href="register.html"><button class="btn btn--primary">Get Started</button></a>
         </div>
     </div>
@@ -816,7 +909,7 @@
     <!-- Header -->
     <header class="header">
         <div class="container header__container">
-            <a href="index.html" class="nav-menu__item"><div class="logo" aria-label="myPilotPost Logo"></div></a>
+            <div class="logo" onclick="window.location.href='index.html'" aria-label="myPilotPost Logo"></div>
             
             <nav class="nav-menu" aria-label="Main Navigation">
                 <a href="index.html" class="nav-menu__item">Home</a>
@@ -826,7 +919,7 @@
             </nav>
 
             <div class="header__buttons">
-                <button class="btn btn--secondary" onclick="window.location.href='sign-in.html'">
+                <button class="btn btn--secondary" onclick="window.location.href='signin.html'">
                     Sign In
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M4.1665 10H15.8332" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1027,68 +1120,22 @@
             </div>
         </section>
 
-        <!-- Latest Articles -->
+        <!-- Latest Articles - Now with 6 Dynamic Blog Posts -->
         <section class="section">
             <div class="container">
                 <h2 class="text-center">News & Updates</h2>
-                <div class="grid-3" style="margin-top: var(--space-four);">
-                    <div class="card" style="padding: 0; overflow: hidden;">
-                        <div style="height: 200px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
-                        <div style="padding: var(--space-onehalf);">
-                            <p class="body-text" style="margin-bottom: var(--space-half);">by Admin February 9, 2026</p>
-                            <h5>Managing content across channels</h5>
-                            <button class="btn btn--secondary" style="margin-top: var(--space-unit);">Read more</button>
-                        </div>
+                <div id="blog-list" class="grid-3" style="margin-top: var(--space-four); min-height: 400px;">
+                    <!-- Loading state will be shown here -->
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        <p>Loading latest articles...</p>
                     </div>
-
-                    <div class="card" style="padding: 0; overflow: hidden;">
-                        <div style="height: 200px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);"></div>
-                        <div style="padding: var(--space-onehalf);">
-                            <p class="body-text" style="margin-bottom: var(--space-half);">by Admin February 3, 2026</p>
-                            <h5>Content systems vs tools</h5>
-                            <button class="btn btn--secondary" style="margin-top: var(--space-unit);">Read more</button>
-                        </div>
-                    </div>
-
-                    <div class="card" style="padding: 0; overflow: hidden;">
-                        <div style="height: 200px; background: linear-gradient(135deg, #10b981 0%, #059669 100%);"></div>
-                        <div style="padding: var(--space-onehalf);">
-                            <p class="body-text" style="margin-bottom: var(--space-half);">by Admin January 28, 2026</p>
-                            <h5>Building repeatable workflows</h5>
-                            <button class="btn btn--secondary" style="margin-top: var(--space-unit);">Read more</button>
-                        </div>
-                    </div>
-
-                    <div class="card" style="padding: 0; overflow: hidden;">
-                        <div style="height: 200px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);"></div>
-                        <div style="padding: var(--space-onehalf);">
-                            <p class="body-text" style="margin-bottom: var(--space-half);">by Admin January 18, 2026</p>
-                            <h5>Planning social and blog together</h5>
-                            <button class="btn btn--secondary" style="margin-top: var(--space-unit);">Read more</button>
-                        </div>
-                    </div>
-
-                    <div class="card" style="padding: 0; overflow: hidden;">
-                        <div style="height: 200px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);"></div>
-                        <div style="padding: var(--space-onehalf);">
-                            <p class="body-text" style="margin-bottom: var(--space-half);">by Admin January 11, 2026</p>
-                            <h5>Campaign-led content planning</h5>
-                            <button class="btn btn--secondary" style="margin-top: var(--space-unit);">Read more</button>
-                        </div>
-                    </div>
-
-                    <div class="card" style="padding: 0; overflow: hidden;">
-                        <div style="height: 200px; background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);"></div>
-                        <div style="padding: var(--space-onehalf);">
-                            <p class="body-text" style="margin-bottom: var(--space-half);">by Admin January 7, 2026</p>
-                            <h5>Team collaboration on content</h5>
-                            <button class="btn btn--secondary" style="margin-top: var(--space-unit);">Read more</button>
-                        </div>
-                    </div>
+                </div>
+                <div class="text-center" style="margin-top: var(--space-three);">
+                    <a href="resources.html" class="btn btn--secondary">View all articles →</a>
                 </div>
             </div>
         </section>
-
     </main>
 
     <!-- Footer -->
@@ -1096,7 +1143,7 @@
         <div class="container">
             <div class="footer__grid">
                 <div>
-                    <div class="footer__logo" aria-label="myPilotPost Logo"></div>
+                    <div class="footer__logo" onclick="window.location.href='index.html'" aria-label="myPilotPost Logo"></div>
                     <p class="footer__tagline">Unified content marketing platform</p>
                     <div class="social-links">
                         <a href="#" class="social-link" target="_blank">
@@ -1111,7 +1158,7 @@
                                 <circle cx="12" cy="12" r="4" stroke="white" stroke-width="1.5"/>
                             </svg>
                         </a>
-                        <a href="#" class="social-link" target="_blank">
+                        <a href="https://www.linkedin.com/company/mypilotpost" class="social-link" target="_blank">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M16 8C17.5913 8 19.1174 8.63214 20.2426 9.75736C21.3679 10.8826 22 12.4087 22 14V21H18V14C18 13.4696 17.7893 12.9609 17.4142 12.5858C17.0391 12.2107 16.5304 12 16 12C15.4696 12 14.9609 12.2107 14.5858 12.5858C14.2107 12.9609 14 13.4696 14 14V21H10V14C10 12.4087 10.6321 10.8826 11.7574 9.75736C12.8826 8.63214 14.4087 8 16 8Z"/>
                                 <path d="M6 9H2V21H6V9Z"/>
@@ -1136,9 +1183,9 @@
 
                 <div>
                     <h6 class="footer__column-title">RESOURCES</h6>
-                    <a href="resources.html" class="footer__link">Training</a>
-                    <a href="resources.html" class="footer__link">News & Updates</a>
                     <a href="resources.html" class="footer__link">Blog</a>
+                    <a href="resources.html" class="footer__link">News & Updates</a>
+                    <a href="resources.html" class="footer__link">Training</a>
                     <a href="mailto:support@mypilotpost.com" class="footer__link">Request a Feature</a>
                 </div>
 
@@ -1147,9 +1194,9 @@
                     <a href="#" class="footer__link">About Us</a>
                     <a href="mailto:support@mypilotpost.com" class="footer__link">Support</a>
                     <a href="images/PAIA_Manual.pdf" class="footer__link">PAIA_Manual</a>
-                    <a href="privacy%20policy.html" class="footer__link">Privacy Policy</a>
+                    <a href="privacy-policy.html" class="footer__link">Privacy Policy</a>
                     <a href="refund-policy.html" class="footer__link">Refund Policy</a>
-                    <a href="terms%20and%20conditions.html" class="footer__link">Terms of Service</a>
+                    <a href="terms-and-conditions.html" class="footer__link">Terms of Service</a>
                     <a href="gdpr-compliance.html" class="footer__link">GDPR Compliance</a>
                 </div>
             </div>
@@ -1161,6 +1208,9 @@
 
     <!-- JavaScript -->
     <script>
+        // Base API URL
+        const API_BASE = "https://mypilotpost-api.littchel.workers.dev";
+
         // Mobile Menu Toggle
         function toggleMobileMenu() {
             const menu = document.getElementById('mobileMenu');
@@ -1217,6 +1267,74 @@
             el.style.transform = 'translateY(30px)';
             observer.observe(el);
         });
+
+        // Blog Loading Function - Updated to use correct marketing blog endpoint
+        async function loadBlogPosts() {
+            const container = document.getElementById('blog-list');
+            
+            try {
+                // Using the correct PUBLIC MARKETING BLOG endpoint
+                const res = await fetch(`${API_BASE}/api/public/marketing/blog`);
+                
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
+                
+                const data = await res.json();
+
+                if (!data.posts || data.posts.length === 0) {
+                    container.innerHTML = `
+                        <div class="error-message">
+                            <p>No articles found.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Format date function
+                function formatDate(dateString) {
+                    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+                    return new Date(dateString).toLocaleDateString('en-US', options);
+                }
+
+                // Take first 6 posts for homepage
+                const posts = data.posts.slice(0, 6);
+
+                // Render posts
+                container.innerHTML = posts.map(post => `
+                    <article class="blog-card animate-fadeInUp">
+                        <a href="blog-post.html?slug=${post.slug}" style="text-decoration: none; color: inherit; display: flex; flex-direction: column; height: 100%;">
+                            <div class="blog-card__image" style="background-image: url('${post.featured_image || 'https://via.placeholder.com/400x200?text=myPilotPost'}');"></div>
+                            <div class="blog-card__content">
+                                <p class="blog-card__meta">by ${post.author || 'myPilotPost Team'} · ${formatDate(post.published_at)}</p>
+                                <h4 class="blog-card__title">${post.title}</h4>
+                                <p class="blog-card__excerpt">${post.excerpt || ''}</p>
+                                <span class="btn btn--secondary" style="align-self: flex-start; margin-top: auto; pointer-events: none;">Read more</span>
+                            </div>
+                        </a>
+                    </article>
+                `).join('');
+
+                // Re-observe animation elements
+                const newAnimateElements = document.querySelectorAll('.blog-card');
+                newAnimateElements.forEach(el => {
+                    el.style.opacity = '0';
+                    el.style.transform = 'translateY(30px)';
+                    observer.observe(el);
+                });
+
+            } catch (error) {
+                console.error('Error loading blog posts:', error);
+                container.innerHTML = `
+                    <div class="error-message">
+                        <p>Failed to load latest articles. Please try again later.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Load blog posts when page loads
+        document.addEventListener('DOMContentLoaded', loadBlogPosts);
     </script>
 </body>
 </html>

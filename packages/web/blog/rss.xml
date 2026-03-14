@@ -1,0 +1,17 @@
+
+<rss version="2.0">
+  <channel>
+    <title>myPilotPost Blog</title>
+    <link>https://www.mypilotpost.com</link>
+    <description>Marketing insights from myPilotPost</description>
+    
+    <item>
+      <title><![CDATA[Marketing Blog Test]]></title>
+      <link>https://www.mypilotpost.com/blog/marketing-blog-test.html</link>
+      <guid>https://www.mypilotpost.com/blog/marketing-blog-test.html</guid>
+      <pubDate>Wed, 18 Feb 2026 00:00:00 GMT</pubDate>
+      <description><![CDATA[This is a marketing blog test.]]></description>
+    </item>
+  
+  </channel>
+</rss>

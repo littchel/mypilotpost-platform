@@ -1,0 +1,13 @@
+[
+  {
+    "slug": "marketing-blog-test",
+    "title": "Marketing Blog Test",
+    "excerpt": "This is a marketing blog test.",
+    "content_html": "<p>Hello marketing world.</p>",
+    "featured_image": "",
+    "category": "Marketing",
+    "status": "published",
+    "published_at": "2026-02-18",
+    "updated_at": "2026-02-18"
+  }
+]

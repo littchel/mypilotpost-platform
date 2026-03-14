@@ -1,598 +1,1409 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loading... - myPilotPost Blog</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- DYNAMIC SEO META (filled by JS) -->
+  <title id="page-title">Loading... | myPilotPost</title>
+  <meta name="description" content="" id="meta-description">
+  <meta name="author" content="myPilotPost Team" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" id="canonical-link" href="">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="" id="og-title">
+  <meta property="og:description" content="" id="og-description">
+  <meta property="og:image" content="" id="og-image">
+  <meta property="og:url" content="" id="og-url">
+  <meta property="og:site_name" content="myPilotPost" />
+  <meta property="article:published_time" content="" id="article-published">
+  <meta property="article:author" content="myPilotPost Team" />
+  <meta property="article:section" content="Content Strategy" />
+  <meta property="article:tag" content="" id="article-tags">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="" id="twitter-title">
+  <meta name="twitter:description" content="" id="twitter-description">
+  <meta name="twitter:image" content="" id="twitter-image">
+
+  <!-- Schema.org injected via JS -->
+
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-7GC6L0L70Y"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-7GC6L0L70Y');
+  </script>
+
+  <!-- Amplitude Analytics -->
+  <script src="https://cdn.amplitude.com/script/f7401bdea912bc72ef6a607bdf8aba75.js"></script>
+  <script>
+    window.amplitude.add(window.sessionReplay.plugin({sampleRate: 1}));
+    window.amplitude.init('f7401bdea912bc72ef6a607bdf8aba75', {
+      "fetchRemoteConfig": true,
+      "autocapture": {
+        "attribution": true,
+        "fileDownloads": true,
+        "formInteractions": true,
+        "pageViews": true,
+        "sessions": true,
+        "elementInteractions": true,
+        "networkTracking": true,
+        "webVitals": true,
+        "frustrationInteractions": {
+          "thrashedCursor": true,
+          "errorClicks": true,
+          "deadClicks": true,
+          "rageClicks": true
+        }
+      }
+    });
+  </script>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="/images/favicon-32x32.png">
+
+  <!-- Styles - myPilotPost Brand Guidelines -->
+  <style>
+    /* ===== CSS RESET ===== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      line-height: 1.15;
+      -webkit-text-size-adjust: 100%;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      font-weight: 400;
+      color: #646565;
+      background: #ffffff;
+      overflow-x: hidden;
+      font-size: 16px;
+      line-height: 24px;
+    }
+
+    /* ===== CSS VARIABLES - myPilotPost Brand ===== */
+    :root {
+      /* Colors */
+      --primary-blue: #2563EB;
+      --dark-blue: #1D4ED8;
+      --text-dark: #000000;
+      --text-gray: #646565;
+      --light-gray: #EEF0F1;
+      --border-gray: #CECECE;
+      --white: #FFFFFF;
+      --success-green: #35C961;
+      
+      /* Typography */
+      --h1-size: 61px;
+      --h2-size: 49px;
+      --h3-size: 39px;
+      --h4-size: 31px;
+      --h5-size: 25px;
+      --h6-size: 20px;
+      --body-size: 16px;
+      
+      /* Spacing */
+      --space-unit: 16px;
+      --space-half: 8px;
+      --space-onehalf: 24px;
+      --space-two: 32px;
+      --space-three: 48px;
+      --space-four: 64px;
+      --space-five: 80px;
+      --space-six: 96px;
+      
+      /* Border Radius */
+      --radius-small: 4px;
+      --radius-medium: 8px;
+      --radius-large: 14px;
+      --radius-xl: 24px;
+      --radius-round: 50%;
+      
+      /* Container */
+      --container-width: 1280px;
+      --container-padding: 20px;
+      --max-content: 740px;
+    }
+
+    /* ===== UTILITY CLASSES ===== */
+    .container {
+      max-width: var(--container-width);
+      margin: 0 auto;
+      padding: 0 var(--container-padding);
+      width: 100%;
+    }
+
+    .section {
+      padding: var(--space-five) 0;
+      width: 100%;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 8px 20px;
+      background: rgba(239, 246, 255, 1);
+      border: 0.5px solid var(--border-gray);
+      border-radius: var(--radius-large);
+      color: var(--text-gray);
+      font-size: 16px;
+      margin-bottom: var(--space-onehalf);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: var(--radius-medium);
+      font-weight: 500;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: none;
+      text-decoration: none;
+    }
+
+    .btn--primary {
+      background: var(--primary-blue);
+      color: var(--white);
+    }
+
+    .btn--primary:hover {
+      background: var(--dark-blue);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(37, 99, 235, 0.3);
+    }
+
+    .btn--secondary {
+      background: transparent;
+      border: 1px solid var(--border-gray);
+      color: var(--text-gray);
+    }
+
+    .btn--secondary:hover {
+      background: var(--light-gray);
+      transform: translateY(-2px);
+    }
+
+    /* Typography */
+    h1, .h1 {
+      font-size: var(--h1-size);
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: var(--space-onehalf);
+      color: var(--text-dark);
+    }
+
+    h2, .h2 {
+      font-size: var(--h2-size);
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: var(--space-onehalf);
+      color: var(--text-dark);
+    }
+
+    h3, .h3 {
+      font-size: var(--h3-size);
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--text-dark);
+    }
+
+    h4, .h4 {
+      font-size: var(--h4-size);
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--text-dark);
+    }
+
+    h5, .h5 {
+      font-size: var(--h5-size);
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--text-dark);
+    }
+
+    h6, .h6 {
+      font-size: var(--h6-size);
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--text-dark);
+    }
+
+    /* ===== HEADER STYLES ===== */
+    .header {
+      position: sticky;
+      top: 0;
+      background: var(--white);
+      box-shadow: 0 2px 20px rgba(0, 0, 0, 0.05);
+      z-index: 1000;
+      padding: 20px 0;
+      height: 100px;
+    }
+
+    .header__container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      width: 272px;
+      height: 54px;
+      background-image: url('/images/myPilotPost-Logo.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      cursor: pointer;
+    }
+
+    .nav-menu {
+      display: flex;
+      gap: 28px;
+      align-items: center;
+    }
+
+    .nav-menu__item {
+      font-size: 18px;
+      color: var(--text-gray);
+      cursor: pointer;
+      transition: color 0.3s;
+      text-decoration: none;
+    }
+
+    .nav-menu__item:hover,
+    .nav-menu__item--active {
+      color: var(--primary-blue);
+      font-weight: 500;
+    }
+
+    .header__buttons {
+      display: flex;
+      gap: 20px;
+    }
+
+    .mobile-toggle {
+      display: none;
+      flex-direction: column;
+      cursor: pointer;
+      padding: 10px;
+    }
+
+    .mobile-toggle span {
+      width: 25px;
+      height: 3px;
+      background: var(--text-dark);
+      margin: 3px 0;
+      transition: 0.3s;
+    }
+
+    .mobile-menu {
+      display: none;
+      position: fixed;
+      top: 0;
+      right: -100%;
+      width: 80%;
+      max-width: 400px;
+      height: 100vh;
+      background: var(--white);
+      box-shadow: -2px 0 20px rgba(0, 0, 0, 0.1);
+      z-index: 1001;
+      padding: 80px 30px;
+      transition: right 0.3s ease;
+    }
+
+    .mobile-menu.active {
+      right: 0;
+    }
+
+    .mobile-menu__item {
+      display: block;
+      padding: 15px 0;
+      font-size: 18px;
+      color: var(--text-dark);
+      text-decoration: none;
+      border-bottom: 1px solid var(--border-gray);
+    }
+
+    .mobile-menu__buttons {
+      margin-top: 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    /* ===== ARTICLE HEADER ===== */
+    .article-header {
+      background: var(--dark-blue);
+      color: var(--white);
+      padding: 60px 24px 56px;
+      text-align: center;
+    }
+
+    .article-header .category-tag {
+      display: inline-block;
+      background: var(--white);
+      color: var(--dark-blue);
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+
+    .article-header h1 {
+      font-family: 'Inter', sans-serif;
+      font-size: clamp(28px, 5vw, 46px);
+      font-weight: 700;
+      line-height: 1.2;
+      max-width: 720px;
+      margin: 0 auto 20px;
+      color: var(--white);
+    }
+
+    .article-header .deck {
+      font-family: 'Inter', sans-serif;
+      font-size: 18px;
+      color: rgba(255,255,255,0.85);
+      max-width: 580px;
+      margin: 0 auto 32px;
+      line-height: 1.6;
+    }
+
+    .article-meta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      color: rgba(255,255,255,0.7);
+      flex-wrap: wrap;
+    }
+
+    .article-meta span { 
+      display: flex; 
+      align-items: center; 
+      gap: 6px; 
+    }
+
+    /* ===== HERO IMAGE ===== */
+    .hero-image {
+      width: 100%;
+      max-height: 480px;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* ===== TABLE OF CONTENTS ===== */
+    .toc-wrapper {
+      max-width: var(--max-content);
+      margin: 48px auto 0;
+      padding: 0 24px;
+    }
+
+    .toc {
+      background: var(--light-gray);
+      border-left: 4px solid var(--primary-blue);
+      border-radius: 0 var(--radius-medium) var(--radius-medium) 0;
+      padding: 24px 28px;
+    }
+
+    .toc h2 {
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--primary-blue);
+      margin-bottom: 12px;
+    }
+
+    .toc ol {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .toc li {
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      color: var(--text-dark);
+    }
+
+    .toc li a { 
+      color: var(--text-dark); 
+      font-weight: 500; 
+      text-decoration: none;
+    }
     
-    <!-- Meta Tags for SEO - Will be updated dynamically -->
-    <meta name="description" content="">
-    <meta name="author" content="myPilotPost">
+    .toc li a:hover { 
+      color: var(--primary-blue); 
+      text-decoration: underline; 
+    }
+
+    /* ===== ARTICLE BODY ===== */
+    .article-body {
+      max-width: var(--max-content);
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      line-height: 24px;
+      color: var(--text-gray);
+    }
+
+    .article-body p {
+      margin-bottom: 1.5em;
+    }
+
+    .article-body h2 {
+      font-family: 'Inter', sans-serif;
+      font-size: 31px;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin: 56px 0 20px;
+      line-height: 1.3;
+    }
+
+    .article-body h3 {
+      font-family: 'Inter', sans-serif;
+      font-size: 25px;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin: 36px 0 12px;
+    }
+
+    .article-body h4 {
+      font-family: 'Inter', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--primary-blue);
+      margin: 28px 0 8px;
+    }
+
+    .article-body ul, .article-body ol {
+      padding-left: 24px;
+      margin-bottom: 1.5em;
+    }
+
+    .article-body li {
+      margin-bottom: 0.6em;
+      line-height: 1.65;
+    }
+
+    .article-body hr {
+      border: none;
+      border-top: 1px solid var(--border-gray);
+      margin: 48px 0;
+    }
+
+    .article-body img {
+      width: 100%;
+      border-radius: var(--radius-medium);
+      margin: 32px 0;
+      display: block;
+    }
+
+    .article-body strong { 
+      color: var(--text-dark); 
+    }
+
+    .article-body a {
+      color: var(--primary-blue);
+      text-decoration: none;
+    }
+
+    .article-body a:hover {
+      text-decoration: underline;
+    }
+
+    /* ===== PULL QUOTE ===== */
+    .pull-quote {
+      border-left: 4px solid var(--primary-blue);
+      margin: 40px 0;
+      padding: 20px 28px;
+      background: var(--light-gray);
+      border-radius: 0 var(--radius-medium) var(--radius-medium) 0;
+    }
+
+    .pull-quote p {
+      font-size: 22px;
+      font-style: italic;
+      color: var(--text-dark);
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    /* ===== CALLOUT BOX ===== */
+    .callout {
+      background: var(--light-gray);
+      border: 1px solid var(--border-gray);
+      border-radius: var(--radius-medium);
+      padding: 24px 28px;
+      margin: 36px 0;
+    }
+
+    .callout-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--primary-blue);
+      margin-bottom: 10px;
+    }
+
+    .callout p {
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      line-height: 1.65;
+      color: var(--text-gray);
+      margin: 0;
+    }
+
+    /* ===== FRAMEWORK STEPS ===== */
+    .framework {
+      margin: 40px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .framework-step {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    .step-number {
+      flex-shrink: 0;
+      width: 40px;
+      height: 40px;
+      background: var(--primary-blue);
+      color: var(--white);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      font-size: 16px;
+      margin-top: 2px;
+    }
+
+    .step-content h3 {
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+
+    .step-content p {
+      margin-bottom: 0.5em;
+      font-size: 17px;
+    }
+
+    /* ===== MISTAKES TABLE ===== */
+    .mistakes-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 28px 0;
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+    }
+
+    .mistakes-table th {
+      background: var(--dark-blue);
+      color: var(--white);
+      padding: 12px 16px;
+      text-align: left;
+      font-weight: 600;
+    }
+
+    .mistakes-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-gray);
+      vertical-align: top;
+      line-height: 1.55;
+    }
+
+    .mistakes-table tr:nth-child(even) td { 
+      background: var(--light-gray); 
+    }
+
+    .mistakes-table .mistake { 
+      color: #C0392B; 
+      font-weight: 600; 
+    }
     
-    <!-- Open Graph / Social Media Meta Tags -->
-    <meta property="og:title" content="">
-    <meta property="og:description" content="">
-    <meta property="og:type" content="article">
-    <meta property="og:url" content="">
-    <meta property="og:image" content="">
-    
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="">
-    <meta name="twitter:description" content="">
-    
-    <!-- Canonical URL -->
-    <link rel="canonical" href="">
-    
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" href="../images/favicon-32x32.png">
-    
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <style>
-        /* Copy all the same CSS from resources.html up to the main content area */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+    .mistakes-table .fix { 
+      color: var(--success-green); 
+    }
 
-        html {
-            line-height: 1.15;
-            -webkit-text-size-adjust: 100%;
-            scroll-behavior: smooth;
-        }
+    /* ===== CHECKLIST ===== */
+    .checklist {
+      list-style: none;
+      padding: 0;
+      margin: 24px 0;
+    }
 
-        body {
-            font-family: 'Inter', sans-serif;
-            font-weight: 300;
-            color: #1a1a1a;
-            background: #ffffff;
-            overflow-x: hidden;
-        }
+    .checklist li {
+      padding: 10px 0 10px 36px;
+      border-bottom: 1px solid var(--border-gray);
+      position: relative;
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      margin-bottom: 0;
+    }
 
-        :root {
-            --primary-blue: #2563EB;
-            --dark-blue: #1D4ED8;
-            --text-dark: #000000;
-            --text-gray: #646565;
-            --light-gray: #EEF0F1;
-            --border-gray: #CECECE;
-            --white: #FFFFFF;
-            --success-green: #35C961;
-            
-            --space-unit: 16px;
-            --space-half: 8px;
-            --space-onehalf: 24px;
-            --space-two: 32px;
-            --space-three: 48px;
-            --space-four: 64px;
-            --space-five: 80px;
-            
-            --radius-small: 4px;
-            --radius-medium: 8px;
-            --radius-large: 14px;
-            --radius-xl: 24px;
-            
-            --container-width: 1280px;
-            --container-padding: 20px;
-        }
+    .checklist li::before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: var(--success-green);
+      font-weight: 700;
+      font-size: 18px;
+    }
 
-        .container {
-            max-width: var(--container-width);
-            margin: 0 auto;
-            padding: 0 var(--container-padding);
-            width: 100%;
-        }
+    .checklist li:last-child { 
+      border-bottom: none; 
+    }
 
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 12px 24px;
-            border-radius: var(--radius-medium);
-            font-weight: 500;
-            font-size: 18px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: none;
-            text-decoration: none;
-        }
+    /* ===== PLATFORM GRID ===== */
+    .platform-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin: 28px 0;
+    }
 
-        .btn--primary {
-            background: var(--primary-blue);
-            color: var(--white);
-        }
+    .platform-card {
+      background: var(--light-gray);
+      border: 1px solid var(--border-gray);
+      border-radius: var(--radius-medium);
+      padding: 20px;
+    }
 
-        .btn--primary:hover {
-            background: var(--dark-blue);
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.3);
-        }
+    .platform-card h4 {
+      font-family: 'Inter', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin: 0 0 8px;
+    }
 
-        .btn--secondary {
-            background: transparent;
-            border: 1px solid var(--border-gray);
-            color: var(--text-gray);
-        }
+    .platform-card p {
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      color: var(--text-gray);
+      margin: 0;
+      line-height: 1.5;
+    }
 
-        .btn--secondary:hover {
-            background: var(--light-gray);
-            transform: translateY(-2px);
-        }
+    /* ===== CTA BLOCK ===== */
+    .cta-block {
+      background: var(--dark-blue);
+      color: var(--white);
+      border-radius: var(--radius-xl);
+      padding: 44px 40px;
+      text-align: center;
+      margin: 60px 0 0;
+    }
 
-        .header {
-            position: sticky;
-            top: 0;
-            background: var(--white);
-            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.05);
-            z-index: 1000;
-            padding: 20px 0;
-        }
+    .cta-block h2 {
+      font-size: 31px;
+      color: var(--white);
+      margin: 0 0 12px;
+      font-family: 'Inter', sans-serif;
+    }
 
-        .header__container {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
+    .cta-block p {
+      color: rgba(255,255,255,0.85);
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      margin: 0 0 28px;
+      line-height: 1.6;
+    }
 
-        .logo {
-            width: 272px;
-            height: 54px;
-            background-image: url('../images/myPilotPost-Logo.png');
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-position: center;
-            cursor: pointer;
-        }
+    .cta-block .btn--primary {
+      background: var(--white);
+      color: var(--primary-blue);
+    }
 
-        .nav-menu {
-            display: flex;
-            gap: 28px;
-            align-items: center;
-        }
+    .cta-block .btn--primary:hover {
+      background: var(--light-gray);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(255, 255, 255, 0.3);
+    }
 
-        .nav-menu__item {
-            font-size: 18px;
-            color: var(--text-gray);
-            cursor: pointer;
-            transition: color 0.3s;
-            text-decoration: none;
-        }
+    .cta-sub {
+      display: block;
+      margin-top: 12px;
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      color: rgba(255,255,255,0.6);
+    }
 
-        .nav-menu__item:hover {
-            color: var(--primary-blue);
-        }
+    /* ===== RELATED ARTICLES ===== */
+    .related {
+      max-width: var(--max-content);
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
 
-        .header__buttons {
-            display: flex;
-            gap: 20px;
-        }
+    .related h2 {
+      font-family: 'Inter', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-gray);
+      margin-bottom: 20px;
+    }
 
-        .mobile-toggle {
-            display: none;
-            flex-direction: column;
-            cursor: pointer;
-            padding: 10px;
-        }
+    .related-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+    }
 
-        .mobile-toggle span {
-            width: 25px;
-            height: 3px;
-            background: var(--text-dark);
-            margin: 3px 0;
-            transition: 0.3s;
-        }
+    .related-card {
+      border: 1px solid var(--border-gray);
+      border-radius: var(--radius-medium);
+      padding: 20px;
+      transition: all 0.3s ease;
+    }
 
-        .mobile-menu {
-            display: none;
-        }
+    .related-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 20px 30px rgba(0, 0, 0, 0.05);
+    }
 
-        /* Blog Post Styles */
-        .blog-post {
-            max-width: 800px;
-            margin: var(--space-five) auto;
-            padding: 0 var(--container-padding);
-        }
+    .related-card .tag {
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--primary-blue);
+      margin-bottom: 8px;
+    }
 
-        .blog-post__header {
-            margin-bottom: var(--space-three);
-        }
+    .related-card h3 {
+      font-family: 'Inter', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin: 0 0 8px;
+      line-height: 1.4;
+    }
 
-        .blog-post__title {
-            font-size: 48px;
-            font-weight: 700;
-            line-height: 1.2;
-            margin-bottom: var(--space-unit);
-        }
+    .related-card p {
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      color: var(--text-gray);
+      margin: 0 0 12px;
+      line-height: 1.5;
+    }
 
-        .blog-post__meta {
-            color: var(--text-gray);
-            font-size: 16px;
-            display: flex;
-            gap: var(--space-unit);
-            align-items: center;
-            flex-wrap: wrap;
-        }
+    .related-card a {
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--primary-blue);
+      text-decoration: none;
+    }
 
-        .blog-post__featured-image {
-            width: 100%;
-            height: 400px;
-            background-size: cover;
-            background-position: center;
-            border-radius: var(--radius-medium);
-            margin-bottom: var(--space-three);
-        }
+    .related-card a:hover {
+      text-decoration: underline;
+    }
 
-        .blog-post__content {
-            font-size: 18px;
-            line-height: 1.8;
-            color: var(--text-dark);
-        }
+    /* ===== FOOTER STYLES ===== */
+    .footer {
+      background: var(--dark-blue);
+      color: var(--white);
+      padding: var(--space-five) 0 var(--space-three);
+      -webkit-font-smoothing: antialiased;
+    }
 
-        .blog-post__content h2 {
-            font-size: 32px;
-            margin: var(--space-two) 0 var(--space-unit);
-        }
+    .footer__grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: var(--space-four);
+      margin-bottom: var(--space-four);
+    }
 
-        .blog-post__content h3 {
-            font-size: 24px;
-            margin: var(--space-onehalf) 0 var(--space-half);
-        }
+    .footer__logo {
+      width: 272px;
+      height: 54px;
+      background-image: url('/images/myPilotPost-Logo.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: left;
+      margin-bottom: var(--space-unit);
+      cursor: pointer;
+    }
 
-        .blog-post__content p {
-            margin-bottom: var(--space-unit);
-        }
+    .footer__tagline {
+      color: rgba(255, 255, 255, 0.9);
+      margin-bottom: var(--space-unit);
+      font-size: 16px;
+    }
 
-        .blog-post__content img {
-            max-width: 100%;
-            border-radius: var(--radius-medium);
-            margin: var(--space-unit) 0;
-        }
+    .social-links {
+      display: flex;
+      gap: 18px;
+    }
 
-        .blog-post__content blockquote {
-            border-left: 4px solid var(--primary-blue);
-            padding: var(--space-unit) var(--space-two);
-            background: var(--light-gray);
-            margin: var(--space-unit) 0;
-            font-style: italic;
-        }
+    .social-link {
+      cursor: pointer;
+      transition: transform 0.3s;
+    }
 
-        .blog-post__content ul, 
-        .blog-post__content ol {
-            margin: var(--space-unit) 0 var(--space-unit) var(--space-two);
-        }
+    .social-link:hover {
+      transform: translateY(-2px);
+    }
 
-        .blog-post__content li {
-            margin-bottom: var(--space-half);
-        }
+    .social-link svg {
+      fill: white;
+    }
 
-        .blog-post__footer {
-            margin-top: var(--space-four);
-            padding-top: var(--space-two);
-            border-top: 1px solid var(--border-gray);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+    .footer__column-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.9);
+      margin-bottom: var(--space-onehalf);
+    }
 
-        .blog-post__share {
-            display: flex;
-            gap: var(--space-unit);
-        }
+    .footer__link {
+      display: block;
+      color: rgba(255, 255, 255, 0.75);
+      text-decoration: none;
+      margin-bottom: var(--space-half);
+      transition: all 0.3s ease;
+      cursor: pointer;
+      font-size: 16px;
+    }
 
-        .share-link {
-            color: var(--text-gray);
-            transition: color 0.3s;
-        }
+    .footer__link:hover {
+      color: #ffffff;
+      padding-left: 4px;
+    }
 
-        .share-link:hover {
-            color: var(--primary-blue);
-        }
+    .footer__divider {
+      width: 100%;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.15);
+      margin: var(--space-three) 0 var(--space-two);
+    }
 
-        .loading-spinner {
-            border: 4px solid var(--light-gray);
-            border-top: 4px solid var(--primary-blue);
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: var(--space-four) auto;
-        }
+    .footer__copyright {
+      text-align: center;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 16px;
+    }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 1024px) {
+      .footer__grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-three);
+      }
+    }
 
-        .error-container {
-            text-align: center;
-            padding: var(--space-four);
-        }
+    @media (max-width: 768px) {
+      :root {
+        --h1-size: 40px;
+        --h2-size: 32px;
+        --h3-size: 28px;
+        --h4-size: 24px;
+        --h5-size: 20px;
+        --h6-size: 18px;
+      }
 
-        .error-container h1 {
-            color: #EF4444;
-            margin-bottom: var(--space-unit);
-        }
+      .nav-menu, .header__buttons {
+        display: none;
+      }
 
-        /* Footer */
-        .footer {
-            background: #002F86;
-            color: var(--white);
-            padding: var(--space-five) 0 var(--space-three);
-            margin-top: var(--space-five);
-        }
+      .mobile-toggle {
+        display: flex;
+      }
 
-        .footer__copyright {
-            text-align: center;
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 18px;
-        }
+      .mobile-menu {
+        display: block;
+      }
 
-        @media (max-width: 768px) {
-            .nav-menu, .header__buttons {
-                display: none;
-            }
+      .article-header { 
+        padding: 40px 20px; 
+      }
+      
+      .article-body { 
+        padding: 32px 20px 60px; 
+      }
+      
+      .cta-block { 
+        padding: 32px 24px; 
+      }
+      
+      .framework-step { 
+        flex-direction: column; 
+        gap: 10px; 
+      }
 
-            .mobile-toggle {
-                display: flex;
-            }
+      .footer__grid {
+        grid-template-columns: 1fr;
+      }
+    }
 
-            .mobile-menu {
-                display: block;
-                position: fixed;
-                top: 0;
-                right: -100%;
-                width: 80%;
-                max-width: 400px;
-                height: 100vh;
-                background: var(--white);
-                box-shadow: -2px 0 20px rgba(0, 0, 0, 0.1);
-                z-index: 1001;
-                padding: 80px 30px;
-                transition: right 0.3s ease;
-            }
+    @media (max-width: 480px) {
+      .btn {
+        width: 100%;
+      }
+    }
 
-            .mobile-menu.active {
-                right: 0;
-            }
+    /* Animations */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
 
-            .mobile-menu__item {
-                display: block;
-                padding: 15px 0;
-                font-size: 18px;
-                color: var(--text-dark);
-                text-decoration: none;
-                border-bottom: 1px solid var(--border-gray);
-            }
-
-            .mobile-menu__buttons {
-                margin-top: 30px;
-                display: flex;
-                flex-direction: column;
-                gap: 15px;
-            }
-
-            .blog-post__title {
-                font-size: 36px;
-            }
-
-            .blog-post__featured-image {
-                height: 250px;
-            }
-        }
-    </style>
+    .animate-fadeInUp {
+      animation: fadeInUp 0.6s ease forwards;
+    }
+  </style>
 </head>
 <body>
-    <!-- Mobile Menu -->
-    <div class="mobile-menu" id="mobileMenu">
-        <a href="../index.html" class="mobile-menu__item">Home</a>
-        <a href="../features.html" class="mobile-menu__item">Features</a>
-        <a href="../solutions.html" class="mobile-menu__item">Solutions</a>
-        <a href="../resources.html" class="mobile-menu__item">Resources</a>
-        <div class="mobile-menu__buttons">
-            <a href="../signin.html"><button class="btn btn--secondary">Sign In →</button></a>
-            <a href="../register.html"><button class="btn btn--primary">Get Started</button></a>
-        </div>
+  <!-- Mobile Menu -->
+  <div class="mobile-menu" id="mobileMenu">
+    <a href="/" class="mobile-menu__item">Home</a>
+    <a href="/features.html" class="mobile-menu__item">Features</a>
+    <a href="/solutions.html" class="mobile-menu__item">Solutions</a>
+    <a href="/resources.html" class="mobile-menu__item">Resources</a>
+    <div class="mobile-menu__buttons">
+      <a href="/signin.html"><button class="btn btn--secondary">Sign In →</button></a>
+      <a href="/register.html"><button class="btn btn--primary">Get Started</button></a>
     </div>
+  </div>
 
-    <!-- Header -->
-    <header class="header">
-        <div class="container header__container">
-            <div class="logo" onclick="window.location.href='../index.html'" aria-label="myPilotPost Logo"></div>
-            
-            <nav class="nav-menu" aria-label="Main Navigation">
-                <a href="../index.html" class="nav-menu__item">Home</a>
-                <a href="../features.html" class="nav-menu__item">Features</a>
-                <a href="../solutions.html" class="nav-menu__item">Solutions</a>
-                <a href="../resources.html" class="nav-menu__item">Resources</a>
-            </nav>
+  <!-- Header -->
+  <header class="header">
+    <div class="container header__container">
+      <div class="logo" onclick="window.location.href='/'" aria-label="myPilotPost Logo"></div>
+      
+      <nav class="nav-menu" aria-label="Main Navigation">
+        <a href="/" class="nav-menu__item">Home</a>
+        <a href="/features.html" class="nav-menu__item">Features</a>
+        <a href="/solutions.html" class="nav-menu__item">Solutions</a>
+        <a href="/resources.html" class="nav-menu__item nav-menu__item--active">Resources</a>
+      </nav>
 
-            <div class="header__buttons">
-                <button class="btn btn--secondary" onclick="window.location.href='../signin.html'">
-                    Sign In
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M4.1665 10H15.8332" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M10 4.16667L15.8333 10L10 15.8333" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </button>
-                <button class="btn btn--primary" onclick="window.location.href='../register.html'">
-                    Get Started
-                </button>
-            </div>
+      <div class="header__buttons">
+        <button class="btn btn--secondary" onclick="window.location.href='/signin.html'">
+          Sign In
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4.1665 10H15.8332" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M10 4.16667L15.8333 10L10 15.8333" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button class="btn btn--primary" onclick="window.location.href='/register.html'">
+          Get Started
+        </button>
+      </div>
 
-            <div class="mobile-toggle" onclick="toggleMobileMenu()" aria-label="Toggle mobile menu">
-                <span></span>
-                <span></span>
-                <span></span>
-            </div>
+      <div class="mobile-toggle" onclick="toggleMobileMenu()" aria-label="Toggle mobile menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- DYNAMIC CONTENT WILL BE INJECTED HERE BY JS -->
+  <main style="display: block;" id="main-content">
+    <!-- article header, hero, toc, body, related will be populated -->
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__grid">
+        <div>
+          <div class="footer__logo" onclick="window.location.href='/'" aria-label="myPilotPost Logo"></div>
+          <p class="footer__tagline">Unified content marketing platform</p>
+          <div class="social-links">
+            <a href="#" class="social-link" target="_blank">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+                <path d="M18 2H15C13.6739 2 12.4021 2.52678 11.4645 3.46447C10.5268 4.40215 10 5.67392 10 7V10H7V14H10V22H14V14H17L18 10H14V7C14 6.73478 14.1054 6.48043 14.2929 6.29289C14.4804 6.10536 14.7348 6 15 6H18V2Z"/>
+              </svg>
+            </a>
+            <a href="#" class="social-link" target="_blank">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+                <rect x="2" y="2" width="20" height="20" rx="5" stroke="white" stroke-width="1.5"/>
+                <circle cx="18" cy="6" r="1.5" fill="white"/>
+                <circle cx="12" cy="12" r="4" stroke="white" stroke-width="1.5"/>
+              </svg>
+            </a>
+            <a href="#" class="social-link" target="_blank">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+                <path d="M16 8C17.5913 8 19.1174 8.63214 20.2426 9.75736C21.3679 10.8826 22 12.4087 22 14V21H18V14C18 13.4696 17.7893 12.9609 17.4142 12.5858C17.0391 12.2107 16.5304 12 16 12C15.4696 12 14.9609 12.2107 14.5858 12.5858C14.2107 12.9609 14 13.4696 14 14V21H10V14C10 12.4087 10.6321 10.8826 11.7574 9.75736C12.8826 8.63214 14.4087 8 16 8Z"/>
+                <path d="M6 9H2V21H6V9Z"/>
+                <circle cx="4" cy="4" r="2" fill="white"/>
+              </svg>
+            </a>
+            <a href="#" class="social-link" target="_blank">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C6.48 2 2 6.48 2 12C2 16.84 5.44 20.87 10 21.8V15H8V12H10V9.5C10 6.9 11.9 5 14.5 5C15.03 5 16 5.1 16 5.1V8H15.5C14.5 8 14 8.5 14 9.5V12H16L15.5 15H14V21.8C18.56 20.87 22 16.84 22 12C22 6.48 17.52 2 12 2Z"/>
+              </svg>
+            </a>
+          </div>
         </div>
-    </header>
 
-    <!-- Blog Post Content -->
-    <main>
-        <article class="blog-post">
-            <div class="blog-post__header">
-                <h1 id="title" class="blog-post__title">Loading...</h1>
-                <div id="meta" class="blog-post__meta"></div>
-            </div>
-            <div id="featured-image" class="blog-post__featured-image" style="display: none;"></div>
-            <div id="content" class="blog-post__content">
-                <div class="loading-spinner"></div>
-            </div>
-            <div class="blog-post__footer" style="display: none;">
-                <div class="blog-post__share">
-                    <span>Share:</span>
-                    <a href="#" class="share-link" onclick="shareOnTwitter()">Twitter</a>
-                    <a href="#" class="share-link" onclick="shareOnLinkedIn()">LinkedIn</a>
-                    <a href="#" class="share-link" onclick="shareOnFacebook()">Facebook</a>
-                </div>
-                <a href="../resources.html" class="btn btn--secondary">← Back to Resources</a>
-            </div>
-        </article>
-    </main>
-
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer__copyright">© 2026 myPilotPost. All rights reserved.</div>
+        <div>
+          <h6 class="footer__column-title">PRODUCT</h6>
+          <a href="/features.html" class="footer__link">Features</a>
+          <a href="/solutions.html" class="footer__link">Solutions</a>
+          <a href="#" class="footer__link">Pricing</a>
+          <a href="#" class="footer__link">Integrations</a>
         </div>
-    </footer>
 
-    <!-- JavaScript -->
-    <script>
-        function toggleMobileMenu() {
-            const menu = document.getElementById('mobileMenu');
-            menu.classList.toggle('active');
-            document.body.style.overflow = menu.classList.contains('active') ? 'hidden' : 'auto';
+        <div>
+          <h6 class="footer__column-title">RESOURCES</h6>
+          <a href="/resources.html" class="footer__link">Blog</a>
+          <a href="/resources.html" class="footer__link">News & Updates</a>
+          <a href="/resources.html" class="footer__link">Training</a>
+          <a href="mailto:support@mypilotpost.com" class="footer__link">Request a Feature</a>
+        </div>
+
+        <div>
+          <h6 class="footer__column-title">COMPANY</h6>
+          <a href="#" class="footer__link">About Us</a>
+          <a href="mailto:support@mypilotpost.com" class="footer__link">Support</a>
+          <a href="/images/PAIA_Manual.pdf" class="footer__link">PAIA_Manual</a>
+          <a href="/privacy-policy.html" class="footer__link">Privacy Policy</a>
+          <a href="/refund-policy.html" class="footer__link">Refund Policy</a>
+          <a href="/terms-and-conditions.html" class="footer__link">Terms of Service</a>
+          <a href="/gdpr-compliance.html" class="footer__link">GDPR Compliance</a>
+        </div>
+      </div>
+
+      <div class="footer__divider"></div>
+      <p class="footer__copyright">© 2026 myPilotPost. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script>
+    // Base API URL
+    const API_BASE = "https://mypilotpost-api.littchel.workers.dev";
+    const PUBLIC_API = API_BASE + "/api/public/marketing/blog/";
+
+    // Mobile Menu Toggle
+    function toggleMobileMenu() {
+      const menu = document.getElementById('mobileMenu');
+      menu.classList.toggle('active');
+      document.body.style.overflow = menu.classList.contains('active') ? 'hidden' : 'auto';
+    }
+
+    function closeMobileMenu() {
+      const menu = document.getElementById('mobileMenu');
+      menu.classList.remove('active');
+      document.body.style.overflow = 'auto';
+    }
+
+    // Close menu when clicking outside
+    document.addEventListener('click', function(event) {
+      const menu = document.getElementById('mobileMenu');
+      const toggle = document.querySelector('.mobile-toggle');
+      
+      if (!menu.contains(event.target) && !toggle.contains(event.target) && menu.classList.contains('active')) {
+        closeMobileMenu();
+      }
+    });
+
+    // Close menu on link click
+    document.querySelectorAll('.mobile-menu__item, .mobile-menu__buttons .btn').forEach(link => {
+      link.addEventListener('click', closeMobileMenu);
+    });
+
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    });
+
+    // Animation on scroll
+    const animateElements = document.querySelectorAll('.animate-fadeInUp');
+    
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.style.opacity = '1';
+          entry.target.style.transform = 'translateY(0)';
+        }
+      });
+    }, { threshold: 0.1 });
+
+    animateElements.forEach(el => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(30px)';
+      observer.observe(el);
+    });
+
+    // 🔧 STEP 3 FIX: Get slug from URL parameters
+    const params = new URLSearchParams(window.location.search);
+    const slug = params.get("slug");
+
+    if (!slug) {
+      document.body.innerHTML = "<h2 style='text-align:center;margin-top:100px;'>Invalid article URL</h2>";
+      throw new Error("Missing slug parameter");
+    }
+
+    // Helper: convert HTML to plain text for reading time
+    function calculateReadingTime(html) {
+      const text = html.replace(/<[^>]+>/g, '');
+      const words = text.trim().split(/\s+/).length;
+      const minutes = Math.ceil(words / 200);
+      return minutes + " min read";
+    }
+
+    // Helper: extract first image from content_html if featured_image missing
+    function extractFirstImage(html) {
+      const match = html.match(/<img[^>]+src="([^">]+)"/);
+      return match ? match[1] : null;
+    }
+
+    // Helper: build a simple TOC from h2 headings (if any)
+    function generateTableOfContents(html) {
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = html;
+      const headings = tempDiv.querySelectorAll('h2');
+
+      if (headings.length === 0) {
+        return { tocHtml: '', modifiedHtml: html };
+      }
+
+      let tocHtml = `<nav class="toc" aria-label="Table of contents"><h2>In this article</h2><ol>`;
+      
+      headings.forEach((h2, idx) => {
+        const id = `section-${idx}`;
+        h2.id = id;
+        const text = h2.innerText || h2.textContent;
+        tocHtml += `<li><a href="#${id}">${text}</a></li>`;
+      });
+
+      tocHtml += `</ol></nav>`;
+
+      return { tocHtml, modifiedHtml: tempDiv.innerHTML };
+    }
+
+    async function loadPost() {
+      try {
+        const res = await fetch(PUBLIC_API + slug);
+        
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        
+        const data = await res.json();
+
+        if (!data.post) {
+          document.body.innerHTML = "<h2 style='text-align:center;margin-top:100px;'>Post not found</h2>";
+          return;
         }
 
-        function closeMobileMenu() {
-            const menu = document.getElementById('mobileMenu');
-            menu.classList.remove('active');
-            document.body.style.overflow = 'auto';
-        }
+        const post = data.post;
 
-        document.addEventListener('click', function(event) {
-            const menu = document.getElementById('mobileMenu');
-            const toggle = document.querySelector('.mobile-toggle');
-            
-            if (!menu.contains(event.target) && !toggle.contains(event.target) && menu.classList.contains('active')) {
-                closeMobileMenu();
+        // Prepare data
+        const title = post.title || "Untitled";
+        const excerpt = post.excerpt || post.title || "";
+        const contentRaw = post.content_html || "<p>No content</p>";
+        const published = post.published_at ? new Date(post.published_at) : new Date();
+        const publishedStr = published.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        const publishedIso = post.published_at || published.toISOString().split('T')[0];
+        const author = post.author || "myPilotPost Team";
+        const readingTime = calculateReadingTime(contentRaw);
+        const featuredImage = post.featured_image || extractFirstImage(contentRaw) || "/images/default-blog-image.jpg";
+
+        // Process content for TOC
+        const { tocHtml, modifiedHtml } = generateTableOfContents(contentRaw);
+        const finalContentHtml = modifiedHtml;
+
+        // Build the full article HTML
+        const main = document.getElementById('main-content');
+        main.innerHTML = `
+          <!-- ARTICLE HEADER -->
+          <header class="article-header">
+            <span class="category-tag">${post.category || 'Content Strategy'}</span>
+            <h1>${title}</h1>
+            <p class="deck">${excerpt}</p>
+            <div class="article-meta">
+              <span>📅 ${publishedStr}</span>
+              <span>✍️ ${author}</span>
+              <span>⏱ ${readingTime}</span>
+              <span>🏷 ${post.category || 'Strategy'}</span>
+            </div>
+          </header>
+
+          <!-- HERO IMAGE -->
+          <img src="${featuredImage}" alt="${title}" class="hero-image" loading="lazy" />
+
+          <!-- TABLE OF CONTENTS (if any) -->
+          ${tocHtml ? `<div class="toc-wrapper">${tocHtml}</div>` : ''}
+
+          <!-- ARTICLE BODY -->
+          <article class="article-body">
+            ${finalContentHtml}
+
+            <!-- STANDARD CTA -->
+            <div class="cta-block">
+              <h2>Ready to run content as a system?</h2>
+              <p>myPilotPost connects strategy, creation, delivery, and learning into one intentional workflow — so your brand compounds instead of drifting.</p>
+              <a href="/register.html" class="btn btn--primary">Start free — no credit card required</a>
+              <span class="cta-sub">Cancel anytime. Easy setup.</span>
+            </div>
+          </article>
+        `;
+
+        // ---- SEO UPDATES ----
+        document.getElementById('page-title').textContent = title + " | myPilotPost";
+        document.getElementById('meta-description').setAttribute('content', excerpt);
+        document.getElementById('canonical-link').setAttribute('href', window.location.href);
+
+        // OG
+        document.getElementById('og-title').setAttribute('content', title);
+        document.getElementById('og-description').setAttribute('content', excerpt);
+        document.getElementById('og-image').setAttribute('content', featuredImage);
+        document.getElementById('og-url').setAttribute('content', window.location.href);
+        document.getElementById('article-published').setAttribute('content', publishedIso);
+
+        // Twitter
+        document.getElementById('twitter-title').setAttribute('content', title);
+        document.getElementById('twitter-description').setAttribute('content', excerpt);
+        document.getElementById('twitter-image').setAttribute('content', featuredImage);
+
+        // Article tags
+        const tagsMeta = document.getElementById('article-tags');
+        if (tagsMeta) tagsMeta.setAttribute('content', 'content strategy, branding');
+
+        // ---- JSON-LD Schema ----
+        const schema = {
+          "@context": "https://schema.org",
+          "@type": "Article",
+          "headline": title,
+          "description": excerpt,
+          "image": featuredImage,
+          "author": {
+            "@type": "Organization",
+            "name": author
+          },
+          "publisher": {
+            "@type": "Organization",
+            "name": "myPilotPost",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://www.mypilotpost.com/images/logo.png"
             }
+          },
+          "datePublished": publishedIso,
+          "dateModified": post.updated_at || publishedIso,
+          "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": window.location.href
+          }
+        };
+
+        const script = document.createElement("script");
+        script.type = "application/ld+json";
+        script.text = JSON.stringify(schema);
+        document.head.appendChild(script);
+
+        // ---- Load Related Posts ----
+        loadRelated(post.id);
+
+      } catch (error) {
+        console.error('Error loading post:', error);
+        document.body.innerHTML = "<h2 style='text-align:center;margin-top:100px;'>Error loading article</h2>";
+      }
+    }
+
+    async function loadRelated(currentId) {
+      try {
+        const res = await fetch(API_BASE + "/api/public/marketing/blog");
+        
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        
+        const data = await res.json();
+
+        // 🔧 STEP 1 FIX: Related posts link updated and sorted by most recent
+        const posts = (data.posts || [])
+          .filter(p => p.id !== currentId)
+          .sort((a, b) => new Date(b.published_at) - new Date(a.published_at))
+          .slice(0, 3);
+
+        if (posts.length === 0) return;
+
+        const relatedSection = document.createElement('section');
+        relatedSection.className = 'related';
+        relatedSection.setAttribute('aria-label', 'Related articles');
+        relatedSection.innerHTML = `<h2>Continue reading</h2><div class="related-grid" id="related-grid"></div>`;
+
+        // Append after article-body
+        const main = document.getElementById('main-content');
+        main.appendChild(relatedSection);
+
+        const grid = document.getElementById('related-grid');
+
+        posts.forEach(post => {
+          const card = document.createElement('div');
+          card.className = 'related-card';
+          card.innerHTML = `
+            <div class="tag">${post.category || 'Article'}</div>
+            <h3>${post.title}</h3>
+            <p>${post.excerpt || ''}</p>
+            <a href="/blog-post.html?slug=${post.slug}">Read article →</a>
+          `;
+          grid.appendChild(card);
         });
 
-        document.querySelectorAll('.mobile-menu__item, .mobile-menu__buttons .btn').forEach(link => {
-            link.addEventListener('click', closeMobileMenu);
-        });
+      } catch (err) {
+        console.warn('Failed to load related posts:', err);
+        // fail silently
+      }
+    }
 
-        // Get slug from URL
-        const slug = window.location.pathname.split('/').pop().replace('.html', '');
-
-        // Format date function
-        function formatDate(dateString) {
-            const options = { year: 'numeric', month: 'long', day: 'numeric' };
-            return new Date(dateString).toLocaleDateString('en-US', options);
-        }
-
-        // Share functions
-        function shareOnTwitter() {
-            const title = document.getElementById('title').innerText;
-            const url = window.location.href;
-            window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`, '_blank');
-        }
-
-        function shareOnLinkedIn() {
-            const url = window.location.href;
-            window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`, '_blank');
-        }
-
-        function shareOnFacebook() {
-            const url = window.location.href;
-            window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
-        }
-
-        // Load blog post
-        async function loadPost() {
-            try {
-                const res = await fetch(`https://api.mypilotpost.com/api/public/blog/${slug}`);
-                
-                if (res.status === 404) {
-                    document.body.innerHTML = `
-                        <div style="text-align: center; padding: 100px 20px;">
-                            <h1 style="color: #EF4444; margin-bottom: 20px;">Post not found</h1>
-                            <p>The article you're looking for doesn't exist or has been moved.</p>
-                            <a href="../resources.html" class="btn btn--primary" style="margin-top: 30px;">← Back to Resources</a>
-                        </div>
-                    `;
-                    return;
-                }
-
-                if (!res.ok) {
-                    throw new Error(`HTTP error! status: ${res.status}`);
-                }
-
-                const data = await res.json();
-                const post = data.post;
-
-                // Update page title
-                document.title = `${post.seo_title || post.title} - myPilotPost Blog`;
-
-                // Update meta tags
-                const metaDesc = document.querySelector('meta[name="description"]');
-                metaDesc.setAttribute('content', post.seo_description || post.excerpt || '');
-
-                // Update Open Graph tags
-                document.querySelector('meta[property="og:title"]').setAttribute('content', post.title);
-                document.querySelector('meta[property="og:description"]').setAttribute('content', post.excerpt || '');
-                document.querySelector('meta[property="og:url"]').setAttribute('content', window.location.href);
-                if (post.featured_image_url) {
-                    document.querySelector('meta[property="og:image"]').setAttribute('content', post.featured_image_url);
-                }
-
-                // Update Twitter Card
-                document.querySelector('meta[name="twitter:title"]').setAttribute('content', post.title);
-                document.querySelector('meta[name="twitter:description"]').setAttribute('content', post.excerpt || '');
-
-                // Update canonical URL
-                document.querySelector('link[rel="canonical"]').setAttribute('content', window.location.href);
-
-                // Update content
-                document.getElementById('title').innerText = post.title;
-                document.getElementById('meta').innerHTML = `
-                    <span>by ${post.author_name || 'Admin'}</span>
-                    <span>·</span>
-                    <span>${formatDate(post.published_at)}</span>
-                    ${post.reading_time ? `<span>·</span><span>${post.reading_time} min read</span>` : ''}
-                `;
-
-                if (post.featured_image_url) {
-                    const featuredImage = document.getElementById('featured-image');
-                    featuredImage.style.backgroundImage = `url('${post.featured_image_url}')`;
-                    featuredImage.style.display = 'block';
-                }
-
-                document.getElementById('content').innerHTML = post.content_html || post.content;
-                document.querySelector('.blog-post__footer').style.display = 'flex';
-
-            } catch (error) {
-                console.error('Error loading blog post:', error);
-                document.getElementById('content').innerHTML = `
-                    <div class="error-container">
-                        <h1>Error Loading Article</h1>
-                        <p>Failed to load the article. Please try again later.</p>
-                        <a href="../resources.html" class="btn btn--primary" style="margin-top: 20px;">← Back to Resources</a>
-                    </div>
-                `;
-            }
-        }
-
-        // Load post when page loads
-        document.addEventListener('DOMContentLoaded', loadPost);
-    </script>
+    // Initialize
+    loadPost();
+  </script>
 </body>
 </html>

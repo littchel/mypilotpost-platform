@@ -15,7 +15,7 @@
  */
 
 import { getDB } from "../../lib/db.js";
-import { writeBrandMemoryEvent } from "../brand/memory-writer.js";
+import { writeBrandMemoryEvent } from "../brands/memory-writer.js";
 import { scheduleRetry } from "./retries.js";
 
 /* =====================================================

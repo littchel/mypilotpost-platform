@@ -9,6 +9,17 @@ import { json } from "./lib/json.js";
    AUTH
 ====================================================== */
 import { googleStart, googleCallback } from "./auth/google.js";
+
+/* 🔒 NEW OAUTH PROVIDERS (ADDITIVE ONLY) */
+import { linkedinStart, linkedinCallback } from "./auth/linkedin.js";
+import { facebookStart, facebookCallback } from "./auth/facebook.js";
+import { xStart, xCallback } from "./auth/x.js";
+import { pinterestStart, pinterestCallback } from "./auth/pinterest.js";
+import { youtubeStart, youtubeCallback } from "./auth/youtube.js";
+import { googleAnalyticsStart, googleAnalyticsCallback } from "./auth/google-analytics.js";
+import { canvaStart, canvaCallback } from "./auth/canva.js";
+import { tiktokStart, tiktokCallback } from "./auth/tiktok.js";  // ✅ FIXED: Removed /providers/ from path
+
 import { requireAuth } from "./auth/middleware.js";
 
 import {
@@ -166,12 +177,43 @@ import {
 } from "./core/analytics/analytics.js";
 
 /* ======================================================
+   PERFORMANCE INGESTION (CANON 5.5 EXTENSION)
+====================================================== */
+import { runPerformanceIngestion } from "./core/delivery/performance/engine.js";
+
+/* ======================================================
    REPORTS
 ====================================================== */
 import {
   getSocialReport,
   generateSocialReportPDF
 } from "./core/reports/social/controller.js";
+
+/* ======================================================
+   MARKETING BLOG
+====================================================== */
+import {
+  createMarketingPost,
+  listMarketingPosts,
+  updateMarketingPost,
+  deleteMarketingPost,
+  publicListMarketingPosts,
+  publicGetMarketingPost
+} from "./core/marketing/blog.js";
+
+/* ======================================================
+   DELIVERY ENGINE
+====================================================== */
+import { executeDeliveryJob } from "./core/delivery/poster.js";
+
+/* ======================================================
+   CORS HEADERS
+====================================================== */
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "https://www.mypilotpost.com",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS"
+};
 
 /* ======================================================
    ERROR HANDLER
@@ -181,8 +223,43 @@ function handleError(err) {
   console.error(`[API ${status}]`, err?.message || err);
   return json(
     { error: status === 500 ? "Internal server error" : err.message },
-    status
+    status,
+    { ...corsHeaders }
   );
+}
+
+/* ======================================================
+   RESPONSE WRAPPER (CORS SAFE)
+====================================================== */
+async function withCors(responsePromise) {
+  try {
+    const response = await responsePromise;
+    
+    if (!response) {
+      return new Response(
+        JSON.stringify({ error: "Empty response" }),
+        {
+          status: 500,
+          headers: {
+            "Content-Type": "application/json",
+            ...corsHeaders
+          }
+        }
+      );
+    }
+
+    const body = await response.text();
+
+    return new Response(body, {
+      status: response.status,
+      headers: {
+        "Content-Type": response.headers.get("Content-Type") || "application/json",
+        ...corsHeaders
+      }
+    });
+  } catch (error) {
+    return handleError(error);
+  }
 }
 
 /* ======================================================
@@ -194,10 +271,41 @@ export default {
     const path = url.pathname.replace(/\/+$/, "");
     const method = request.method;
 
+    // Handle OPTIONS preflight requests
+    if (request.method === "OPTIONS") {
+      return new Response(null, {
+        headers: corsHeaders
+      });
+    }
+
     try {
       /* ================= HEALTH ================= */
       if (method === "GET" && path === "/api/health") {
-        return json({ status: "ok", service: "mypilotpost-api" });
+        return json({ status: "ok", service: "mypilotpost-api" }, 200, { ...corsHeaders });
+      }
+
+      /* ================= INTERNAL PERFORMANCE INGESTION ================= */
+      if (method === "POST" && path === "/api/internal/performance/ingest") {
+        await runPerformanceIngestion(env);
+        return json({ success: true }, 200, { ...corsHeaders });
+      }
+
+      /* ================= INTERNAL DELIVERY JOB EXECUTION ================= */
+      if (method === "POST" && path === "/api/internal/delivery/run") {
+        requireAdmin(request, env);
+
+        const { results } = await env.DB.prepare(`
+          SELECT *
+          FROM delivery_jobs
+          WHERE status = 'scheduled'
+          ORDER BY scheduled_at ASC
+        `).all();
+
+        for (const job of results) {
+          await executeDeliveryJob(env, job);
+        }
+
+        return json({ executed: results.length });
       }
 
       /* ================= PUBLIC BLOG ================= */
@@ -210,7 +318,7 @@ export default {
           LIMIT 20
         `).all();
 
-        return json({ posts: results || [] });
+        return json({ posts: results || [] }, 200, { ...corsHeaders });
       }
 
       if (
@@ -228,34 +336,73 @@ export default {
         `).bind(slug).first();
 
         if (!post) {
-          return json({ error: "Not found" }, 404);
+          return json({ error: "Not found" }, 404, { ...corsHeaders });
         }
 
-        return json({ post });
+        return json({ post }, 200, { ...corsHeaders });
+      }
+
+      /* ================= PUBLIC MARKETING BLOG ================= */
+      if (method === "GET" && path === "/api/public/marketing/blog")
+        return withCors(publicListMarketingPosts(request, env));
+
+      if (
+        method === "GET" &&
+        path.startsWith("/api/public/marketing/blog/")
+      ) {
+        const slug = path.split("/")[5];
+        return withCors(publicGetMarketingPost(request, env, slug));
       }
 
       /* ================= PUBLIC AUTH ================= */
       if (method === "POST" && path === "/api/customer/register")
-        return register(request, env);
+        return withCors(register(request, env));
 
       if (method === "POST" && path === "/api/customer/login")
-        return login(request, env);
+        return withCors(login(request, env));
 
       if (method === "POST" && path === "/api/customer/verify-email")
-        return verifyEmail(request, env);
+        return withCors(verifyEmail(request, env));
 
       if (method === "POST" && path === "/api/customer/forgot-password")
-        return forgotPassword(request, env);
+        return withCors(forgotPassword(request, env));
 
       if (method === "POST" && path === "/api/customer/reset-password")
-        return resetPassword(request, env);
+        return withCors(resetPassword(request, env));
 
-      /* ================= OAUTH ================= */
+      /* ================= OAUTH STARTS (PUBLIC) ================= */
       if (method === "GET" && path === "/api/customer/oauth/google/start")
         return googleStart(request, env);
 
+      /* ================= OAUTH CALLBACKS (ALL PUBLIC - NO AUTH REQUIRED) ================= */
       if (method === "GET" && path === "/api/customer/oauth/google/callback")
         return googleCallback(request, env);
+
+      if (method === "GET" && path === "/api/customer/oauth/linkedin/callback")
+        return linkedinCallback(request, env);
+
+      if (method === "GET" && path === "/api/customer/oauth/facebook/callback")
+        return facebookCallback(request, env);
+
+      if (method === "GET" && path === "/api/customer/oauth/x/callback")
+        return xCallback(request, env);
+
+      if (method === "GET" && path === "/api/customer/oauth/pinterest/callback")
+        return pinterestCallback(request, env);
+
+      if (method === "GET" && path === "/api/customer/oauth/youtube/callback")
+        return youtubeCallback(request, env);
+
+      if (method === "GET" && path === "/api/customer/oauth/google-analytics/callback")
+        return googleAnalyticsCallback(request, env);
+
+      /* 🔓 PUBLIC - CANVA CALLBACK MUST BE ABOVE requireAuth BLOCK */
+      if (method === "GET" && path === "/api/customer/oauth/canva/callback")
+        return canvaCallback(request, env);
+
+      /* 🔓 PUBLIC - TIKTOK CALLBACK (ABOVE requireAuth) */
+      if (method === "GET" && path === "/api/customer/oauth/tiktok/callback")
+        return tiktokCallback(request, env);
 
       /* ================= ADMIN ================= */
       if (path.startsWith("/api/admin")) {
@@ -277,34 +424,126 @@ export default {
           return handleEmailTemplates(request, env);
       }
 
-      /* ================= CUSTOMER (PROTECTED) ================= */
+      /* ======================================================
+         CUSTOMER (PROTECTED)
+      ====================================================== */
       if (path.startsWith("/api/customer")) {
         const auth = await requireAuth(request, env);
 
+        /* ---------- PLATFORM OAUTH STARTS (PROTECTED) ---------- */
+        if (method === "GET" && path === "/api/customer/oauth/linkedin/start")
+          return linkedinStart(request, env, auth);
+
+        if (method === "GET" && path === "/api/customer/oauth/facebook/start")
+          return facebookStart(request, env, auth);
+
+        if (method === "GET" && path === "/api/customer/oauth/x/start")
+          return xStart(request, env, auth);
+
+        if (method === "GET" && path === "/api/customer/oauth/pinterest/start")
+          return pinterestStart(request, env, auth);
+
+        if (method === "GET" && path === "/api/customer/oauth/youtube/start")
+          return youtubeStart(request, env, auth);
+
+        if (method === "GET" && path === "/api/customer/oauth/google-analytics/start")
+          return googleAnalyticsStart(request, env, auth);
+
+        /* 🔐 PROTECTED - CANVA START MUST BE JWT PROTECTED */
+        if (method === "GET" && path === "/api/customer/oauth/canva/start")
+          return canvaStart(request, env, auth);
+
+        /* 🔐 PROTECTED - TIKTOK START (JWT PROTECTED) */
+        if (method === "GET" && path === "/api/customer/oauth/tiktok/start")
+          return tiktokStart(request, env, auth);
+
         /* ---------- BRANDS ---------- */
         if (method === "POST" && path === "/api/customer/brands/create")
-          return createBrand(request, env, auth);
+          return withCors(createBrand(request, env, auth));
+
+        if (method === "GET" && path === "/api/customer/brands")
+          return withCors(listBrands(request, env, auth));
 
         if (method === "POST" && path === "/api/customer/brands/switch")
-          return switchBrand(request, env, auth);
+          return withCors(switchBrand(request, env, auth));
+
+        /* ---------- SCHEDULE ---------- */
+        if (method === "GET" && path === "/api/customer/schedule")
+          return withCors(getSchedule(request, env, auth));
+
+        if (method === "POST" && path === "/api/customer/schedule")
+          return withCors(createSchedule(request, env, auth));
+
+        if (method === "PUT" && path.startsWith("/api/customer/schedule/")) {
+          const jobId = path.split("/")[4];
+          return withCors(updateSchedule(request, env, auth, jobId));
+        }
+
+        if (method === "DELETE" && path.startsWith("/api/customer/schedule/")) {
+          const jobId = path.split("/")[4];
+          return withCors(deleteSchedule(request, env, auth, jobId));
+        }
+
+        /* ---------- MARKETING BLOG (ADMIN) ---------- */
+        if (method === "POST" && path === "/api/customer/marketing/blog")
+          return withCors(createMarketingPost(request, env, auth));
+
+        if (method === "GET" && path === "/api/customer/marketing/blog")
+          return withCors(listMarketingPosts(request, env, auth));
+
+        /* ---------- GET SINGLE MARKETING POST (ADMIN) ---------- */
+        if (
+          method === "GET" &&
+          path.startsWith("/api/customer/marketing/blog/") &&
+          path.split("/").length === 6
+        ) {
+          const id = path.split("/")[5];
+
+          const response = await (async () => {
+            const post = await env.DB.prepare(`
+              SELECT *
+              FROM marketing_blog_posts
+              WHERE id = ?
+              LIMIT 1
+            `).bind(id).first();
+
+            if (!post) {
+              return json({ error: "Not found" }, 404);
+            }
+
+            return json({ post });
+          })();
+
+          return withCors(Promise.resolve(response));
+        }
+
+        if (method === "PATCH" && path.startsWith("/api/customer/marketing/blog/")) {
+          const id = path.split("/")[5];
+          return withCors(updateMarketingPost(request, env, auth, id));
+        }
+
+        if (method === "DELETE" && path.startsWith("/api/customer/marketing/blog/")) {
+          const id = path.split("/")[5];
+          return withCors(deleteMarketingPost(request, env, auth, id));
+        }
 
         /* ---------- CONTENT ---------- */
         if (method === "POST" && path === "/api/customer/content/blog")
-          return createBlogPost(request, env, auth);
+          return withCors(createBlogPost(request, env, auth));
 
         if (
           method === "POST" &&
           path.startsWith("/api/customer/content/blog/") &&
           path.endsWith("/ready")
         )
-          return markBlogReady(request, env, auth);
+          return withCors(markBlogReady(request, env, auth));
 
         if (
           method === "POST" &&
           path.startsWith("/api/customer/content/blog/") &&
           path.endsWith("/schedule")
         )
-          return scheduleBlogPost(request, env, auth);
+          return withCors(scheduleBlogPost(request, env, auth));
 
         if (
           method === "GET" &&
@@ -312,7 +551,7 @@ export default {
           !path.endsWith("/ready") &&
           !path.endsWith("/schedule")
         )
-          return getBlogPost(request, env, auth);
+          return withCors(getBlogPost(request, env, auth));
 
         if (
           method === "PATCH" &&
@@ -320,69 +559,73 @@ export default {
           !path.endsWith("/ready") &&
           !path.endsWith("/schedule")
         )
-          return updateBlogPost(request, env, auth);
+          return withCors(updateBlogPost(request, env, auth));
 
         if (method === "POST" && path === "/api/customer/content/social")
-          return createSocialAsset(request, env, auth);
+          return withCors(createSocialAsset(request, env, auth));
 
         if (method === "GET" && path.startsWith("/api/customer/content/social/"))
-          return getSocialAsset(request, env, auth);
+          return withCors(getSocialAsset(request, env, auth));
 
         if (method === "PATCH" && path.startsWith("/api/customer/content/social/"))
-          return updateSocialAsset(request, env, auth);
+          return withCors(updateSocialAsset(request, env, auth));
 
         if (method === "GET" && path === "/api/customer/content")
-          return listContent(request, env, auth);
+          return withCors(listContent(request, env, auth));
 
         if (method === "GET" && path === "/api/customer/content/drafts")
-          return getDrafts(request, env, auth);
+          return withCors(getDrafts(request, env, auth));
 
         if (method === "GET" && path === "/api/customer/content/scheduled")
-          return getScheduled(request, env, auth);
+          return withCors(getScheduled(request, env, auth));
 
         if (method === "PUT" && path === "/api/customer/content")
-          return updateContent(request, env, auth);
+          return withCors(updateContent(request, env, auth));
 
         /* ---------- MEDIA ---------- */
         if (method === "POST" && path === "/api/customer/media")
-          return uploadMedia(request, env, auth);
+          return withCors(uploadMedia(request, env, auth));
 
         if (method === "GET" && path === "/api/customer/media")
-          return listMedia(request, env, auth);
+          return withCors(listMedia(request, env, auth));
 
         if (method === "POST" && path === "/api/customer/media/attach")
-          return attachMedia(request, env, auth);
+          return withCors(attachMedia(request, env, auth));
 
         if (method === "POST" && path === "/api/customer/media/detach")
-          return detachMedia(request, env, auth);
+          return withCors(detachMedia(request, env, auth));
+
+        if (method === "POST" && path === "/api/customer/media/freepik")
+          return withCors(registerFreepikMedia(request, env, auth));
 
         if (method === "POST" && path === "/api/customer/media/from-google-drive")
-          return importFromGoogleDrive(request, env, auth);
+          return withCors(importFromGoogleDrive(request, env, auth));
 
         if (method === "POST" && path === "/api/customer/media/from-dropbox")
-          return importFromDropbox(request, env, auth);
+          return withCors(importFromDropbox(request, env, auth));
 
         if (method === "POST" && path === "/api/customer/media/from-canva")
-          return importFromCanva(request, env, auth);
+          return withCors(importFromCanva(request, env, auth));
 
-        /* ---------- ANALYTICS (CUSTOMER ONLY) ---------- */
+        /* ---------- ANALYTICS ---------- */
         if (method === "GET" && path === "/api/customer/analytics/overview")
-          return getAnalyticsOverview(request, env, auth);
+          return withCors(getAnalyticsOverview(request, env, auth));
 
         if (method === "GET" && path === "/api/customer/analytics/content")
-          return getContentAnalytics(request, env, auth);
+          return withCors(getContentAnalytics(request, env, auth));
 
         if (method === "GET" && path === "/api/customer/analytics/platforms")
-          return getPlatformAnalytics(request, env, auth);
+          return withCors(getPlatformAnalytics(request, env, auth));
 
         if (method === "GET" && path === "/api/customer/analytics/operations")
-          return getOperationalAnalytics(request, env, auth);
+          return withCors(getOperationalAnalytics(request, env, auth));
 
         if (method === "GET" && path === "/api/customer/analytics/campaigns")
-          return getCampaignAnalytics(request, env, auth);
+          return withCors(getCampaignAnalytics(request, env, auth));
       }
 
-      return json({ error: "Not found" }, 404);
+      return json({ error: "Not found" }, 404, { ...corsHeaders });
+
     } catch (err) {
       return handleError(err);
     }
