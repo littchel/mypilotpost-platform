@@ -1,30 +1,15 @@
 name = "mypilotpost-api"
-
 main = "src/server.js"
-
 compatibility_flags = ["nodejs_compat"]
 compatibility_date = "2024-01-01"
 
 [vars]
 BASE_URL = "https://mypilotpost-api.littchel.workers.dev"
-ENVIRONMENT = "local"
+ENVIRONMENT = "production"
 API_VERSION = "v1"
-
-ADMIN_SECRET = "env"
-JWT_SECRET = "env"
-
 GOOGLE_CLIENT_ID = "626126586204-kpm1sra6t8488t47an9m4ta030615c8s.apps.googleusercontent.com"
-
 DROPBOX_CLIENT_ID = "yt1hvspft36igsa"
-DROPBOX_CLIENT_SECRET = "env"
-
 LINKEDIN_CLIENT_ID = "771mxvzllsxgrp"
-LINKEDIN_CLIENT_SECRET = "env"
-
-FREEPIK_API_KEY = "FPSXfb67bab55dd19a8211cffef804f0b722"
-
-YOCO_API_KEY = "env"
-YOCO_WEBHOOK_SECRET = "env"
 
 [[d1_databases]]
 binding = "mypilotpost"
