@@ -2,7 +2,7 @@ import { getDB } from "../../lib/db.js";
 import { PLATFORM_RULES } from "./platform-rules.js";
 import { getBrandRules } from "./brand-rules.js";
 import { buildPrompt } from "./prompt-builder.js";
-import { runLLM } from "./llm-client.js";
+import { runLLM } from "./ai_client.js";
 import { writeBrandMemoryEvent } from "../brand/memory-writer.js";
 
 export async function generateContent(env, {

@@ -33,9 +33,9 @@ export async function deliveryAnalytics(env) {
     .prepare(`
       SELECT
         COUNT(*) AS total_jobs,
-        SUM(CASE WHEN state = 'delivered' THEN 1 ELSE 0 END) AS delivered,
-        SUM(CASE WHEN state = 'failed' THEN 1 ELSE 0 END) AS failed
-      FROM content_delivery_jobs
+        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS delivered,
+        SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed
+      FROM delivery_jobs
     `)
     .first();
 
@@ -51,7 +51,7 @@ export async function deliveryAnalytics(env) {
       SELECT
         COUNT(*) AS total_attempts,
         COUNT(DISTINCT job_id) AS jobs_with_attempts
-      FROM content_delivery_attempts
+      FROM delivery_attempts
     `)
     .first();
 
@@ -63,25 +63,25 @@ export async function deliveryAnalytics(env) {
       SELECT
         platform,
         COUNT(*) AS total,
-        SUM(CASE WHEN state = 'delivered' THEN 1 ELSE 0 END) AS delivered,
-        SUM(CASE WHEN state = 'failed' THEN 1 ELSE 0 END) AS failed
-      FROM content_delivery_jobs
+        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS delivered,
+        SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed
+      FROM delivery_jobs
       GROUP BY platform
     `)
     .all();
 
   /* ============================
-     4. Engagement volume
+     4. Engagement volume (from authoritative ANALYTICS table)
   ============================ */
-  const engagementVolume = await db
+  const engagementStats = await db
     .prepare(`
       SELECT
-        metric_type,
-        SUM(value) AS total
-      FROM content_engagement_metrics
-      GROUP BY metric_type
+        SUM(impressions) as imps,
+        SUM(engagements) as engs,
+        SUM(clicks) as clks
+      FROM content_analytics
     `)
-    .all();
+    .first();
 
   return json({
     total_jobs: total,
@@ -95,7 +95,11 @@ export async function deliveryAnalytics(env) {
       jobs_with_attempts: retryStats?.jobs_with_attempts ?? 0,
     },
 
-    platform_reliability: platformReliability?.results ?? [],
-    engagement_volume: engagementVolume?.results ?? [],
+    platforms: platformReliability?.results ?? [],
+    engagement_summary: {
+      impressions: engagementStats?.imps || 0,
+      engagements: engagementStats?.engs || 0,
+      clicks: engagementStats?.clks || 0
+    }
   });
 }

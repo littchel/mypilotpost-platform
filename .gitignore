@@ -66,4 +66,43 @@ coverage/
 # -------------------------------------------------
 # Misc
 # -------------------------------------------------
-*.local
+*.local.cloudflare.local.env
+.cloudflare.local.env
+
+# -------------------------------------------------
+# Cloudflare Wrangler Secrets
+# -------------------------------------------------
+.dev.vars
+*.dev.vars
+
+# -------------------------------------------------
+# Local SQLite databases (D1 local dev)
+# -------------------------------------------------
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+lib/db.sqlite
+
+# -------------------------------------------------
+# Scratch / Debug artifacts
+# -------------------------------------------------
+scratch/
+tmp/
+**/scratch/
+debug-*.js
+test_*.js
+test_*.mjs
+simulation.js
+login_res.json
+token_check.json
+
+# -------------------------------------------------
+# Temp SQL query files (Wrangler local dev)
+# -------------------------------------------------
+tmp_query_*.sql
+
+# -------------------------------------------------
+# Export archives
+# -------------------------------------------------
+*.zip
+*.tar.gz

@@ -47,21 +47,23 @@ export async function saveSocialVariants(request, env, contentId, ctx) {
   for (const [platform, content] of Object.entries(variants)) {
     if (!platform || typeof content !== "string") continue;
 
-    await db.prepare(`
-      INSERT INTO social_variants (
-        social_asset_id,
-        platform,
-        body,
-        created_at,
-        updated_at
-      ) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      ON CONFLICT(social_asset_id, platform)
-      DO UPDATE SET
-        body = excluded.body,
-        updated_at = CURRENT_TIMESTAMP
-    `)
-      .bind(assetId, platform, content)
-      .run();
+    const existing = await db.prepare(`
+      SELECT id FROM social_variants
+      WHERE social_asset_id = ? AND platform = ?
+    `).bind(assetId, platform).first();
+
+    if (existing) {
+      await db.prepare(`
+        UPDATE social_variants
+        SET caption = ?
+        WHERE id = ?
+      `).bind(content, existing.id).run();
+    } else {
+      await db.prepare(`
+        INSERT INTO social_variants (id, social_asset_id, platform, caption)
+        VALUES (?, ?, ?, ?)
+      `).bind(crypto.randomUUID(), assetId, platform, content).run();
+    }
   }
 
   // 4️⃣ Touch draft for ordering
@@ -100,7 +102,7 @@ export async function getSocialVariants(_req, env, contentId, ctx) {
   }
 
   const { results } = await db.prepare(`
-    SELECT platform, body
+    SELECT platform, caption
     FROM social_variants
     WHERE social_asset_id = ?
     ORDER BY platform ASC
@@ -108,7 +110,7 @@ export async function getSocialVariants(_req, env, contentId, ctx) {
 
   const variants = {};
   for (const row of results || []) {
-    variants[row.platform] = row.body;
+    variants[row.platform] = row.caption;
   }
 
   return json({ variants });

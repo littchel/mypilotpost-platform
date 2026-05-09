@@ -1,168 +1,88 @@
 /**
- * myPilotPost — Delivery Executor (Phase 3)
- * File: packages/api/src/core/delivery/retries.js
- *
- * RESPONSIBILITIES:
- * - Schedule retry attempts for failed deliveries
- * - Apply exponential backoff strategy
- * - Update job status when max retries exceeded
- * - Emit brand memory events for retry lifecycle
- *
- * EXCLUDES:
- * - Actual delivery execution (delegated to poster.js)
- * - Cron scheduling (delegated to orchestrator)
+ * myPilotPost — Delivery Retry System
+ * SURLGICAL RETRY • V1 PRODUCTION
  */
 
+import { json, error } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
-import { writeBrandMemoryEvent } from "../brands/memory-writer.js";
+import { executeDeliveryJob } from "./poster.js";
 
-const MAX_RETRIES = 3;
-const BASE_DELAY_MINUTES = 5;
+/**
+ * POST /api/customer/delivery/retry
+ * Retries a specific job or all failed jobs for a content piece.
+ */
+export async function manualRetryJob(request, env, auth) {
+  if (!auth?.brand_id) return error("Unauthorized", "UNAUTHORIZED", null, 401);
 
-/* =====================================================
-   SCHEDULE RETRY
-===================================================== */
+  const { job_id, content_id } = await request.json();
+  const db = getDB(env);
 
-export async function scheduleRetry(db, job, attemptNumber, errorCode = null) {
-  // Check if we've exceeded max retries
-  if (attemptNumber >= MAX_RETRIES) {
-    await markJobPermanentlyFailed(db, job, attemptNumber, errorCode);
+  if (job_id) {
+    // 1. Single Job Retry
+    const job = await db.prepare(`SELECT * FROM delivery_jobs WHERE id = ? AND brand_id = ?`).bind(job_id, auth.brand_id).first();
+    if (!job) return error("Job not found", 404);
+    if (job.status !== 'failed' && job.status !== 'partial_failure') return error("Only failed jobs can be retried", 400);
+    if (job.delivery_attempts >= 3) return error("Maximum retry attempts (3) reached for this job", 400);
+
+    // Reset status to processing (to avoid scheduler picking it up twice if we trigger now)
+    await db.prepare(`UPDATE delivery_jobs SET status = 'processing', updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(job_id).run();
+
+    // Trigger execution
+    try {
+      await executeDeliveryJob(env, job);
+      return json({ success: true, message: "Retry triggered" });
+    } catch (err) {
+      return error("Retry execution failed: " + err.message, 500);
+    }
+  } else if (content_id) {
+    // 2. All Failed Jobs for Content (Surgical)
+    const failedJobs = await db.prepare(`
+      SELECT * FROM delivery_jobs 
+      WHERE content_id = ? AND brand_id = ? AND status = 'failed'
+    `).bind(content_id, auth.brand_id).all();
+
+    if (!failedJobs.results || failedJobs.results.length === 0) {
+      return error("No failed jobs found for this content", 404);
+    }
+
+    const tasks = [];
+    for (const job of failedJobs.results) {
+       await db.prepare(`UPDATE delivery_jobs SET status = 'processing', updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(job.id).run();
+       tasks.push(executeDeliveryJob(env, job));
+    }
+
+    await Promise.allSettled(tasks);
+    return json({ success: true, retried_count: failedJobs.results.length });
+  }
+
+  return error("Either job_id or content_id is required", 400);
+}
+
+/**
+ * AUTOMATIC RETRY SCHEDULER
+ * Enforces attempt limits and schedules future execution.
+ */
+export async function scheduleRetry(db, job, currentAttempt, errorType) {
+  if (currentAttempt >= 3) {
+    console.warn("RETRY: Exhausted all attempts for job", { job_id: job.id });
     return;
   }
 
-  // Calculate next retry time with exponential backoff
-  const nextRetryAt = calculateNextRetryTime(attemptNumber);
-  
-  // Update the job with retry information
-  await db
-    .prepare(
-      `
-      UPDATE delivery_jobs
-      SET 
-        status = 'pending',
-        retry_count = ?,
-        next_retry_at = ?,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-      `
-    )
-    .bind(attemptNumber, nextRetryAt.toISOString(), job.id)
-    .run();
+  // Define backoff (STRICT: 30s for 2nd attempt, 3m for 3rd attempt)
+  const backoffSeconds = currentAttempt === 1 ? 30 : 180;
+  const nextRun = new Date(Date.now() + backoffSeconds * 1000).toISOString();
 
-  // Record retry scheduled event in brand memory
-  await writeBrandMemoryEvent(db, {
-    brandId: job.brand_id,
-    eventType: "delivery_retry_scheduled",
-    entityType: "content",
-    platform: job.platform,
-    attempt_number: attemptNumber,
-    next_retry_at: nextRetryAt.toISOString(),
-    error_code: errorCode
+  console.log("RETRY: Scheduling next attempt", { 
+    job_id: job.id, 
+    attempt: currentAttempt + 1, 
+    in: `${backoffSeconds}s` 
   });
 
-  // Create notification for retry scheduling
-  await insertNotification(
-    db,
-    job.brand_id,
-    "delivery_retry_scheduled",
-    `Retry scheduled for ${job.platform} post (attempt ${attemptNumber + 1}/${MAX_RETRIES})`
-  );
-}
-
-/* =====================================================
-   PERMANENT FAILURE HANDLING
-===================================================== */
-
-async function markJobPermanentlyFailed(db, job, attemptNumber, errorCode) {
-  await db
-    .prepare(
-      `
-      UPDATE delivery_jobs
-      SET 
-        status = 'failed',
-        failed_at = CURRENT_TIMESTAMP,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-      `
-    )
-    .bind(job.id)
-    .run();
-
-  await writeBrandMemoryEvent(db, {
-    brandId: job.brand_id,
-    eventType: "delivery_permanently_failed",
-    entityType: "content",
-    platform: job.platform,
-    final_attempt: attemptNumber,
-    error_code: errorCode,
-    scheduled_at: job.scheduled_at
-  });
-
-  await insertNotification(
-    db,
-    job.brand_id,
-    "delivery_failed_permanent",
-    `${job.platform} post permanently failed after ${MAX_RETRIES} attempts`
-  );
-}
-
-/* =====================================================
-   RETRY CANDIDATE FETCHING
-===================================================== */
-
-export async function getJobsDueForRetry(db) {
-  const now = new Date().toISOString();
-  
-  const jobs = await db
-    .prepare(
-      `
-      SELECT *
-      FROM delivery_jobs
-      WHERE 
-        status = 'pending' 
-        AND next_retry_at <= ?
-        AND retry_count > 0
-        AND retry_count < ?
-      ORDER BY next_retry_at ASC
-      LIMIT 50
-      `
-    )
-    .bind(now, MAX_RETRIES)
-    .all();
-
-  return jobs.results || [];
-}
-
-/* =====================================================
-   HELPERS
-===================================================== */
-
-function calculateNextRetryTime(attemptNumber) {
-  const delayMinutes = BASE_DELAY_MINUTES * Math.pow(2, attemptNumber - 1);
-  const now = new Date();
-  return new Date(now.getTime() + delayMinutes * 60000);
-}
-
-async function insertNotification(db, brandId, type, message) {
-  await db
-    .prepare(
-      `
-      INSERT INTO notifications (brand_id, type, message, created_at)
-      VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-      `
-    )
-    .bind(brandId, type, message)
-    .run();
-}
-
-/* =====================================================
-   RETRY CONFIGURATION GETTERS
-===================================================== */
-
-export function getMaxRetries() {
-  return MAX_RETRIES;
-}
-
-export function getBaseDelayMinutes() {
-  return BASE_DELAY_MINUTES;
+  await db.prepare(`
+    UPDATE delivery_jobs 
+    SET status = 'scheduled', 
+        scheduled_at = ?,
+        updated_at = CURRENT_TIMESTAMP 
+    WHERE id = ?
+  `).bind(nextRun, job.id).run();
 }

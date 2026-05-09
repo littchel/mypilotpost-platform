@@ -1,8 +1,13 @@
-import { json } from "../../lib/json.js";
+import { json, error } from "../../lib/json.js";
+import { hasPermission } from "../../auth/permissions.js";
 
 /* ================= ADMIN (AUTH REQUIRED) ================= */
 
 export async function createMarketingPost(request, env, auth) {
+  if (!hasPermission(auth.role, "blog:write")) {
+    return error("Insufficient permissions", "FORBIDDEN", null, 403);
+  }
+
   try {
     const body = await request.json();
 
@@ -61,6 +66,10 @@ export async function createMarketingPost(request, env, auth) {
 }
 
 export async function listMarketingPosts(request, env, auth) {
+  if (!hasPermission(auth.role, "blog:read")) {
+    return error("Insufficient permissions", "FORBIDDEN", null, 403);
+  }
+
   const { results } = await env.mypilotpost.prepare(`
     SELECT *
     FROM marketing_blog_posts
@@ -71,6 +80,10 @@ export async function listMarketingPosts(request, env, auth) {
 }
 
 export async function updateMarketingPost(request, env, auth, id) {
+  if (!hasPermission(auth.role, "blog:write")) {
+    return error("Insufficient permissions", "FORBIDDEN", null, 403);
+  }
+
   const body = await request.json();
 
   await env.mypilotpost.prepare(`
@@ -104,6 +117,10 @@ export async function updateMarketingPost(request, env, auth, id) {
 }
 
 export async function deleteMarketingPost(request, env, auth, id) {
+  if (!hasPermission(auth.role, "blog:write")) {
+    return error("Insufficient permissions", "FORBIDDEN", null, 403);
+  }
+
   await env.mypilotpost.prepare(`
     DELETE FROM marketing_blog_posts
     WHERE id = ?

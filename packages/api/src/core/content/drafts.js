@@ -1,207 +1,82 @@
 // packages/api/src/core/content/drafts.js
-
 import { json, error } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
 
-/* ======================================================
-   LIST CONTENT (GLOBAL DASHBOARD)
-====================================================== */
-export async function listContent(_req, env, auth) {
-  if (!auth?.brand_id) return error("Unauthorized", 401);
-
+/**
+ * UNIFIED CONTENT LISTING (SINGLE SOURCE OF TRUTH)
+ * Queries canonical tables ONLY. Enforces brand/user isolation.
+ */
+export async function listContent(request, env, auth) {
   const db = getDB(env);
+  const { brand_id, user_id } = auth;
 
-  const { results } = await db.prepare(`
-    SELECT
-      cd.content_id        AS id,
-      cd.content_type,
-      cd.updated_at,
-      CASE
-        WHEN cd.content_type = 'social' THEN sa.title
-        WHEN cd.content_type = 'blog'   THEN bp.title
-      END AS title,
-      CASE
-        WHEN cd.content_type = 'social' THEN sa.status
-        WHEN cd.content_type = 'blog'   THEN bp.status
-      END AS status
-    FROM content_drafts cd
-    LEFT JOIN social_assets sa
-      ON cd.content_type = 'social'
-     AND sa.id = cd.content_id
-    LEFT JOIN blog_posts bp
-      ON cd.content_type = 'blog'
-     AND bp.id = cd.content_id
-    WHERE cd.brand_id = ?
-    ORDER BY cd.updated_at DESC
-  `).bind(auth.brand_id).all();
+  // 1. Fetch Social Assets
+  const socialPromise = db.prepare(`
+    SELECT id, 'social' as type, title, text as content, lifecycle_status, updated_at 
+    FROM social_assets 
+    WHERE brand_id = ? AND user_id = ?
+  `).bind(brand_id, user_id).all();
+
+  // 2. Fetch Blog Posts
+  const blogPromise = db.prepare(`
+    SELECT id, 'blog' as type, title, body as content, lifecycle_status, updated_at 
+    FROM blog_posts 
+    WHERE brand_id = ? AND user_id = ?
+  `).bind(brand_id, user_id).all();
+
+  const [socials, blogs] = await Promise.all([socialPromise, blogPromise]);
+
+  const allContent = [...(socials.results || []), ...(blogs.results || [])]
+    .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
 
   return json({
-    brand_id: auth.brand_id,
-    content: results || []
+    success: true,
+    brand_id,
+    data: allContent
   });
 }
 
-/* ======================================================
-   LIST DRAFTS (SOCIAL / BLOG TABS)
-====================================================== */
+/**
+ * LIST DRAFTS (FILTERED BY TYPE)
+ */
 export async function listDrafts(request, env, auth) {
-  if (!auth?.brand_id) return error("Unauthorized", 401);
-
+  const db = getDB(env);
+  const { brand_id, user_id } = auth;
   const url = new URL(request.url);
-  const type = url.pathname.endsWith("/social")
-    ? "social"
-    : url.pathname.endsWith("/blog")
-    ? "blog"
-    : null;
+  const type = url.searchParams.get("type"); // social | blog
 
-  if (!type) return error("Invalid content type", 400);
-
-  const db = getDB(env);
-
-  if (type === "social") {
-    const { results } = await db.prepare(`
-      SELECT
-        cd.content_id AS id,
-        cd.updated_at,
-        sa.title,
-        sa.status
-      FROM content_drafts cd
-      JOIN social_assets sa
-        ON sa.id = cd.content_id
-      WHERE cd.brand_id = ?
-        AND cd.content_type = 'social'
-      ORDER BY cd.updated_at DESC
-    `).bind(auth.brand_id).all();
-
-    return json({ items: results || [] });
+  let results;
+  if (type === 'social') {
+    results = await db.prepare(`
+      SELECT * FROM social_assets WHERE brand_id = ? AND user_id = ? ORDER BY updated_at DESC
+    `).bind(brand_id, user_id).all();
+  } else {
+    results = await db.prepare(`
+      SELECT * FROM blog_posts WHERE brand_id = ? AND user_id = ? ORDER BY updated_at DESC
+    `).bind(brand_id, user_id).all();
   }
 
-  const { results } = await db.prepare(`
-    SELECT
-      cd.content_id AS id,
-      cd.updated_at,
-      bp.title,
-      bp.status
-    FROM content_drafts cd
-    JOIN blog_posts bp
-      ON bp.id = cd.content_id
-    WHERE cd.brand_id = ?
-      AND cd.content_type = 'blog'
-    ORDER BY cd.updated_at DESC
-  `).bind(auth.brand_id).all();
-
-  return json({ items: results || [] });
+  return json({ success: true, data: results.results || [] });
 }
 
-/* ======================================================
-   LIST DRAFT INDEX (GENERIC)
-====================================================== */
-export async function getDrafts(_req, env, auth) {
-  if (!auth?.brand_id) return error("Unauthorized", 401);
-
+/**
+ * GET SCHEDULED CONTENT
+ * Pulls from delivery_jobs (Single Source of Truth for execution)
+ */
+export async function getScheduled(request, env, auth) {
   const db = getDB(env);
+  const { brand_id, user_id } = auth;
 
   const { results } = await db.prepare(`
-    SELECT
-      content_id AS id,
-      content_type,
-      updated_at
-    FROM content_drafts
-    WHERE brand_id = ?
-    ORDER BY updated_at DESC
-  `).bind(auth.brand_id).all();
+    SELECT dj.*, 
+      CASE WHEN dj.content_type = 'social' THEN sa.title ELSE bp.title END as title,
+      CASE WHEN dj.content_type = 'social' THEN sa.lifecycle_status ELSE bp.lifecycle_status END as lifecycle_status
+    FROM content_delivery_jobs dj
+    LEFT JOIN social_assets sa ON sa.id = dj.content_id AND dj.content_type = 'social'
+    LEFT JOIN blog_posts bp ON bp.id = dj.content_id AND dj.content_type = 'blog'
+    WHERE dj.brand_id = ? AND dj.user_id = ?
+    ORDER BY dj.scheduled_at ASC
+  `).bind(brand_id, user_id).all();
 
-  return json({
-    brand_id: auth.brand_id,
-    drafts: results || []
-  });
-}
-
-/* ======================================================
-   UPDATE CONTENT (SOCIAL + BLOG)
-====================================================== */
-export async function updateContent(request, env, auth) {
-  if (!auth?.brand_id) return error("Unauthorized", 401);
-
-  const url = new URL(request.url);
-  const contentId = url.searchParams.get("id");
-
-  if (!contentId) return error("Missing content id", 400);
-
-  const body = await request.json();
-  const db = getDB(env);
-
-  const draft = await db.prepare(`
-    SELECT content_type
-    FROM content_drafts
-    WHERE content_id = ?
-      AND brand_id = ?
-  `).bind(contentId, auth.brand_id).first();
-
-  if (!draft) return error("Content not found", 404);
-
-  if (draft.content_type === "social") {
-    await db.prepare(`
-      UPDATE social_assets
-      SET
-        title = COALESCE(?, title),
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-        AND brand_id = ?
-    `).bind(
-      body.title ?? null,
-      contentId,
-      auth.brand_id
-    ).run();
-  }
-
-  if (draft.content_type === "blog") {
-    await db.prepare(`
-      UPDATE blog_posts
-      SET
-        title = COALESCE(?, title),
-        body  = COALESCE(?, body),
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-        AND brand_id = ?
-    `).bind(
-      body.title ?? null,
-      body.body ?? null,
-      contentId,
-      auth.brand_id
-    ).run();
-  }
-
-  await db.prepare(`
-    UPDATE content_drafts
-    SET updated_at = CURRENT_TIMESTAMP
-    WHERE content_id = ?
-      AND brand_id = ?
-  `).bind(contentId, auth.brand_id).run();
-
-  return json({ success: true });
-}
-
-/* ======================================================
-   LIST SCHEDULED CONTENT
-====================================================== */
-export async function getScheduled(_req, env, auth) {
-  if (!auth?.brand_id) return error("Unauthorized", 401);
-
-  const db = getDB(env);
-
-  const { results } = await db.prepare(`
-    SELECT
-      id,
-      content_id,
-      platform,
-      scheduled_at,
-      status
-    FROM delivery_jobs
-    WHERE brand_id = ?
-      AND status = 'scheduled'
-    ORDER BY scheduled_at ASC
-  `).bind(auth.brand_id).all();
-
-  return json({ scheduled: results || [] });
+  return json({ success: true, data: results || [] });
 }

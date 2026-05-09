@@ -1,4 +1,4 @@
-import { json, error } from "../../lib/json.js";
+import { json, error } from "../../../lib/json.js";
 import { searchFreepik } from "./freepik.js";
 import { adaptFreepikResults } from "./adapters/freepik_adapter.js";
 

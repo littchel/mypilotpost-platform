@@ -23,9 +23,9 @@
   });
 
   async function loadData() {
-    const res = await fetch("/blog/blog-data.json");
+    const res = await fetch("/api/blog");
     const data = await res.json();
-    ALL_POSTS = data.posts
+    ALL_POSTS = (data.posts || [])
       .filter(p => p.status === "published")
       .sort((a, b) => new Date(b.published_at) - new Date(a.published_at));
   }
@@ -143,19 +143,44 @@
     await loadData();
     const slug = new URLSearchParams(window.location.search).get("slug");
     const post = ALL_POSTS.find(p => p.slug === slug);
-    if (!post) return;
+    
+    // If not in data.json (which might be cached or partial), try direct API
+    if (!post) {
+      try {
+        const res = await fetch(`/api/blog/${slug}`);
+        const data = await res.json();
+        if (data.post) {
+           renderSinglePost(data.post);
+           return;
+        }
+      } catch (e) {
+        console.error("Failed to load post from API", e);
+      }
+      return;
+    }
 
+    renderSinglePost(post);
+  };
+
+  function renderSinglePost(post) {
     document.title = `${post.title} | myPilotPost`;
 
-    document.getElementById("title").textContent = post.title;
-    document.getElementById("date").textContent = formatDate(post.published_at);
-    document.getElementById("reading-time").textContent =
-      calculateReadingTime(post.content_html) + " min read";
+    const titleEl = document.getElementById("title");
+    const dateEl = document.getElementById("date");
+    const readingTimeEl = document.getElementById("reading-time");
+    const contentEl = document.getElementById("content");
 
-    document.getElementById("content").innerHTML = post.content_html;
+    if (titleEl) titleEl.textContent = post.title;
+    if (dateEl) dateEl.textContent = formatDate(post.published_at);
+    if (readingTimeEl) readingTimeEl.textContent = calculateReadingTime(post.content_html) + " min read";
+    if (contentEl) contentEl.innerHTML = post.content_html;
 
     injectSEO(post);
     injectJSONLD(post);
+  }
+
+  window.loadBlogHome = function() {
+    renderPosts();
   };
 
   /* ======================================================

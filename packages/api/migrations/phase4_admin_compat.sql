@@ -4,7 +4,8 @@
 -- =========================================
 
 -- Monthly MRR snapshots (admin read)
-CREATE TABLE IF NOT EXISTS mrr_snapshots (
+DROP TABLE IF EXISTS mrr_snapshots;
+CREATE TABLE mrr_snapshots (
   customer_id TEXT NOT NULL,
   snapshot_month TEXT NOT NULL,
   mrr INTEGER NOT NULL DEFAULT 0,
@@ -17,7 +18,8 @@ CREATE INDEX IF NOT EXISTS idx_mrr_snapshots_customer
 ------------------------------------------------
 
 -- Delivery jobs (compat with admin analytics)
-CREATE TABLE IF NOT EXISTS content_delivery_jobs (
+DROP TABLE IF EXISTS content_delivery_jobs;
+CREATE TABLE content_delivery_jobs (
   id TEXT PRIMARY KEY,
   customer_id TEXT,
   platform TEXT,
@@ -28,7 +30,8 @@ CREATE TABLE IF NOT EXISTS content_delivery_jobs (
 ------------------------------------------------
 
 -- Delivery attempts
-CREATE TABLE IF NOT EXISTS content_delivery_attempts (
+DROP TABLE IF EXISTS content_delivery_attempts;
+CREATE TABLE content_delivery_attempts (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   job_id TEXT,
   attempt INTEGER,
@@ -52,7 +55,8 @@ CREATE TABLE IF NOT EXISTS churn_signals (
 ------------------------------------------------
 
 -- Subscriptions (minimal admin view)
-CREATE TABLE IF NOT EXISTS subscriptions (
+DROP TABLE IF EXISTS subscriptions;
+CREATE TABLE subscriptions (
   customer_id TEXT PRIMARY KEY,
   status TEXT NOT NULL DEFAULT 'active',
   plan TEXT,

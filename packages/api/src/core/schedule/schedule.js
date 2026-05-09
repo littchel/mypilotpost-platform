@@ -3,10 +3,11 @@
  * AUTHORITATIVE • D1 SAFE • CRASH PROOF • PRODUCTION LOCK
  */
 
-import { json } from "../../lib/json.js";
+import { error, json } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
 import { toLocalTime } from "../../lib/dates.js";
 import { logEvent } from "../../lib/events.js";
+import { isValidUUID, isValidISO8601 } from "../../lib/validation.js";
 
 /* =====================================================
    HELPERS
@@ -24,7 +25,7 @@ function safeJsonParse(str) {
  * Force deterministic SQLite datetime format:
  * YYYY-MM-DD HH:MM:SS.000
  */
-function normalizeForSQLite(isoString) {
+export function normalizeForSQLite(isoString) {
   const date = new Date(isoString);
 
   if (isNaN(date.getTime())) {
@@ -58,7 +59,7 @@ async function getBrandTimezone(db, brandId) {
 /**
  * 🔒 15-minute conflict check (D1 safe)
  */
-async function hasConflict(
+export async function hasConflict(
   db,
   brandId,
   platform,
@@ -109,8 +110,8 @@ export async function getSchedule(request, env, auth) {
     const from = url.searchParams.get("from");
     const to = url.searchParams.get("to");
 
-    if (!from || !to) {
-      return json({ error: "from and to are required" }, 400);
+    if (!from || !to || !isValidISO8601(from) || !isValidISO8601(to)) {
+      return error("Valid from and to (ISO8601) are required", "INVALID_INPUT", null, 400);
     }
 
     const timezone = await getBrandTimezone(db, brandId);
@@ -146,8 +147,7 @@ export async function getSchedule(request, env, auth) {
     });
 
   } catch (err) {
-    console.error("GET SCHEDULE ERROR:", err);
-    return json({ error: "Internal error" }, 500);
+    return error("Internal error", "SERVER_ERROR", String(err), 500);
   }
 }
 
@@ -158,7 +158,7 @@ export async function getSchedule(request, env, auth) {
 export async function createSchedule(request, env, auth) {
   try {
     if (!auth?.brand_id) {
-      return json({ error: "Unauthorized" }, 401);
+      return error("Unauthorized", "UNAUTHORIZED", null, 401);
     }
 
     const body = await request.json();
@@ -172,12 +172,16 @@ export async function createSchedule(request, env, auth) {
     } = body || {};
 
     if (!content_type || !content_id || !platform || !scheduled_at) {
-      return json({ error: "Missing required fields" }, 400);
+      return error("Missing required fields", "BAD_REQUEST", null, 400);
+    }
+
+    if (!isValidUUID(content_id)) {
+      return error("Invalid content_id", "INVALID_ID", null, 400);
     }
 
     const normalized = normalizeForSQLite(scheduled_at);
-    if (!normalized) {
-      return json({ error: "Invalid scheduled_at format" }, 400);
+    if (!normalized || !isValidISO8601(scheduled_at)) {
+      return error("Invalid scheduled_at format", "INVALID_DATE", null, 400);
     }
 
     const db = getDB(env);
@@ -191,10 +195,12 @@ export async function createSchedule(request, env, auth) {
     }
 
     const hashtags = metadata?.hashtags || [];
+    const jobId = crypto.randomUUID();
 
     const result = await db
       .prepare(`
         INSERT INTO delivery_jobs (
+          id,
           brand_id,
           content_type,
           content_id,
@@ -203,9 +209,10 @@ export async function createSchedule(request, env, auth) {
           status,
           metadata,
           created_at
-        ) VALUES (?, ?, ?, ?, ?, 'scheduled', ?, CURRENT_TIMESTAMP)
+        ) VALUES (?, ?, ?, ?, ?, ?, 'scheduled', ?, CURRENT_TIMESTAMP)
       `)
       .bind(
+        jobId,
         brandId,
         content_type,
         content_id,
@@ -226,7 +233,7 @@ export async function createSchedule(request, env, auth) {
         });
       }
     } catch (e) {
-      console.error("Event log failed:", e);
+      // Slient fail for events in production
     }
 
     return json(
@@ -238,8 +245,7 @@ export async function createSchedule(request, env, auth) {
     );
 
   } catch (err) {
-    console.error("CREATE ERROR:", err);
-    return json({ error: "Internal error" }, 500);
+    return error("Internal error", "SERVER_ERROR", String(err), 500);
   }
 }
 
@@ -267,15 +273,15 @@ export async function updateSchedule(request, env, auth, jobId) {
       .first();
 
     if (!job || job.status !== "scheduled") {
-      return json({ error: "Only scheduled jobs can be updated" }, 409);
+      return error("Only scheduled jobs can be updated", "CONFLICT", null, 409);
     }
 
     const effectivePlatform = body.platform || job.platform;
 
     if (body.scheduled_at) {
       const normalized = normalizeForSQLite(body.scheduled_at);
-      if (!normalized) {
-        return json({ error: "Invalid scheduled_at format" }, 400);
+      if (!normalized || !isValidISO8601(body.scheduled_at)) {
+        return error("Invalid scheduled_at format", "INVALID_DATE", null, 400);
       }
 
       if (await hasConflict(
@@ -285,7 +291,7 @@ export async function updateSchedule(request, env, auth, jobId) {
         body.scheduled_at,
         jobId
       )) {
-        return json({ error: "Scheduling conflict detected" }, 409);
+        return error("Scheduling conflict detected", "CONFLICT", null, 409);
       }
 
       body._normalizedTime = normalized;
@@ -312,8 +318,7 @@ export async function updateSchedule(request, env, auth, jobId) {
     return json({ success: true });
 
   } catch (err) {
-    console.error("UPDATE ERROR:", err);
-    return json({ error: "Internal error" }, 500);
+    return error("Internal error", "SERVER_ERROR", String(err), 500);
   }
 }
 
@@ -324,7 +329,10 @@ export async function updateSchedule(request, env, auth, jobId) {
 export async function deleteSchedule(_request, env, auth, jobId) {
   try {
     if (!auth?.brand_id) {
-      return json({ error: "Unauthorized" }, 401);
+      return error("Unauthorized", "UNAUTHORIZED", null, 401);
+    }
+    if (!isValidUUID(jobId)) {
+      return error("Invalid Job ID", "INVALID_ID", null, 400);
     }
 
     const db = getDB(env);
@@ -340,13 +348,12 @@ export async function deleteSchedule(_request, env, auth, jobId) {
       .run();
 
     if (res.changes === 0) {
-      return json({ error: "Only scheduled jobs can be cancelled" }, 409);
+      return error("Only scheduled jobs can be cancelled", "CONFLICT", null, 409);
     }
 
     return json({ success: true });
 
   } catch (err) {
-    console.error("DELETE ERROR:", err);
-    return json({ error: "Internal error" }, 500);
+    return error("Internal error", "SERVER_ERROR", String(err), 500);
   }
 }

@@ -1,0 +1,108 @@
+/**
+ * Unified Social Token Refresh Manager
+ * Handles scheduled background refreshes and preemptive on-demand refreshing.
+ */
+
+import { getDB } from "../lib/db.js";
+import { encrypt, decrypt } from "../lib/crypto.js";
+import { getProvider } from "./registry.js";
+
+/**
+ * Refresh a single social connection
+ */
+export async function refreshSocialConnection(db, connection, env) {
+  const provider = getProvider(connection.platform);
+  const secret = env.ENCRYPTION_SECRET;
+  
+  try {
+    const refreshToken = await decrypt(connection.refresh_token, secret);
+    
+    const res = await fetch(provider.endpoints.token, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+        client_id: env[`${connection.platform.toUpperCase()}_CLIENT_ID`],
+        client_secret: env[`${connection.platform.toUpperCase()}_CLIENT_SECRET`]
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      const status = (data.error === "invalid_grant") ? "revoked" : "error";
+      await db.prepare("UPDATE social_connections SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+        .bind(status, connection.id).run();
+      return { success: false, status };
+    }
+
+    // Encrypt and update
+    const access_enc = await encrypt(data.access_token, secret);
+    const refresh_enc = data.refresh_token ? await encrypt(data.refresh_token, secret) : connection.refresh_token;
+    
+    const expires_at = data.expires_in 
+      ? new Date(Date.now() + data.expires_in * 1000).toISOString()
+      : connection.expires_at;
+
+    await db.prepare(`
+      UPDATE social_connections SET 
+        access_token = ?,
+        refresh_token = ?,
+        expires_at = ?,
+        status = 'active',
+        last_refreshed_at = CURRENT_TIMESTAMP,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(access_enc, refresh_enc, expires_at, connection.id).run();
+
+    return { success: true };
+  } catch (err) {
+    console.error(`[REFRESH_FAILED] ${connection.platform}:${connection.account_id}`, err);
+    await db.prepare("UPDATE social_connections SET status = 'error', updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+      .bind(connection.id).run();
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Run background sync (CRON triggered)
+ * Refreshes all active tokens to maintain session health.
+ */
+export async function runBackgroundRefresh(env) {
+  const db = getDB(env);
+  
+  // Find tokens expiring within the next 8 hours OR already expired but active
+  const { results } = await db.prepare(`
+    SELECT * FROM social_connections 
+    WHERE status = 'active'
+    AND (expires_at IS NULL OR expires_at < DATETIME('now', '+8 hours'))
+  `).all();
+
+  console.log(`[REFRESH_MANAGER] Checking ${results.length} connections...`);
+
+  for (const connection of results) {
+    await refreshSocialConnection(db, connection, env);
+  }
+}
+
+/**
+ * Preemptive check before using a connection
+ */
+export async function ensureValidConnection(db, connection, env) {
+  if (connection.status !== 'active') return connection;
+
+  const now = Date.now();
+  const expiry = connection.expires_at ? new Date(connection.expires_at).getTime() : null;
+
+  // Refresh ONLY when: expires_at < now + 5 minutes
+  if (expiry && (expiry - now < 300000)) {
+    console.log(`[REFRESH_PREEMPTIVE] Refreshing ${connection.platform}:${connection.id}`);
+    await refreshSocialConnection(db, connection, env);
+    
+    // Fetch updated record
+    return await db.prepare("SELECT * FROM social_connections WHERE id = ?").bind(connection.id).first();
+  }
+
+  return connection;
+}

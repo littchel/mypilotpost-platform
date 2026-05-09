@@ -5,8 +5,8 @@
 PRAGMA foreign_keys = OFF;
 
 ALTER TABLE missions ADD COLUMN customer_id TEXT;
-ALTER TABLE missions ADD COLUMN entity_type TEXT;
-ALTER TABLE missions ADD COLUMN entity_id TEXT;
+-- ALTER TABLE missions ADD COLUMN entity_type TEXT;
+-- ALTER TABLE missions ADD COLUMN entity_id TEXT;
 
 PRAGMA foreign_keys = ON;
 

@@ -18,7 +18,7 @@ export async function startOAuth(request, env, brandId, providerName) {
   const state = crypto.randomUUID();
   const redirectUri = `${env.PUBLIC_BASE_URL}/api/integrations/oauth/callback`;
 
-  await env.ADMIN_DB.prepare(`
+  await env.mypilotpost.prepare(`
     INSERT INTO oauth_states (state, brand_id, provider, redirect_uri, expires_at)
     VALUES (?, ?, ?, ?, datetime('now', '+10 minutes'))
   `).bind(state, brandId, providerName, redirectUri).run();

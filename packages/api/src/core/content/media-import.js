@@ -25,7 +25,7 @@ export async function importMedia(request, env) {
 
   const id = crypto.randomUUID();
 
-  await env.ADMIN_DB.prepare(`
+  await env.mypilotpost.prepare(`
     INSERT INTO media_assets (
       id,
       brand_id,

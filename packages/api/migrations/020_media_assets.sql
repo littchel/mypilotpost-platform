@@ -1,4 +1,6 @@
-CREATE TABLE IF NOT EXISTS media_assets (
+DROP TABLE IF EXISTS media_assets;
+
+CREATE TABLE media_assets (
   id TEXT PRIMARY KEY,
   brand_id TEXT NOT NULL,
   customer_id TEXT NOT NULL,

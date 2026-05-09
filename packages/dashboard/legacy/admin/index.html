@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>myPilotPost | Admin Mission Control</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/png" href="favicon-32x32.png" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-body: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #475569;
+      --text-heading: #0f172a;
+      --pilot-blue: #2563eb;
+      --pilot-blue-light: #eff6ff;
+      --border-subtle: #e2e8f0;
+      --radius-lg: 16px;
+      --radius-md: 10px;
+    }
+
+    * { font-family: 'Inter', sans-serif !important; }
+
+    body {
+      background-color: var(--bg-body);
+      color: var(--text-main);
+      margin: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    header {
+      background: white;
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    .nav-brand { color: var(--pilot-blue); font-weight: 800; font-size: 1.2rem; text-decoration: none; }
+
+    main { padding: 2rem; max-width: 1300px; margin: auto; }
+
+    .card-kpi {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      border: 1px solid var(--border-subtle);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      transition: transform 0.2s;
+    }
+
+    .card-kpi:hover { transform: translateY(-2px); }
+
+    .metric-label { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.5rem; }
+    .metric-value { font-size: 1.75rem; font-weight: 800; color: var(--text-heading); }
+
+    .chart-container {
+      background: white;
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      border: 1px solid var(--border-subtle);
+      margin-bottom: 24px;
+    }
+
+    .table-container {
+      background: white;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-subtle);
+      overflow: hidden;
+    }
+
+    table { width: 100%; margin: 0; }
+    thead { background: #f1f5f9; }
+    table th { font-size: 0.75rem; text-transform: uppercase; color: var(--text-main); padding: 12px 16px !important; border: 0 !important;}
+    table td { padding: 14px 16px !important; vertical-align: middle; border-bottom: 1px solid var(--border-subtle); font-size: 0.9rem; }
+    
+    tr:hover { background-color: var(--pilot-blue-light); cursor: pointer; }
+
+    /* Badges */
+    .badge-risk { padding: 4px 10px; border-radius: 50px; font-size: 0.7rem; font-weight: 700; }
+    .risk-low { background: #dcfce7; color: #166534; }
+    .risk-medium { background: #fef9c3; color: #854d0e; }
+    .risk-high { background: #fee2e2; color: #991b1b; }
+
+    /* Drawer */
+    #customerDrawer {
+      position: fixed; top: 0; right: -450px; width: 450px; height: 100%;
+      background: #fff; border-left: 1px solid var(--border-subtle);
+      transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      padding: 2rem; overflow-y: auto; z-index: 2000;
+      box-shadow: -10px 0 30px rgba(0,0,0,0.05);
+    }
+
+    .overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.2); 
+      display: none; z-index: 1999; backdrop-filter: blur(2px);
+    }
+
+    .btn-close-drawer {
+      background: #f1f5f9; border: none; width: 32px; height: 32px;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      float: right; cursor: pointer;
+    }
+
+    h4 { font-weight: 800; font-size: 1.1rem; margin-top: 2rem; margin-bottom: 1rem; color: var(--text-heading); }
+    .drawer-list { list-style: none; padding: 0; }
+    .drawer-list li { 
+      padding: 10px; border-radius: 8px; background: #f8fafc; 
+      margin-bottom: 8px; font-size: 0.85rem; border: 1px solid var(--border-subtle);
+    }
+
+    @media (max-width: 768px) {
+      #customerDrawer { width: 100%; right: -100%; }
+      main { padding: 1rem; }
+    }
+
+    /* Tabs */
+    .admin-nav {
+      display: flex; gap: 2rem; border-bottom: 1px solid var(--border-subtle); margin-bottom: 2rem;
+    }
+    .admin-nav-item {
+      padding: 0.75rem 0; border-bottom: 2px solid transparent; color: var(--text-main); text-decoration: none; font-weight: 600; cursor: pointer;
+    }
+    .admin-nav-item.active {
+      border-color: var(--pilot-blue); color: var(--pilot-blue);
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+  </style>
+</head>
+
+<body>
+
+<div id="drawerOverlay" class="overlay" onclick="closeCustomer()"></div>
+
+<header>
+  <a href="#" class="nav-brand"><i class="fas fa-paper-plane me-2"></i> myPilotPost <span class="text-muted fw-light">Admin</span></a>
+  <div class="d-flex gap-3 align-items-center">
+    <span class="badge bg-dark" id="env-badge">Production</span>
+    <img src="https://ui-avatars.com/api/?name=Admin&background=2563eb&color=fff" width="32" height="32" class="rounded-circle border">
+  </div>
+</header>
+
+<main>
+
+  <section class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card-kpi">
+        <span class="metric-label">System State</span>
+        <div class="metric-value d-flex align-items-center" id="env">
+          <div class="spinner-grow spinner-grow-sm text-primary me-2"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card-kpi">
+        <span class="metric-label">Total Portfolio</span>
+        <div class="metric-value" id="brands">0</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card-kpi">
+        <span class="metric-label">Current MRR</span>
+        <div class="metric-value" id="mrr">R0</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card-kpi">
+        <span class="metric-label">Audit Conversion</span>
+        <div class="metric-value" id="conversion">0%</div>
+      </div>
+    </div>
+  </section>
+
+  <nav class="admin-nav">
+    <a class="admin-nav-item active" onclick="showTab('portfolio')">Portfolio Breakdown</a>
+    <a class="admin-nav-item" onclick="showTab('pricing')">Pricing Management</a>
+    <a class="admin-nav-item" onclick="showTab('audits')">Strategic Audits</a>
+  </nav>
+
+  <div id="portfolio" class="tab-content active">
+    <div class="row g-4">
+      <div class="col-lg-8">
+        <div class="chart-container mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <h6 class="fw-bold m-0"><i class="fas fa-chart-line me-2 text-primary"></i> MRR Growth Trajectory</h6>
+            <span class="small text-muted">Last 30 Days</span>
+          </div>
+          <canvas id="mrrChart" style="height: 250px;"></canvas>
+        </div>
+
+        <div class="table-container">
+          <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+             <h6 class="fw-bold m-0">Portfolio Breakdown</h6>
+             <button class="btn btn-sm btn-light border"><i class="fas fa-download"></i></button>
+          </div>
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Customer Identity</th>
+                  <th>Tier</th>
+                  <th>Contribution</th>
+                  <th>Resource Usage</th>
+                  <th>Reliability</th>
+                </tr>
+              </thead>
+              <tbody id="customerTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-4">
+        <div class="chart-container h-100">
+          <h6 class="fw-bold mb-4"><i class="fas fa-shield-halved me-2 text-primary"></i> Delivery Reliability</h6>
+          <canvas id="deliveryChart" style="height: 400px;"></canvas>
+          <p class="small text-muted mt-3">Active telemetry monitoring platform-wide mission success rates.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="pricing" class="tab-content">
+    <div class="table-container">
+      <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+        <h6 class="fw-bold m-0">Active Tiers</h6>
+        <button class="btn btn-sm btn-primary" onclick="editPlan()"><i class="fas fa-plus"></i> New Plan</button>
+      </div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Plan Name</th>
+            <th>Price</th>
+            <th>Limits (Posts/AI/Acc)</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="pricingTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="audits" class="tab-content">
+    <div class="table-container">
+      <div class="p-3 border-bottom">
+        <h6 class="fw-bold m-0">Recent Strategic Audits</h6>
+      </div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Brand</th>
+            <th>Score</th>
+            <th>Recommended</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="auditsTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<div id="customerDrawer">
+  <button class="btn-close-drawer" onclick="closeCustomer()"><i class="fas fa-times"></i></button>
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <div id="cd-avatar" class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style="width: 48px; height: 48px; font-size: 1.2rem;"></div>
+    <div>
+      <h3 class="h5 fw-bold m-0" id="cd-name"></h3>
+      <p id="cd-meta" class="small m-0"></p>
+    </div>
+  </div>
+
+  <hr>
+
+  <h4><i class="fas fa-microchip me-2"></i> Mission Telemetry</h4>
+  <ul class="drawer-list" id="cd-usage"></ul>
+
+  <h4><i class="fas fa-file-invoice-dollar me-2"></i> Financial Status</h4>
+  <ul class="drawer-list" id="cd-billing"></ul>
+
+  <h4><i class="fas fa-history me-2"></i> Recent Dispatches</h4>
+  <ul class="drawer-list" id="cd-missions"></ul>
+  
+  <div class="d-grid gap-2 mt-5">
+    <button class="btn btn-primary py-2 fw-bold">Impersonate Account</button>
+    <button class="btn btn-outline-danger py-2">Flag for Review</button>
+  </div>
+</div>
+
+<script>
+/* ===============================
+   AUTH & CONFIG
+================================ */
+const TOKEN = localStorage.getItem("token");
+if (!TOKEN) {
+  // Redirect to login if no token
+  window.location.href = "/sign-in.html?redirect=" + encodeURIComponent(location.pathname);
+}
+
+function parseJwt(token) {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    return null;
+  }
+}
+
+const user = parseJwt(TOKEN);
+if (!user || (user.role !== 'admin' && user.role !== 'operations' && user.role !== 'support')) {
+  alert("Unauthorized access. Admin role required.");
+  window.location.href = "/";
+}
+
+// Display Role Badge
+document.addEventListener("DOMContentLoaded", () => {
+  const badge = document.getElementById("env-badge");
+  const roleDisplay = document.createElement("span");
+  roleDisplay.className = "badge bg-primary ms-2 text-capitalize";
+  roleDisplay.innerText = user.role;
+  badge.parentNode.appendChild(roleDisplay);
+  
+  // Role-based visibility
+  if (user.role === 'support') {
+    // Support can't see MRR or Billing
+    const mrrCard = document.getElementById("mrr")?.closest(".col-md-3");
+    if (mrrCard) mrrCard.style.display = "none";
+    const mrrChart = document.getElementById("mrrChart")?.closest(".chart-container");
+    if (mrrChart) mrrChart.style.display = "none";
+  }
+});
+
+function resolveApiBase() {
+  const h = location.hostname;
+  if (h.includes("localhost")) return "http://localhost:8787/api";
+  return "https://mypilotpost-api.littchel.workers.dev/api";
+}
+
+const API_BASE = resolveApiBase();
+const HEADERS = {
+  "Content-Type": "application/json",
+  "Authorization": "Bearer " + TOKEN
+};
+
+/* ===============================
+   HELPERS
+================================ */
+async function get(path) {
+  try {
+    const r = await fetch(API_BASE + path, { headers: HEADERS });
+    if (r.status === 401 || r.status === 403) {
+       alert("Session expired or access denied.");
+       window.location.href = "/sign-in.html";
+       return null;
+    }
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  } catch (e) {
+    console.error("API error:", path, e);
+    return null;
+  }
+}
+
+/* ===============================
+   CHARTS (unchanged)
+================================ */
+function drawLine(canvas, values) {
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width = canvas.offsetWidth;
+  const h = canvas.height = canvas.offsetHeight;
+  ctx.clearRect(0, 0, w, h);
+  if (!values || !values.length) return;
+
+  const max = Math.max(...values);
+  const stepX = w / (values.length - 1);
+
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, "rgba(37, 99, 235, 0.2)");
+  grad.addColorStop(1, "rgba(37, 99, 235, 0)");
+
+  ctx.beginPath();
+  ctx.moveTo(0, h);
+  values.forEach((v, i) => ctx.lineTo(i * stepX, h - (v / max) * (h * 0.8)));
+  ctx.lineTo(w, h);
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  ctx.beginPath();
+  values.forEach((v, i) => {
+    const x = i * stepX;
+    const y = h - (v / max) * (h * 0.8);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = "#2563eb";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+}
+
+/* ===============================
+   LOAD KPI + ENV
+================================ */
+async function loadAdmin() {
+  const health = await get("/health");
+  if (health) {
+    document.getElementById("env").innerHTML =
+      `<span class="text-success fw-bold">Operational</span>`;
+    document.getElementById("env-badge").innerText = "Production";
+  }
+
+  // Load stats if allowed
+    if (user.role !== 'support') {
+      const billing = await get("/admin/billing/overview");
+      if (billing) {
+        document.getElementById("mrr").innerText = `R${billing.mrr.toLocaleString()}`;
+        if (document.getElementById("conversion")) {
+          document.getElementById("conversion").innerText = billing.conversion_rate || "0%";
+        }
+      }
+      
+      const mrrHistory = await get("/admin/billing/mrr-history");
+    if (mrrHistory && mrrHistory.history) {
+       drawLine(document.getElementById("mrrChart"), mrrHistory.history.map(h => h.mrr));
+    }
+  }
+
+  const delivery = await get("/admin/analytics/delivery");
+  if (delivery) {
+     const total = delivery.total_jobs;
+     const failed = delivery.failed;
+     const rate = total > 0 ? failed / total : 0;
+     const risk = rate > 0.3 ? "High" : rate > 0.15 ? "Medium" : "Low";
+     
+     const el = document.getElementById("churn-risk");
+     if (el) {
+       el.innerText = risk;
+       el.className = "metric-value badge-risk risk-" + risk.toLowerCase();
+     }
+  }
+}
+
+/* ===============================
+   LOAD CUSTOMERS
+================================ */
+async function loadCustomers() {
+  const data = await get("/admin/customers");
+  if (!data) return;
+
+  const tbody = document.getElementById("customerTable");
+
+  tbody.innerHTML = data.customers.map(c => {
+    const riskClass =
+      c.failed_delivery_rate > 0.3 ? "risk-high" :
+      c.failed_delivery_rate > 0.15 ? "risk-medium" :
+      "risk-low";
+
+    const riskLabel =
+      c.failed_delivery_rate > 0.3 ? "Critical" :
+      c.failed_delivery_rate > 0.15 ? "Warning" :
+      "Healthy";
+
+    return `
+      <tr onclick="openCustomer('${c.brand_id}')">
+        <td>
+          <div class="fw-bold text-dark">${c.name}</div>
+          <div class="small text-muted">ID: ${c.brand_id.slice(0,8)}</div>
+        </td>
+        <td><span class="badge border text-dark bg-light">${c.industry}</span></td>
+        <td class="fw-bold">$${c.imps || 0} imps</td>
+        <td>
+          <div class="progress" style="height:6px;width:80px">
+            <div class="progress-bar" style="width:${Math.round((c.delivered/c.total_jobs)*100 || 0)}%"></div>
+          </div>
+          <div class="small mt-1">${c.delivered}/${c.total_jobs} jobs</div>
+        </td>
+        <td><span class="badge-risk ${riskClass}">${riskLabel}</span></td>
+      </tr>
+    `;
+  }).join("");
+
+  document.getElementById("brands").innerText = data.customers.length;
+}
+
+/* ===============================
+   DRAWER
+================================ */
+async function openCustomer(id) {
+  const d = await get(`/admin/customers/${id}`);
+  if (!d) return;
+
+  document.getElementById("cd-name").innerText = d.name;
+  document.getElementById("cd-avatar").innerText = d.name[0];
+  document.getElementById("cd-meta").innerText =
+    `${d.industry} • Platform Active`;
+
+  document.getElementById("cd-usage").innerHTML = `
+    <li><strong>Delivered:</strong> ${d.delivered}</li>
+    <li><strong>Total Jobs:</strong> ${d.total_jobs}</li>
+    <li><strong>Success Rate:</strong> ${Math.round((d.delivered/d.total_jobs)*100 || 0)}%</li>
+  `;
+
+  document.getElementById("cd-billing").innerHTML = `
+    <li><strong>Status:</strong> <span class="text-success">Active</span></li>
+  `;
+
+  document.getElementById("customerDrawer").style.right = "0";
+  document.getElementById("drawerOverlay").style.display = "block";
+}
+
+function closeCustomer() {
+  document.getElementById("customerDrawer").style.right = "-450px";
+  document.getElementById("drawerOverlay").style.display = "none";
+}
+
+/* ===============================
+   TABS & DYNAMIC CONTENT
+================================ */
+function showTab(id) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.admin-nav-item').forEach(t => t.classList.remove('active'));
+  
+  document.getElementById(id).classList.add('active');
+  const items = document.querySelectorAll('.admin-nav-item');
+  if (id === 'portfolio') items[0].classList.add('active');
+  if (id === 'pricing') { items[1].classList.add('active'); loadPricing(); }
+  if (id === 'audits') { items[2].classList.add('active'); loadAudits(); }
+}
+
+async function loadPricing() {
+  const data = await get("/admin/pricing");
+  if (!data) return;
+  
+  const tbody = document.getElementById("pricingTable");
+  tbody.innerHTML = data.plans.map(p => `
+    <tr>
+      <td><div class="fw-bold">${p.name}</div><div class="small text-muted">${p.id}</div></td>
+      <td>R${(p.price_monthly/100).toLocaleString()} <small>/mo</small></td>
+      <td>${p.posts_per_month_limit} / ${p.ai_generations_limit} / ${p.social_accounts_limit}</td>
+      <td><span class="badge ${p.is_active ? 'bg-success' : 'bg-secondary'}">${p.is_active ? 'Active' : 'Inactive'}</span></td>
+      <td>
+        <button class="btn btn-sm btn-light border" onclick="editPlan('${p.id}')">Edit</button>
+        <button class="btn btn-sm btn-outline-primary" onclick="togglePlan('${p.id}')">${p.is_active ? 'Disable' : 'Enable'}</button>
+      </td>
+    </tr>
+  `).join("");
+}
+
+async function loadAudits() {
+  // Mock/Future: need an endpoint for all audits, for now just show a message or fetch recent brands
+  const tbody = document.getElementById("auditsTable");
+  tbody.innerHTML = `<tr><td colspan="5" class="text-center p-5 text-muted">Audit overview loading from strategic engine...</td></tr>`;
+}
+
+async function togglePlan(id) {
+  const res = await fetch(API_BASE + `/admin/pricing/${id}/toggle`, {
+    method: 'PATCH',
+    headers: HEADERS
+  });
+  if (res.ok) loadPricing();
+  else alert((await res.json()).error);
+}
+
+function editPlan(id) {
+  alert("Plan editor coming soon in Phase 4.5!");
+}
+
+/* ===============================
+   INIT
+================================ */
+loadAdmin();
+loadCustomers();
+</script>
+
+
+</body>
+</html>

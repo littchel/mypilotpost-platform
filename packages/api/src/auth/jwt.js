@@ -1,114 +1,66 @@
 // packages/api/src/auth/jwt.js
 // Cloudflare Workers–native JWT (HS256)
 
-/**
- * Issue a CUSTOMER JWT (HS256)
- * - ALWAYS uses env.JWT_SECRET
- * - Impossible to mismatch secrets
- */
+function arrayBufferToBase64Url(buffer) {
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+}
+
+function base64UrlToUint8Array(base64url) {
+  let base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
+  while (base64.length % 4) base64 += "=";
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
 export async function issueJWT(payload, env, options = {}) {
-  if (!env?.JWT_SECRET) {
-    throw new Error("JWT_SECRET is not configured");
-  }
+  const secret = env?.JWT_SECRET;
+  if (!secret) throw new Error("JWT_SECRET is not defined");
 
-  const header = {
-    alg: "HS256",
-    typ: "JWT",
-  };
-
+  const header = { alg: "HS256", typ: "JWT" };
   const now = Math.floor(Date.now() / 1000);
-
   const fullPayload = {
     ...payload,
     iat: now,
-    exp: options.expiresIn
-      ? now + options.expiresIn
-      : now + 60 * 60 * 24 * 7, // 7 days default
+    exp: options.expiresIn ? now + options.expiresIn : now + 60 * 60 * 24 * 7,
   };
 
   const encoder = new TextEncoder();
+  const data = `${arrayBufferToBase64Url(encoder.encode(JSON.stringify(header)))}.${arrayBufferToBase64Url(encoder.encode(JSON.stringify(fullPayload)))}`;
 
-  const base64url = (input) =>
-    btoa(input)
-      .replace(/=/g, "")
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_");
-
-  const encodedHeader = base64url(JSON.stringify(header));
-  const encodedPayload = base64url(JSON.stringify(fullPayload));
-  const data = `${encodedHeader}.${encodedPayload}`;
-
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(env.JWT_SECRET),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-
-  const signatureBuffer = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    encoder.encode(data)
-  );
-
-  const signature = base64url(
-    String.fromCharCode(...new Uint8Array(signatureBuffer))
-  );
-
-  return `${data}.${signature}`;
+  const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const signatureBuffer = await crypto.subtle.sign("HMAC", key, encoder.encode(data));
+  return `${data}.${arrayBufferToBase64Url(signatureBuffer)}`;
 }
 
-/**
- * Verify a JWT (HS256)
- * - Uses provided secret (middleware supplies env.JWT_SECRET)
- */
-export async function verifyJWT(token, secret) {
-  if (!secret) {
-    throw new Error("JWT secret missing");
-  }
+export async function verifyJWT(token, secretFromEnv) {
+  const secret = secretFromEnv;
+  if (!secret) throw new Error("JWT_SECRET is not defined");
 
   const parts = token.split(".");
-  if (parts.length !== 3) {
-    throw new Error("Malformed token");
-  }
+  if (parts.length !== 3) throw new Error("Malformed");
 
   const [headerB64, payloadB64, signatureB64] = parts;
   const data = `${headerB64}.${payloadB64}`;
-
   const encoder = new TextEncoder();
 
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["verify"]
-  );
+  try {
+    const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
+    const signature = base64UrlToUint8Array(signatureB64);
+    const valid = await crypto.subtle.verify("HMAC", key, signature, encoder.encode(data));
 
-  const signature = Uint8Array.from(
-    atob(signatureB64.replace(/-/g, "+").replace(/_/g, "/")),
-    (c) => c.charCodeAt(0)
-  );
+    if (!valid) throw new Error("Invalid signature");
 
-  const valid = await crypto.subtle.verify(
-    "HMAC",
-    key,
-    signature,
-    encoder.encode(data)
-  );
+    const payload = JSON.parse(new TextDecoder().decode(base64UrlToUint8Array(payloadB64)));
+    if (payload.exp && Date.now() / 1000 > payload.exp) throw new Error("Expired");
 
-  if (!valid) {
-    throw new Error("Invalid signature");
+    return payload;
+  } catch (err) {
+    console.error(`[AUTH:JWT:VERIFY_FAILED] ${err.message}`);
+    throw err;
   }
-
-  const payload = JSON.parse(
-    atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/"))
-  );
-
-  if (payload.exp && Date.now() / 1000 > payload.exp) {
-    throw new Error("Token expired");
-  }
-
-  return payload;
 }

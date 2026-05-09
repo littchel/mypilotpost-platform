@@ -1,76 +1,115 @@
 // packages/api/src/core/brands/brands.js
 // PRODUCTION • PHASE 2B LOCKED
-// Ownership model: brands.user_id (single-owner)
+// Ownership model: brands.owner_user_id (single-owner)
 
 import { getDB } from "../../lib/db.js";
 import { json, error } from "../../lib/json.js";
+import { issueJWT } from "../../auth/jwt.js";
+import { isValidUUID } from "../../lib/validation.js";
+import { enforceLimits, recalculateUsage } from "../billing/billing.js";
 
 /* ======================================================
    CREATE BRAND
 ====================================================== */
 export async function createBrand(request, env, session) {
   if (!session?.user_id) {
-    return error("Unauthorized", 401);
+    return error("Unauthorized", "UNAUTHORIZED", null, 401);
   }
 
   let body;
   try {
     body = await request.json();
   } catch {
-    return error("Invalid JSON body", 400);
+    return error("Invalid JSON body", "INVALID_JSON", null, 400);
   }
 
-  const { name, industry, location } = body || {};
+  const { name, industry, tone, goals } = body || {};
 
-  if (!name || !name.trim()) return error("Brand name is required", 400);
-  if (!industry || !industry.trim()) return error("Industry is required", 400);
+  if (!name || !name.trim()) return error("Brand name is required", "BAD_REQUEST", null, 400);
+  if (!industry || !industry.trim()) return error("Industry is required", "BAD_REQUEST", null, 400);
 
   const db = getDB(env);
+
+  // 1. LIMIT ENFORCEMENT
+  const limitCheck = await enforceLimits(db, session.user_id, 'brand');
+  if (!limitCheck.allowed) {
+    return error(limitCheck.message, "UPGRADE_REQUIRED", { 
+      error: "UPGRADE_REQUIRED",
+      message: limitCheck.message 
+    }, 403);
+  }
+
   const brandId = crypto.randomUUID();
 
   try {
-    await db
-      .prepare(
+    await db.batch([
+      db.prepare(
         `
         INSERT INTO brands (
           id,
-          user_id,
+          owner_user_id,
           name,
           industry,
-          location,
+          tone,
+          goals,
           created_at
         )
-        VALUES (?, ?, ?, ?, ?, datetime('now'))
+        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
         `
-      )
-      .bind(
+      ).bind(
         brandId,
         session.user_id,
         name.trim(),
         industry.trim(),
-        location ? String(location).trim() : null
-      )
-      .run();
+        tone ? String(tone).trim() : null,
+        goals ? String(goals).trim() : null
+      ),
+      db.prepare(
+        `
+        INSERT INTO brand_users (user_id, brand_id, role, created_at)
+        VALUES (?, ?, 'owner', datetime('now'))
+        `
+      ).bind(session.user_id, brandId)
+    ]);
+
+    // 2. RECALCULATE USAGE
+    await recalculateUsage(db, session.user_id);
   } catch (err) {
     console.error("[CREATE BRAND FAILED]", err?.message || err);
-    return error("Failed to create brand", 500);
+    return error("Failed to create brand", "SERVER_ERROR", err?.message || err, 500);
   }
 
-  /**
-   * NOTE:
-   * Frontend MUST refresh auth context or re-issue JWT
-   * to make this brand active.
-   */
   return json(
     {
       id: brandId,
       name: name.trim(),
       industry: industry.trim(),
-      location: location ? String(location).trim() : null,
       requires_token_refresh: true,
     },
     201
   );
+}
+
+/**
+ * Enhanced createBrand for session-aware switching
+ */
+export async function createBrandRequest(request, env, session) {
+  const result = await createBrand(request, env, session);
+  if (result.status === 201) {
+    const data = await result.json();
+    // ✅ ISSUE NEW JWT IMMEDIATELY FOR THE NEW BRAND
+    const jwt = await issueJWT(
+      {
+        user_id: session.user_id,
+        brand_id: data.id,
+        email: session.email,
+        role: session.role
+      },
+      env
+    );
+    return json({ ...data, token: jwt }, 201);
+  }
+  return result;
 }
 
 /* ======================================================
@@ -78,7 +117,7 @@ export async function createBrand(request, env, session) {
 ====================================================== */
 export async function listBrands(_request, env, session) {
   if (!session?.user_id) {
-    return error("Unauthorized", 401);
+    return error("Unauthorized", "UNAUTHORIZED", null, 401);
   }
 
   const db = getDB(env);
@@ -88,15 +127,16 @@ export async function listBrands(_request, env, session) {
       .prepare(
         `
         SELECT
-          id,
-          name,
-          industry,
-          location,
-          created_at
-        FROM brands
-        WHERE user_id = ?
-          AND deleted_at IS NULL
-        ORDER BY created_at DESC
+          b.id,
+          b.name,
+          b.industry,
+          b.tone,
+          b.goals,
+          b.created_at
+        FROM brands b
+        JOIN brand_users bu ON bu.brand_id = b.id
+        WHERE bu.user_id = ?
+        ORDER BY b.created_at DESC
         `
       )
       .bind(session.user_id)
@@ -106,7 +146,8 @@ export async function listBrands(_request, env, session) {
       id: b.id,
       name: b.name,
       industry: b.industry,
-      location: b.location,
+      tone: b.tone,
+      goals: b.goals,
       created_at: b.created_at,
     }));
 
@@ -133,7 +174,7 @@ export async function switchBrand(request, env, session) {
   }
 
   const { brand_id } = body || {};
-  if (!brand_id) return error("brand_id is required", 400);
+  if (!brand_id || !isValidUUID(brand_id)) return error("Valid brand_id is required", 400);
 
   const db = getDB(env);
 
@@ -141,50 +182,49 @@ export async function switchBrand(request, env, session) {
     .prepare(
       `
       SELECT 1
-      FROM brands
-      WHERE id = ?
+      FROM brand_users
+      WHERE brand_id = ?
         AND user_id = ?
-        AND deleted_at IS NULL
       `
     )
     .bind(brand_id, session.user_id)
     .first();
 
   if (!exists) {
-    console.warn("[SWITCH BRAND DENIED]", {
-      user_id: session.user_id,
-      brand_id,
-    });
     return error("Brand not accessible", 403);
   }
 
-  /**
-   * NOTE:
-   * Active brand is resolved from JWT.
-   * Frontend must request a new token.
-   */
-  return json({ success: true, brand_id, requires_token_refresh: true });
+  // ✅ ISSUE NEW JWT WITH BRAND CONTEXT
+  const jwt = await issueJWT(
+    {
+      user_id: session.user_id,
+      brand_id: brand_id,
+      email: session.email,
+      role: session.role
+    },
+    env
+  );
+
+  return json({ success: true, brand_id, token: jwt });
 }
 
 /* ======================================================
    BRAND SETTINGS
 ====================================================== */
 export async function getBrandSettings(request, env, session) {
-  if (!session?.user_id) {
-    return error("Unauthorized", 401);
-  }
-
   const brandId = request.url.split("/").slice(-2)[0];
+  if (!isValidUUID(brandId)) return error("Invalid brand ID", 400);
+
   const db = getDB(env);
 
   const row = await db
     .prepare(
       `
-      SELECT settings
-      FROM brands
-      WHERE id = ?
-        AND user_id = ?
-        AND deleted_at IS NULL
+      SELECT b.*
+      FROM brands b
+      JOIN brand_users bu ON bu.brand_id = b.id
+      WHERE b.id = ?
+        AND bu.user_id = ?
       `
     )
     .bind(brandId, session.user_id)
@@ -192,24 +232,18 @@ export async function getBrandSettings(request, env, session) {
 
   if (!row) return error("Brand not found", 404);
 
-  let settings;
-  try {
-    settings = row.settings
-      ? JSON.parse(row.settings)
-      : { timezone: "UTC", week_start: "monday" };
-  } catch {
-    settings = { timezone: "UTC", week_start: "monday" };
-  }
-
-  return json({ settings });
+  return json({
+    id: row.id,
+    name: row.name,
+    industry: row.industry,
+    tone: row.tone,
+    goals: row.goals
+  });
 }
 
 export async function updateBrandSettings(request, env, session) {
-  if (!session?.user_id) {
-    return error("Unauthorized", 401);
-  }
-
   const brandId = request.url.split("/").slice(-2)[0];
+  if (!isValidUUID(brandId)) return error("Invalid brand ID", 400);
 
   let body;
   try {
@@ -224,13 +258,23 @@ export async function updateBrandSettings(request, env, session) {
     .prepare(
       `
       UPDATE brands
-      SET settings = ?
+      SET name = COALESCE(?, name),
+          industry = COALESCE(?, industry),
+          tone = COALESCE(?, tone),
+          goals = COALESCE(?, goals),
+          updated_at = datetime('now')
       WHERE id = ?
-        AND user_id = ?
-        AND deleted_at IS NULL
+        AND id IN (SELECT brand_id FROM brand_users WHERE user_id = ?)
       `
     )
-    .bind(JSON.stringify(body || {}), brandId, session.user_id)
+    .bind(
+      body.name || null,
+      body.industry || null,
+      body.tone || null,
+      body.goals || null,
+      brandId,
+      session.user_id
+    )
     .run();
 
   if (res.changes === 0) {

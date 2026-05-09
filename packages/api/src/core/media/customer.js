@@ -12,7 +12,7 @@ export async function importMedia(request, env, session) {
     connected_account_id
   } = body;
 
-  const account = await env.ADMIN_DB.prepare(`
+  const account = await env.mypilotpost.prepare(`
     SELECT access_token
     FROM connected_accounts
     WHERE id = ? AND brand_id = ?

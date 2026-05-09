@@ -40,7 +40,7 @@ export async function importMediaAsset({
     contentType || mimeType
   );
 
-  await env.ADMIN_DB.prepare(`
+  await env.mypilotpost.prepare(`
     INSERT INTO media_assets (
       id,
       brand_id,

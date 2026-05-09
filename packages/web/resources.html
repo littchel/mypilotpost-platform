@@ -60,12 +60,12 @@
     <link rel="canonical" href="https://mypilotpost.com/resources">
     
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="images/favicon-32x32.png">
+    <link rel="icon" type="image/png" href="images/favicon-32x32.png"><link rel="icon" type="image/x-icon" href="favicon.ico">
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"><script src="config.js"></script>
     
     <!-- CSS -->
     <style>
@@ -790,6 +790,71 @@
         .animate-fadeInUp {
             animation: fadeInUp 0.6s ease forwards;
         }
+
+        /* Cookie Banner */
+        .cookie-banner {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            max-width: 320px;
+            background: var(--white);
+            border: 0.5px solid var(--border-gray);
+            border-radius: var(--radius-medium);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            padding: 20px;
+            z-index: 9999;
+            display: none;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease;
+        }
+        .cookie-banner.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Exit Intent Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            background: var(--white);
+            padding: var(--space-three);
+            border-radius: var(--radius-xl);
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            position: relative;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            cursor: pointer;
+            font-size: 24px;
+            color: var(--text-gray);
+        }
     </style>
 </head>
 <body>
@@ -798,9 +863,10 @@
         <a href="index.html" class="mobile-menu__item">Home</a>
         <a href="features.html" class="mobile-menu__item">Features</a>
         <a href="solutions.html" class="mobile-menu__item">Solutions</a>
+		<a href="pricing.html" class="nav-menu__item">Pricing</a>
         <a href="resources.html" class="mobile-menu__item">Resources</a>
         <div class="mobile-menu__buttons">
-            <a href="signin.html"><button class="btn btn--secondary">Sign In →</button></a>
+            <a href="sign-in.html"><button class="btn btn--secondary">Sign In →</button></a>
             <a href="register.html"><button class="btn btn--primary">Get Started</button></a>
         </div>
     </div>
@@ -814,11 +880,12 @@
                 <a href="index.html" class="nav-menu__item">Home</a>
                 <a href="features.html" class="nav-menu__item">Features</a>
                 <a href="solutions.html" class="nav-menu__item">Solutions</a>
+				<a href="pricing.html" class="nav-menu__item">Pricing</a>
                 <a href="resources.html" class="nav-menu__item nav-menu__item--active">Resources</a>
             </nav>
 
             <div class="header__buttons">
-                <button class="btn btn--secondary" onclick="window.location.href='signin.html'">
+                <button class="btn btn--secondary" onclick="window.location.href='sign-in.html'">
                     Sign In
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M4.1665 10H15.8332" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1021,8 +1088,7 @@
         });
 
         // API Configuration
-        const API_BASE = "https://mypilotpost-api.littchel.workers.dev";
-        const BLOG_API = `${API_BASE}/api/public/marketing/blog`;
+        const BLOG_API = "/api/blog";
 
         // State
         let allPosts = [];
@@ -1053,7 +1119,7 @@
 
             blogList.innerHTML = posts.map(post => `
                 <div class="blog-card">
-                    <a href="blog-post.html?slug=${post.slug}">
+                    <a href="/blog/post.html?slug=${post.slug}">
                         <div class="blog-card__image" style="background-image: url('${post.featured_image || 'images/default-blog-image.jpg'}')"></div>
                         <div class="blog-card__content">
                             <div class="blog-card__meta">
@@ -1168,6 +1234,7 @@
         // Load blog posts
         async function loadBlogPosts() {
             const blogList = document.getElementById('blog-list');
+            blogList.innerHTML = '<div class="loading">Loading posts...</div>';
             
             try {
                 const response = await fetch(BLOG_API);
@@ -1179,10 +1246,10 @@
                 const data = await response.json();
                 
                 // Handle response format - should be { posts: [...] }
-                allPosts = data.posts || (Array.isArray(data) ? data : []);
+                allPosts = data.posts || [];
                 
                 if (!allPosts || allPosts.length === 0) {
-                    blogList.innerHTML = '<div class="no-results">No blog posts available yet.</div>';
+                    blogList.innerHTML = '<div class="no-results">No posts available</div>';
                     return;
                 }
 
@@ -1207,8 +1274,7 @@
                 console.error('Error loading blog posts:', error);
                 blogList.innerHTML = `
                     <div class="error-message">
-                        <div style="font-size: 40px; margin-bottom: 16px;">⚠️</div>
-                        <p>Failed to load blog posts. Please try again later.</p>
+                        <p>Unable to load blog posts</p>
                     </div>
                 `;
             }
@@ -1222,7 +1288,75 @@
         });
 
         // Initialize on page load
-        document.addEventListener('DOMContentLoaded', loadBlogPosts);
+        document.addEventListener('DOMContentLoaded', () => {
+            loadBlogPosts();
+            initCookieBanner();
+            initExitIntent();
+        });
+
+        // Cookie Consent
+        function acceptCookies() {
+            localStorage.setItem('mypilotpost_cookie_consent', 'true');
+            document.getElementById('cookieBanner').classList.remove('active');
+            setTimeout(() => { document.getElementById('cookieBanner').style.display = 'none'; }, 500);
+        }
+
+        function initCookieBanner() {
+            if (!localStorage.getItem('mypilotpost_cookie_consent')) {
+                setTimeout(() => {
+                    const banner = document.getElementById('cookieBanner');
+                    if (banner) {
+                        banner.style.display = 'block';
+                        setTimeout(() => { banner.classList.add('active'); }, 100);
+                    }
+                }, 2000);
+            }
+        }
+
+        // Exit Intent
+        function closeExitIntent() {
+            document.getElementById('exitIntent').classList.remove('active');
+            setTimeout(() => { document.getElementById('exitIntent').style.display = 'none'; }, 300);
+        }
+
+        function initExitIntent() {
+            document.addEventListener('mouseout', (e) => {
+                if (e.clientY <= 0 && window.scrollY > 300 && !sessionStorage.getItem('mypilotpost_exit_intent_shown')) {
+                    const modal = document.getElementById('exitIntent');
+                    if (modal) {
+                        modal.style.display = 'flex';
+                        setTimeout(() => { modal.classList.add('active'); }, 10);
+                        sessionStorage.setItem('mypilotpost_exit_intent_shown', 'true');
+                    }
+                }
+            });
+
+            const modal = document.getElementById('exitIntent');
+            if (modal) {
+                modal.addEventListener('click', (e) => {
+                    if (e.target.id === 'exitIntent') closeExitIntent();
+                });
+            }
+        }
     </script>
+    <!-- Cookie Banner -->
+    <div id="cookieBanner" class="cookie-banner">
+        <h4 style="margin-bottom: 8px; font-weight: 700;">We use cookies</h4>
+        <p class="body-text" style="font-size: 14px; margin-bottom: 16px;">We use cookies to improve performance and understand how you use myPilotPost. You stay in control.</p>
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <button class="btn btn--primary" style="padding: 8px 20px; font-size: 14px;" onclick="acceptCookies()">Accept</button>
+            <a href="privacy-policy.html" style="font-size: 14px; color: var(--text-gray); text-decoration: none;">Learn More</a>
+        </div>
+    </div>
+
+    <!-- Exit Intent Popup -->
+    <div id="exitIntent" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeExitIntent()">&times;</span>
+            <h2 class="h2" style="font-size: 28px; margin-bottom: 12px;">Before you go — run a quick brand audit</h2>
+            <p class="body-text" style="margin-bottom: 24px;">See what’s working, what’s not, and where to improve — in under 30 seconds.</p>
+            <a href="audit.html" class="btn btn--primary btn--large" style="width: 100%;">Start Free Brand Audit</a>
+        </div>
+    </div>
 </body>
 </html>

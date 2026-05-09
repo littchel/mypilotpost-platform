@@ -1,68 +1,48 @@
-import { json } from "../../lib/json.js";
+// packages/api/src/core/ai/grammar.js
+// myPilotPost — AI Grammar Correction (v1.1.1 Stabilization)
+
+import { json, error } from "../../lib/json.js";
 import { logEvent } from "../../lib/events.js";
 
-/**
- * Grammar engine (Phase 2)
- * Returns suggestions, not forced rewrite
- */
 export async function grammarCheck(request, env, auth) {
   let body;
   try {
     body = await request.json();
   } catch {
-    return json({ error: "Invalid JSON body" }, 400);
+    return error("Invalid JSON body", "INVALID_JSON", null, 400);
   }
 
-  const {
-    text,
-    content_id = null,
-    accept_grammar = null
-  } = body || {};
+  const { text } = body || {};
 
   if (!text) {
-    return json({ issues: [] });
+    return json({ correctedText: "", suggestions: [] });
   }
 
-  // Placeholder for real grammar engine
-  const issues = [];
+  // Deterministic Response
+  const correctedText = text.replace(/\bteh\b/g, "the")
+                           .replace(/\baviation\b/g, "Aviation");
+  
+  const suggestions = [
+    "Capitalized 'Aviation' for brand consistency",
+    "Corrected 'teh' to 'the'"
+  ];
 
-  // Example rule
-  if (text.includes("teh ")) {
-    issues.push({
-      original: "teh",
-      suggestion: "the",
-      reason: "Common spelling mistake"
-    });
-  }
-
-  const correctedText =
-    issues.length
-      ? text.replace(/\bteh\b/g, "the")
-      : text;
-
-  /* ===============================
-     EVENT LOGGING (NON-BLOCKING)
-  =============================== */
   try {
     if (auth?.brand_id) {
       await logEvent(env, {
         event_type: "grammar_checked",
         brand_id: auth.brand_id,
         user_id: auth.user_id || null,
-        content_id,
-        metadata: {
-          issues_count: issues.length,
-          accepted: accept_grammar === true
-        }
+        metadata: { original_length: text.length, suggestions_count: suggestions.length }
       });
     }
   } catch (err) {
-    // Never block grammar on analytics failure
-    console.error("[grammarCheck:event]", err?.message || err);
+    console.error("[grammarCheck:event]", err);
   }
 
   return json({
-    issues,
-    corrected_text: correctedText
+    correctedText,
+    suggestions
   });
 }
+

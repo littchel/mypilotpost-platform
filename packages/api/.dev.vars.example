@@ -1,0 +1,19 @@
+# -------------------------------------------------------
+# MyPilotPost API — Wrangler Dev Secrets Template
+# -------------------------------------------------------
+# Cloudflare Workers uses .dev.vars (not .env) for local secrets.
+# Copy this file to .dev.vars and set your local values.
+# DO NOT commit .dev.vars to version control.
+#
+# Usage:
+#   cp .dev.vars.example .dev.vars
+# -------------------------------------------------------
+
+# JWT signing secret (any random 32+ char string for local dev)
+JWT_SECRET="dev-jwt-secret-placeholder"
+
+# Admin API secret (used by admin bootstrap routes)
+ADMIN_SECRET="dev-admin-secret-placeholder"
+
+# Encryption key for OAuth token storage (must be 32+ bytes)
+ENCRYPTION_SECRET="dev-encryption-secret-placeholder-32-bytes-long"

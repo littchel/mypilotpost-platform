@@ -1,0 +1,78 @@
+-- packages/api/migrations/051_billing_engine.sql
+-- BILLING ENGINE — PRODUCTION MONETIZATION LAYER
+-- DECOMMISSIONS legacy customers table
+
+PRAGMA foreign_keys = OFF;
+
+-- 1. PLANS TABLE
+CREATE TABLE IF NOT EXISTS plans (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    price_monthly INTEGER NOT NULL, -- In cents (e.g. 2900 = $29.00)
+    price_yearly INTEGER NOT NULL,
+    brand_limit INTEGER NOT NULL,
+    user_limit INTEGER NOT NULL,
+    features_json TEXT NOT NULL, -- e.g. ["campaigns", "seo", "intelligence"]
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- 2. SUBSCRIPTIONS TABLE
+CREATE TABLE IF NOT EXISTS subscriptions (
+    user_id TEXT PRIMARY KEY,
+    plan_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'trial', -- trial, active, past_due, canceled
+    trial_ends_at TEXT,
+    current_period_start TEXT,
+    current_period_end TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (plan_id) REFERENCES plans(id)
+);
+
+-- 3. SUBSCRIPTION EVENTS (AUDIT TRAIL)
+CREATE TABLE IF NOT EXISTS subscription_events (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    old_plan_id TEXT,
+    new_plan_id TEXT,
+    event_type TEXT NOT NULL, -- upgrade, downgrade, renewal, trial_start
+    metadata TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- 4. USAGE SNAPSHOTS (PERFORMANCE LAYER)
+CREATE TABLE IF NOT EXISTS usage_snapshots (
+    user_id TEXT PRIMARY KEY,
+    brands_count INTEGER DEFAULT 0,
+    active_users_count INTEGER DEFAULT 0,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- 5. PROCESSED WEBHOOKS (IDEMPOTENCY)
+CREATE TABLE IF NOT EXISTS processed_webhooks (
+    event_id TEXT PRIMARY KEY,
+    idempotency_key TEXT,
+    source TEXT NOT NULL, -- 'yoco'
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- 6. SEED PLANS
+INSERT OR IGNORE INTO plans (id, name, price_monthly, price_yearly, brand_limit, user_limit, features_json)
+VALUES 
+('starter', 'Starter', 0, 0, 1, 1, '[]'),
+('pro', 'Professional', 4900, 49000, 5, 3, '["campaigns", "seo", "intelligence", "reports"]'),
+('agency', 'Agency', 19900, 199000, 25, 5, '["campaigns", "seo", "intelligence", "reports", "white_label"]');
+
+-- 7. MIGRATE EXISTING USERS
+INSERT OR IGNORE INTO subscriptions (user_id, plan_id, status, trial_ends_at)
+SELECT id, 'starter', 'trial', datetime('now', '+14 days') FROM users;
+
+INSERT OR IGNORE INTO usage_snapshots (user_id, brands_count, active_users_count)
+SELECT owner_user_id, COUNT(*), 1 FROM brands GROUP BY owner_user_id;
+
+-- 8. DECOMMISSION LEGACY CUSTOMERS
+DROP TABLE IF EXISTS customers;
+
+PRAGMA foreign_keys = ON;

@@ -21,8 +21,7 @@ export async function googleStart(_req, env) {
     return json({ error: "OAuth not configured" }, 500);
   }
 
-  const redirectUri =
-    "https://mypilotpost-api.littchel.workers.dev/api/customer/oauth/google/callback";
+  const redirectUri = `${env.BASE_URL}/api/customer/oauth/google/callback`;
 
   const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   url.searchParams.set("client_id", env.GOOGLE_CLIENT_ID);
@@ -61,8 +60,7 @@ export async function googleCallback(request, env) {
         code,
         client_id: env.GOOGLE_CLIENT_ID,
         client_secret: env.GOOGLE_CLIENT_SECRET,
-        redirect_uri:
-          "https://mypilotpost-api.littchel.workers.dev/api/customer/oauth/google/callback",
+        redirect_uri: `${env.BASE_URL}/api/customer/oauth/google/callback`,
         grant_type: "authorization_code",
       }),
     });

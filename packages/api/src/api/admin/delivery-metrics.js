@@ -10,11 +10,11 @@ export async function aggregateDeliveryMetrics(env) {
 
   const stats = await db.prepare(`
     SELECT
-      COUNT(*) FILTER (WHERE state = 'scheduled') AS scheduled,
-      COUNT(*) FILTER (WHERE state = 'delivered') AS delivered,
-      COUNT(*) FILTER (WHERE state = 'failed') AS failed
-    FROM content_delivery_jobs
-    WHERE DATE(updated_at) = ?
+      COUNT(*) FILTER (WHERE status = 'scheduled') AS scheduled,
+      COUNT(*) FILTER (WHERE status = 'completed') AS delivered,
+      COUNT(*) FILTER (WHERE status = 'failed') AS failed
+    FROM delivery_jobs
+    WHERE DATE(created_at) = ?
   `)
     .bind(date)
     .first();

@@ -1,194 +1,174 @@
 /**
- * myPilotPost — Delivery Executor (Phase 3)
+ * myPilotPost — Delivery Executor (Standardized)
  * File: packages/api/src/core/delivery/poster.js
- *
- * RESPONSIBILITIES:
- * - Execute a single delivery job
- * - Record delivery_attempts
- * - Transition job status truthfully
- * - Emit notifications & brand memory
- *
- * EXCLUDES:
- * - Scheduling logic
- * - Retry policy (delegated)
- * - Cron orchestration
  */
 
 import { getDB } from "../../lib/db.js";
 import { writeBrandMemoryEvent } from "../brands/memory-writer.js";
 import { scheduleRetry } from "./retries.js";
+import { insertExperienceNotification } from "../notifications/utils.js";
+import { refreshPerformanceCache } from "../campaigns/campaigns.js";
+import { resolveDeliveryData } from "./resolver.js";
+import { emitEvent } from "../../lib/bus.js";
 
 /* =====================================================
-   PLATFORM ADAPTER REGISTRY (LOCKED)
+   PLATFORM ADAPTER REGISTRY
 ===================================================== */
-
 import * as instagram from "../platforms/instagram.js";
 import * as facebook from "../platforms/facebook.js";
 import * as linkedin from "../platforms/linkedin.js";
+import * as tiktok from "../platforms/tiktok.js";
+import * as x from "../platforms/x.js";
+import * as google from "../platforms/google.js";
+import * as pinterest from "../platforms/pinterest.js";
+import * as wordpress from "../platforms/wordpress.js";
 
 const ADAPTERS = {
   instagram,
   facebook,
-  linkedin
+  linkedin,
+  tiktok,
+  x,
+  google,
+  pinterest,
+  wordpress
 };
+
+const MAX_ATTEMPTS = 3;
+const DELIVERY_TIMEOUT_MS = 25000; // Increased for media uploads
 
 /* =====================================================
    EXECUTE DELIVERY JOB
 ===================================================== */
 
 export async function executeDeliveryJob(env, job) {
+  // 1️⃣ Initialize Execution Context
+  globalThis.__ENV__ = env; 
   const db = getDB(env);
 
-  const adapter = ADAPTERS[job.platform];
-  if (!adapter) {
-    await markFailed(db, job, "unsupported_platform", "No adapter found");
-    return;
-  }
+  // 2️⃣ Double Execution Protection
+  const lock = await db
+    .prepare(`
+      UPDATE delivery_jobs
+      SET status = 'processing', 
+          delivery_attempts = delivery_attempts + 1,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? 
+        AND (status IN ('scheduled', 'pending', 'failed') OR (status = 'processing' AND updated_at < datetime('now', '-5 minutes')))
+        AND delivery_attempts < ?
+    `)
+    .bind(job.id, MAX_ATTEMPTS)
+    .run();
 
-  const attemptNumber = await getNextAttemptNumber(db, job.id);
+  if (lock.meta.changes === 0) return;
 
-  let response;
   try {
-    response = await adapter.deliver({
-      content_id: job.content_id,
-      brand_id: job.brand_id
-    });
-  } catch (err) {
-    await recordAttempt(db, job, attemptNumber, "failed", "network_error", err.message);
-    await scheduleRetry(db, job, attemptNumber);
-    return;
-  }
+    // 3️⃣ Resolve Unified Data (LOCKED CONTRACT)
+    const { content, connection } = await resolveDeliveryData(env, job);
 
-  if (response.success) {
-    await recordAttempt(db, job, attemptNumber, "success");
+    // 4️⃣ Execute via Standardized Adapter
+    const adapter = ADAPTERS[job.platform];
+    if (!adapter) throw new Error(`UNSUPPORTED_PLATFORM: ${job.platform}`);
 
-    await db
-      .prepare(
-        `
-        UPDATE delivery_jobs
-        SET status = 'completed'
-        WHERE id = ?
-        `
-      )
-      .bind(job.id)
-      .run();
+    console.log(`POSTER: Executing ${job.platform} delivery`, { job_id: job.id, content_id: job.content_id });
 
+    // Race against timeout
+    const result = await Promise.race([
+      adapter.publish({ content, connection, env }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("TIMEOUT")), DELIVERY_TIMEOUT_MS))
+    ]);
+
+    // 5️⃣ Success Path
+    await recordAttempt(db, job, job.delivery_attempts + 1, "success");
+    await syncContentStatusWithJobs(db, job, 'success', null, result.external_id);
+    
     await writeBrandMemoryEvent(db, {
       brandId: job.brand_id,
       eventType: "delivery_completed",
-      entityType: "content",
-      platform: job.platform,
-      scheduled_at: job.scheduled_at,
-      delivered_at: new Date().toISOString()
+      entityType: content.type,
+      platform: job.platform
     });
 
-    await insertNotification(
-      db,
-      job.brand_id,
-      "delivery_completed",
-      `${job.platform} post published`
-    );
+  } catch (err) {
+    const errorCode = err.message?.includes("TOKEN") ? "AUTH_ERROR" : 
+                     err.message === "TIMEOUT" ? "TIMEOUT" : "EXECUTION_ERROR";
+    
+    console.error(`POSTER: ${job.platform} delivery failed`, { job_id: job.id, error: err.message });
 
-    return;
+    await recordAttempt(db, job, job.delivery_attempts + 1, "failed", errorCode, err.message);
+    await syncContentStatusWithJobs(db, job, 'failed', errorCode);
+    
+    // Automatic Retry Logic
+    await scheduleRetry(db, job, job.delivery_attempts + 1, errorCode);
   }
-
-  // Failure path
-  await recordAttempt(
-    db,
-    job,
-    attemptNumber,
-    "failed",
-    response.error_code,
-    response.error_message
-  );
-
-  await scheduleRetry(db, job, attemptNumber, response.error_code);
 }
 
 /* =====================================================
-   HELPERS
+   STATE SYNC (AUTHORITATIVE)
 ===================================================== */
 
-async function getNextAttemptNumber(db, jobId) {
-  const row = await db
-    .prepare(
-      `
-      SELECT MAX(attempt_number) as max
-      FROM delivery_attempts
-      WHERE job_id = ?
-      `
-    )
-    .bind(jobId)
-    .first();
+async function syncContentStatusWithJobs(db, job, platformStatus, errorType = null, externalId = null) {
+  const contentTable = job.content_type === 'blog' ? 'blog_posts' : 'social_assets';
+  
+  // 1. Update this specific job
+  await db.prepare(`
+    UPDATE delivery_jobs
+    SET status = ?, 
+        last_error = ?,
+        external_post_id = ?,
+        published_at = ?,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).bind(
+    platformStatus === 'success' ? 'published' : 'failed',
+    errorType,
+    externalId,
+    platformStatus === 'success' ? new Date().toISOString() : null,
+    job.id
+  ).run();
 
-  return (row?.max || 0) + 1;
+  // 2. Aggregate status for parent asset
+  const allJobs = await db.prepare(`SELECT status FROM delivery_jobs WHERE content_id = ?`).bind(job.content_id).all();
+  const statuses = (allJobs.results || []).map(j => j.status);
+  
+  let aggregateStatus = 'processing';
+  const publishedCount = statuses.filter(s => s === 'published').length;
+  const failedCount = statuses.filter(s => s === 'failed').length;
+  const totalCount = statuses.length;
+
+  if (publishedCount + failedCount >= totalCount) {
+    if (publishedCount === totalCount) aggregateStatus = 'published';
+    else if (failedCount === totalCount) aggregateStatus = 'failed';
+    else aggregateStatus = 'partial_failure';
+  }
+
+  // 3. Sync Asset & Drafts
+  await db.batch([
+    db.prepare(`UPDATE ${contentTable} SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(aggregateStatus, job.content_id),
+    db.prepare(`UPDATE content_drafts SET state = ?, updated_at = CURRENT_TIMESTAMP WHERE content_id = ?`).bind(aggregateStatus, job.content_id)
+  ]);
+
+  // 4. Notifications
+  if (platformStatus === 'success') {
+    await insertExperienceNotification(db, job.brand_id, "success", `Published to ${job.platform}`, "Post is live 🚀");
+    
+    // Growth Engine Integration
+    await emitEvent(env, 'content_published', { 
+      brand_id: job.brand_id, 
+      user_id: job.user_id, // Ensure user_id is available in job
+      content_id: job.content_id,
+      meta: { platform: job.platform }
+    });
+  } else {
+    await insertExperienceNotification(db, job.brand_id, "failure", `Delivery Failed: ${job.platform}`, errorType);
+  }
+
+  if (job.campaign_id) await refreshPerformanceCache(db, job.campaign_id);
 }
 
-async function recordAttempt(
-  db,
-  job,
-  attempt,
-  status,
-  errorCode = null,
-  errorMessage = null
-) {
-  await db
-    .prepare(
-      `
-      INSERT INTO delivery_attempts (
-        job_id,
-        attempt_number,
-        platform,
-        status,
-        error_code,
-        error_message,
-        created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-      `
-    )
-    .bind(
-      job.id,
-      attempt,
-      job.platform,
-      status,
-      errorCode,
-      errorMessage
-    )
-    .run();
-}
-
-async function markFailed(db, job, errorCode, errorMessage) {
-  await recordAttempt(db, job, 1, "failed", errorCode, errorMessage);
-
-  await db
-    .prepare(
-      `
-      UPDATE delivery_jobs
-      SET status = 'failed'
-      WHERE id = ?
-      `
-    )
-    .bind(job.id)
-    .run();
-
-  await writeBrandMemoryEvent(db, {
-    brandId: job.brand_id,
-    eventType: "delivery_failed",
-    entityType: "content",
-    platform: job.platform,
-    error_code: errorCode,
-    attempts: 1
-  });
-}
-
-async function insertNotification(db, brandId, type, message) {
-  await db
-    .prepare(
-      `
-      INSERT INTO notifications (brand_id, type, message, created_at)
-      VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-      `
-    )
-    .bind(brandId, type, message)
-    .run();
+async function recordAttempt(db, job, attempt, status, errorCode = null, errorMessage = null) {
+  await db.prepare(`
+    INSERT INTO delivery_attempts (job_id, attempt_number, platform, status, error_code, error_message, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+  `).bind(job.id, attempt, job.platform, status, errorCode, errorMessage).run();
 }

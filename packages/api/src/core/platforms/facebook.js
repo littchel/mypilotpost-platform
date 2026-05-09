@@ -1,123 +1,57 @@
 /**
- * myPilotPost — Facebook Platform Adapter
- * Canon 5 — Delivery Execution Truth
- *
- * Responsibilities:
- * - Publish content to Facebook
- * - Store external_post_id
- * - Return structured success/failure
- *
- * Does NOT:
- * - Change delivery_jobs.status
- * - Perform analytics
- * - Perform ingestion
+ * Facebook Platform Adapter
+ * Standardized Contract V1
  */
 
-import { getDB } from "../../lib/db.js";
+import { fetchRemoteAsset } from "../../lib/media_utils.js";
 
-export async function deliver({ content_id, brand_id }) {
-  const env = globalThis.__ENV__;
-  const db = getDB(env);
+export async function publish({ content, connection, env }) {
+  const { text, media } = content;
+  const { access_token, account_id } = connection;
 
-  try {
-    // 1️⃣ Fetch token
-    const account = await db
-      .prepare(
-        `
-        SELECT access_token, external_account_id
-        FROM connected_accounts
-        WHERE brand_id = ?
-          AND platform = 'facebook'
-        LIMIT 1
-        `
-      )
-      .bind(brand_id)
-      .first();
+  // 1. Prepare Content
+  const primaryMedia = media.find(m => m.role === 'primary' || m.position === 0);
+  
+  let publishUrl = `https://graph.facebook.com/v19.0/${account_id}/feed`;
+  let options = {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message: text,
+      access_token: access_token
+    })
+  };
 
-    if (!account?.access_token || !account?.external_account_id) {
-      return {
-        success: false,
-        error_code: "missing_token",
-        error_message: "Facebook not connected"
-      };
-    }
+  // 2. Media Support
+  if (primaryMedia) {
+    try {
+      const asset = await fetchRemoteAsset(primaryMedia.preview_url);
+      publishUrl = `https://graph.facebook.com/v19.0/${account_id}/photos`;
+      
+      const formData = new FormData();
+      formData.append("source", new Blob([asset.data], { type: asset.mimeType }));
+      formData.append("caption", text);
+      formData.append("access_token", access_token);
 
-    // 2️⃣ Fetch content
-    const content = await db
-      .prepare(
-        `
-        SELECT text_content
-        FROM content_social
-        WHERE id = ?
-        `
-      )
-      .bind(content_id)
-      .first();
-
-    if (!content?.text_content) {
-      return {
-        success: false,
-        error_code: "missing_content",
-        error_message: "Content not found"
-      };
-    }
-
-    // 3️⃣ Publish
-    const response = await fetch(
-      `https://graph.facebook.com/v19.0/${account.external_account_id}/feed`,
-      {
+      options = {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          message: content.text_content,
-          access_token: account.access_token
-        })
-      }
-    );
-
-    if (!response.ok) {
-      const err = await response.text();
-      return {
-        success: false,
-        error_code: "publish_failed",
-        error_message: err
+        body: formData
       };
+    } catch (err) {
+      console.error("Facebook Adapter: Media upload failed, fallback to text", err);
     }
-
-    const data = await response.json();
-
-    if (!data?.id) {
-      return {
-        success: false,
-        error_code: "missing_post_id",
-        error_message: "Facebook did not return post ID"
-      };
-    }
-
-    // 4️⃣ Store external_post_id
-    await db
-      .prepare(
-        `
-        UPDATE delivery_jobs
-        SET external_post_id = ?
-        WHERE content_id = ?
-          AND brand_id = ?
-          AND platform = 'facebook'
-          AND status = 'scheduled'
-        `
-      )
-      .bind(data.id, content_id, brand_id)
-      .run();
-
-    return { success: true };
-
-  } catch (err) {
-    return {
-      success: false,
-      error_code: "unexpected_error",
-      error_message: err.message
-    };
   }
+
+  // 3. Publish
+  const res = await fetch(publishUrl, options);
+
+  if (!res.ok) {
+    throw new Error(`FACEBOOK_PUBLISH_FAILED: ${await res.text()}`);
+  }
+
+  const data = await res.json();
+  return {
+    success: true,
+    external_id: data.id
+  };
 }

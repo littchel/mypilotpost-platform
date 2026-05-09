@@ -1,71 +1,67 @@
 /**
- * TikTok Delivery Adapter
- * Canon Compliant
- *
- * - Video only
- * - Returns external_post_id
- * - No inference
+ * TikTok Platform Adapter
+ * Standardized Contract V1
  */
 
-import { getDB } from "../../lib/db.js";
+import { fetchRemoteAsset } from "../../lib/media_utils.js";
 
-export async function deliver({ brand_id, content_id, env }) {
-  const db = getDB(env);
+export async function publish({ content, connection, env }) {
+  const { text, media } = content;
+  const { access_token } = connection;
 
-  const account = await db.prepare(`
-    SELECT access_token
-    FROM connected_accounts
-    WHERE brand_id = ?
-    AND platform = 'tiktok'
-    LIMIT 1
-  `).bind(brand_id).first();
+  const primaryMedia = media.find(m => m.role === 'primary' || m.position === 0);
+  if (!primaryMedia) throw new Error("TIKTOK_REQUIRES_VIDEO");
 
-  if (!account) {
-    return { success: false, error_code: "not_connected" };
+  // TikTok v2 API supports PULL_FROM_URL or FILE_UPLOAD
+  // We prioritize FILE_UPLOAD for reliability with remote assets
+  let assetData = null;
+  try {
+    const asset = await fetchRemoteAsset(primaryMedia.preview_url);
+    assetData = asset.data;
+  } catch (err) {
+    throw new Error(`TIKTOK_MEDIA_FETCH_FAILED: ${err.message}`);
   }
 
-  const content = await db.prepare(`
-    SELECT video_url, text_content
-    FROM content_social
-    WHERE id = ?
-  `).bind(content_id).first();
-
-  if (!content?.video_url) {
-    return { success: false, error_code: "missing_video" };
-  }
-
+  // 1. Initialize Upload
   const initRes = await fetch(
     "https://open.tiktokapis.com/v2/post/publish/video/init/",
     {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${account.access_token}`,
+        Authorization: `Bearer ${access_token}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
         source_info: {
-          source: "PULL_FROM_URL",
-          video_url: content.video_url
+          source: "FILE_UPLOAD",
+          video_size: assetData.byteLength
         },
         post_info: {
-          title: content.text_content
+          title: text,
+          privacy_level: "PUBLIC_TO_EVERYONE"
         }
       })
     }
   );
 
   const initData = await initRes.json();
+  if (!initRes.ok) throw new Error(`TIKTOK_INIT_FAILED: ${JSON.stringify(initData)}`);
 
-  if (!initRes.ok) {
-    return {
-      success: false,
-      error_code: "tiktok_error",
-      error_message: JSON.stringify(initData)
-    };
-  }
+  // 2. Upload Binary
+  const uploadUrl = initData.data.upload_url;
+  const uploadRes = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: { 
+      "Content-Range": `bytes 0-${assetData.byteLength - 1}/${assetData.byteLength}`,
+      "Content-Type": "video/mp4"
+    },
+    body: assetData
+  });
+
+  if (!uploadRes.ok) throw new Error(`TIKTOK_UPLOAD_FAILED: ${await uploadRes.text()}`);
 
   return {
     success: true,
-    external_post_id: initData.data.publish_id
+    external_id: initData.data.publish_id
   };
 }

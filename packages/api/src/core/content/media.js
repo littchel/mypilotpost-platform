@@ -13,7 +13,7 @@ export async function attachMediaToSocial(request, env, socialAssetId) {
     }
 
     /* Ensure social asset exists */
-    const social = await env.ADMIN_DB.prepare(`
+    const social = await env.mypilotpost.prepare(`
       SELECT id, brand_id
       FROM social_assets
       WHERE id = ?
@@ -26,7 +26,7 @@ export async function attachMediaToSocial(request, env, socialAssetId) {
     }
 
     /* Ensure media exists */
-    const media = await env.ADMIN_DB.prepare(`
+    const media = await env.mypilotpost.prepare(`
       SELECT id
       FROM media_assets
       WHERE id = ?
@@ -39,7 +39,7 @@ export async function attachMediaToSocial(request, env, socialAssetId) {
     }
 
     /* Attach (idempotent via PK) */
-    await env.ADMIN_DB.prepare(`
+    await env.mypilotpost.prepare(`
       INSERT OR IGNORE INTO social_media_links (
         social_asset_id,
         media_asset_id
@@ -49,7 +49,7 @@ export async function attachMediaToSocial(request, env, socialAssetId) {
       .run();
 
     /* Emit mission */
-    await env.ADMIN_DB.prepare(`
+    await env.mypilotpost.prepare(`
       INSERT INTO missions (
         id,
         brand_id,
@@ -83,7 +83,7 @@ export async function attachMediaToSocial(request, env, socialAssetId) {
  */
 export async function listSocialMedia(request, env, socialAssetId) {
   /* Ensure social asset exists */
-  const social = await env.ADMIN_DB.prepare(`
+  const social = await env.mypilotpost.prepare(`
     SELECT id
     FROM social_assets
     WHERE id = ?
@@ -95,7 +95,7 @@ export async function listSocialMedia(request, env, socialAssetId) {
     return json({ error: "Social asset not found" }, 404);
   }
 
-  const { results } = await env.ADMIN_DB.prepare(`
+  const { results } = await env.mypilotpost.prepare(`
     SELECT
       m.id,
       m.provider,

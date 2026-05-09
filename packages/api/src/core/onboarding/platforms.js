@@ -4,6 +4,7 @@
 import { json } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
 import { markOnboardingStep } from "./progress.js";
+import { checkAndIncrement } from "../billing/enforcement.js";
 
 // Locked enum — frontend must mirror
 const SUPPORTED_PLATFORMS = [
@@ -101,6 +102,9 @@ export async function connectPlatform(request, env, auth, platform) {
   }
 
   const db = getDB(env);
+
+  // Enforcement Check
+  await checkAndIncrement(db, auth.user_id, "accounts");
 
   await db
     .prepare(

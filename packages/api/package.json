@@ -4,11 +4,11 @@
   "type": "module",
   "dependencies": {
     "bcryptjs": "^3.0.3",
-    "hono": "^4.0.0",
+    "hono": "^4.12.15",
     "jsonwebtoken": "^9.0.3",
     "nanoid": "^5.1.6"
   },
   "devDependencies": {
-    "wrangler": "^3.114.16"
+    "wrangler": "^4.86.0"
   }
 }

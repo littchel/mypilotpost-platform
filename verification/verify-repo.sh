@@ -25,7 +25,7 @@ echo "Checking API directories..."
 
 REQUIRED_DIRS=(
 "packages/api/src/core"
-"packages/api/src/admin"
+"packages/api/src/api/admin"
 "packages/api/src/auth"
 "packages/api/src/lib"
 )

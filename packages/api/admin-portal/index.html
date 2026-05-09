@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>myPilotPost — Admin Mission Control</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+/* ===== RESET & TOKENS ===== */
+:root{
+  --bg:#f8fafc; --panel:#ffffff; --border:#e2e8f0;
+  --text:#0f172a; --muted:#64748b; --accent:#2563eb;
+  --good:#16a34a; --warn:#d97706; --bad:#dc2626;
+}
+*{box-sizing:border-box;font-family:Inter,sans-serif}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);display:flex}
+
+/* ===== LAYOUT ===== */
+nav{
+  width:280px; background:var(--panel); border-right:1px solid var(--border);
+  padding:1.25rem; display:flex; flex-direction:column; gap:.35rem;
+}
+.brand{font-weight:800;font-size:1.1rem;margin-bottom:1rem}
+.nav{
+  padding:.55rem .8rem; border-radius:8px; cursor:pointer; color:var(--muted)
+}
+.nav.active,.nav:hover{background:#eff6ff;color:var(--accent)}
+
+main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+header{
+  padding:1rem 2rem; border-bottom:1px solid var(--border);
+  display:flex; justify-content:space-between; align-items:center;
+}
+section{display:none; padding:2rem; overflow:auto}
+section.active{display:block}
+
+/* ===== UI ===== */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem}
+.card{
+  background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.2rem
+}
+.card h6{font-size:.7rem;text-transform:uppercase;color:var(--muted);margin:0 0 .4rem}
+.value{font-size:1.6rem;font-weight:800}
+
+table{width:100%;border-collapse:collapse}
+th,td{padding:.6rem;border-bottom:1px solid var(--border);font-size:.82rem}
+thead{background:#f1f5f9}
+
+.badge{padding:.2rem .6rem;border-radius:999px;font-size:.65rem;font-weight:700}
+.ok{background:#dcfce7;color:#166534}
+.warn{background:#fef3c7;color:#92400e}
+.bad{background:#fee2e2;color:#991b1b}
+
+.empty{color:var(--muted);font-size:.85rem;padding:1rem 0}
+.error{color:var(--bad);font-size:.85rem;padding:1rem 0}
+pre{font-size:.75rem;background:#f8fafc;border:1px solid var(--border);padding:.75rem;border-radius:8px}
+</style>
+</head>
+
+<body>
+
+<!-- ================= NAV ================= -->
+<nav>
+  <div class="brand">myPilotPost</div>
+  <div class="nav active" data-section="overview">Overview</div>
+  <div class="nav" data-section="customers">Customers</div>
+  <div class="nav" data-section="analytics">Analytics</div>
+  <div class="nav" data-section="billing">Billing</div>
+  <div class="nav" data-section="memory">Brand Memory</div>
+  <div class="nav" data-section="seo">SEO</div>
+  <div class="nav" data-section="automation">Automation</div>
+  <div class="nav" data-section="ml">ML</div>
+  <div class="nav" data-section="experiments">Experiments</div>
+  <div class="nav" data-section="emails">Emails</div>
+  <div class="nav" data-section="support">Support</div>
+  <div class="nav" data-section="system">System</div>
+</nav>
+
+<!-- ================= MAIN ================= -->
+<main>
+<header>
+  <div>
+    <strong>Admin Mission Control</strong>
+    <span class="badge ok">PRODUCTION</span>
+  </div>
+  <div style="display:flex; align-items:center; gap:1.5rem">
+    <div style="text-align:right">
+      <div id="adminName" style="font-weight:700; font-size:0.85rem">—</div>
+      <div id="adminRole" style="font-size:0.65rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em">—</div>
+    </div>
+    <button onclick="logout()" style="background:none; border:1px solid var(--border); padding:.4rem .8rem; border-radius:6px; cursor:pointer; font-size:.75rem; font-weight:600; color:var(--bad)">Logout</button>
+  </div>
+</header>
+
+<section id="overview" class="active">
+  <div class="grid">
+    <div class="card"><h6>Customers</h6><div id="ovCustomers" class="value">—</div></div>
+    <div class="card"><h6>MRR</h6><div id="ovMRR" class="value">$—</div></div>
+    <div class="card"><h6>Delivery Health</h6><div id="ovDelivery" class="value">—</div></div>
+  </div>
+</section>
+
+<section id="customers"><div id="customersOut" class="empty">Loading…</div></section>
+<section id="analytics"><div id="analyticsOut" class="empty">Loading…</div></section>
+<section id="billing"><div id="billingOut" class="empty">Loading…</div></section>
+<section id="memory"><div id="memoryOut" class="empty">Loading…</div></section>
+<section id="seo"><div id="seoOut" class="empty">Loading…</div></section>
+<section id="automation"><div id="automationOut" class="empty">Loading…</div></section>
+<section id="ml"><div id="mlOut" class="empty">Loading…</div></section>
+<section id="experiments"><div id="experimentsOut" class="empty">Loading…</div></section>
+<section id="emails"><div id="emailsOut" class="empty">Loading…</div></section>
+<section id="support"><div id="supportOut" class="empty">Loading…</div></section>
+<section id="system"><div id="systemOut" class="empty">Loading…</div></section>
+
+</main>
+
+<!-- ================= LOGIN ================= -->
+<div id="loginScreen" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.9); backdrop-filter:blur(8px); z-index:9999; display:flex; align-items:center; justify-content:center;">
+  <div class="card" style="width:100%; max-width:400px; padding:2rem; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5)">
+    <div class="brand" style="text-align:center; margin-bottom:2rem; color:var(--accent)">myPilotPost Admin</div>
+    <div id="loginError" class="error" style="display:none; background:#fee2e2; padding:.75rem; border-radius:8px; margin-bottom:1rem; text-align:center"></div>
+    <form id="loginForm">
+      <div style="margin-bottom:1rem">
+        <label style="display:block; font-size:.75rem; font-weight:600; margin-bottom:.4rem">Email Address</label>
+        <input type="email" id="loginEmail" required style="width:100%; padding:.75rem; border:1px solid var(--border); border-radius:8px; outline:none" placeholder="admin@mypilotpost.com">
+      </div>
+      <div style="margin-bottom:1.5rem">
+        <label style="display:block; font-size:.75rem; font-weight:600; margin-bottom:.4rem">Password</label>
+        <input type="password" id="loginPass" required style="width:100%; padding:.75rem; border:1px solid var(--border); border-radius:8px; outline:none" placeholder="••••••••">
+      </div>
+      <button type="submit" style="width:100%; padding:.75rem; background:var(--accent); color:white; border:none; border-radius:8px; font-weight:600; cursor:pointer">Enter Mission Control</button>
+    </form>
+  </div>
+</div>
+
+<script>
+/* ================= CONFIG ================= */
+const API_BASE = window.location.origin === 'http://localhost:8082' ? "http://localhost:8788/api" : "/api";
+
+/* ================= AUTH ================= */
+let token = localStorage.getItem("adminToken");
+
+function updateAuthHeaders() {
+  return {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${token}`
+  };
+}
+
+/* ================= FETCH ================= */
+async function api(path, options = {}){
+  try{
+    const res = await fetch(API_BASE + path, { 
+      ...options,
+      headers: { ...updateAuthHeaders(), ...(options.headers || {}) } 
+    });
+    
+    if (res.status === 401 || res.status === 403) {
+      const errData = await res.json().catch(() => ({}));
+      if (errData.error === "Unauthorized" || errData.error === "Invalid or expired token") {
+        logout();
+        return { error: "Session expired" };
+      }
+    }
+
+    const txt = await res.text();
+    if(!res.ok) return { error: txt };
+    try {
+      return JSON.parse(txt);
+    } catch(e) {
+      return { success: true, data: txt };
+    }
+  }catch(e){
+    return { error: e.message };
+  }
+}
+
+/* ================= LOGIN/LOGOUT ================= */
+function showLogin() {
+  document.getElementById("loginScreen").style.display = "flex";
+  document.querySelector("nav").style.display = "none";
+  document.querySelector("main").style.display = "none";
+}
+
+function hideLogin() {
+  document.getElementById("loginScreen").style.display = "none";
+  document.querySelector("nav").style.display = "flex";
+  document.querySelector("main").style.display = "flex";
+}
+
+function logout() {
+  localStorage.removeItem("adminToken");
+  token = null;
+  showLogin();
+}
+
+document.getElementById("loginForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("loginEmail").value;
+  const password = document.getElementById("loginPass").value;
+  const errorEl = document.getElementById("loginError");
+  
+  errorEl.style.display = "none";
+  
+  try {
+    const res = await fetch(API_BASE + "/customer/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password })
+    });
+    
+    const data = await res.json();
+    if (!res.ok) {
+      errorEl.textContent = data.error || "Login failed";
+      errorEl.style.display = "block";
+      return;
+    }
+    
+    token = data.token;
+    localStorage.setItem("adminToken", token);
+    
+    // Check if user is actually an admin
+    const profile = await api("/customer/profile");
+    if (profile.error || !['super_admin', 'admin', 'operations', 'support'].includes(profile.user.role)) {
+      errorEl.textContent = "Access denied: Administrative privileges required.";
+      errorEl.style.display = "block";
+      logout();
+      return;
+    }
+    
+    document.getElementById("adminName").textContent = profile.user.email.split('@')[0];
+    document.getElementById("adminRole").textContent = profile.user.role.toUpperCase();
+    
+    hideLogin();
+    loaders.overview();
+  } catch (err) {
+    errorEl.textContent = "Connection failed";
+    errorEl.style.display = "block";
+  }
+};
+
+/* ================= NAV ================= */
+document.querySelectorAll(".nav").forEach(n=>{
+  n.onclick = ()=>{
+    document.querySelectorAll(".nav").forEach(x=>x.classList.remove("active"));
+    document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
+    n.classList.add("active");
+    const id = n.dataset.section;
+    document.getElementById(id).classList.add("active");
+    loaders[id]?.();
+  };
+});
+
+/* ================= LOADERS ================= */
+const loaders = {};
+
+/* Overview */
+loaders.overview = async()=>{
+  const d = await api("/v1/admin/overview");
+  if(d.error) return;
+  ovCustomers.textContent = d.customers ?? "0";
+  ovMRR.textContent = "$" + (d.mrr ?? 0);
+  ovDelivery.textContent = d.delivery_health ?? "—";
+};
+
+/* Customers */
+loaders.customers = async()=>{
+  const d = await api("/v1/admin/customers");
+  if(d.error) return customersOut.innerHTML = `<div class="error">${d.error}</div>`;
+  const customers = d.data || d.customers || [];
+  customersOut.innerHTML = `
+    <table>
+      <thead><tr><th>ID</th><th>Plan</th><th>MRR</th><th>Created</th></tr></thead>
+      <tbody>
+        ${customers.map(c=>`
+          <tr>
+            <td><code style="font-size:0.7rem">${c.id}</code></td>
+            <td>${c.plan || 'starter'}</td>
+            <td>$${(c.mrr||0)/100}</td>
+            <td>${new Date(c.created_at).toLocaleDateString()}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+};
+
+/* Analytics */
+loaders.analytics = async()=>{
+  const d = await api("/v1/admin/analytics/delivery");
+  analyticsOut.innerHTML = d.error ? `<div class="error">${d.error}</div>` : `<pre>${JSON.stringify(d,null,2)}</pre>`;
+};
+
+/* Billing */
+loaders.billing = async()=>{
+  const d = await api("/v1/admin/billing/overview");
+  billingOut.innerHTML = d.error ? `<div class="error">${d.error}</div>` :
+    `<div class="card"><h6>Total MRR</h6><div class="value">$${d.mrr}</div></div>`;
+};
+
+/* Memory */
+loaders.memory = async()=>{
+  const d = await api("/v1/admin/memory");
+  memoryOut.innerHTML = d.error ? `<div class="error">${d.error}</div>` : `<pre>${JSON.stringify(d,null,2)}</pre>`;
+};
+
+/* SEO */
+loaders.seo = async()=>{
+  const d = await api("/v1/admin/seo/overview");
+  seoOut.innerHTML = d.error ? `<div class="error">${d.error}</div>` : `<pre>${JSON.stringify(d,null,2)}</pre>`;
+};
+
+/* Automation */
+loaders.automation = async()=>{
+  const d = await api("/v1/admin/automation/rules");
+  automationOut.innerHTML = d.error ? `<div class="error">${d.error}</div>` : `<pre>${JSON.stringify(d,null,2)}</pre>`;
+};
+
+/* ML */
+loaders.ml = async()=>{
+  const d = await api("/v1/admin/ml/health");
+  mlOut.innerHTML = d.error ? `<div class="error">${d.error}</div>` : `<pre>${JSON.stringify(d,null,2)}</pre>`;
+};
+
+/* Experiments */
+loaders.experiments = async()=>{
+  const d = await api("/v1/admin/experiments");
+  experimentsOut.innerHTML = d.error ? `<div class="error">${d.error}</div>` : `<pre>${JSON.stringify(d,null,2)}</pre>`;
+};
+
+/* Emails */
+loaders.emails = async()=>{
+  const d = await api("/v1/admin/emails/campaigns");
+  emailsOut.innerHTML = d.error ? `<div class="error">${d.error}</div>` : `<pre>${JSON.stringify(d,null,2)}</pre>`;
+};
+
+/* Support */
+loaders.support = async()=>{
+  const d = await api("/v1/admin/support/threads");
+  supportOut.innerHTML = d.error ? `<div class="error">${d.error}</div>` : `<pre>${JSON.stringify(d,null,2)}</pre>`;
+};
+
+/* System */
+loaders.system = async()=>{
+  const d = await api("/v1/admin/system/status");
+  systemOut.innerHTML = d.error ? `<div class="error">${d.error}</div>` : `<pre>${JSON.stringify(d,null,2)}</pre>`;
+};
+
+/* ================= INIT ================= */
+async function init() {
+  if (!token) {
+    showLogin();
+  } else {
+    const profile = await api("/customer/profile");
+    if (profile.error) {
+      logout();
+    } else {
+      document.getElementById("adminName").textContent = profile.user.email.split('@')[0];
+      document.getElementById("adminRole").textContent = profile.user.role.toUpperCase();
+      hideLogin();
+      loaders.overview();
+    }
+  }
+}
+
+init();
+</script>
+
+</body>
+</html>

@@ -11,12 +11,15 @@
  * - Cron must NEVER block fetch
  * - Each cron engine is isolated & fail-soft
  */
+import { SupportChatRoom } from "./core/realtime/ChatRoom.js";
+export { SupportChatRoom };
 
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 
 import { adminRoutes } from "./routes/admin";
 import { publicRoutes } from "./routes/public";
+import { supportRoutes } from "./routes/support";
 
 /* ================== CRON ENGINES ================== */
 
@@ -24,7 +27,7 @@ import { publicRoutes } from "./routes/public";
 import { runDeliveryScheduler } from "./core/delivery/scheduler.js";
 
 /* Phase 2 — SEO Center */
-import { runSeoCron } from "./core/seo/cron.js";
+// import { runSeoCron } from "./core/seo/cron.js";
 
 /* ===================================================
    APP INIT
@@ -54,6 +57,7 @@ app.get("/api/health", (c) =>
  * ------------------------------------------------- */
 app.route("/api/v1", publicRoutes);
 app.route("/api/v1/admin", adminRoutes);
+app.route("/api/v1/support", supportRoutes);
 
 /* ===================================================
    CLOUDFLARE WORKER ENTRY
@@ -93,6 +97,7 @@ export default {
         }
 
         /* ------------------ SEO ENGINE ------------------ */
+        /* Phase 2 — SEO Center (Disabled: Missing cron.js)
         try {
           console.log("[CRON] SEO cron started");
           await runSeoCron(env);
@@ -102,6 +107,7 @@ export default {
             error: err?.message || err,
           });
         }
+        */
       })()
     );
   },

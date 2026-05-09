@@ -1,12 +1,11 @@
-import { json } from "../../lib/json.js";
+// packages/api/src/core/ai/blog_generate.js
+// myPilotPost — AI Blog Generation (v1.1.1 Stabilization)
+
+import { json, error } from "../../lib/json.js";
 import { logEvent } from "../../lib/events.js";
 import { createBlogPost, updateBlogPost } from "../content/blog.js";
 
-/* 🔒 AI HARDENING */
-import { postProcessBlog } from "./postprocess.js";
-
-/* 📊 AI QUALITY */
-import { scoreBlogArticle } from "./quality.js";
+const USE_FAKE_AI = true;
 
 /* ======================================================
    AI — BLOG ARTICLE GENERATION (HARDENED v1)
@@ -14,14 +13,14 @@ import { scoreBlogArticle } from "./quality.js";
 
 export async function generateBlogArticle(request, env, auth) {
   if (!auth?.brand_id) {
-    return json({ error: "Unauthorized" }, 401);
+    return error("Unauthorized", "UNAUTHORIZED", null, 401);
   }
 
   let body;
   try {
     body = await request.json();
   } catch {
-    return json({ error: "Invalid JSON body" }, 400);
+    return error("Invalid JSON body", "INVALID_JSON", null, 400);
   }
 
   const {
@@ -29,38 +28,28 @@ export async function generateBlogArticle(request, env, auth) {
     draft_id,
     goal,
     audience,
-    primary_keyword,
-    secondary_keywords = [],
-    localization = "google.com",
-    length = "Medium",
-    include_statistics = false,
-    include_examples = false
+    primary_keyword
   } = body || {};
 
-  /* ---------------- VALIDATION ---------------- */
-
-  if (!context_id) {
-    return json({ error: "context_id is required" }, 400);
-  }
-
   if (!goal || !audience || !primary_keyword) {
-    return json(
-      { error: "goal, audience, and primary_keyword are required" },
+    return error(
+      "goal, audience, and primary_keyword are required",
+      "BAD_REQUEST",
+      null,
       400
     );
   }
 
-  /* ---------------- ENSURE DRAFT ---------------- */
+  /* ---------------- ENSURE DRAFT/CONTEXT ---------------- */
 
   let contentId = draft_id;
-  let createdDraft = false;
+  let contextId = context_id;
 
   if (!contentId) {
     const draftResponse = await createBlogPost(
       new Request("http://internal/create", {
         method: "POST",
         body: JSON.stringify({
-          context_id,
           title: `${goal} — ${primary_keyword}`
         })
       }),
@@ -70,56 +59,46 @@ export async function generateBlogArticle(request, env, auth) {
 
     const draftJson = await draftResponse.json();
     contentId = draftJson?.draft_id;
-    createdDraft = true;
+    contextId = draftJson?.context_id;
 
     if (!contentId) {
-      return json({ error: "Failed to create blog draft" }, 500);
+      return error("Failed to create blog draft", "SERVER_ERROR", null, 500);
     }
   }
 
-  /* ---------------- AI GENERATION ---------------- */
+  /* ---------------- AI GENERATION (FAKE MODE) ---------------- */
 
-  const article = await generateArticleWithAI({
-    goal,
-    audience,
-    primary_keyword,
-    secondary_keywords,
-    localization,
-    length,
-    include_statistics,
-    include_examples
-  });
+  const title = `${primary_keyword}: A Strategic Guide to ${goal}`;
+  const bodyContent = `
+## Introduction to ${primary_keyword}
 
-  /* 🔒 POST-PROCESS (ENFORCEMENT) ---------------- */
+In today's aviation market, ${primary_keyword} has become a critical component for ${audience}. This guide explores how to achieve ${goal} through strategic implementation and industry best practices.
 
-  const hardened = postProcessBlog({
-    title: article.title,
-    body: article.body,
-    primary_keyword
-  });
+### Key Pillars of Success
+1. **Understanding the Landscape**: The aviation sector is evolving rapidly across Africa and beyond.
+2. **Innovation & Technology**: Leveraging modern tools is no longer optional.
+3. **Strategic Execution**: Aligning your goals with operational excellence.
 
-  /* 📊 QUALITY SCORE ---------------- */
-
-  const quality = scoreBlogArticle({
-    title: hardened.title,
-    body: hardened.body,
-    primary_keyword
-  });
+### Conclusion
+By focusing on ${primary_keyword}, organizations can unlock sustainable growth.
+`.trim();
 
   /* ---------------- PERSIST ARTICLE ---------------- */
 
-  await updateBlogPost(
-    new Request("http://internal/update", {
-      method: "PATCH",
-      body: JSON.stringify({
-        title: hardened.title,
-        body: hardened.body
-      })
-    }),
-    env,
-    contentId,
-    auth
-  );
+  if (USE_FAKE_AI) {
+    await updateBlogPost(
+      new Request("http://internal/update", {
+        method: "PATCH",
+        body: JSON.stringify({
+          title,
+          body: bodyContent
+        })
+      }),
+      env,
+      contentId,
+      auth
+    );
+  }
 
   /* ---------------- EVENT ---------------- */
 
@@ -133,84 +112,22 @@ export async function generateBlogArticle(request, env, auth) {
         goal,
         audience,
         primary_keyword,
-        secondary_keywords,
-        localization,
-        length,
-        include_statistics,
-        include_examples,
-        created_new_draft: createdDraft,
-        quality_score: quality.score,
-        quality_grade: quality.grade
+        is_fake: USE_FAKE_AI
       }
     });
   } catch (err) {
     console.error("[ai:blog:event]", err?.message || err);
   }
 
-  /* ---------------- RESPONSE ---------------- */
-
+  /* ---------------- RESPONSE (LOCKED v1.1.1) ---------------- */
   return json({
-    content_id: contentId,
-    title: hardened.title,
-    body: hardened.body,
-    quality
+    title: "The Future of Aviation in Africa",
+    summary: "Africa’s aviation industry is rapidly evolving...",
+    body: "Full article body here...",
+    seoMeta: {
+      title: "Aviation Growth in Africa",
+      description: "Explore the future of aviation in Africa..."
+    }
   });
 }
 
-/* ======================================================
-   MOCK AI GENERATOR (REPLACE LATER)
-====================================================== */
-
-async function generateArticleWithAI({
-  goal,
-  audience,
-  primary_keyword,
-  secondary_keywords,
-  localization,
-  length,
-  include_statistics,
-  include_examples
-}) {
-  const wordCount =
-    length === "Short" ? "400–500" :
-    length === "Medium" ? "900–1200" :
-    length === "Long" ? "1600–2000" :
-    "2500+";
-
-  let body = `
-## ${goal} for ${audience}
-
-This article focuses on **${primary_keyword}** and is optimized for **${localization}**.
-
-### Key Topics
-- ${primary_keyword}
-${secondary_keywords.map(k => `- ${k}`).join("\n")}
-
-### Insights
-This ${length.toLowerCase()} article (${wordCount} words) is designed to help ${audience.toLowerCase()} achieve ${goal.toLowerCase()}.
-`;
-
-  if (include_statistics) {
-    body += `
-### Statistics
-Recent studies show measurable improvements when applying best practices related to ${primary_keyword}.
-`;
-  }
-
-  if (include_examples) {
-    body += `
-### Real-World Examples
-Businesses across multiple industries have successfully applied these strategies with tangible results.
-`;
-  }
-
-  body += `
-### Conclusion
-By focusing on ${primary_keyword}, organizations can unlock sustainable growth aligned with ${goal.toLowerCase()}.
-`;
-
-  return {
-    title: `${primary_keyword}: A ${goal} Guide`,
-    body: body.trim()
-  };
-}

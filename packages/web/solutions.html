@@ -32,12 +32,12 @@
     <meta name="twitter:title" content="myPilotPost - Built for Every Content Challenge">
     
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="images/favicon-32x32.png">
+    <link rel="icon" type="image/png" href="images/favicon-32x32.png"><link rel="icon" type="image/x-icon" href="favicon.ico">
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"><script src="config.js"></script>
     
     <style>
         /* ===== CSS RESET ===== */
@@ -681,10 +681,11 @@
         <a href="index.html" class="mobile-menu__item">Home</a>
         <a href="features.html" class="mobile-menu__item">Features</a>
         <a href="solutions.html" class="mobile-menu__item active">Solutions</a>
+		<a href="pricing.html" class="nav-menu__item">Pricing</a>
         <a href="resources.html" class="mobile-menu__item">Resources</a>
         <div class="mobile-menu__buttons">
-            <button class="btn btn--secondary" onclick="window.location.href='signin.html'">Sign In →</button>
-            <button class="btn btn--primary" onclick="window.location.href='register.html'">Get Started</button>
+            <button class="btn btn--secondary" onclick="redirectToApp('/login')">Sign In →</button>
+            <button class="btn btn--primary" onclick="redirectToApp('/register')">Get Started</button>
         </div>
     </div>
 
@@ -697,18 +698,19 @@
                 <a href="index.html" class="nav-menu__item">Home</a>
                 <a href="features.html" class="nav-menu__item">Features</a>
                 <a href="solutions.html" class="nav-menu__item active">Solutions</a>
+				<a href="pricing.html" class="nav-menu__item">Pricing</a>
                 <a href="resources.html" class="nav-menu__item">Resources</a>
             </nav>
 
             <div class="header__buttons">
-                <button class="btn btn--secondary" onclick="window.location.href='signin.html'">
+                <button class="btn btn--secondary" onclick="redirectToApp('/login')">
                     Sign In
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M4.1665 10H15.8332" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                         <path d="M10 4.16667L15.8333 10L10 15.8333" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                 </button>
-                <button class="btn btn--primary" onclick="window.location.href='register.html'">
+                <button class="btn btn--primary" onclick="redirectToApp('/register')">
                     Get Started
                 </button>
             </div>

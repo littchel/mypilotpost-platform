@@ -13,7 +13,7 @@ export async function attachMediaToBlog(request, env, blogPostId) {
     }
 
     /* Ensure blog post exists */
-    const blog = await env.ADMIN_DB.prepare(`
+    const blog = await env.mypilotpost.prepare(`
       SELECT id, brand_id
       FROM blog_posts
       WHERE id = ?
@@ -26,7 +26,7 @@ export async function attachMediaToBlog(request, env, blogPostId) {
     }
 
     /* Ensure media exists */
-    const media = await env.ADMIN_DB.prepare(`
+    const media = await env.mypilotpost.prepare(`
       SELECT id
       FROM media_assets
       WHERE id = ?
@@ -39,7 +39,7 @@ export async function attachMediaToBlog(request, env, blogPostId) {
     }
 
     /* Attach media (idempotent) */
-    await env.ADMIN_DB.prepare(`
+    await env.mypilotpost.prepare(`
       INSERT OR IGNORE INTO blog_media_links (
         blog_post_id,
         media_asset_id
@@ -49,7 +49,7 @@ export async function attachMediaToBlog(request, env, blogPostId) {
       .run();
 
     /* Emit mission */
-    await env.ADMIN_DB.prepare(`
+    await env.mypilotpost.prepare(`
       INSERT INTO missions (
         id,
         brand_id,
@@ -83,7 +83,7 @@ export async function attachMediaToBlog(request, env, blogPostId) {
  */
 export async function listBlogMedia(request, env, blogPostId) {
   /* Ensure blog post exists */
-  const blog = await env.ADMIN_DB.prepare(`
+  const blog = await env.mypilotpost.prepare(`
     SELECT id
     FROM blog_posts
     WHERE id = ?
@@ -95,7 +95,7 @@ export async function listBlogMedia(request, env, blogPostId) {
     return json({ error: "Blog post not found" }, 404);
   }
 
-  const { results } = await env.ADMIN_DB.prepare(`
+  const { results } = await env.mypilotpost.prepare(`
     SELECT
       m.id,
       m.provider,

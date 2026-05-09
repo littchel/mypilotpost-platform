@@ -6,6 +6,6 @@ export async function sendEmail({ to, subject, html }) {
   // Example: Resend, Postmark, SES, SendGrid
   // MUST throw on failure
 
-  console.log("[EMAIL]", { to, subject });
+  console.info(`[SERVICE:EMAIL] Sending to ${to} | Subject: ${subject}`);
   return { provider: "stub", ref: crypto.randomUUID() };
 }

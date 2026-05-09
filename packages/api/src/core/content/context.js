@@ -25,7 +25,7 @@ export async function createContentContext(request, env) {
 
   const id = crypto.randomUUID();
 
-  await env.ADMIN_DB.prepare(`
+  await env.mypilotpost.prepare(`
     INSERT INTO content_context (
       id,
       brand_id,
@@ -61,7 +61,7 @@ export async function createContentContext(request, env) {
  * GET /api/content/context/:id
  */
 export async function getContentContext(request, env, contextId) {
-  const context = await env.ADMIN_DB.prepare(`
+  const context = await env.mypilotpost.prepare(`
     SELECT
       id,
       brand_id,

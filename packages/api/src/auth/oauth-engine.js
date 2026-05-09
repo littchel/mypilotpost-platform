@@ -25,7 +25,7 @@ export async function oauthStart(request, env, providerConfig, brandId) {
       VALUES (?, ?)
     `).bind(state, brandId).run();
 
-    console.log("STATE INSERTED:", state);
+    // State inserted successfully
 
   } catch (err) {
     console.error("STATE INSERT FAILED:", err);
@@ -58,7 +58,7 @@ export async function oauthCallback(request, env, providerConfig) {
     const code = url.searchParams.get("code");
     const state = url.searchParams.get("state")?.trim();
 
-    console.log("CALLBACK RECEIVED STATE:", state);
+    // Callback received state
 
     if (!code || !state) {
       return json({ error: "Invalid OAuth response" }, 400);

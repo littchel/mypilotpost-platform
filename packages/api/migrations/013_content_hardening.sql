@@ -5,8 +5,8 @@
 -- =========================================
 
 -- Canonical content status
-ALTER TABLE social_assets ADD COLUMN status TEXT NOT NULL DEFAULT 'draft';
-ALTER TABLE blog_posts ADD COLUMN status TEXT NOT NULL DEFAULT 'draft';
+-- ALTER TABLE social_assets ADD COLUMN status TEXT NOT NULL DEFAULT 'draft';
+-- ALTER TABLE blog_posts ADD COLUMN status TEXT NOT NULL DEFAULT 'draft';
 
 -- Version history (immutable)
 CREATE TABLE IF NOT EXISTS content_versions (

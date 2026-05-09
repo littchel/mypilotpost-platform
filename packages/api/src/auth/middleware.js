@@ -6,25 +6,33 @@
 import { error } from "../lib/json.js";
 import { getDB } from "../lib/db.js";
 import { verifyJWT } from "./jwt.js";
+import { hasPermission } from "./permissions.js";
 
 export async function requireAuth(request, env) {
+  let token = null;
   const authHeader = request.headers.get("Authorization");
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    throw error("Unauthorized", 401);
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    token = authHeader.replace("Bearer ", "").trim();
+  } else {
+    const url = new URL(request.url);
+    token = url.searchParams.get("token");
   }
 
-  const token = authHeader.replace("Bearer ", "").trim();
+  if (!token) {
+    throw error("Unauthorized", "UNAUTHORIZED", null, 401);
+  }
 
   let payload;
   try {
     payload = await verifyJWT(token, env.JWT_SECRET);
-  } catch {
-    throw error("Invalid token", 401);
+  } catch (err) {
+    console.error("AUTH VERIFY ERROR:", err.message);
+    throw error("Unauthorized", "UNAUTHORIZED", null, 401);
   }
 
   const user_id = payload?.user_id;
-  if (!user_id) throw error("Unauthorized", 401);
+  if (!user_id) throw error("Unauthorized", "UNAUTHORIZED", null, 401);
 
   const db = getDB(env);
 
@@ -33,28 +41,95 @@ export async function requireAuth(request, env) {
   // --------------------------------------------------
   let brand_id = payload.brand_id || null;
 
-  if (!brand_id) {
+  // 1. Mandatory membership check
+  // Even if brand_id is in the token, we MUST verify the user still belongs to it.
+  if (brand_id) {
     const link = await db.prepare(`
-      SELECT brand_id
+      SELECT brand_id, role
+      FROM brand_users
+      WHERE user_id = ? AND brand_id = ?
+      LIMIT 1
+    `).bind(user_id, brand_id).first();
+
+    if (!link) {
+      // Token is stale or unauthorized for this brand
+      throw error("Access to this brand is denied or revoked", "FORBIDDEN", null, 403);
+    }
+  } else {
+    // 2. Fallback to primary brand if none specified in token
+    const link = await db.prepare(`
+      SELECT brand_id, role
       FROM brand_users
       WHERE user_id = ?
       ORDER BY created_at ASC
       LIMIT 1
     `).bind(user_id).first();
 
-    if (link?.brand_id) {
+    if (!link) {
+      // 🚨 HARD BLOCK: NO BRANDS EXIST FOR THIS USER
+      // We only allow this if the user is currently on an onboarding route
+      const url = new URL(request.url);
+      const is_onboarding_route = 
+        url.pathname.includes("/onboarding") || 
+        url.pathname.includes("/brands/create") ||
+        url.pathname.includes("/profile") ||
+        url.pathname.includes("/register");
+
+      if (!is_onboarding_route) {
+        throw error("Dashboard access blocked: Please complete onboarding first.", "ONBOARDING_REQUIRED", null, 403);
+      }
+      brand_id = null;
+    } else {
       brand_id = link.brand_id;
     }
-  }
 
-  if (!brand_id) {
-    throw error("Brand not linked to customer", 403);
   }
 
   return {
     user_id,
     brand_id,
     email: payload.email || null,
-    role: payload.role || "customer"
+    role: payload.role || "user"
   };
+}
+
+/**
+ * PRODUCTION HARD LOCK: Require strict brand context for every request.
+ */
+export async function requireBrandContext(request, env) {
+  const auth = await requireAuth(request, env);
+  
+  // 🚨 HARD BLOCK: NO BRAND_ID = NO ACCESS
+  if (!auth.brand_id) {
+    throw error("Brand context required for this operation.", "BRAND_CONTEXT_MISSING", null, 403);
+  }
+  
+  return auth;
+}
+
+/**
+ * Require a specific permission (RBAC)
+ */
+export async function requirePermission(request, env, permission) {
+  const auth = await requireAuth(request, env);
+  
+  if (!hasPermission(auth.role, permission)) {
+    throw error("Access denied: insufficient permissions", "FORBIDDEN", null, 403);
+  }
+  
+  return auth;
+}
+
+/**
+ * Require admin-level access (any administrative role)
+ */
+export async function requireAdmin(request, env) {
+  const auth = await requireAuth(request, env);
+  const adminRoles = ['super_admin', 'admin', 'operations', 'support'];
+  
+  if (!adminRoles.includes(auth.role)) {
+    throw error("Access denied: administrator role required", "FORBIDDEN", null, 403);
+  }
+  
+  return auth;
 }

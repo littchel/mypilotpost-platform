@@ -24,11 +24,13 @@
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="images/favicon-32x32.png">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="config.js"></script>
     
     <!-- CSS -->
     <style>
@@ -891,6 +893,95 @@
         .animate-fadeInUp {
             animation: fadeInUp 0.6s ease forwards;
         }
+
+        /* Cookie Banner */
+        .cookie-banner {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            max-width: 320px;
+            background: var(--white);
+            border: 0.5px solid var(--border-gray);
+            border-radius: var(--radius-medium);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            padding: 20px;
+            z-index: 9999;
+            display: none;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease;
+        }
+        .cookie-banner.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Sticky CTA Bar */
+        .sticky-cta {
+            position: fixed;
+            bottom: -100px;
+            left: 0;
+            width: 100%;
+            background: var(--primary-blue);
+            color: white;
+            padding: 12px 0;
+            z-index: 1000;
+            transition: bottom 0.5s ease;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .sticky-cta.active {
+            bottom: 0;
+        }
+
+        .sticky-cta__container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Exit Intent Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            background: var(--white);
+            padding: var(--space-three);
+            border-radius: var(--radius-xl);
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            position: relative;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            cursor: pointer;
+            font-size: 24px;
+            color: var(--text-gray);
+        }
     </style>
 </head>
 <body>
@@ -899,10 +990,11 @@
         <a href="index.html" class="mobile-menu__item">Home</a>
         <a href="features.html" class="mobile-menu__item">Features</a>
         <a href="solutions.html" class="mobile-menu__item">Solutions</a>
+		<a href="pricing.html" class="nav-menu__item">Pricing</a>
         <a href="resources.html" class="mobile-menu__item">Resources</a>
         <div class="mobile-menu__buttons">
-            <a href="signin.html"><button class="btn btn--secondary">Sign In →</button></a>
-            <a href="register.html"><button class="btn btn--primary">Get Started</button></a>
+            <a href="#" onclick="redirectToApp('/login'); return false;"><button class="btn btn--secondary">Sign In →</button></a>
+            <a href="#" onclick="redirectToApp('/register'); return false;"><button class="btn btn--primary">Get Started</button></a>
         </div>
     </div>
 
@@ -915,18 +1007,19 @@
                 <a href="index.html" class="nav-menu__item">Home</a>
                 <a href="features.html" class="nav-menu__item">Features</a>
                 <a href="solutions.html" class="nav-menu__item">Solutions</a>
+				<a href="pricing.html" class="nav-menu__item">Pricing</a>
                 <a href="resources.html" class="nav-menu__item">Resources</a>
             </nav>
 
             <div class="header__buttons">
-                <button class="btn btn--secondary" onclick="window.location.href='signin.html'">
+                <button class="btn btn--secondary" onclick="redirectToApp('/login')">
                     Sign In
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M4.1665 10H15.8332" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                         <path d="M10 4.16667L15.8333 10L10 15.8333" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                 </button>
-                <button class="btn btn--primary" onclick="window.location.href='register.html'">
+                <button class="btn btn--primary" onclick="redirectToApp('/register')">
                     Get Started
                 </button>
             </div>
@@ -945,12 +1038,12 @@
             <div class="container">
                 <div class="hero__content animate-fadeInUp">
                     <span class="badge hero__badge">A co-pilot for your creative vision</span>
-                    <h1>Your flight deck<br>for landing the right message,<br>every time.</h1>
-                    <p class="hero__subtitle">Plan, create, design, approve, schedule, and analyze high-performing content across social and search — from a single, intelligent control plane.</p>
+                    <h1>Turn Your Social Media Into a Growth Engine</h1>
+                    <p class="hero__subtitle">Posting without a strategy is just noise. Plan, create, and track your growth from a single, intelligent control plane.</p>
                     
                     <div class="hero__cta">
-                        <button class="btn btn--primary btn--large" onclick="window.location.href='register.html'">
-                            Get Started
+                        <button class="btn btn--primary btn--large" onclick="window.location.href='audit.html'">
+                            Start Free Brand Audit
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M5 12H19" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                 <path d="M12 5L19 12L12 19" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1106,7 +1199,7 @@
                         <div>
                             <h3 class="cta__title">Smarter content.<br>Real control.<br>One command center.</h3>
                             <p class="cta__subtitle">Create your first piece of content</p>
-                            <button class="btn btn--secondary-4 btn--large" onclick="window.location.href='register.html'">
+                            <button class="btn btn--secondary-4 btn--large" onclick="redirectToApp('/register')">
                                 Get Started
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M5 12H19" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1209,7 +1302,7 @@
     <!-- JavaScript -->
     <script>
         // Base API URL
-        const API_BASE = "https://mypilotpost-api.littchel.workers.dev";
+        const API_BASE = window.MPP_CONFIG ? window.MPP_CONFIG.API_URL : "https://mypilotpost-api.littchel.workers.dev";
 
         // Mobile Menu Toggle
         function toggleMobileMenu() {
@@ -1303,7 +1396,7 @@
                 // Render posts
                 container.innerHTML = posts.map(post => `
                     <article class="blog-card animate-fadeInUp">
-                        <a href="blog-post.html?slug=${post.slug}" style="text-decoration: none; color: inherit; display: flex; flex-direction: column; height: 100%;">
+                        <a href="blog/post.html?slug=${post.slug}" style="text-decoration: none; color: inherit; display: flex; flex-direction: column; height: 100%;">
                             <div class="blog-card__image" style="background-image: url('${post.featured_image || 'https://via.placeholder.com/400x200?text=myPilotPost'}');"></div>
                             <div class="blog-card__content">
                                 <p class="blog-card__meta">by ${post.author || 'myPilotPost Team'} · ${formatDate(post.published_at)}</p>
@@ -1333,8 +1426,163 @@
             }
         }
 
-        // Load blog posts when page loads
-        document.addEventListener('DOMContentLoaded', loadBlogPosts);
+        // Cookie Consent Logic
+        function acceptCookies() {
+            localStorage.setItem('mypilotpost_cookie_consent', 'true');
+            document.getElementById('cookieBanner').classList.remove('active');
+            setTimeout(() => { document.getElementById('cookieBanner').style.display = 'none'; }, 500);
+        }
+
+        function checkCookieConsent() {
+            if (!localStorage.getItem('mypilotpost_cookie_consent')) {
+                setTimeout(() => {
+                    const banner = document.getElementById('cookieBanner');
+                    if (banner) {
+                        banner.style.display = 'block';
+                        setTimeout(() => { banner.classList.add('active'); }, 100);
+                    }
+                }, 2000);
+            }
+        }
+
+        // Conversion Triggers
+        function initConversionTriggers() {
+            // Sticky CTA
+            window.addEventListener('scroll', () => {
+                const sticky = document.getElementById('stickyCTA');
+                if (sticky) {
+                    if (window.scrollY > 500) {
+                        sticky.classList.add('active');
+                    } else {
+                        sticky.classList.remove('active');
+                    }
+                }
+            });
+
+            // Exit Intent
+            document.addEventListener('mouseout', (e) => {
+                if (e.clientY <= 0 && window.scrollY > 300 && !sessionStorage.getItem('mypilotpost_exit_intent_shown')) {
+                    const modal = document.getElementById('exitIntent');
+                    if (modal) {
+                        modal.style.display = 'flex';
+                        setTimeout(() => { modal.classList.add('active'); }, 10);
+                        sessionStorage.setItem('mypilotpost_exit_intent_shown', 'true');
+                    }
+                }
+            });
+
+            const modal = document.getElementById('exitIntent');
+            if (modal) {
+                modal.addEventListener('click', (e) => {
+                    if (e.target.id === 'exitIntent') closeExitIntent();
+                });
+            }
+        }
+
+        function closeExitIntent() {
+            document.getElementById('exitIntent').classList.remove('active');
+            setTimeout(() => { document.getElementById('exitIntent').style.display = 'none'; }, 300);
+        }
+
+        // Load all on DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', () => {
+            loadBlogPosts();
+            checkCookieConsent();
+            initConversionTriggers();
+            initEnforcementListener();
+        });
+
+        // Enforcement Listener (NEW)
+        function initEnforcementListener() {
+            // Intercept all fetch calls to check for 403 UPGRADE_REQUIRED
+            const originalFetch = window.fetch;
+            window.fetch = async (...args) => {
+                const response = await originalFetch(...args);
+                
+                if (response.status === 403) {
+                    const data = await response.clone().json().catch(() => ({}));
+                    if (data.code === 'UPGRADE_REQUIRED') {
+                        showUpgradeModal(data.details);
+                    }
+                }
+                
+                return response;
+            };
+        }
+
+        function showUpgradeModal(details) {
+            const modal = document.getElementById('upgradeModal');
+            if (!modal) return;
+
+            document.getElementById('currentPlanName').innerText = details.current_plan;
+            document.getElementById('usageStats').innerText = `${details.used} / ${details.limit}`;
+            document.getElementById('recommendedPlanName').innerText = details.recommended_plan;
+            
+            const titles = {
+                posts: "Post Limit Reached",
+                ai: "AI Power Exhausted",
+                accounts: "Account Limit Reached"
+            };
+            document.getElementById('upgradeTitle').innerText = titles[details.limit_type] || "Limit Reached";
+            
+            modal.style.display = 'flex';
+            setTimeout(() => { modal.classList.add('active'); }, 10);
+        }
+
+        function closeUpgradeModal() {
+            document.getElementById('upgradeModal').classList.remove('active');
+            setTimeout(() => { document.getElementById('upgradeModal').style.display = 'none'; }, 300);
+        }
     </script>
+
+    <!-- Cookie Banner -->
+    <div id="cookieBanner" class="cookie-banner">
+        <h4 style="margin-bottom: 8px; font-weight: 700;">We use cookies</h4>
+        <p class="body-text" style="font-size: 14px; margin-bottom: 16px;">We use cookies to improve performance and understand how you use myPilotPost. You stay in control.</p>
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <button class="btn btn--primary" style="padding: 8px 20px; font-size: 14px;" onclick="acceptCookies()">Accept</button>
+            <a href="privacy-policy.html" style="font-size: 14px; color: var(--text-gray); text-decoration: none;">Learn More</a>
+        </div>
+    </div>
+
+    <!-- Sticky CTA Bar -->
+    <div class="sticky-cta" id="stickyCTA">
+        <div class="container sticky-cta__container">
+            <p>Run a quick brand audit and see where to improve</p>
+            <button class="btn btn--white" style="background: white; color: var(--primary-blue); font-weight: 600; padding: 8px 16px; border-radius: 8px;" onclick="window.location.href='audit.html'">Start Free Brand Audit</button>
+        </div>
+    </div>
+
+            <a href="audit.html" class="btn btn--primary btn--large" style="width: 100%;">Start Free Brand Audit</a>
+        </div>
+    </div>
+
+    <!-- Smart Upgrade Modal (NEW) -->
+    <div id="upgradeModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 550px;">
+            <span class="modal-close" onclick="closeUpgradeModal()">&times;</span>
+            <div id="upgradeIcon" style="font-size: 48px; margin-bottom: 20px;">🚀</div>
+            <h2 id="upgradeTitle" style="font-size: 28px; margin-bottom: 12px;">Limit Reached</h2>
+            <p id="upgradeMessage" class="body-text" style="margin-bottom: 24px;">You've reached your monthly limit for this feature. Upgrade to keep growing!</p>
+            
+            <div id="upgradeDetails" style="background: #F9FAFB; padding: 20px; border-radius: 12px; margin-bottom: 24px; text-align: left;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span class="text-muted">Current Plan:</span>
+                    <strong id="currentPlanName" style="text-transform: capitalize;">Starter</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span class="text-muted">Usage:</span>
+                    <strong id="usageStats">30 / 30</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; border-top: 1px solid #ddd; padding-top: 8px; margin-top: 8px;">
+                    <span class="text-muted">Recommended:</span>
+                    <strong id="recommendedPlanName" style="color: var(--primary-blue); text-transform: capitalize;">Growth</strong>
+                </div>
+            </div>
+
+            <a href="pricing.html" class="btn btn--primary btn--large" style="width: 100%; margin-bottom: 12px;">View Pricing & Upgrade</a>
+            <button class="btn btn--secondary btn--full" onclick="closeUpgradeModal()">Maybe later</button>
+        </div>
+    </div>
 </body>
 </html>
