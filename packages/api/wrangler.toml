@@ -27,7 +27,7 @@ id = "8ec7110460ae435a86e33999c115eec3"
 preview_id = "af2c556897934423bb0da6d8ba106cac"
 
 [triggers]
-crons = ["0 3 * * *"]
+crons = ["* * * * *", "0 3 * * *"]
 
 [observability]
 enabled = true

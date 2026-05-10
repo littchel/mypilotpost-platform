@@ -297,7 +297,9 @@ import { handleAdminPricing, handleAdminPricingById, togglePlanStatus, createAdm
 /* ======================================================
    DELIVERY ENGINE
 ====================================================== */
+import { executeDeliveryJob } from "./core/delivery/poster.js";
 import { manualRetryJob } from "./core/delivery/retries.js";
+import { runDeliveryScheduler } from "./core/delivery/scheduler.js";
 import { supportRoutes } from "./routes/support.js";
 import { handleDataDeletionRequest } from "./core/compliance/compliance.js";
 
@@ -1370,6 +1372,20 @@ export default {
     } catch (err) {
       return withCors(request, Promise.resolve(handleError(err)));
     }
+  },
+
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(
+      (async () => {
+        try {
+          console.log("[CRON] Delivery scheduler started");
+          await runDeliveryScheduler(env, ctx);
+          console.log("[CRON] Delivery scheduler completed");
+        } catch (err) {
+          console.error("[CRON] Delivery scheduler failed", err?.message || err);
+        }
+      })()
+    );
   }
 };
 export { SupportChatRoom };
