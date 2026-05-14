@@ -1,19 +1,36 @@
 name = "mypilotpost-api"
+account_id = "2e36b917221c87af13a139c07842b5b2"
 main = "src/server.js"
 compatibility_flags = ["nodejs_compat"]
-compatibility_date = "2024-01-01"
+compatibility_date = "2025-01-01"
 
 [vars]
 BASE_URL = "https://api.mypilotpost.com"
 FRONTEND_URL = "https://app.mypilotpost.com"
 ENVIRONMENT = "production"
 API_VERSION = "v1"
+# OAuth canonical origins
+PUBLIC_API_BASE = "https://api.mypilotpost.com"
+API_BASE_URL = "https://api.mypilotpost.com"
+APP_BASE_URL = "https://app.mypilotpost.com"
+# R2 bucket name string (used in DB records, separate from the bucket binding)
+MEDIA_BUCKET_NAME = "mypilotpost-media"
+# Promotions multiplier
+REWARD_MULTIPLIER = "1"
+# OAuth client IDs (non-secret, public)
 GOOGLE_CLIENT_ID = "626126586204-kpm1sra6t8488t47an9m4ta030615c8s.apps.googleusercontent.com"
 DROPBOX_CLIENT_ID = "yt1hvspft36igsa"
 LINKEDIN_CLIENT_ID = "771mxvzllsxgrp"
 
+# Primary D1 binding used by getDB(env)
 [[d1_databases]]
 binding = "mypilotpost"
+database_name = "mypilotpost"
+database_id = "e8075c44-5b6a-40c4-91cb-ebaef3da2a82"
+
+# Alias binding so blog/billing/admin modules using env.DB resolve to same database
+[[d1_databases]]
+binding = "DB"
 database_name = "mypilotpost"
 database_id = "e8075c44-5b6a-40c4-91cb-ebaef3da2a82"
 
@@ -27,15 +44,20 @@ binding = "OAUTH_STATE"
 id = "8ec7110460ae435a86e33999c115eec3"
 preview_id = "af2c556897934423bb0da6d8ba106cac"
 
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "665f55c4257b425ca8742d1bb3dd1cca"
+
 [triggers]
 crons = ["* * * * *", "0 3 * * *"]
 
 [observability]
 enabled = true
+
 [[durable_objects.bindings]]
 name = "CHAT_ROOM"
 class_name = "SupportChatRoom"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["SupportChatRoom"]
+new_sqlite_classes = ["SupportChatRoom"]
