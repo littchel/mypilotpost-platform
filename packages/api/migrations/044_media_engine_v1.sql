@@ -1,8 +1,6 @@
 -- Migration: 044_media_engine_v1.sql
 -- Description: Establishes a lightweight, reusable media registry and linking system.
 
-BEGIN TRANSACTION;
-
 -- 1. Drop existing tables if they exist (Surgical reset for Phase 1)
 DROP TABLE IF EXISTS content_media_links;
 DROP TABLE IF EXISTS media_assets;
@@ -34,5 +32,3 @@ CREATE TABLE content_media_links (
 -- 4. Indices for performance
 CREATE INDEX IF NOT EXISTS idx_media_assets_brand ON media_assets (brand_id);
 CREATE INDEX IF NOT EXISTS idx_content_media_links_content ON content_media_links (content_id);
-
-COMMIT;

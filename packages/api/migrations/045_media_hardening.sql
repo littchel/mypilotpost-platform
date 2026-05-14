@@ -1,8 +1,6 @@
 -- Migration: 045_media_hardening.sql
 -- Description: Adds positioning, collision-safe constraints, and asset protection.
 
-BEGIN TRANSACTION;
-
 -- 1. Create a modern version of the linking table
 -- We change ON DELETE CASCADE to ON DELETE RESTRICT to prevent deleting assets linked to content.
 -- We add 'position' for deterministic ordering.
@@ -33,5 +31,3 @@ CREATE INDEX IF NOT EXISTS idx_content_media_links_content ON content_media_link
 
 -- 5. Optional Index for positioning performance
 CREATE INDEX IF NOT EXISTS idx_content_media_links_pos ON content_media_links (content_id, position);
-
-COMMIT;
