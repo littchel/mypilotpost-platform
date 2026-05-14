@@ -10,6 +10,8 @@ import { getRegion } from "../lib/geo.js";
 import { generateReferralCode, registerReferral } from "../core/promotions/promotions.js";
 import { emitEvent } from "../lib/bus.js";
 import { hydrateFromAudit } from "../core/onboarding/hydration.js";
+import { isDisposableEmail } from "../core/trust/verification.js";
+import { triggerLifecycleEmail } from "../core/lifecycle/engine.js";
 
 /* ================================
    HELPERS
@@ -80,6 +82,15 @@ export async function register(request, env) {
       return error("Missing email or password", "BAD_REQUEST", null, 400);
     }
 
+    if (isDisposableEmail(email)) {
+      return error(
+        "Disposable email addresses are not permitted. Please use a permanent email address.",
+        "DISPOSABLE_EMAIL",
+        null,
+        400
+      );
+    }
+
     const existing = await db
       .prepare("SELECT id FROM users WHERE email = ?")
       .bind(email)
@@ -115,7 +126,7 @@ export async function register(request, env) {
         brandId = crypto.randomUUID();
         await db.batch([
           db.prepare("INSERT INTO brands (id, owner_user_id, name, created_at) VALUES (?, ?, ?, datetime('now'))").bind(brandId, userId, audit.brand_name),
-          db.prepare("INSERT INTO brand_users (user_id, brand_id, role) VALUES (?, ?, 'owner', datetime('now'))").bind(userId, brandId)
+          db.prepare("INSERT INTO brand_users (user_id, brand_id, role, created_at) VALUES (?, ?, 'owner', datetime('now'))").bind(userId, brandId)
         ]);
 
         await hydrateFromAudit(db, brandId, audit_id);
@@ -149,6 +160,18 @@ export async function register(request, env) {
     )
     .bind(crypto.randomUUID(), userId, newToken())
     .run();
+
+    // Fire welcome email — awaited but non-fatal
+    try {
+      await triggerLifecycleEmail(env, {
+        userId,
+        brandId: brandId || null,
+        type: "user_registered",
+        payload: { first_name: first_name || null }
+      });
+    } catch (e) {
+      console.warn("[LIFECYCLE] user_registered fire failed:", e.message);
+    }
 
     return json({ ok: true, token, brand_id: brandId });
   } catch (err) {

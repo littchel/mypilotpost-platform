@@ -69,11 +69,13 @@ export async function requireAuth(request, env) {
       // 🚨 HARD BLOCK: NO BRANDS EXIST FOR THIS USER
       // We only allow this if the user is currently on an onboarding route
       const url = new URL(request.url);
-      const is_onboarding_route = 
-        url.pathname.includes("/onboarding") || 
+      const is_onboarding_route =
+        url.pathname.includes("/onboarding") ||
         url.pathname.includes("/brands/create") ||
         url.pathname.includes("/profile") ||
-        url.pathname.includes("/register");
+        url.pathname.includes("/register") ||
+        url.pathname.includes("/trust/") ||
+        url.pathname.includes("/lifecycle/");
 
       if (!is_onboarding_route) {
         throw error("Dashboard access blocked: Please complete onboarding first.", "ONBOARDING_REQUIRED", null, 403);
