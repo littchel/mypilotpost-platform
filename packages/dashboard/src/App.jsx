@@ -545,14 +545,17 @@ function App() {
   const seoMetrics = seoProfile?.metrics || { organicTraffic: '0', keywords: '0', health: '0%' };
   const _seoKeywords = seoProfile?.keywords || [];
 
+  const { data: brandDnaData } = useApi(brandId ? "/api/customer/brand-dna" : null, [brandId]);
+  const brandDnaCompletionPct = brandDnaData?.completeness ?? 0;
+
   const brandIntelligence = generateIntelligence({
     allContent,
     connectedPlatforms,
     seoMetrics,
     metrics,
     growth,
-    auditData: null, // hydrated from URL params post-audit signup
-    brandDna: { completionPct: 0 }, // TODO: wire to Brand DNA API
+    auditData: null,
+    brandDna: { completionPct: brandDnaCompletionPct },
   });
 
   const _handleImageUpload = (e) => {

@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { apiRequest } from "../lib/api/client";
 
 /* ── DNA Completion Ring ── */
 const DNARing = ({ pct }) => {
@@ -222,19 +223,131 @@ const PANEL_COMPONENTS = {
   'competitor-dna': CompetitorDNAPanel,
 };
 
+const EMPTY_DNA = {
+  mission: '', vision: '', positioning: '', differentiators: [], authorityGoals: '',
+  icp: '', painPoints: '', desires: '', objections: '', buyingTriggers: [], psychographics: '',
+  tone: '', vocabulary: [], forbiddenLanguage: [], ctaStyle: '', communicationStyle: '',
+  pillars: [], formats: [], cadence: '', authorityThemes: [], narrativePriorities: '',
+  primaryColor: '', secondaryColors: '', typography: '', visualDirection: '', imageryStyle: '',
+  awarenessGoal: '', leadGoal: '', retentionGoal: '', seoGoal: '', authorityGoal: '', conversionGoal: '',
+  competitors: [{ name: '', strengths: '', weaknesses: '', whitespace: '' }],
+};
+
+function mapApiToDna(res) {
+  const p = res.profile || {};
+  const a = res.audience || {};
+  const v = res.voice || {};
+  const vi = res.visual || {};
+  const o = res.objectives || {};
+  const arr = (val) => Array.isArray(val) ? val : [];
+  const txt = (arr) => arr.join('\n');
+  return {
+    mission: p.mission || '',
+    vision: p.vision || '',
+    positioning: p.positioning || '',
+    differentiators: arr(p.differentiators),
+    authorityGoals: '',
+    icp: a.icp_name || '',
+    painPoints: txt(arr(a.pain_points)),
+    desires: txt(arr(a.desires)),
+    objections: txt(arr(a.objections)),
+    buyingTriggers: arr(a.demographics?.buying_triggers),
+    psychographics: a.psychographics?.description || (typeof a.psychographics === 'string' ? a.psychographics : ''),
+    tone: arr(p.brand_personality).join(', '),
+    vocabulary: arr(v.voice_traits),
+    forbiddenLanguage: arr(v.forbidden_language),
+    ctaStyle: v.cta_style || '',
+    communicationStyle: v.messaging_style || '',
+    pillars: (res.content_pillars || []).map(cp => cp.title).filter(Boolean),
+    formats: [],
+    cadence: '',
+    authorityThemes: [],
+    narrativePriorities: '',
+    primaryColor: vi.primary_color || '',
+    secondaryColors: vi.secondary_color || '',
+    typography: vi.typography_main || '',
+    visualDirection: vi.visual_direction || '',
+    imageryStyle: vi.imagery_style || '',
+    awarenessGoal: o.awareness_goal || '',
+    leadGoal: o.leads_goal || '',
+    retentionGoal: o.retention_goal || '',
+    seoGoal: o.seo_goal || '',
+    authorityGoal: o.authority_goal || '',
+    conversionGoal: o.conversions_goal || '',
+    competitors: (res.competitors || []).length
+      ? (res.competitors || []).map(c => ({
+          name: c.name || '',
+          strengths: arr(c.strengths).join('\n'),
+          weaknesses: arr(c.weaknesses).join('\n'),
+          whitespace: c.strategy_notes || '',
+        }))
+      : [{ name: '', strengths: '', weaknesses: '', whitespace: '' }],
+  };
+}
+
+function mapDnaToApi(dna) {
+  const lines = (s) => s ? s.split('\n').map(l => l.trim()).filter(Boolean) : [];
+  return {
+    profile: {
+      mission: dna.mission || null,
+      vision: dna.vision || null,
+      positioning: dna.positioning || null,
+      value_proposition: dna.positioning || null,
+      differentiators: dna.differentiators,
+      brand_personality: dna.tone ? [dna.tone] : [],
+    },
+    audience: {
+      icp_name: dna.icp || null,
+      demographics: { buying_triggers: dna.buyingTriggers },
+      psychographics: { description: dna.psychographics },
+      pain_points: lines(dna.painPoints),
+      desires: lines(dna.desires),
+      objections: lines(dna.objections),
+    },
+    voice: {
+      voice_traits: dna.vocabulary,
+      forbidden_language: dna.forbiddenLanguage,
+      cta_style: dna.ctaStyle || null,
+      messaging_style: dna.communicationStyle || null,
+    },
+    visual: {
+      primary_color: dna.primaryColor || null,
+      secondary_color: dna.secondaryColors || null,
+      typography_main: dna.typography || null,
+      visual_direction: dna.visualDirection || null,
+      imagery_style: dna.imageryStyle || null,
+    },
+    objectives: {
+      awareness_goal: dna.awarenessGoal || null,
+      leads_goal: dna.leadGoal || null,
+      conversions_goal: dna.conversionGoal || null,
+      retention_goal: dna.retentionGoal || null,
+      seo_goal: dna.seoGoal || null,
+      authority_goal: dna.authorityGoal || null,
+    },
+    content_pillars: dna.pillars.filter(Boolean).map(title => ({ title })),
+    competitors: dna.competitors.filter(c => c.name?.trim()).map(c => ({
+      name: c.name,
+      strengths: c.strengths ? c.strengths.split('\n').filter(Boolean) : [],
+      weaknesses: c.weaknesses ? c.weaknesses.split('\n').filter(Boolean) : [],
+      strategy_notes: c.whitespace || '',
+    })),
+  };
+}
+
 /* ── Main component ── */
 export default function BrandDNA({ activeBrand }) {
   const [activeSubTab, setActiveSubTab] = useState('brand-core');
   const [saved, setSaved] = useState(false);
-  const [dna, setDna] = useState({
-    mission: '', vision: '', positioning: '', differentiators: [], authorityGoals: '',
-    icp: '', painPoints: '', desires: '', objections: '', buyingTriggers: [], psychographics: '',
-    tone: '', vocabulary: [], forbiddenLanguage: [], ctaStyle: '', communicationStyle: '',
-    pillars: [], formats: [], cadence: '', authorityThemes: [], narrativePriorities: '',
-    primaryColor: '', secondaryColors: '', typography: '', visualDirection: '', imageryStyle: '',
-    awarenessGoal: '', leadGoal: '', retentionGoal: '', seoGoal: '', authorityGoal: '', conversionGoal: '',
-    competitors: [{ name: '', strengths: '', weaknesses: '', whitespace: '' }],
-  });
+  const [saving, setSaving] = useState(false);
+  const [dna, setDna] = useState(EMPTY_DNA);
+
+  useEffect(() => {
+    if (!activeBrand?.id) return;
+    apiRequest('/api/customer/brand-dna')
+      .then(res => setDna(mapApiToDna(res)))
+      .catch(() => {});
+  }, [activeBrand?.id]);
 
   const updateField = (field, value) => setDna(d => ({ ...d, [field]: value }));
 
@@ -258,10 +371,20 @@ export default function BrandDNA({ activeBrand }) {
   const Panel = PANEL_COMPONENTS[activeSubTab];
   const currentTab = SUB_TABS.find(t => t.id === activeSubTab);
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
-    // TODO: wire to /api/customer/brand PATCH
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await apiRequest('/api/customer/brand-dna', {
+        method: 'PATCH',
+        body: JSON.stringify(mapDnaToApi(dna)),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (e) {
+      console.error('Brand DNA save failed', e);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -342,13 +465,15 @@ export default function BrandDNA({ activeBrand }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, paddingTop: 16, borderTop: '1px solid #f1f5f9', marginTop: 12 }}>
         <button
           onClick={handleSave}
+          disabled={saving}
           style={{
             background: saved ? '#22c55e' : '#2563EB', color: '#fff', border: 'none',
-            borderRadius: 10, padding: '12px 28px', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+            borderRadius: 10, padding: '12px 28px', fontSize: 14, fontWeight: 700,
+            cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.75 : 1,
             transition: 'background 0.3s',
           }}
         >
-          {saved ? '✓ Saved' : 'Save Brand DNA'}
+          {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save Brand DNA'}
         </button>
       </div>
     </div>
