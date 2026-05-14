@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS onboarding_progress (
 ALTER TABLE users ADD COLUMN onboarding_complete INTEGER DEFAULT 0;
 
 -- 3. Seed Pricing Plans (Task 7)
+-- features_json not yet present if 063 was applied before it was added to that migration
+ALTER TABLE plans ADD COLUMN features_json TEXT DEFAULT '[]';
 DELETE FROM plans WHERE id IN ('launch', 'growth', 'scale', 'dominance');
 
 INSERT INTO plans (id, name, price_monthly, social_accounts_limit, posts_per_month_limit, ai_generations_limit, is_active, features_json)
