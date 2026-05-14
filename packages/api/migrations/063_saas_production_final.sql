@@ -34,6 +34,7 @@ ALTER TABLE plans ADD COLUMN ai_generations_limit INTEGER DEFAULT 10;
 ALTER TABLE plans ADD COLUMN trial_days INTEGER DEFAULT 14;
 ALTER TABLE plans ADD COLUMN is_active INTEGER DEFAULT 1;
 ALTER TABLE plans ADD COLUMN updated_at TEXT;
+ALTER TABLE plans ADD COLUMN price_monthly INTEGER DEFAULT 0;
 
 -- 4. Audit Intelligence Tracking
 CREATE TABLE IF NOT EXISTS brand_audit_results (

@@ -13,7 +13,7 @@ PRAGMA foreign_keys = OFF;
 -- 1. Add price_monthly alias to plans table
 --    (price_cents = canonical storage; price_monthly = API compat layer)
 -- ─────────────────────────────────────────────────────────
-ALTER TABLE plans ADD COLUMN price_monthly INTEGER DEFAULT 0;
+-- price_monthly already added by 063_saas_production_final.sql
 ALTER TABLE plans ADD COLUMN price_yearly INTEGER DEFAULT 0;
 ALTER TABLE plans ADD COLUMN brand_limit INTEGER DEFAULT 3;
 ALTER TABLE plans ADD COLUMN features_json TEXT DEFAULT '[]';
