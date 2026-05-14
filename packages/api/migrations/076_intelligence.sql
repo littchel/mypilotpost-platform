@@ -17,5 +17,5 @@ CREATE TABLE IF NOT EXISTS brand_insights (
 );
 
 -- 2. Index for dashboard lookup
-CREATE INDEX IF NOT EXISTS idx_insights_brand_unresolved ON brand_insights(brand_id) WHERE resolved = 0;
+-- idx_insights_brand_unresolved deferred to 089_brand_insights_v2.sql (resolved column added there)
 CREATE INDEX IF NOT EXISTS idx_insights_priority ON brand_insights(priority);
