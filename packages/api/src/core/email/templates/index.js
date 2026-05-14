@@ -261,6 +261,35 @@ export function upgradePromptEmail({ first_name, limit_type, upgrade_url = `${BR
   };
 }
 
+export function passwordResetEmail({ first_name, reset_url }) {
+  return {
+    subject: "Reset your myPilotPost password",
+    html: baseLayout(
+      h1("Password reset request") +
+      p(`Hi ${first_name || "there"}, we received a request to reset your myPilotPost password.`) +
+      p("This link expires in <strong>1 hour</strong>. If you didn't request this, ignore this email — your password won't change.") +
+      primaryButton("Reset Password →", reset_url) +
+      p(`<small style="color:#9090A0;">If the button doesn't work, copy this link: <a href="${reset_url}" style="color:#6C63FF;">${reset_url}</a></small>`),
+      "Reset your myPilotPost password."
+    ),
+    text: `Reset your password: ${reset_url} (expires in 1 hour)`
+  };
+}
+
+export function otpVerificationEmail({ first_name, otp, expires_minutes = 15 }) {
+  return {
+    subject: `${otp} — Your myPilotPost verification code`,
+    html: baseLayout(
+      h1("Verify your email address") +
+      p(`Hi ${first_name || "there"}, enter the code below to verify your email address.`) +
+      highlight(`<div style="text-align:center;font-size:36px;font-weight:800;letter-spacing:8px;color:#6C63FF;">${otp}</div>`) +
+      p(`<small style="color:#9090A0;">This code expires in <strong>${expires_minutes} minutes</strong>. Never share it with anyone.</small>`),
+      `${otp} is your myPilotPost verification code.`
+    ),
+    text: `Your myPilotPost verification code is: ${otp}. Expires in ${expires_minutes} minutes.`
+  };
+}
+
 // Template registry — maps rule template keys → functions
 export const TEMPLATE_REGISTRY = {
   welcome:          welcomeEmail,
@@ -281,6 +310,8 @@ export const TEMPLATE_REGISTRY = {
   trial_ending:     trialEndingEmail,
   upgrade_prompt:   upgradePromptEmail,
   team_invite:      teamInviteEmail,
-  churn_prevention: churnPreventionEmail,
-  weekly_digest:    weeklyDigestEmail,
+  churn_prevention:     churnPreventionEmail,
+  weekly_digest:        weeklyDigestEmail,
+  password_reset:       passwordResetEmail,
+  otp_verification:     otpVerificationEmail,
 };

@@ -79,4 +79,11 @@ export const EMAIL_RULES = {
     cooldown_hours: 168,  // 7 days
     category:       "digest",
   },
+
+  password_reset: {
+    template:       "password_reset",
+    subject:        "Reset your myPilotPost password",
+    cooldown_hours: 0,    // always send (token is already unique)
+    category:       "transactional",
+  },
 };

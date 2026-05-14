@@ -289,8 +289,7 @@ export async function verifyEmail(request, env) {
 
     const row = await db
       .prepare(
-        `SELECT user_id
-         FROM email_verifications
+        `SELECT user_id FROM email_verifications
          WHERE token = ? AND expires_at > datetime('now')`
       )
       .bind(token)
@@ -300,13 +299,32 @@ export async function verifyEmail(request, env) {
       return error("Invalid or expired token", "BAD_REQUEST", null, 400);
     }
 
+    // Check if already verified (idempotent)
+    const user = await db
+      .prepare("SELECT verified_at FROM users WHERE id = ?")
+      .bind(row.user_id)
+      .first();
+
+    if (!user?.verified_at) {
+      await db.prepare(
+        `UPDATE users SET verified_at = datetime('now') WHERE id = ?`
+      ).bind(row.user_id).run();
+
+      try {
+        await triggerLifecycleEmail(env, {
+          userId: row.user_id,
+          type: "email_verified",
+          payload: {}
+        });
+      } catch (e) {
+        console.warn("[LIFECYCLE] email_verified fire failed:", e.message);
+      }
+    }
+
+    // Expire the token so it can't be reused
     await db.prepare(
-      `UPDATE users
-       SET verified_at = datetime('now')
-       WHERE id = ?`
-    )
-    .bind(row.user_id)
-    .run();
+      `UPDATE email_verifications SET expires_at = datetime('now') WHERE token = ?`
+    ).bind(token).run();
 
     return json({ ok: true });
   } catch (err) {
@@ -325,21 +343,34 @@ export async function forgotPassword(request, env) {
     const { email } = await request.json();
 
     const user = await db
-      .prepare("SELECT id FROM users WHERE email = ?")
+      .prepare("SELECT id, first_name FROM users WHERE email = ?")
       .bind(email)
       .first();
 
-    if (!user) {
-      return json({ ok: true });
-    }
+    // Always return ok to prevent email enumeration
+    if (!user) return json({ ok: true });
 
+    const resetToken = newToken();
     await db.prepare(
-      `INSERT INTO password_resets
-       (id, user_id, token, expires_at)
+      `INSERT INTO password_resets (id, user_id, token, expires_at)
        VALUES (?, ?, ?, datetime('now','+1 hour'))`
-    )
-    .bind(crypto.randomUUID(), user.id, newToken())
-    .run();
+    ).bind(crypto.randomUUID(), user.id, resetToken).run();
+
+    const BASE_URL = env.BASE_URL || "https://app.mypilotpost.com";
+    const reset_url = `${BASE_URL}/reset-password?token=${resetToken}`;
+
+    try {
+      await triggerLifecycleEmail(env, {
+        userId: user.id,
+        type: "password_reset",
+        payload: {
+          first_name: user.first_name || null,
+          reset_url,
+        }
+      });
+    } catch (e) {
+      console.warn("[LIFECYCLE] password_reset fire failed:", e.message);
+    }
 
     return json({ ok: true });
   } catch (err) {
@@ -370,16 +401,20 @@ export async function resetPassword(request, env) {
       return error("Invalid or expired token", "BAD_REQUEST", null, 400);
     }
 
+    if (!password || password.length < 8) {
+      return error("Password must be at least 8 characters", "BAD_REQUEST", null, 400);
+    }
+
     const salt = randomBytes();
     const hash = await hashPassword(password, salt);
 
-    await db.prepare(
-      `UPDATE users
-       SET password_hash = ?
-       WHERE id = ?`
-    )
-    .bind(`${bytesToHex(salt)}:${hash}`, row.user_id)
-    .run();
+    await db.batch([
+      db.prepare(`UPDATE users SET password_hash = ? WHERE id = ?`)
+        .bind(`${bytesToHex(salt)}:${hash}`, row.user_id),
+      // Expire the token so it cannot be replayed
+      db.prepare(`UPDATE password_resets SET expires_at = datetime('now') WHERE token = ?`)
+        .bind(token),
+    ]);
 
     return json({ ok: true });
   } catch (err) {
