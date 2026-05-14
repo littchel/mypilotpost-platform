@@ -25,12 +25,12 @@ ALTER TABLE users ADD COLUMN onboarding_complete INTEGER DEFAULT 0;
 ALTER TABLE plans ADD COLUMN features_json TEXT DEFAULT '[]';
 DELETE FROM plans WHERE id IN ('launch', 'growth', 'scale', 'dominance');
 
-INSERT INTO plans (id, name, price_monthly, social_accounts_limit, posts_per_month_limit, ai_generations_limit, is_active, features_json)
-VALUES 
-('launch', 'Launch', 2900, 2, 30, 60, 1, '["analytics:read", "support:read"]'),
-('growth', 'Growth', 4900, 5, 100, 200, 1, '["analytics:read", "support:read", "audits:read"]'),
-('scale', 'Scale', 9900, 100, 300, 500, 1, '["analytics:read", "support:read", "audits:read", "intelligence:read"]'),
-('dominance', 'Dominance', 29900, 1000, 10000, 10000, 1, '["*"]');
+INSERT INTO plans (id, name, price_cents, billing_interval, limits, price_monthly, social_accounts_limit, posts_per_month_limit, ai_generations_limit, is_active, features_json)
+VALUES
+('launch', 'Launch', 2900, 'monthly', '{}', 2900, 2, 30, 60, 1, '["analytics:read", "support:read"]'),
+('growth', 'Growth', 4900, 'monthly', '{}', 4900, 5, 100, 200, 1, '["analytics:read", "support:read", "audits:read"]'),
+('scale', 'Scale', 9900, 'monthly', '{}', 9900, 100, 300, 500, 1, '["analytics:read", "support:read", "audits:read", "intelligence:read"]'),
+('dominance', 'Dominance', 29900, 'monthly', '{}', 29900, 1000, 10000, 10000, 1, '["*"]');
 
 -- 4. Seed Admin Users (Task 8)
 -- Passwords will be 'Password123!' hashed for simplicity in this local dev state if we had a hasher, 
