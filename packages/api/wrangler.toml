@@ -5,6 +5,7 @@ compatibility_date = "2024-01-01"
 
 [vars]
 BASE_URL = "https://api.mypilotpost.com"
+FRONTEND_URL = "https://app.mypilotpost.com"
 ENVIRONMENT = "production"
 API_VERSION = "v1"
 GOOGLE_CLIENT_ID = "626126586204-kpm1sra6t8488t47an9m4ta030615c8s.apps.googleusercontent.com"
