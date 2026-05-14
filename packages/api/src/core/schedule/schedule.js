@@ -239,7 +239,7 @@ export async function createSchedule(request, env, auth) {
     return json(
       {
         success: true,
-        job_id: result?.meta?.last_row_id ?? result?.lastRowId ?? null
+        job_id: jobId
       },
       201
     );

@@ -216,7 +216,8 @@ export async function detachMedia(req, env, auth) {
 export async function getAttachedMedia(req, env, auth) {
   if (!auth?.brand_id) return error("Unauthorized", 401);
 
-  const { type, id: contentId } = req.params;
+  const { type, id: contentId } = req.params || {};
+  if (!type || !contentId) return error("Missing type or content ID", "BAD_REQUEST", null, 400);
   const db = getDB(env);
 
   const { results } = await db

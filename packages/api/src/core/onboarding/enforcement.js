@@ -12,11 +12,11 @@ export async function enforceBrandReadiness(env, auth) {
 
   /* Email verification */
   const user = await db
-    .prepare(`SELECT email_verified FROM users WHERE id = ?`)
+    .prepare(`SELECT verified_at FROM users WHERE id = ?`)
     .bind(auth.user_id)
     .first();
 
-  if (!user || user.email_verified !== 1) {
+  if (!user || !user.verified_at) {
     const err = new Error("Email verification required");
     err.status = 403;
     throw err;

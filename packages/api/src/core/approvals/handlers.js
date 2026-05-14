@@ -14,7 +14,7 @@ import { emitEvent } from "../../lib/bus.js";
 export async function submitForApproval(request, env, auth) {
   const { brand_id, user_id } = auth;
   const body = await request.json();
-  const { content_id, reviewer_type = 'client', notes } = body;
+  const { content_id, content_type = 'social', reviewer_type = 'client', notes } = body;
 
   if (!content_id) return error("Content ID required", "BAD_REQUEST", null, 400);
 
@@ -23,9 +23,9 @@ export async function submitForApproval(request, env, auth) {
   // 1. Create Approval Request
   const id = crypto.randomUUID();
   await db.prepare(`
-    INSERT INTO approval_requests (id, brand_id, content_id, requested_by, reviewer_type, review_notes)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).bind(id, brand_id, content_id, user_id, reviewer_type, notes).run();
+    INSERT INTO approval_requests (id, brand_id, content_id, content_type, requested_by, reviewer_type, review_notes)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).bind(id, brand_id, content_id, content_type, user_id, reviewer_type, notes).run();
 
   // 2. Update Content Status (Audit Trail)
   // Assuming 'content' table exists or update appropriate table
@@ -68,7 +68,7 @@ export async function getApprovalRequests(request, env, auth) {
   const db = getDB(env);
 
   const { results } = await db.prepare(`
-    SELECT ar.*, u.full_name as requester_name
+    SELECT ar.*, (u.first_name || ' ' || u.last_name) as requester_name
     FROM approval_requests ar
     JOIN users u ON u.id = ar.requested_by
     WHERE ar.brand_id = ?

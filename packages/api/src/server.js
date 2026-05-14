@@ -49,7 +49,9 @@ import { getExperienceSummary } from "./core/experience/engine.js";
 import {
   getNotifications,
   markNotificationRead,
-  markAllRead
+  markAllRead,
+  getPreferences,
+  updatePreferences
 } from "./core/notifications/notifications.js";
 
 import {
@@ -302,6 +304,12 @@ import { manualRetryJob } from "./core/delivery/retries.js";
 import { runDeliveryScheduler } from "./core/delivery/scheduler.js";
 import { supportRoutes } from "./routes/support.js";
 import { handleDataDeletionRequest } from "./core/compliance/compliance.js";
+import { sendOTP, verifyOTP, getVerificationStatus } from "./core/trust/verification.js";
+import {
+  handleUnsubscribe,
+  handleCategoryUnsubscribe,
+  getUnsubscribeStatus
+} from "./core/lifecycle/engine.js";
 
 /* ======================================================
    CORS HEADERS
@@ -560,6 +568,26 @@ export default {
         const limited = await rateLimit(request, env, "auth");
         if (limited) return limited;
         return withCors(request, verifyEmail(request, env));
+      }
+
+      /* ── LIFECYCLE EMAIL — PUBLIC UNSUBSCRIBE ── */
+      if (method === "GET" && path === "/api/unsubscribe")
+        return withCors(request, handleUnsubscribe(request, env));
+      if (method === "POST" && path === "/api/unsubscribe/category")
+        return withCors(request, handleCategoryUnsubscribe(request, env));
+
+      /* ── TRUST / EMAIL VERIFICATION (OTP) ── */
+      if (path === "/api/customer/trust/otp/send" && method === "POST") {
+        const auth = await requireAuth(request, env);
+        return withCors(request, sendOTP(request, env, auth));
+      }
+      if (path === "/api/customer/trust/otp/verify" && method === "POST") {
+        const auth = await requireAuth(request, env);
+        return withCors(request, verifyOTP(request, env, auth));
+      }
+      if (path === "/api/customer/trust/status" && method === "GET") {
+        const auth = await requireAuth(request, env);
+        return withCors(request, getVerificationStatus(request, env, auth));
       }
 
       if (method === "POST" && path === "/api/customer/forgot-password") {
@@ -832,6 +860,14 @@ export default {
          /* ---------- NOTIFICATIONS (EXTENDED) ---------- */
          if (method === "POST" && path === "/api/customer/notifications/read-all")
            return withCors(request, markAllRead(request, env, auth));
+         if (method === "GET"  && path === "/api/customer/notifications/preferences")
+           return withCors(request, getPreferences(request, env, auth));
+         if (method === "PUT"  && path === "/api/customer/notifications/preferences")
+           return withCors(request, updatePreferences(request, env, auth));
+
+         /* ---------- LIFECYCLE EMAIL (UNSUBSCRIBE) ---------- */
+         if (method === "GET" && path === "/api/customer/lifecycle/unsubscribe-status")
+           return withCors(request, getUnsubscribeStatus(request, env, auth));
 
          /* ---------- PROMOTIONS ---------- */
          if (method === "GET" && path === "/api/customer/promotions") {
