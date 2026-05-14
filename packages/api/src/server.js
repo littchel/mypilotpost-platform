@@ -303,6 +303,7 @@ import { handleAdminPricing, handleAdminPricingById, togglePlanStatus, createAdm
 import { executeDeliveryJob } from "./core/delivery/poster.js";
 import { manualRetryJob } from "./core/delivery/retries.js";
 import { runDeliveryScheduler } from "./core/delivery/scheduler.js";
+import { getDeliveryStats } from "./core/delivery/execute.js";
 import { runEmailWorker } from "./core/workers/email-worker.js";
 import { runLifecycleCron } from "./core/lifecycle/cron.js";
 import { supportRoutes } from "./routes/support.js";
@@ -1273,6 +1274,8 @@ export default {
 
         if (method === "POST" && path === "/api/customer/delivery/retry")
           return withCors(request, manualRetryJob(request, env, auth));
+        if (method === "GET" && path === "/api/customer/delivery/stats")
+          return withCors(request, getDeliveryStats(request, env, auth));
 
 
         /* ---------- MEDIA ---------- */

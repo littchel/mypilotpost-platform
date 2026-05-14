@@ -1,6 +1,5 @@
-import { getDB } from "../../lib/db";
-import { v4 as uuidv4 } from "uuid";
-import { writeBrandMemoryEvent } from "../brand/memory-writer.js";
+import { getDB } from "../../lib/db.js";
+import { writeBrandMemoryEvent } from "../brands/memory-writer.js";
 
 /**
  * Allowed metric types (LOCKED)
@@ -48,7 +47,7 @@ export async function recordEngagementMetrics(env, payload) {
       throw new Error(`Unsupported metric type: ${type}`);
     }
 
-    const metricId = uuidv4();
+    const metricId = crypto.randomUUID();
 
     /* 1. Persist raw engagement metric (append-only) */
     await db
@@ -121,7 +120,7 @@ async function emitCampaignOutcome(db, outcome) {
       `
     )
     .bind(
-      uuidv4(),
+      crypto.randomUUID(),
       campaign_id,
       content_id,
       platform,
