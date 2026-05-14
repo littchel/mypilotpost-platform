@@ -59,15 +59,17 @@ CREATE TABLE IF NOT EXISTS processed_webhooks (
 );
 
 -- 6. SEED PLANS
-INSERT OR IGNORE INTO plans (id, name, price_monthly, price_yearly, brand_limit, user_limit, features_json)
-VALUES 
-('starter', 'Starter', 0, 0, 1, 1, '[]'),
-('pro', 'Professional', 4900, 49000, 5, 3, '["campaigns", "seo", "intelligence", "reports"]'),
-('agency', 'Agency', 19900, 199000, 25, 5, '["campaigns", "seo", "intelligence", "reports", "white_label"]');
+-- plans table already exists from 018_billing_plans.sql with schema (id, name, price_cents, billing_interval, limits).
+-- Seed using that schema; 068_fix_plans_and_bootstrap.sql adds price_monthly/yearly/etc. and re-seeds with full data.
+INSERT OR IGNORE INTO plans (id, name, price_cents, billing_interval, limits)
+VALUES
+('starter', 'Starter', 0, 'monthly', '{}'),
+('pro', 'Professional', 4900, 'monthly', '{"campaigns":true,"seo":true,"intelligence":true,"reports":true}'),
+('agency', 'Agency', 19900, 'monthly', '{"campaigns":true,"seo":true,"intelligence":true,"reports":true,"white_label":true}');
 
 -- 7. MIGRATE EXISTING USERS
-INSERT OR IGNORE INTO subscriptions (user_id, plan_id, status, trial_ends_at)
-SELECT id, 'starter', 'trial', datetime('now', '+14 days') FROM users;
+-- subscriptions table already exists from 001_billing.sql with schema (id, brand_id, plan, status, ...).
+-- Skip this seed; subscriptions for real users are created on sign-up by subscription-engine.js.
 
 INSERT OR IGNORE INTO usage_snapshots (user_id, brands_count, active_users_count)
 SELECT owner_user_id, COUNT(*), 1 FROM brands GROUP BY owner_user_id;
