@@ -141,6 +141,7 @@ import { generateHashtags } from "./core/ai/hashtags.js";
 import { grammarCheck } from "./core/ai/grammar.js";
 import { generateSocialContent } from "./core/ai/social_generate.js";
 import { generateBlogArticle } from "./core/ai/blog_generate.js";
+import { getAIUsage } from "./core/ai/ai_client.js";
 
 /* ======================================================
    MEDIA
@@ -909,7 +910,10 @@ export default {
             return json({ success: true });
          }
 
-         /* ---------- AI INTELLIGENCE ---------- */
+         /* ---------- AI INTELLIGENCE + USAGE ---------- */
+         if (method === "GET" && path === "/api/customer/ai/usage")
+           return withCors(request, getAIUsage(request, env, auth));
+
          if (method === "GET" && path === "/api/customer/intelligence/ai") {
             const db = env.mypilotpost;
             try {

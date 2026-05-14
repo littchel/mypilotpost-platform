@@ -117,16 +117,103 @@ async function triggerModelWithTimeout(env, model, prompt, ms) {
  * Backward compatibility wrapper for hardenedRunLLM
  */
 export async function runLLM(env, prompt, options = {}) {
-  // Use provided brand or minimal fallback
   const brandContext = options.brand || { archetype: 'Strategic Builder' };
-  
   const res = await hardenedRunLLM(env, brandContext, prompt, options);
-  
   if (!res) return { output: "{}" };
-  
   return {
     output: typeof res === 'object' ? JSON.stringify(res) : res,
     model: res._performance?.model || "unknown",
     latency: res._performance?.latency || 0
   };
+}
+
+/**
+ * trackedRunLLM — wraps hardenedRunLLM with ai_generations + ai_usage_quota tracking.
+ * Call this from route handlers where brand_id and user_id are known.
+ */
+export async function trackedRunLLM(env, {
+  brand,
+  prompt,
+  brand_id,
+  user_id = null,
+  content_type = "general",
+  platform = null,
+  options = {},
+}) {
+  const start = Date.now();
+  let result = null;
+  let status = "ok";
+
+  try {
+    result = await hardenedRunLLM(env, brand, prompt, options);
+    if (!result) status = "failed";
+  } catch (_err) {
+    status = "failed";
+  }
+
+  const latency_ms = Date.now() - start;
+  const tokens = result?._performance?.tokens_used || 0;
+  const model   = result?._performance?.model || "llama3-70b-8192";
+
+  if (brand_id) {
+    try {
+      const { getDB } = await import("../../lib/db.js");
+      const db = getDB(env);
+
+      await db.prepare(`
+        INSERT INTO ai_generations
+          (id, brand_id, user_id, content_type, platform, input_prompt, output,
+           model, provider, tokens_used, latency_ms, success, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'groq', ?, ?, ?, ?, datetime('now'))
+      `).bind(
+        crypto.randomUUID(), brand_id, user_id, content_type, platform,
+        prompt.slice(0, 2000),
+        result ? JSON.stringify(result) : null,
+        model, tokens, latency_ms,
+        status === "ok" ? 1 : 0,
+        status
+      ).run();
+
+      if (user_id) {
+        const today = new Date().toISOString().slice(0, 10);
+        await db.prepare(`
+          INSERT INTO ai_usage_quota (user_id, brand_id, date, generation_count, token_count)
+          VALUES (?, ?, ?, 1, ?)
+          ON CONFLICT(user_id, brand_id, date)
+          DO UPDATE SET
+            generation_count = generation_count + 1,
+            token_count = token_count + excluded.token_count
+        `).bind(user_id, brand_id, today, tokens).run();
+      }
+    } catch (_e) {
+      // fail-soft — tracking must not block generation
+    }
+  }
+
+  return result;
+}
+
+/**
+ * GET /api/customer/ai/usage
+ * Returns today's generation count and token usage for the authenticated user.
+ */
+export async function getAIUsage(request, env, auth) {
+  const { json, error } = await import("../../lib/json.js");
+  if (!auth?.user_id || !auth?.brand_id) return error("Unauthorized", "UNAUTHORIZED", null, 401);
+
+  const { getDB } = await import("../../lib/db.js");
+  const db = getDB(env);
+  const today = new Date().toISOString().slice(0, 10);
+
+  const row = await db.prepare(`
+    SELECT generation_count, token_count
+    FROM ai_usage_quota
+    WHERE user_id = ? AND brand_id = ? AND date = ?
+  `).bind(auth.user_id, auth.brand_id, today).first();
+
+  return json({
+    date: today,
+    generation_count: row?.generation_count || 0,
+    token_count:      row?.token_count      || 0,
+  });
 }
