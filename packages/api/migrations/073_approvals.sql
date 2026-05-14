@@ -35,5 +35,5 @@ CREATE TABLE IF NOT EXISTS content_shares (
 
 -- 3. Indexes
 CREATE INDEX IF NOT EXISTS idx_approval_content ON approval_requests(content_id);
-CREATE INDEX IF NOT EXISTS idx_approval_brand ON approval_requests(brand_id, status);
+-- idx_approval_brand deferred to 088_approval_requests_v2.sql (status column added there)
 CREATE INDEX IF NOT EXISTS idx_shares_token ON content_shares(access_token_hash);
