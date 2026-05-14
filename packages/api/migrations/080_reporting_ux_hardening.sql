@@ -1,7 +1,7 @@
 -- 080_reporting_ux_hardening.sql
 -- Hardens reporting table for UX contract compliance.
 
-ALTER TABLE reports ADD COLUMN report_type TEXT DEFAULT 'performance';
+-- report_type TEXT NOT NULL already present from 074_reporting.sql CREATE TABLE
 ALTER TABLE reports ADD COLUMN template_id INTEGER DEFAULT 1;
 
 -- Add index for filtering

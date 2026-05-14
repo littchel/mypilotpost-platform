@@ -16,13 +16,8 @@ CREATE TABLE IF NOT EXISTS onboarding_progress (
 -- but here we'll just ensure the table is correct.
 
 -- 2. Fix users table for Billing API
--- Ensure plan_id, subscription_status, trial_ends_at exist
--- Note: Migration 063 tried this, but we'll ensure it here for consistency.
-ALTER TABLE users ADD COLUMN plan_id TEXT DEFAULT 'starter';
-ALTER TABLE users ADD COLUMN subscription_status TEXT DEFAULT 'trial';
-ALTER TABLE users ADD COLUMN trial_ends_at TEXT;
-ALTER TABLE users ADD COLUMN company_name TEXT;
-ALTER TABLE users ADD COLUMN audit_website TEXT;
+-- plan_id, subscription_status, trial_ends_at added by 063_saas_production_final.sql
+-- company_name, audit_website added by 065_auth_metadata.sql
 ALTER TABLE users ADD COLUMN onboarding_complete INTEGER DEFAULT 0;
 
 -- 3. Seed Pricing Plans (Task 7)

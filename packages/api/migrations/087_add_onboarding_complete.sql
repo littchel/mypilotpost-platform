@@ -11,5 +11,6 @@
 --   SQLite / D1 does not support ALTER TABLE DROP COLUMN.
 --   To roll back: rebuild users table excluding this column (see 037 pattern).
 
-ALTER TABLE users
-ADD COLUMN onboarding_complete INTEGER NOT NULL DEFAULT 0;
+-- onboarding_complete INTEGER DEFAULT 0 already added by 066_surgical_qa_fixes.sql in a fresh apply.
+-- This migration is a no-op; retained for tracker completeness.
+SELECT 1;

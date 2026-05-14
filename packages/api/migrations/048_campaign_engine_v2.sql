@@ -9,10 +9,7 @@ ALTER TABLE campaigns ADD COLUMN objective_type TEXT DEFAULT 'awareness';
 ALTER TABLE campaigns ADD COLUMN objective_text TEXT;
 
 -- 2. Direct Linking (Primary Strategy)
--- Add fast-access campaign_id to content assets
-ALTER TABLE social_assets ADD COLUMN campaign_id TEXT;
-ALTER TABLE blog_posts ADD COLUMN campaign_id TEXT;
-
+-- campaign_id already added by 038_surgical_content_fix.sql; just add the named indexes
 CREATE INDEX IF NOT EXISTS idx_social_assets_campaign ON social_assets (campaign_id);
 CREATE INDEX IF NOT EXISTS idx_blog_posts_campaign ON blog_posts (campaign_id);
 

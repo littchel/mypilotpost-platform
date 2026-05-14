@@ -24,6 +24,5 @@
 --   SQLite / D1 does not support ALTER TABLE DROP COLUMN.
 --   To roll back: rebuild reports excluding template_id (see 045 pattern).
 
-ALTER TABLE reports ADD COLUMN template_id INTEGER DEFAULT 1;
-
+-- template_id INTEGER DEFAULT 1 already added by 080_reporting_ux_hardening.sql
 CREATE INDEX IF NOT EXISTS idx_reports_type ON reports(report_type);
