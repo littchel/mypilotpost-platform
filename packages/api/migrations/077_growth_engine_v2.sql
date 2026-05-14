@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS growth_notifications (
 -- ALTER TABLE delivery_jobs ADD COLUMN user_id TEXT; -- Handled if needed
 
 -- 7. Indexes
-CREATE INDEX IF NOT EXISTS idx_growth_profiles_user ON growth_profiles(user_id);
+-- idx_growth_profiles_user deferred to 090_growth_engine_v2.sql (user_id added there)
 CREATE INDEX IF NOT EXISTS idx_growth_profiles_brand ON growth_profiles(brand_id);
-CREATE INDEX IF NOT EXISTS idx_growth_activity_user ON growth_activity(user_id, action_type);
-CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_user_id);
+-- idx_growth_activity_user deferred to 090_growth_engine_v2.sql (user_id added there)
+-- idx_referrals_referrer already created by 052_promotions_engine.sql
