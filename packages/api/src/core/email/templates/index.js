@@ -162,3 +162,125 @@ export function referralEmail({ first_name, referral_url, reward }) {
     text: `Refer a friend to ${BRAND.name} and earn ${reward}: ${referral_url}`
   };
 }
+
+export function emailVerifiedEmail({ first_name, app_url = BRAND.app_url }) {
+  return {
+    subject: "Email verified — you're all set",
+    html: baseLayout(
+      h1("Your email is verified ✓") +
+      p(`Hi ${first_name || "there"}, your email address has been confirmed.`) +
+      p(`You now have full access to ${BRAND.name} — including publishing, integrations, and billing.`) +
+      primaryButton("Go to Dashboard →", app_url),
+      "Your account is fully verified."
+    ),
+    text: `Your email is verified. Access your dashboard: ${app_url}`
+  };
+}
+
+export function firstPostEmail({ first_name, platform, app_url = BRAND.app_url }) {
+  return {
+    subject: "Your first post is live — this is just the beginning",
+    html: baseLayout(
+      h1("Your first post is live 🚀") +
+      p(`Congratulations ${first_name || "there"}! You just published your first piece of content${platform ? ` on <strong>${platform}</strong>` : ""}.`) +
+      highlight("Every brand authority story starts with a single post. Yours just began.") +
+      p("Keep the momentum — schedule your next post and watch your brand score climb.") +
+      primaryButton("Schedule Next Post →", app_url),
+      "Your first post is live."
+    ),
+    text: `Your first post is live! Schedule your next one: ${app_url}`
+  };
+}
+
+export function weeklyDigestEmail({ first_name, brand_name, score, posts_this_week, top_insight, app_url = BRAND.app_url }) {
+  return {
+    subject: `Your weekly brand performance summary — ${brand_name}`,
+    html: baseLayout(
+      h1(`${brand_name} — Weekly Summary`) +
+      p(`Hi ${first_name || "there"}, here's your brand performance snapshot for the past 7 days.`) +
+      highlight(
+        `<table width="100%" style="border-collapse:collapse;">
+          <tr>
+            <td style="padding:8px 0;font-size:13px;color:#9090A0;">Brand Score</td>
+            <td style="padding:8px 0;font-size:18px;font-weight:700;color:#6C63FF;text-align:right;">${score || "—"}/100</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0;font-size:13px;color:#9090A0;">Posts This Week</td>
+            <td style="padding:8px 0;font-size:18px;font-weight:700;text-align:right;">${posts_this_week || 0}</td>
+          </tr>
+        </table>`
+      ) +
+      (top_insight ? p(`<strong>Top Insight:</strong> ${top_insight}`) : "") +
+      primaryButton("View Full Report →", app_url),
+      `Your ${brand_name} weekly summary is ready.`
+    ),
+    text: `${brand_name} weekly: score ${score}/100, ${posts_this_week} posts. View report: ${app_url}`
+  };
+}
+
+export function churnPreventionEmail({ first_name, days_inactive, app_url = BRAND.app_url }) {
+  return {
+    subject: "We noticed you haven't been active — can we help?",
+    html: baseLayout(
+      h1(`We miss you, ${first_name || "there"} 👋`) +
+      p(`It's been ${days_inactive || "a few"} days since your last activity on ${BRAND.name}.`) +
+      p("Brand momentum is built through consistency. Even one post a week keeps your audience engaged.") +
+      highlight("Your Brand DNA profile is ready and waiting. Pick up where you left off.") +
+      primaryButton("Resume Your Brand →", app_url),
+      "Come back and keep your brand momentum going."
+    ),
+    text: `We miss you! Your brand dashboard is waiting: ${app_url}`
+  };
+}
+
+export function brandCreatedEmail({ first_name, brand_name, app_url = BRAND.app_url }) {
+  return {
+    subject: `Your brand workspace is live — ${brand_name} 🎉`,
+    html: baseLayout(
+      h1(`${brand_name} is live!`) +
+      p(`Hi ${first_name || "there"}, your brand workspace has been created and is ready to go.`) +
+      p("Next step: complete your Brand DNA to unlock intelligent content recommendations tailored to your voice and market.") +
+      primaryButton("Build Your Brand DNA →", `${app_url}?tab=brand-dna`),
+      `${brand_name} workspace is ready.`
+    ),
+    text: `${brand_name} workspace is live on ${BRAND.name}. Build your Brand DNA: ${app_url}`
+  };
+}
+
+export function upgradePromptEmail({ first_name, limit_type, upgrade_url = `${BRAND.app_url}?tab=billing` }) {
+  return {
+    subject: "You've reached your plan limit",
+    html: baseLayout(
+      h1("You've hit your plan limit") +
+      p(`Hi ${first_name || "there"}, you've reached the ${limit_type || "usage"} limit on your current plan.`) +
+      p("Upgrade to keep creating, scheduling, and publishing without interruption.") +
+      primaryButton("View Plans →", upgrade_url),
+      "Upgrade to remove your limits."
+    ),
+    text: `You've reached your ${limit_type || "usage"} limit. Upgrade: ${upgrade_url}`
+  };
+}
+
+// Template registry — maps rule template keys → functions
+export const TEMPLATE_REGISTRY = {
+  welcome:          welcomeEmail,
+  email_verified:   emailVerifiedEmail,
+  brand_created:    brandCreatedEmail,
+  first_post:       firstPostEmail,
+  content_published: ({ first_name, app_url }) => ({
+    subject: "Your content is live 📣",
+    html: baseLayout(
+      h1("Your content is live!") +
+      p(`Hi ${first_name || "there"}, your post has been published successfully.`) +
+      primaryButton("View Dashboard →", app_url || BRAND.app_url),
+      "Your content just went live."
+    ),
+    text: `Your content is live. View dashboard: ${app_url || BRAND.app_url}`
+  }),
+  approval:         approvalEmail,
+  trial_ending:     trialEndingEmail,
+  upgrade_prompt:   upgradePromptEmail,
+  team_invite:      teamInviteEmail,
+  churn_prevention: churnPreventionEmail,
+  weekly_digest:    weeklyDigestEmail,
+};

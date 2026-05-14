@@ -1,5 +1,5 @@
-import { getDB } from "../lib/db.js";
-import { sendEmail } from "../core/email/send-email.js";
+import { getDB } from "../../lib/db.js";
+import { sendEmail } from "../email/send-email.js";
 
 export async function runEmailWorker(env) {
   const db = getDB(env);
@@ -13,10 +13,25 @@ export async function runEmailWorker(env) {
 
   for (const email of pending.results || []) {
     try {
+      let html = null;
+      let text = null;
+
+      // Lifecycle emails store rendered HTML/text in payload.html / payload.text
+      if (email.payload) {
+        try {
+          const p = JSON.parse(email.payload);
+          html = p.html || null;
+          text = p.text || null;
+        } catch {
+          // non-JSON payload — ignore
+        }
+      }
+
       const result = await sendEmail({
         to: email.to_email,
         subject: email.subject,
-        html: "<p>Email content</p>",
+        html: html || `<p>${email.subject}</p>`,
+        text: text || email.subject,
       });
 
       await db.prepare(`
@@ -31,6 +46,7 @@ export async function runEmailWorker(env) {
         .bind(result.provider, result.ref, email.id)
         .run();
     } catch (err) {
+      console.error(`[EMAIL-WORKER] Failed to send outbox ${email.id}:`, err.message);
       await db.prepare(`
         UPDATE email_outbox
         SET status = 'failed'
