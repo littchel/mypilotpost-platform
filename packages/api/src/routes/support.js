@@ -114,11 +114,13 @@ supportRoutes.post("/message", async (c) => {
   const msgId = crypto.randomUUID();
   const timestamp = new Date().toISOString();
 
+  const isAdminMsg = ['super_admin', 'operations', 'support', 'admin'].includes(auth.role) ? 1 : 0;
+
   // 1. Persist to DB
   await db.prepare(`
-    INSERT INTO support_messages (id, sender_id, receiver_id, message, created_at)
-    VALUES (?, ?, ?, ?, ?)
-  `).bind(msgId, auth.user_id, receiver_id, message, timestamp).run();
+    INSERT INTO support_messages (id, sender_id, receiver_id, message, is_admin_msg, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).bind(msgId, auth.user_id, receiver_id, message, isAdminMsg, timestamp).run();
 
   const payload = {
     type: 'message',
@@ -164,6 +166,12 @@ supportRoutes.get("/history/:other_id", async (c) => {
     LIMIT 50
   `).bind(auth.user_id, otherId, otherId, auth.user_id).all();
 
+  // Mark all messages sent TO this user as read
+  await db.prepare(`
+    UPDATE support_messages SET read_at = datetime('now')
+    WHERE receiver_id = ? AND sender_id = ? AND read_at IS NULL
+  `).bind(auth.user_id, otherId).run().catch(() => null);
+
   return json({ success: true, data: results });
 });
 
@@ -189,6 +197,23 @@ supportRoutes.get("/conversations", async (c) => {
   `).all();
 
   return json({ success: true, data: results });
+});
+
+/**
+ * GET /api/v1/support/unread-count
+ * Returns count of unread messages sent to the authenticated user.
+ */
+supportRoutes.get("/unread-count", async (c) => {
+  const auth = await requireAuth(c.req.raw, c.env);
+  const db = getDB(c.env);
+
+  const row = await db.prepare(`
+    SELECT COUNT(*) as unread
+    FROM support_messages
+    WHERE receiver_id = ? AND read_at IS NULL
+  `).bind(auth.user_id).first();
+
+  return json({ unread: row?.unread || 0 });
 });
 
 /**
