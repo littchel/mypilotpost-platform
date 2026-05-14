@@ -22,6 +22,8 @@ import * as x from "../platforms/x.js";
 import * as google from "../platforms/google.js";
 import * as pinterest from "../platforms/pinterest.js";
 import * as wordpress from "../platforms/wordpress.js";
+import * as threads from "../platforms/threads.js";
+import * as google_business from "../platforms/google_business.js";
 
 const ADAPTERS = {
   instagram,
@@ -31,7 +33,9 @@ const ADAPTERS = {
   x,
   google,
   pinterest,
-  wordpress
+  wordpress,
+  threads,
+  google_business,
 };
 
 const MAX_ATTEMPTS = 3;

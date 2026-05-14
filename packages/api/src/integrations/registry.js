@@ -106,6 +106,32 @@ export const PROVIDERS = {
     }
   },
 
+  // --- THREADS ---
+  threads: {
+    name: "Threads",
+    type: "publishing",
+    capabilities: ["publish_social"],
+    auth: "oauth2",
+    scopes: "threads_basic,threads_content_publish",
+    endpoints: {
+      auth: "https://threads.net/oauth/authorize",
+      token: "https://graph.threads.net/oauth/access_token"
+    }
+  },
+
+  // --- GOOGLE BUSINESS PROFILE ---
+  google_business: {
+    name: "Google Business Profile",
+    type: "publishing",
+    capabilities: ["publish_social", "sync_analytics"],
+    auth: "oauth2",
+    scopes: "openid email profile https://www.googleapis.com/auth/business.manage",
+    endpoints: {
+      auth: "https://accounts.google.com/o/oauth2/v2/auth",
+      token: "https://oauth2.googleapis.com/token"
+    }
+  },
+
   // --- BLOG / PUBLISHING ---
   wordpress: {
     type: "publishing",
