@@ -5,6 +5,7 @@ import { useBrand } from "./contexts/BrandContext";
 import { useApi } from "./lib/api/hooks";
 import { apiRequest } from "./lib/api/client";
 import { useOnboarding } from "./contexts/OnboardingContext";
+import CelebrationOverlay from "./components/specialized/CelebrationOverlay";
 import OnboardingLayout from "./components/onboarding/OnboardingLayout";
 import WelcomeStep from "./components/onboarding/steps/WelcomeStep";
 import BrandStep from "./components/onboarding/steps/BrandStep";
@@ -143,7 +144,7 @@ function App() {
   };
 
   const { brands, activeBrand, switchBrand, createBrand: contextCreateBrand, loading: brandLoading } = useBrand();
-  const { step, loading: onboardingLoading, data: onboardingData } = useOnboarding();
+  const { step, loading: onboardingLoading, data: onboardingData, showCelebration } = useOnboarding();
   const _onboardingMode = onboardingData?.onboardingMode;
 
   const location = useLocation();
@@ -1190,6 +1191,11 @@ function App() {
 
   return (
     <div id="root">
+      <CelebrationOverlay
+        show={showCelebration}
+        message="Welcome to the Mission! 🚀"
+        subtext="Your brand is live. Let's start growing."
+      />
       <EmailVerificationBanner onVerified={() => {}} />
       <LayoutShell
         activeTab={activeTab}

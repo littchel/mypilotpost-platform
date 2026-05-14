@@ -19,6 +19,7 @@ export const OnboardingProvider = ({ children }) => {
   });
   const [loading, setLoading] = useState(true);
   const [isComplete, setIsComplete] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -102,10 +103,11 @@ export const OnboardingProvider = ({ children }) => {
 
       // 2. Mark onboarding as complete
       await apiRequest("/api/customer/onboarding/complete", { method: "POST" });
+      setShowCelebration(true);
+      setTimeout(() => setShowCelebration(false), 3500);
       setIsComplete(true);
     } catch (err) {
       console.error("Failed to complete onboarding", err);
-      // Still mark complete locally so the user can access the dashboard
       setIsComplete(true);
     }
   };
@@ -122,6 +124,7 @@ export const OnboardingProvider = ({ children }) => {
     setData,
     loading,
     isComplete,
+    showCelebration,
     updateStep,
     nextStep,
     prevStep,
