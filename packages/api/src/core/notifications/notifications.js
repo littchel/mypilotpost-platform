@@ -183,6 +183,169 @@ export async function handleNotificationEvent({ env, eventType, payload }) {
   ).run();
 }
 
+/* ================================================================
+   NOTIFICATION TYPE REGISTRY — 15 canonical types
+================================================================ */
+
+export const NOTIFICATION_TYPES = {
+  content_approved:         { display: "Content Approved",          channel_type: "success", email_default: true  },
+  content_rejected:         { display: "Changes Requested",         channel_type: "warning", email_default: true  },
+  content_comment:          { display: "New Comment",               channel_type: "info",    email_default: false },
+  post_scheduled:           { display: "Post Scheduled",            channel_type: "info",    email_default: false },
+  post_published:           { display: "Post Published",            channel_type: "success", email_default: false },
+  post_failed:              { display: "Post Delivery Failed",      channel_type: "alert",   email_default: true  },
+  brand_score_changed:      { display: "Brand Score Updated",       channel_type: "info",    email_default: false },
+  intel_report_ready:       { display: "Intelligence Report Ready", channel_type: "info",    email_default: true  },
+  approval_required:        { display: "Review Requested",          channel_type: "warning", email_default: true  },
+  team_invite:              { display: "Team Invitation Sent",      channel_type: "info",    email_default: true  },
+  team_joined:              { display: "New Team Member",           channel_type: "success", email_default: false },
+  trial_expiring:           { display: "Trial Ending Soon",         channel_type: "warning", email_default: true  },
+  milestone_reached:        { display: "Milestone Unlocked",        channel_type: "success", email_default: false },
+  integration_disconnected: { display: "Platform Disconnected",     channel_type: "alert",   email_default: true  },
+  weekly_digest:            { display: "Weekly Summary",            channel_type: "system",  email_default: true  },
+};
+
+/**
+ * GET /api/customer/notifications/preferences
+ * Returns current preferences, merged with defaults for missing types.
+ */
+export async function getPreferences(request, env, auth) {
+  if (!auth?.user_id || !auth?.brand_id) {
+    return error("Unauthorized", "UNAUTHORIZED", null, 401);
+  }
+
+  const db = getDB(env);
+  const { results } = await db.prepare(`
+    SELECT notif_type, in_app, email
+    FROM notification_preferences
+    WHERE user_id = ? AND brand_id = ?
+  `).bind(auth.user_id, auth.brand_id).all();
+
+  const saved = Object.fromEntries((results || []).map(r => [r.notif_type, r]));
+
+  const prefs = Object.entries(NOTIFICATION_TYPES).map(([type, meta]) => ({
+    type,
+    display: meta.display,
+    channel_type: meta.channel_type,
+    in_app: saved[type]?.in_app ?? 1,
+    email:  saved[type]?.email  ?? (meta.email_default ? 1 : 0),
+  }));
+
+  return json({ preferences: prefs });
+}
+
+/**
+ * PUT /api/customer/notifications/preferences
+ * Body: { preferences: [{ type, in_app, email }] }
+ */
+export async function updatePreferences(request, env, auth) {
+  if (!auth?.user_id || !auth?.brand_id) {
+    return error("Unauthorized", "UNAUTHORIZED", null, 401);
+  }
+
+  let body;
+  try { body = await request.json(); } catch {
+    return error("Invalid JSON", "INVALID_JSON", null, 400);
+  }
+
+  const updates = Array.isArray(body?.preferences) ? body.preferences : [];
+  if (!updates.length) return error("preferences array required", "BAD_REQUEST", null, 400);
+
+  const db = getDB(env);
+  const validTypes = new Set(Object.keys(NOTIFICATION_TYPES));
+
+  const stmts = updates
+    .filter(p => validTypes.has(p.type))
+    .map(p => db.prepare(`
+      INSERT INTO notification_preferences (user_id, brand_id, notif_type, in_app, email, updated_at)
+      VALUES (?, ?, ?, ?, ?, datetime('now'))
+      ON CONFLICT (user_id, brand_id, notif_type)
+      DO UPDATE SET in_app = excluded.in_app, email = excluded.email, updated_at = excluded.updated_at
+    `).bind(
+      auth.user_id,
+      auth.brand_id,
+      p.type,
+      p.in_app ? 1 : 0,
+      p.email  ? 1 : 0
+    ));
+
+  if (stmts.length) await db.batch(stmts);
+  return json({ ok: true, updated: stmts.length });
+}
+
+/**
+ * emitNotification — preference-aware notification emitter.
+ * Call this from anywhere in the API to fire a typed notification.
+ *
+ * @param {object} env
+ * @param {object} opts
+ * @param {string} opts.type        — one of NOTIFICATION_TYPES keys
+ * @param {string} opts.brand_id
+ * @param {string} opts.user_id     — notification target
+ * @param {string} [opts.title]     — override default display name
+ * @param {string} opts.message
+ * @param {object} [opts.data]      — extra JSON payload stored on the row
+ */
+export async function emitNotification(env, { type, brand_id, user_id, title, message, data = null }) {
+  if (!NOTIFICATION_TYPES[type]) {
+    console.warn(`[NOTIFY] Unknown type: ${type}`);
+    return null;
+  }
+
+  const meta  = NOTIFICATION_TYPES[type];
+  const db    = getDB(env);
+
+  // Load preferences (fall back to defaults if not yet set)
+  const pref = await db.prepare(`
+    SELECT in_app, email FROM notification_preferences
+    WHERE user_id = ? AND brand_id = ? AND notif_type = ?
+  `).bind(user_id, brand_id, type).first();
+
+  const want_in_app = pref ? !!pref.in_app : true;
+  const want_email  = pref ? !!pref.email  : meta.email_default;
+
+  const notif_id = crypto.randomUUID();
+  const resolved_title = title || meta.display;
+
+  if (want_in_app) {
+    await db.prepare(`
+      INSERT INTO notifications (id, recipient_type, recipient_id, brand_id, type, title, message, data)
+      VALUES (?, 'user', ?, ?, ?, ?, ?, ?)
+    `).bind(
+      notif_id, user_id, brand_id,
+      meta.channel_type, resolved_title, message,
+      data ? JSON.stringify(data) : null
+    ).run();
+
+    await db.prepare(`
+      INSERT INTO notification_delivery_logs (notification_id, user_id, channel, status)
+      VALUES (?, ?, 'in_app', 'sent')
+    `).bind(notif_id, user_id).run();
+  }
+
+  if (want_email) {
+    const user = await db.prepare(`SELECT email FROM users WHERE id = ?`).bind(user_id).first();
+    if (user?.email) {
+      await db.prepare(`
+        INSERT INTO email_outbox (id, customer_id, template, to_email, subject, payload, status)
+        VALUES (?, ?, 'notification_email', ?, ?, ?, 'pending')
+      `).bind(
+        crypto.randomUUID(), user_id,
+        user.email,
+        resolved_title,
+        JSON.stringify({ type, title: resolved_title, message, brand_id, data })
+      ).run();
+
+      await db.prepare(`
+        INSERT INTO notification_delivery_logs (notification_id, user_id, channel, status)
+        VALUES (?, ?, 'email', 'queued')
+      `).bind(notif_id, user_id).run();
+    }
+  }
+
+  return notif_id;
+}
+
 function mapEventTypeToNotificationType(eventType) {
   if (eventType.includes('approved')) return 'success';
   if (eventType.includes('rejected')) return 'warning';
