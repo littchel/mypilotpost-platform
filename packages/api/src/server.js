@@ -51,7 +51,8 @@ import {
   markNotificationRead,
   markAllRead,
   getPreferences,
-  updatePreferences
+  updatePreferences,
+  getUnreadCount
 } from "./core/notifications/notifications.js";
 
 import {
@@ -302,6 +303,8 @@ import { handleAdminPricing, handleAdminPricingById, togglePlanStatus, createAdm
 import { executeDeliveryJob } from "./core/delivery/poster.js";
 import { manualRetryJob } from "./core/delivery/retries.js";
 import { runDeliveryScheduler } from "./core/delivery/scheduler.js";
+import { runEmailWorker } from "./core/workers/email-worker.js";
+import { runLifecycleCron } from "./core/lifecycle/cron.js";
 import { supportRoutes } from "./routes/support.js";
 import { handleDataDeletionRequest } from "./core/compliance/compliance.js";
 import { sendOTP, verifyOTP, getVerificationStatus } from "./core/trust/verification.js";
@@ -858,6 +861,8 @@ export default {
           if (method === "POST" && path === "/api/customer/opportunities/weekly-plan") return withCors(request, generateWeeklyPlan(request, env, auth));
 
          /* ---------- NOTIFICATIONS (EXTENDED) ---------- */
+         if (method === "GET"  && path === "/api/customer/notifications/unread-count")
+           return withCors(request, getUnreadCount(request, env, auth));
          if (method === "POST" && path === "/api/customer/notifications/read-all")
            return withCors(request, markAllRead(request, env, auth));
          if (method === "GET"  && path === "/api/customer/notifications/preferences")
@@ -1411,14 +1416,32 @@ export default {
   },
 
   async scheduled(event, env, ctx) {
+    const cron = event.cron;
+    console.log(`[CRON] Triggered: ${cron}`);
+
     ctx.waitUntil(
       (async () => {
-        try {
-          console.log("[CRON] Delivery scheduler started");
-          await runDeliveryScheduler(env, ctx);
-          console.log("[CRON] Delivery scheduler completed");
-        } catch (err) {
-          console.error("[CRON] Delivery scheduler failed", err?.message || err);
+        // Every-minute cron: delivery scheduler + email worker
+        if (cron === "* * * * *") {
+          try {
+            await runDeliveryScheduler(env, ctx);
+          } catch (err) {
+            console.error("[CRON] Delivery scheduler failed:", err?.message || err);
+          }
+          try {
+            await runEmailWorker(env);
+          } catch (err) {
+            console.error("[CRON] Email worker failed:", err?.message || err);
+          }
+        }
+
+        // Daily 3am cron: lifecycle email campaigns
+        if (cron === "0 3 * * *") {
+          try {
+            await runLifecycleCron(env);
+          } catch (err) {
+            console.error("[CRON] Lifecycle cron failed:", err?.message || err);
+          }
         }
       })()
     );

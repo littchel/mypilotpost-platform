@@ -160,6 +160,27 @@ export async function markAllRead(request, env, auth) {
 }
 
 /**
+ * GET /api/customer/notifications/unread-count
+ * Lightweight polling endpoint — returns only the unread badge count.
+ * Frontend polls this every 30s instead of fetching the full list.
+ */
+export async function getUnreadCount(request, env, auth) {
+  if (!auth?.user_id || !auth?.brand_id) {
+    return error("Unauthorized", "UNAUTHORIZED", null, 401);
+  }
+
+  const db = getDB(env);
+  const row = await db.prepare(`
+    SELECT COUNT(*) as unread
+    FROM notifications n
+    LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = ?
+    WHERE n.brand_id = ? AND nr.notification_id IS NULL
+  `).bind(auth.user_id, auth.brand_id).first();
+
+  return json({ unread_count: row?.unread || 0 });
+}
+
+/**
  * System Event Handler for Notifications
  */
 export async function handleNotificationEvent({ env, eventType, payload }) {
