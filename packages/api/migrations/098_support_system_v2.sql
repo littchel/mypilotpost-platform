@@ -10,7 +10,7 @@
 --   priority          — low / normal / high / urgent
 
 ALTER TABLE support_messages ADD COLUMN read_at       TEXT;
-ALTER TABLE support_messages ADD COLUMN is_admin_msg  INTEGER NOT NULL DEFAULT 0;
+-- is_admin_msg already added by 064_support_chat.sql fix
 
 ALTER TABLE support_threads ADD COLUMN assigned_admin_id TEXT;
 ALTER TABLE support_threads ADD COLUMN priority          TEXT NOT NULL DEFAULT 'normal';
