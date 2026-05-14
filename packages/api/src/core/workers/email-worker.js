@@ -57,6 +57,7 @@ export async function runEmailWorker(env) {
         subject: email.subject,
         html: html || `<p>${email.subject}</p>`,
         text: text || email.subject,
+        env,
       });
 
       await db.prepare(`

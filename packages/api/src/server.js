@@ -311,7 +311,10 @@ import { sendOTP, verifyOTP, getVerificationStatus } from "./core/trust/verifica
 import {
   handleUnsubscribe,
   handleCategoryUnsubscribe,
-  getUnsubscribeStatus
+  getUnsubscribeStatus,
+  trackEmailOpen,
+  trackEmailClick,
+  getLifecycleAnalytics
 } from "./core/lifecycle/engine.js";
 
 /* ======================================================
@@ -573,11 +576,15 @@ export default {
         return withCors(request, verifyEmail(request, env));
       }
 
-      /* ── LIFECYCLE EMAIL — PUBLIC UNSUBSCRIBE ── */
+      /* ── LIFECYCLE EMAIL — PUBLIC UNSUBSCRIBE + TRACKING ── */
       if (method === "GET" && path === "/api/unsubscribe")
         return withCors(request, handleUnsubscribe(request, env));
       if (method === "POST" && path === "/api/unsubscribe/category")
         return withCors(request, handleCategoryUnsubscribe(request, env));
+      if (method === "GET" && path === "/api/track/open")
+        return trackEmailOpen(request, env);
+      if (method === "GET" && path === "/api/track/click")
+        return trackEmailClick(request, env);
 
       /* ── TRUST / EMAIL VERIFICATION (OTP) ── */
       if (path === "/api/customer/trust/otp/send" && method === "POST") {
@@ -870,9 +877,11 @@ export default {
          if (method === "PUT"  && path === "/api/customer/notifications/preferences")
            return withCors(request, updatePreferences(request, env, auth));
 
-         /* ---------- LIFECYCLE EMAIL (UNSUBSCRIBE) ---------- */
+         /* ---------- LIFECYCLE EMAIL (UNSUBSCRIBE + ANALYTICS) ---------- */
          if (method === "GET" && path === "/api/customer/lifecycle/unsubscribe-status")
            return withCors(request, getUnsubscribeStatus(request, env, auth));
+         if (method === "GET" && path === "/api/customer/lifecycle/analytics")
+           return withCors(request, getLifecycleAnalytics(request, env, auth));
 
          /* ---------- PROMOTIONS ---------- */
          if (method === "GET" && path === "/api/customer/promotions") {

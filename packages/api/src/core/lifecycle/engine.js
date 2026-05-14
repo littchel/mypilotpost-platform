@@ -197,6 +197,90 @@ export async function getUnsubscribeStatus(request, env, auth) {
   });
 }
 
+/**
+ * GET /api/track/open?id=<outbox_id>
+ * 1x1 transparent GIF pixel — records opened_at on first hit.
+ */
+export async function trackEmailOpen(request, env) {
+  const url = new URL(request.url);
+  const id = url.searchParams.get("id");
+
+  if (id) {
+    const db = getDB(env);
+    await db.prepare(
+      `UPDATE email_outbox SET opened_at = datetime('now')
+       WHERE id = ? AND opened_at IS NULL`
+    ).bind(id).run().catch(() => null);
+  }
+
+  // 1x1 transparent GIF
+  const gif = new Uint8Array([
+    0x47,0x49,0x46,0x38,0x39,0x61,0x01,0x00,0x01,0x00,
+    0x80,0x00,0x00,0xff,0xff,0xff,0x00,0x00,0x00,0x21,
+    0xf9,0x04,0x00,0x00,0x00,0x00,0x00,0x2c,0x00,0x00,
+    0x00,0x00,0x01,0x00,0x01,0x00,0x00,0x02,0x02,0x44,
+    0x01,0x00,0x3b
+  ]);
+  return new Response(gif, {
+    headers: {
+      "Content-Type": "image/gif",
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
+/**
+ * GET /api/track/click?id=<outbox_id>&url=<encoded_url>
+ * Records clicked_at and redirects to the original URL.
+ */
+export async function trackEmailClick(request, env) {
+  const url = new URL(request.url);
+  const id  = url.searchParams.get("id");
+  const dest = url.searchParams.get("url");
+
+  if (id) {
+    const db = getDB(env);
+    await db.prepare(
+      `UPDATE email_outbox SET clicked_at = datetime('now')
+       WHERE id = ? AND clicked_at IS NULL`
+    ).bind(id).run().catch(() => null);
+  }
+
+  const target = dest ? decodeURIComponent(dest) : "https://app.mypilotpost.com";
+  return Response.redirect(target, 302);
+}
+
+/**
+ * GET /api/customer/lifecycle/analytics
+ * Returns aggregate email engagement stats for the authenticated user.
+ */
+export async function getLifecycleAnalytics(request, env, auth) {
+  const { json, error } = await import("../../lib/json.js");
+  if (!auth?.user_id) return error("Unauthorized", "UNAUTHORIZED", null, 401);
+
+  const db = getDB(env);
+  const row = await db.prepare(`
+    SELECT
+      COUNT(*)                                          AS total_sent,
+      SUM(CASE WHEN status = 'sent'        THEN 1 ELSE 0 END) AS delivered,
+      SUM(CASE WHEN opened_at IS NOT NULL  THEN 1 ELSE 0 END) AS opened,
+      SUM(CASE WHEN clicked_at IS NOT NULL THEN 1 ELSE 0 END) AS clicked,
+      SUM(CASE WHEN status = 'dead_letter' THEN 1 ELSE 0 END) AS failed
+    FROM email_outbox
+    WHERE customer_id = ?
+  `).bind(auth.user_id).first();
+
+  return json({
+    total_sent:  row?.total_sent  || 0,
+    delivered:   row?.delivered   || 0,
+    opened:      row?.opened      || 0,
+    clicked:     row?.clicked     || 0,
+    failed:      row?.failed      || 0,
+    open_rate:   row?.delivered   ? Math.round((row.opened  / row.delivered)  * 100) : 0,
+    click_rate:  row?.delivered   ? Math.round((row.clicked / row.delivered)  * 100) : 0,
+  });
+}
+
 async function getOrCreateUnsubscribeToken(db, userId, email) {
   const existing = await db.prepare(
     `SELECT token FROM email_unsubscribes WHERE user_id = ?`
