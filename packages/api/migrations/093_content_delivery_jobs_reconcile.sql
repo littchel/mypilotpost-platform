@@ -16,10 +16,8 @@
 --
 -- ROLLBACK: SQLite / D1 does not support ALTER TABLE DROP COLUMN.
 
-ALTER TABLE content_delivery_jobs ADD COLUMN content_id   TEXT;
-ALTER TABLE content_delivery_jobs ADD COLUMN brand_id     TEXT;
-ALTER TABLE content_delivery_jobs ADD COLUMN user_id      TEXT;
-ALTER TABLE content_delivery_jobs ADD COLUMN scheduled_at TEXT;
+-- content_id, scheduled_at already in 005_analytics.sql CREATE TABLE
+-- brand_id, user_id already added by 071_saas_multi_tenant_hardening.sql
 ALTER TABLE content_delivery_jobs ADD COLUMN content_type TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_cdj_brand_user   ON content_delivery_jobs(brand_id, user_id);

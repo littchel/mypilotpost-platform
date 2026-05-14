@@ -26,12 +26,8 @@
 --
 -- ROLLBACK: SQLite / D1 does not support ALTER TABLE DROP COLUMN.
 
-ALTER TABLE subscriptions ADD COLUMN id                   TEXT;
+-- id, started_at, current_period_start, current_period_end, updated_at already in 001_billing.sql CREATE TABLE
 ALTER TABLE subscriptions ADD COLUMN user_id              TEXT;
 ALTER TABLE subscriptions ADD COLUMN plan_id              TEXT;
-ALTER TABLE subscriptions ADD COLUMN started_at           TEXT;
-ALTER TABLE subscriptions ADD COLUMN current_period_start TEXT;
-ALTER TABLE subscriptions ADD COLUMN current_period_end   TEXT;
-ALTER TABLE subscriptions ADD COLUMN updated_at           TEXT DEFAULT (datetime('now'));
 
 CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);

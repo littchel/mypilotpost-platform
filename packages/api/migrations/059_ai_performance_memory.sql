@@ -12,7 +12,7 @@ ALTER TABLE brands ADD COLUMN last_ai_performance_logs TEXT; -- JSON: { model, p
 -- Cache Hardening: TTL & Priority Support
 ALTER TABLE brand_ai_cache ADD COLUMN priority TEXT DEFAULT 'normal'; -- 'high' (reports) vs 'normal' (dashboard)
 ALTER TABLE brand_ai_cache ADD COLUMN source TEXT DEFAULT 'ai'; -- 'ai', 'fallback', 'limited'
-ALTER TABLE brand_ai_cache ADD COLUMN last_generated_at DATETIME DEFAULT CURRENT_TIMESTAMP;
+-- last_generated_at already present from 053_ai_intelligence_cache.sql CREATE TABLE
 
 -- Indices for rapid success-memory lookup
 CREATE INDEX IF NOT EXISTS idx_brands_ai_memory ON brands(last_ai_success_at, first_ai_run_at);
