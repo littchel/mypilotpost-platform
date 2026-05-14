@@ -1,5 +1,4 @@
 import React from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { 
   Trophy, 
   TrendingDown, 
@@ -16,12 +15,7 @@ const WeeklyReportModal = ({ report, onClose }) => {
 
   return (
     <div className="weekly-report-overlay">
-      <motion.div 
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        className="weekly-report-container"
-      >
+      <div className="weekly-report-container">
         <div className="report-header">
            <div className="header-badge"><Sparkles size={12} className="me-1" /> WEEKLY GROWTH REPORT</div>
            <button className="close-btn" onClick={onClose}><X size={20} /></button>
@@ -75,7 +69,7 @@ const WeeklyReportModal = ({ report, onClose }) => {
            </div>
            <PilotButton type="primary" onClick={onClose}>Apply Strategy</PilotButton>
         </div>
-      </motion.div>
+      </div>
 
       <style>{`
         .weekly-report-overlay {

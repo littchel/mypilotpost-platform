@@ -252,7 +252,7 @@ const ArticleCreator = ({ activeBrandOverride, initialArticle, onSaveSuccess, on
       });
       alert("Article sent for approval!");
       onSaveSuccess?.();
-    } catch (e) {
+    } catch {
       alert("Failed to send for approval.");
     }
     setLoading(false);

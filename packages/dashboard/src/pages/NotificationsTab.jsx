@@ -1,217 +1,329 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Bell, Settings, Search, CheckCircle, AlertCircle, 
-  Info, CreditCard, Zap, MoreVertical, Trash2, MailOpen
-} from 'lucide-react';
-import { apiSafeFetch } from "../lib/api/client";
+import React, { useState, useEffect, useCallback } from "react";
+import { apiRequest } from "../lib/api/client";
 
-/**
- * Production-Hardened Notifications Tab
- * Implements strict status modeling: loading | empty | error | success
- */
+const TYPE_ICON = {
+  success: "fas fa-check-circle",
+  warning: "fas fa-exclamation-triangle",
+  alert:   "fas fa-times-circle",
+  info:    "fas fa-info-circle",
+  system:  "fas fa-cog",
+};
 
-// ── Shared UI States ──────────────────────────────────────────────────────
+const TYPE_COLOR = {
+  success: "var(--status-success)",
+  warning: "var(--status-warning)",
+  alert:   "var(--status-danger)",
+  info:    "var(--pilot-blue)",
+  system:  "var(--slate-500)",
+};
 
-const LoadingIndicator = () => (
-  <div className="d-flex flex-column align-items-center justify-content-center p-5 text-muted animate__animated animate__fadeIn h-100">
-    <div className="spinner-border spinner-border-sm mb-3 text-primary" role="status"></div>
-    <span className="extra-small fw-medium">Syncing notifications...</span>
-  </div>
-);
+function relativeTime(iso) {
+  if (!iso) return "";
+  const diff = Date.now() - new Date(iso.replace(" ", "T") + "Z").getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1)  return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
 
-const EmptyState = () => (
-  <div className="d-flex flex-column align-items-center justify-content-center p-5 text-muted animate__animated animate__fadeIn h-100 text-center">
-    <Bell size={48} strokeWidth={1} className="mb-3 opacity-20" />
-    <h6 className="fw-bold text-main">All caught up!</h6>
-    <p className="extra-small mb-0">No new notifications at this time.</p>
-  </div>
-);
+const CATEGORIES = [
+  { id: "all",        label: "All",          icon: "fas fa-bell" },
+  { id: "success",    label: "Success",      icon: "fas fa-check-circle" },
+  { id: "warning",    label: "Warning",      icon: "fas fa-exclamation-triangle" },
+  { id: "alert",      label: "Alerts",       icon: "fas fa-times-circle" },
+  { id: "info",       label: "Info",         icon: "fas fa-info-circle" },
+  { id: "system",     label: "System",       icon: "fas fa-cog" },
+];
 
-const ErrorState = ({ onRetry }) => (
-  <div className="d-flex flex-column align-items-center justify-content-center p-5 text-danger animate__animated animate__fadeIn h-100 text-center">
-    <AlertCircle size={32} strokeWidth={1} className="mb-3 opacity-50" />
-    <span className="extra-small fw-bold mb-3">Unable to load notifications</span>
-    <button 
-      className="btn btn-sm btn-outline-danger px-4 py-2 rounded-pill fw-bold" 
-      style={{ fontSize: '0.65rem' }}
-      onClick={onRetry}
-    >
-      Retry
-    </button>
-  </div>
-);
+// ── Preference toggle row ──────────────────────────────────────────────────
+function PrefRow({ pref, onChange }) {
+  return (
+    <div className="notif-pref-row">
+      <span className="notif-pref-label">{pref.display}</span>
+      <label className="notif-toggle" title="In-app">
+        <input
+          type="checkbox"
+          checked={!!pref.in_app}
+          onChange={e => onChange(pref.type, "in_app", e.target.checked)}
+        />
+        <span className="notif-toggle__track"></span>
+      </label>
+      <label className="notif-toggle" title="Email">
+        <input
+          type="checkbox"
+          checked={!!pref.email}
+          onChange={e => onChange(pref.type, "email", e.target.checked)}
+        />
+        <span className="notif-toggle__track"></span>
+      </label>
+    </div>
+  );
+}
 
-const NotificationsTab = () => {
-  const [selectedMessage, setSelectedMessage] = useState(null);
-  const [notifications, setNotifications] = useState({ status: 'loading', data: [] });
-  const [filter, setFilter] = useState('all');
-  const [search, setSearch] = useState('');
+export default function NotificationsTab() {
+  const [notifications, setNotifications] = useState([]);
+  const [pagination,    setPagination]    = useState({ total: 0, unread_count: 0 });
+  const [loadState,     setLoadState]     = useState("loading");
+  const [filter,        setFilter]        = useState("all");
+  const [search,        setSearch]        = useState("");
+  const [selected,      setSelected]      = useState(null);
+  const [showPrefs,     setShowPrefs]     = useState(false);
+  const [prefs,         setPrefs]         = useState([]);
+  const [prefsLoading,  setPrefsLoading]  = useState(false);
+  const [savingPrefs,   setSavingPrefs]   = useState(false);
 
   const fetchNotifications = useCallback(async () => {
-    setNotifications(prev => ({ ...prev, status: 'loading' }));
-    const res = await apiSafeFetch(`/api/customer/notifications?category=${filter}`);
-    setNotifications(res);
-  }, [filter]);
+    setLoadState("loading");
+    try {
+      const res = await apiRequest("/api/customer/notifications?limit=50");
+      setNotifications(res.data || []);
+      setPagination(res.pagination || {});
+      setLoadState(res.data?.length ? "success" : "empty");
+    } catch {
+      setLoadState("error");
+    }
+  }, []);
 
   useEffect(() => {
-    fetchNotifications();
+    const timer = setTimeout(() => fetchNotifications(), 0);
+    return () => clearTimeout(timer);
   }, [fetchNotifications]);
 
-  const categories = [
-    { id: 'all', label: 'All', icon: <Bell size={14} /> },
-    { id: 'system', label: 'System', icon: <Settings size={14} /> },
-    { id: 'billing', label: 'Billing', icon: <CreditCard size={14} /> },
-    { id: 'intelligence', label: 'Intelligence', icon: <Zap size={14} /> },
-    { id: 'approvals', label: 'Approvals', icon: <CheckCircle size={14} /> }
-  ];
+  const loadPrefs = useCallback(async () => {
+    setPrefsLoading(true);
+    try {
+      const res = await apiRequest("/api/customer/notifications/preferences");
+      setPrefs(res.preferences || []);
+    } catch { /* noop */ }
+    setPrefsLoading(false);
+  }, []);
 
-  const filteredData = (notifications.data || []).filter(msg => 
-    msg.title?.toLowerCase().includes(search.toLowerCase()) ||
-    msg.preview?.toLowerCase().includes(search.toLowerCase())
-  );
+  useEffect(() => {
+    if (showPrefs) {
+      const timer = setTimeout(() => loadPrefs(), 0);
+      return () => clearTimeout(timer);
+    }
+  }, [showPrefs, loadPrefs]);
 
-  const activeMessage = selectedMessage || (filteredData.length > 0 ? filteredData[0] : null);
+  async function markAllRead() {
+    try {
+      await apiRequest("/api/customer/notifications/read-all", { method: "POST" });
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setPagination(prev => ({ ...prev, unread_count: 0 }));
+    } catch { /* noop */ }
+  }
+
+  async function markRead(notifId) {
+    try {
+      await apiRequest("/api/customer/notifications/read", {
+        method: "POST",
+        body: JSON.stringify({ notification_ids: [notifId] }),
+      });
+      setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, read: true } : n));
+      setPagination(prev => ({ ...prev, unread_count: Math.max(0, (prev.unread_count || 1) - 1) }));
+    } catch { /* noop */ }
+  }
+
+  function selectNotif(n) {
+    setSelected(n);
+    if (!n.read) markRead(n.id);
+  }
+
+  function handlePrefChange(type, channel, val) {
+    setPrefs(prev => prev.map(p => p.type === type ? { ...p, [channel]: val ? 1 : 0 } : p));
+  }
+
+  async function savePrefs() {
+    setSavingPrefs(true);
+    try {
+      await apiRequest("/api/customer/notifications/preferences", {
+        method: "PUT",
+        body: JSON.stringify({ preferences: prefs.map(p => ({ type: p.type, in_app: p.in_app, email: p.email })) }),
+      });
+    } catch { /* noop */ }
+    setSavingPrefs(false);
+  }
+
+  const filtered = notifications.filter(n => {
+    if (filter !== "all" && n.type !== filter) return false;
+    const q = search.toLowerCase();
+    return !q || (n.message || "").toLowerCase().includes(q);
+  });
+
+  const activeNotif = selected || filtered[0] || null;
 
   return (
-    <div className="container-fluid p-0 animate__animated animate__fadeIn" style={{ height: 'calc(100vh - 56px)' }}>
-      <div className="d-flex h-100">
-        
-        {/* Left Panel: List View */}
-        <div className="col-md-5 col-lg-4 border-right d-flex flex-column bg-white border-subtle">
-          <div className="p-4 border-bottom border-subtle">
-            <div className="d-flex justify-content-between align-items-center mb-4">
-              <h4 className="fw-bold mb-0 text-main" style={{ fontSize: '1rem' }}>Notifications</h4>
-              <button className="btn btn-grey border extra-small fw-bold px-3 py-2 rounded-pill" style={{ fontSize: '0.65rem' }}>
-                Mark all as read
+    <div className="notif-shell">
+      {/* ── Left panel ── */}
+      <div className="notif-list-panel">
+        {/* Header */}
+        <div className="notif-list-header">
+          <div className="notif-list-header__top">
+            <h2 className="notif-list-header__title">
+              Notifications
+              {pagination.unread_count > 0 && (
+                <span className="notif-badge">{pagination.unread_count}</span>
+              )}
+            </h2>
+            <div className="notif-header-actions">
+              <button className="notif-icon-btn" title="Preferences" onClick={() => setShowPrefs(true)}>
+                <i className="fas fa-sliders-h" aria-hidden="true"></i>
               </button>
-            </div>
-
-            <div className="input-group bg-surface-secondary rounded-pill border-0 px-3 py-1 mb-3">
-              <span className="input-group-text bg-transparent border-0 text-muted p-0 pe-2">
-                <Search size={16} />
-              </span>
-              <input 
-                type="text" 
-                className="form-control bg-transparent border-0 extra-small ps-0" 
-                placeholder="Search notifications..." 
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{ fontSize: '0.75rem' }}
-              />
-            </div>
-
-            <div className="d-flex gap-2 overflow-auto pb-1 scrollbar-hide">
-              {categories.map(cat => (
-                <button 
-                  key={cat.id} 
-                  onClick={() => setFilter(cat.id)}
-                  className={`btn extra-small fw-bold px-3 py-2 rounded-pill whitespace-nowrap transition-all ${filter === cat.id ? 'btn-primary' : 'btn-grey border'}`}
-                  style={{ fontSize: '0.65rem' }}
-                >
-                  {cat.label}
-                </button>
-              ))}
+              <button className="notif-icon-btn" title="Mark all read" onClick={markAllRead}>
+                <i className="fas fa-check-double" aria-hidden="true"></i>
+              </button>
             </div>
           </div>
 
-          <div className="flex-1 overflow-auto">
-            {notifications.status === 'loading' ? <LoadingIndicator /> :
-             notifications.status === 'empty' || filteredData.length === 0 ? <EmptyState /> :
-             notifications.status === 'error' ? <ErrorState onRetry={fetchNotifications} /> : 
-             filteredData.map(msg => (
-              <div 
-                key={msg.id}
-                onClick={() => setSelectedMessage(msg)}
-                className={`p-4 border-bottom cursor-pointer transition-all ${activeMessage?.id === msg.id ? 'bg-primary-light' : 'hover-bg-light'}`}
-                style={{ 
-                  borderBottom: '1px solid var(--border-subtle)',
-                  borderLeft: msg.unread ? '4px solid var(--pilot-blue)' : '4px solid transparent'
-                }}
+          <div className="notif-search-wrap">
+            <i className="fas fa-search notif-search-icon" aria-hidden="true"></i>
+            <input
+              type="search"
+              className="notif-search"
+              placeholder="Search notifications…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              aria-label="Search notifications"
+            />
+          </div>
+
+          <div className="notif-filters" role="tablist" aria-label="Filter by type">
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat.id}
+                role="tab"
+                aria-selected={filter === cat.id}
+                className={`notif-filter-btn${filter === cat.id ? " notif-filter-btn--active" : ""}`}
+                onClick={() => setFilter(cat.id)}
               >
-                <div className="d-flex justify-content-between align-items-start mb-1">
-                  <span className={`extra-small fw-bold text-uppercase ${msg.type === 'success' ? 'text-success' : msg.type === 'warning' ? 'text-warning' : 'text-primary'}`} style={{ fontSize: '0.65rem' }}>
-                    {msg.category}
-                  </span>
-                  <span className="extra-small text-muted" style={{ fontSize: '0.65rem' }}>{msg.time}</span>
-                </div>
-                <h6 className={`small mb-1 ${msg.unread ? 'fw-bold text-main' : 'text-muted'}`} style={{ fontSize: '0.85rem' }}>{msg.title}</h6>
-                <p className="extra-small text-muted mb-0 text-truncate" style={{ fontSize: '0.75rem' }}>{msg.preview}</p>
-              </div>
+                {cat.label}
+              </button>
             ))}
           </div>
         </div>
 
-        {/* Right Panel: Detail View */}
-        <div className="flex-1 bg-surface-secondary d-flex flex-column">
-          {activeMessage ? (
-            <>
-              <div className="p-4 bg-white border-bottom d-flex justify-content-between align-items-center border-subtle">
-                <div className="d-flex align-items-center gap-3">
-                  <div className={`p-3 rounded-4 ${
-                    activeMessage.type === 'success' ? 'bg-success bg-opacity-10 text-success' : 
-                    activeMessage.type === 'warning' ? 'bg-warning bg-opacity-10 text-warning' : 
-                    'bg-primary bg-opacity-10 text-primary'
-                  }`}>
-                    {activeMessage.type === 'success' ? <CheckCircle size={24} /> : 
-                     activeMessage.type === 'warning' ? <AlertCircle size={24} /> : 
-                     <Info size={24} />}
-                  </div>
-                  <div>
-                    <h5 className="fw-bold mb-0 text-main" style={{ fontSize: '1rem' }}>{activeMessage.title}</h5>
-                    <p className="extra-small text-muted mb-0" style={{ fontSize: '0.65rem' }}>{activeMessage.time} • {activeMessage.category?.toUpperCase()}</p>
-                  </div>
-                </div>
-                <div className="d-flex gap-2">
-                  <button className="btn btn-grey border p-2 rounded-3 text-muted shadow-sm"><MailOpen size={18} /></button>
-                  <button className="btn btn-grey border p-2 rounded-3 text-muted shadow-sm"><Trash2 size={18} /></button>
-                  <button className="btn btn-grey border p-2 rounded-3 text-muted shadow-sm"><MoreVertical size={18} /></button>
-                </div>
-              </div>
-
-              <div className="p-5 flex-1 overflow-auto">
-                <div className="card-workspace p-5 mx-auto shadow-sm animate__animated animate__fadeInUp" style={{ maxWidth: '700px' }}>
-                  <div className="mb-4 d-flex justify-content-between align-items-center">
-                    <div className="badge bg-surface-secondary text-muted border border-subtle px-3 py-2 rounded-pill extra-small" style={{ fontSize: '0.65rem' }}>
-                      Official System Message
-                    </div>
-                    <div className="extra-small text-muted" style={{ fontSize: '0.65rem' }}>ID: #MSG-{activeMessage.id}</div>
-                  </div>
-                  
-                  <h3 className="fw-bold text-main mb-4" style={{ letterSpacing: '-0.03em', fontSize: '1.5rem' }}>{activeMessage.title}</h3>
-                  
-                  <div className="text-main leading-relaxed mb-5" style={{ fontSize: '0.85rem', lineHeight: '1.6' }}>
-                    {activeMessage.fullText || activeMessage.preview}
-                  </div>
-
-                  {activeMessage.category === 'billing' && (
-                    <div className="p-4 bg-pilot-blue-light bg-opacity-10 rounded-4 border border-pilot-blue border-opacity-20 d-flex justify-content-between align-items-center">
-                      <div>
-                        <div className="small fw-bold text-primary mb-1" style={{ fontSize: '0.85rem' }}>Upgrade your account</div>
-                        <div className="extra-small text-muted" style={{ fontSize: '0.75rem' }}>Keep your brand automation running 24/7.</div>
-                      </div>
-                      <button className="btn btn-primary extra-small fw-bold px-4 py-2">Go to Billing</button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 d-flex flex-column align-items-center justify-content-center text-muted opacity-50">
-              <Bell size={48} strokeWidth={1} className="mb-3" />
-              <p className="small" style={{ fontSize: '0.85rem' }}>Select a notification to view details</p>
+        {/* List */}
+        <div className="notif-list-body" role="list">
+          {loadState === "loading" && (
+            <div className="notif-state-center">
+              <div className="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
+              <span className="notif-state-label">Loading…</span>
             </div>
           )}
+          {loadState === "error" && (
+            <div className="notif-state-center">
+              <i className="fas fa-exclamation-circle text-danger mb-2" style={{ fontSize: "1.5rem" }}></i>
+              <span className="notif-state-label">Failed to load</span>
+              <button className="btn-verify-trigger" onClick={fetchNotifications}>Retry</button>
+            </div>
+          )}
+          {(loadState === "empty" || (loadState === "success" && filtered.length === 0)) && (
+            <div className="notif-state-center">
+              <i className="fas fa-bell-slash mb-2" style={{ fontSize: "2rem", opacity: 0.2 }}></i>
+              <span className="notif-state-label">No notifications</span>
+            </div>
+          )}
+          {loadState === "success" && filtered.map(n => (
+            <button
+              key={n.id}
+              role="listitem"
+              className={`notif-item${activeNotif?.id === n.id ? " notif-item--active" : ""}${!n.read ? " notif-item--unread" : ""}`}
+              onClick={() => selectNotif(n)}
+              aria-current={activeNotif?.id === n.id ? "true" : undefined}
+            >
+              <span
+                className="notif-item__dot"
+                style={{ background: TYPE_COLOR[n.type] || TYPE_COLOR.info }}
+                aria-hidden="true"
+              ></span>
+              <span className="notif-item__body">
+                <span className="notif-item__msg">{n.message}</span>
+                <span className="notif-item__meta">
+                  <span className="notif-item__type">{n.type}</span>
+                  <span className="notif-item__time">{relativeTime(n.created_at)}</span>
+                </span>
+              </span>
+              {!n.read && <span className="notif-item__unread-dot" aria-label="Unread"></span>}
+            </button>
+          ))}
         </div>
       </div>
 
-      <style>{`
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-        .bg-primary-light { background: #eff6ff; }
-        .border-subtle { border-color: var(--border-subtle) !important; }
-      `}</style>
+      {/* ── Detail panel ── */}
+      <div className="notif-detail-panel">
+        {activeNotif ? (
+          <>
+            <div className="notif-detail-header">
+              <span
+                className="notif-detail-icon"
+                style={{ background: TYPE_COLOR[activeNotif.type] + "1a", color: TYPE_COLOR[activeNotif.type] }}
+                aria-hidden="true"
+              >
+                <i className={TYPE_ICON[activeNotif.type] || TYPE_ICON.info}></i>
+              </span>
+              <div className="notif-detail-header__copy">
+                <p className="notif-detail-header__type">{activeNotif.type?.toUpperCase()} · {relativeTime(activeNotif.created_at)}</p>
+              </div>
+              {!activeNotif.read && (
+                <button className="notif-icon-btn" title="Mark as read" onClick={() => markRead(activeNotif.id)}>
+                  <i className="fas fa-envelope-open" aria-hidden="true"></i>
+                </button>
+              )}
+            </div>
+
+            <div className="notif-detail-body">
+              <div className="notif-detail-card">
+                <span className="notif-detail-badge">System Message</span>
+                <p className="notif-detail-message">{activeNotif.message}</p>
+                <p className="notif-detail-ts">Received {relativeTime(activeNotif.created_at)}</p>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="notif-state-center">
+            <i className="fas fa-bell mb-2" style={{ fontSize: "2rem", opacity: 0.15 }}></i>
+            <span className="notif-state-label">Select a notification</span>
+          </div>
+        )}
+      </div>
+
+      {/* ── Preferences slide-over ── */}
+      {showPrefs && (
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Notification preferences">
+          <div className="notif-prefs-panel">
+            <div className="notif-prefs-header">
+              <h3 className="notif-prefs-title">Notification Preferences</h3>
+              <button className="verify-modal__close" onClick={() => setShowPrefs(false)} aria-label="Close">
+                <i className="fas fa-times" aria-hidden="true"></i>
+              </button>
+            </div>
+
+            <div className="notif-prefs-cols-header">
+              <span className="notif-pref-label">Event</span>
+              <span className="notif-pref-channel-label">In-app</span>
+              <span className="notif-pref-channel-label">Email</span>
+            </div>
+
+            <div className="notif-prefs-list">
+              {prefsLoading ? (
+                <div className="notif-state-center"><div className="spinner-border spinner-border-sm" role="status"></div></div>
+              ) : (
+                prefs.map(p => (
+                  <PrefRow key={p.type} pref={p} onChange={handlePrefChange} />
+                ))
+              )}
+            </div>
+
+            <div className="notif-prefs-footer">
+              <button className="auth-btn-primary" onClick={savePrefs} disabled={savingPrefs}>
+                {savingPrefs ? "Saving…" : "Save preferences"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-};
-
-export default NotificationsTab;
+}

@@ -1,5 +1,4 @@
 import React, { useRef } from "react";
-import { motion } from "framer-motion";
 import { 
   Download, 
   Share2, 
@@ -18,7 +17,7 @@ const GrowthCardPNG = ({ auditData, archetype, achievements, progression }) => {
     try {
        alert("Exporting high-fidelity PNG... (Simulated)");
        console.log("PNG Export Payload:", { score: auditData.score, delta: auditData.score_delta, archetype, level: progression?.level });
-    } catch (e) {
+    } catch {
        // Manual fallback
        alert("Canvas rendering unavailable. Please take a screenshot for highest fidelity.");
     }

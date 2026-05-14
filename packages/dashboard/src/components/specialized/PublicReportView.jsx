@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { motion } from "framer-motion";
 import { TrendingUp, Target, ShieldCheck, Share2, Zap } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "https://api.mypilotpost.com";

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import WorkspaceCard from "../components/shared/WorkspaceCard";
 import PilotButton from "../components/shared/PilotButton";
 import { 
@@ -20,25 +20,29 @@ const API_BASE = import.meta.env.VITE_API_URL || "https://api.mypilotpost.com";
 const IntegrationsManager = () => {
   const { token } = useAuth();
   const [integrations, setIntegrations] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (token) fetchIntegrations();
-  }, [token]);
-
-  const fetchIntegrations = async () => {
+  const fetchIntegrations = useCallback(async () => {
     setLoading(true);
     try {
       const data = await apiRequest("/api/customer/social-connections");
-      setIntegrations(data.connections || []); 
+      setIntegrations(data.connections || []);
     } catch (e) {
       console.error("Failed to fetch integrations", e);
     }
     setLoading(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    if (token) {
+      const timer = setTimeout(() => fetchIntegrations(), 0);
+      return () => clearTimeout(timer);
+    }
+  }, [token, fetchIntegrations]);
 
   const handleConnect = (provider) => {
-    window.location.href = `${API_BASE}/api/oauth/${provider}/connect`;
+    const url = `${API_BASE}/api/oauth/${provider}/connect`;
+    window.location.assign(url);
   };
 
   const handleDisconnect = async (id) => {
@@ -48,7 +52,7 @@ const IntegrationsManager = () => {
         method: "DELETE"
       });
       setIntegrations(prev => prev.filter(i => i.id !== id));
-    } catch (e) {
+    } catch {
       alert("Disconnect failed");
     }
   };

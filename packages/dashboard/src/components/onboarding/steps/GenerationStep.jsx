@@ -26,7 +26,7 @@ const GenerationStep = () => {
       } else {
         setError("Failed to generate content. Please try again.");
       }
-    } catch (err) {
+    } catch {
       setError("AI Generation failed. Network error.");
     } finally {
       setIsGenerating(false);

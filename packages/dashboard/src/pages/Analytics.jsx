@@ -47,11 +47,11 @@ const ErrorState = ({ message = "Unable to load data", onRetry }) => (
   </div>
 );
 
-const KPICard = ({ title, value, change, icon: Icon, color, status }) => (
+const KPICard = ({ title, value, change, icon, color, status }) => (
   <div className="card-workspace p-3 flex-1 min-w-[200px]">
     <div className="d-flex justify-content-between align-items-start mb-2">
       <div className={`p-2 rounded-lg bg-${color} bg-opacity-10 text-${color}`}>
-        <Icon size={20} />
+        {React.createElement(icon, { size: 20 })}
       </div>
       {status === 'success' && change !== undefined && (
         <div className={`extra-small fw-bold ${change >= 0 ? 'text-success' : 'text-danger'}`}>
@@ -113,10 +113,11 @@ const Analytics = ({ activeBrand }) => {
     setOverview(ovRes);
     setTimeseries(tsRes);
     setContent(contentRes);
-  }, [activeBrand?.id, range, platform, campaign]);
+  }, [activeBrand, range, platform, campaign]);
 
   useEffect(() => {
-    fetchAnalytics();
+    const timer = setTimeout(() => fetchAnalytics(), 0);
+    return () => clearTimeout(timer);
   }, [fetchAnalytics]);
 
   const handleExportCSV = () => {

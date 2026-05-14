@@ -71,7 +71,7 @@ export const calculateSEOScore = (title, content, keyword) => {
 /**
  * Simulates GEO Score based on keyword and regional context.
  */
-export const calculateGEOScore = (content, region, keyword) => {
+export const calculateGEOScore = (content, region) => {
   if (!content || !region) return 0;
   
   const regionKeywords = {

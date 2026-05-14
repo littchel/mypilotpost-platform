@@ -28,7 +28,7 @@ const SchedulerMonthView = ({ currentMonth, scheduledItems, onCardClick }) => {
     return days;
   }, [year, month]);
 
-  const monthLabel = currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' });
+  const _monthLabel = currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' });
 
   return (
     <div className="scheduler-month-view slide-in" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>

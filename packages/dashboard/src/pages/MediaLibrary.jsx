@@ -73,7 +73,8 @@ export default function MediaLibrary({ onSelectAsset }) {
   }, [filter]);
 
   useEffect(() => {
-    fetchMedia();
+    const timer = setTimeout(() => fetchMedia(), 0);
+    return () => clearTimeout(timer);
   }, [fetchMedia]);
 
   const getIcon = (type) => {

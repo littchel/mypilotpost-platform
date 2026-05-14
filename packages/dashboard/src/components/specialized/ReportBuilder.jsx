@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
@@ -15,11 +15,7 @@ const ReportBuilder = ({ reportId, onBack }) => {
   const [report, setReport] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    fetchReport();
-  }, [reportId]);
-
-  const fetchReport = async () => {
+  const fetchReport = useCallback(async () => {
     setLoading(true);
     try {
       const data = await apiRequest(`/api/customer/analytics/report/${reportId}`);
@@ -28,7 +24,12 @@ const ReportBuilder = ({ reportId, onBack }) => {
       console.error("Failed to fetch report", e);
     }
     setLoading(false);
-  };
+  }, [reportId]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => fetchReport(), 0);
+    return () => clearTimeout(timer);
+  }, [fetchReport]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -42,7 +43,7 @@ const ReportBuilder = ({ reportId, onBack }) => {
         })
       });
       alert("Report saved successfully!");
-    } catch (e) {
+    } catch {
       alert("Failed to save report");
     }
     setSaving(false);

@@ -45,6 +45,7 @@ import ContentPreviewModal from "./components/shared/ContentPreviewModal";
 import BrandDNAWizardModal from "./components/shared/BrandDNAWizardModal";
 import FloatingChat from "./components/specialized/FloatingChat";
 import InsightModal from "./components/shared/InsightModal";
+import EmailVerificationBanner from "./components/shared/EmailVerificationBanner";
 import { generateIntelligence } from "./lib/intelligence";
 import "./styles/auth.css";
 
@@ -141,9 +142,9 @@ function App() {
       .join(" ");
   };
 
-  const { brands, activeBrand, setActiveBrand, switchBrand, createBrand: contextCreateBrand, loading: brandLoading } = useBrand();
-  const { step, isComplete, loading: onboardingLoading, data: onboardingData } = useOnboarding();
-  const onboardingMode = onboardingData?.onboardingMode;
+  const { brands, activeBrand, switchBrand, createBrand: contextCreateBrand, loading: brandLoading } = useBrand();
+  const { step, loading: onboardingLoading, data: onboardingData } = useOnboarding();
+  const _onboardingMode = onboardingData?.onboardingMode;
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -156,20 +157,20 @@ function App() {
   const [companyName, setCompanyName] = useState("");
   const [loginError, setLoginError] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [auditFixContext, setAuditFixContext] = useState(null);
-  const [showNewDashboard, setShowNewDashboard] = useState(true);
+  const [_auditFixContext, _setAuditFixContext] = useState(null);
+  const [_showNewDashboard, _setShowNewDashboard] = useState(true);
 
   // Notification & Growth Global State
   const [notifications, setNotifications] = useState([]);
   const [growth, setGrowth] = useState({ points: 0, level: 'Starter', streak_days: 0, progress_percentage: 0 });
   const [intelligence, setIntelligence] = useState([]);
-  const [isLoadingGlobal, setIsLoadingGlobal] = useState(false);
+  const [_isLoadingGlobal, setIsLoadingGlobal] = useState(false);
 
   const apiSafeFetch = async (url) => {
     try {
       const res = await apiRequest(url);
       return res;
-    } catch (e) {
+    } catch {
       return { data: [], error: true };
     }
   };
@@ -222,10 +223,10 @@ function App() {
   }, [location.search, isRegistering]);
 
   // Brand Creation State
-  const [showBrandModal, setShowBrandModal] = useState(false);
+  const [_showBrandModal, setShowBrandModal] = useState(false);
   const [newBrandName, setNewBrandName] = useState("");
   const [newBrandIndustry, setNewBrandIndustry] = useState("");
-  const [isCreatingBrand, setIsCreatingBrand] = useState(false);
+  const [_isCreatingBrand, setIsCreatingBrand] = useState(false);
   
   // V1.1.1 FINAL Centralized Content State
   const [socialContent, setSocialContent] = useState("");
@@ -236,37 +237,38 @@ function App() {
   const [videoMedia, setVideoMedia] = useState(null);
   const [blogLink, setBlogLink] = useState(null);
   const [currentContentId, setCurrentContentId] = useState(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isSocialModalOpen, setIsSocialModalOpen] = useState(false);
-  const [isBlogModalOpen, setIsBlogModalOpen] = useState(false);
+  const [_isGenerating, setIsGenerating] = useState(false);
+  const [_isSocialModalOpen, setIsSocialModalOpen] = useState(false);
+  const [_isBlogModalOpen, setIsBlogModalOpen] = useState(false);
   const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false);
   const [previewDraft, setPreviewDraft] = useState(null);
-  const [blogUrlInput, setBlogUrlInput] = useState("");
-  const [blogTitleInput, setBlogTitleInput] = useState("");
-  const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
-  const [mediaModalType, setMediaModalType] = useState("image"); // "image" or "video"
-  const [isBlogLinkModalOpen, setIsBlogLinkModalOpen] = useState(false);
-  const [isMultiView, setIsMultiView] = useState(false);
+  const [_blogUrlInput, _setBlogUrlInput] = useState("");
+  const [_blogTitleInput, _setBlogTitleInput] = useState("");
+  const [_isMediaModalOpen, _setIsMediaModalOpen] = useState(false);
+  const [_mediaModalType, _setMediaModalType] = useState("image"); // "image" or "video"
+  const [_isBlogLinkModalOpen, _setIsBlogLinkModalOpen] = useState(false);
+  const [_isMultiView, _setIsMultiView] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedCampaignId, setSelectedCampaignId] = useState(null);
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const [isDNAWizardOpen, setIsDNAWizardOpen] = useState(false);
   const [activeInsight, setActiveInsight] = useState(null);
   const [isInsightModalOpen, setIsInsightModalOpen] = useState(false);
-  const [brandInsights, setBrandInsights] = useState([]);
+  const [_brandInsights, _setBrandInsights] = useState([]);
 
-  const [selectedAsset, setSelectedAsset] = useState(null);
+  const [_selectedAsset, setSelectedAsset] = useState(null);
 
   // FINAL LOCK: Reset logic for campaign selection
   useEffect(() => {
     setSelectedCampaignId(null);
   }, [activeTab]);
-  const [socialSubTab, setSocialSubTab] = useState('compose');
-  const [analyticsSubTab, setAnalyticsSubTab] = useState('overview');
-  const [contentSubTab, setContentSubTab] = useState('draft-content');
+  const [_socialSubTab, _setSocialSubTab] = useState('compose');
+  const [_analyticsSubTab, _setAnalyticsSubTab] = useState('overview');
+  const [_contentSubTab, setContentSubTab] = useState('draft-content');
   const [listVersion, setListVersion] = useState(0);
   const [articleTitle, setArticleTitle] = useState("");
   const [articleBody, setArticleBody] = useState("");
-  const [currentArticle, setCurrentArticle] = useState(null);
+  const [_currentArticle, _setCurrentArticle] = useState(null);
   const [referralCode, setReferralCode] = useState("");
 
   // URL Referral Detection
@@ -310,13 +312,13 @@ function App() {
   }, []);
 
   // Scheduling State (V1.1.5 Hardened UI)
-  const [isSchModalOpen, setIsSchModalOpen] = useState(false);
-  const [schDate, setSchDate] = useState(new Date(Date.now() + 86400000).toISOString().slice(0, 16));
+  const [_isSchModalOpen, setIsSchModalOpen] = useState(false);
+  const [schDate, _setSchDate] = useState(new Date(Date.now() + 86400000).toISOString().slice(0, 16));
 
   // Freepik Search State (V1.1.4 Corrected)
   const [freepikSearch, setFreepikSearch] = useState("");
-  const [freepikResults, setFreepikResults] = useState([]);
-  const [isFreepikSearching, setIsFreepikSearching] = useState(false);
+  const [_freepikResults, setFreepikResults] = useState([]);
+  const [_isFreepikSearching, setIsFreepikSearching] = useState(false);
 
   const handleFreepikSearch = async (query) => {
     const searchQuery = query || freepikSearch || `${activeBrand?.industry || ''} ${extractKeywords(socialContent)}`.trim();
@@ -334,8 +336,8 @@ function App() {
     }, 800);
   };
 
-  const fileInputRef = React.useRef(null);
-  const videoInputRef = React.useRef(null);
+  const _fileInputRef = React.useRef(null);
+  const _videoInputRef = React.useRef(null);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -367,9 +369,9 @@ function App() {
       const searchParams = new URLSearchParams(location.search);
       const res = await apiRequest("/api/customer/register", {
         method: "POST",
-        body: JSON.stringify({ 
-          email: loginEmail, 
-          password: loginPassword, 
+        body: JSON.stringify({
+          email: loginEmail,
+          password: loginPassword,
           referral_code: referralCode,
           first_name: firstName,
           last_name: lastName,
@@ -379,7 +381,22 @@ function App() {
         })
       });
       if (res.ok) {
-        await handleLogin(e);
+        if (res.token) {
+          setAuthToken(res.token);
+          navigate(res.brand_id ? "/" : "/onboarding");
+        } else {
+          const loginRes = await apiRequest("/api/customer/login", {
+            method: "POST",
+            body: JSON.stringify({ email: loginEmail, password: loginPassword })
+          });
+          if (loginRes.token) {
+            setAuthToken(loginRes.token);
+            navigate(loginRes.user?.onboarding_complete ? "/" : "/onboarding");
+          } else {
+            setLoginError("Account created. Please sign in.");
+            navigate("/login");
+          }
+        }
       } else {
         setLoginError(res.error || "Registration failed");
       }
@@ -390,7 +407,7 @@ function App() {
     }
   };
 
-  const handleSocialAuth = (platform) => {
+  const _handleSocialAuth = (platform) => {
     setLoginError(`${platform.charAt(0).toUpperCase() + platform.slice(1)} Sign-In is being set up. Please use email & password for now.`);
   };
 
@@ -402,7 +419,7 @@ function App() {
         method: 'POST',
         body: JSON.stringify({ email: forgotEmail })
       });
-    } catch (_) { }
+    } catch { /* noop */ }
     setForgotSent(true);
     setForgotLoading(false);
   };
@@ -449,7 +466,7 @@ function App() {
     });
   };
 
-  const handleGenerateAndDesign = async () => {
+  const _handleGenerateAndDesign = async () => {
     const data = await handleGenerateSocial({ 
       intention: socialContent || 'Generic engagement post', 
       cta: 'Check it out now' 
@@ -462,11 +479,11 @@ function App() {
   };
 
 
-  const { data: summaryData, loading: summaryLoading, error: summaryError } = useApi(activeBrand?.id ? "/api/customer/dashboard/summary" : null, [activeBrand?.id]);
+  const { data: summaryData, error: summaryError } = useApi(activeBrand?.id ? "/api/customer/dashboard/summary" : null, [activeBrand?.id]);
   const { data: campaignsApiData } = useApi(activeBrand?.id ? "/api/customer/campaigns" : null, [activeBrand?.id]);
   const campaignsList = campaignsApiData?.data || [];
-  const [campaignStep, setCampaignStep] = useState(1);
-  const [campaignData, setCampaignData] = useState({
+  const [_campaignStep, _setCampaignStep] = useState(1);
+  const [_campaignData, _setCampaignData] = useState({
     name: '',
     objective: '',
     startDate: '',
@@ -476,7 +493,7 @@ function App() {
     kpis: []
   });
 
-  const handleCreateBrand = async (e) => {
+  const _handleCreateBrand = async (e) => {
     e.preventDefault();
     setIsCreatingBrand(true);
     try {
@@ -495,13 +512,13 @@ function App() {
   };
 
   const metrics = summaryData?.metrics || { totalContent: 0, scheduledPosts: 0, publishedPosts: 0, engagementRate: "0%" };
-  const thisWeek = summaryData?.thisWeek || { scheduled: 0, published: 0 };
+  const _thisWeek = summaryData?.thisWeek || { scheduled: 0, published: 0 };
 
   const brandId = activeBrand?.id || null;
 
   const { data: intelData } = useApi(brandId ? "/api/customer/brand-intelligence" : null, [brandId, listVersion]);
   const _intelRaw = intelData || {};
-  const intel = {
+  const _intel = {
     brandHealth: _intelRaw.brandHealth || { score: 0, status: 'critical', summary: 'Loading...' },
     topAlerts: _intelRaw.topAlerts || [],
     recommendedActions: _intelRaw.recommendedActions || []
@@ -510,22 +527,22 @@ function App() {
   const { data: connectionsData } = useApi(brandId ? "/api/customer/integrations" : null, [brandId, listVersion]);
   const connectedPlatforms = (connectionsData?.integrations || []).map(i => i.platform);
 
-  const { data: draftListData, loading: draftsLoading } = useApi(brandId ? "/api/customer/content/social/drafts" : null, [brandId, listVersion]);
-  const socialDrafts = draftListData?.data || [];
+  const { data: draftListData, loading: _draftsLoading } = useApi(brandId ? "/api/customer/content/social/drafts" : null, [brandId, listVersion]);
+  const _socialDrafts = draftListData?.data || [];
 
-  const { data: allContentData, loading: allContentLoading } = useApi(brandId ? "/api/customer/content" : null, [brandId, listVersion]);
+  const { data: allContentData, loading: _allContentLoading } = useApi(brandId ? "/api/customer/content" : null, [brandId, listVersion]);
   const allContent = allContentData?.data || allContentData?.content || [];
 
   const { data: scheduleListData } = useApi(brandId ? "/api/customer/content/social/scheduled" : null, [brandId, listVersion]);
-  const socialSchedules = scheduleListData?.data || [];
+  const _socialSchedules = scheduleListData?.data || [];
 
   const { data: mediaListData } = useApi(brandId ? "/api/customer/media" : null, [brandId, listVersion]);
-  const mediaItems = mediaListData?.data || [];
+  const _mediaItems = mediaListData?.data || [];
 
   const { data: seoData } = useApi(brandId ? "/api/customer/seo/analyze" : null, [brandId, listVersion]);
   const seoProfile = seoData || { metrics: { organicTraffic: '0', keywords: '0', health: '0%' }, keywords: [] };
   const seoMetrics = seoProfile?.metrics || { organicTraffic: '0', keywords: '0', health: '0%' };
-  const seoKeywords = seoProfile?.keywords || [];
+  const _seoKeywords = seoProfile?.keywords || [];
 
   const brandIntelligence = generateIntelligence({
     allContent,
@@ -537,7 +554,7 @@ function App() {
     brandDna: { completionPct: 0 }, // TODO: wire to Brand DNA API
   });
 
-  const handleImageUpload = (e) => {
+  const _handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
@@ -548,7 +565,7 @@ function App() {
     }
   };
 
-  const handleVideoUpload = (e) => {
+  const _handleVideoUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
       const url = URL.createObjectURL(file);
@@ -556,7 +573,7 @@ function App() {
     }
   };
 
-  const handleAddBlog = () => {
+  const _handleAddBlog = () => {
     const url = window.prompt("Enter Blog/Website URL:");
     if (url) {
       if (!url.startsWith("http")) {
@@ -568,7 +585,7 @@ function App() {
     }
   };
 
-  const handleGenerateHashtags = async () => {
+  const _handleGenerateHashtags = async () => {
     if (!socialContent) {
       alert("Please enter some content first.");
       return;
@@ -587,7 +604,7 @@ function App() {
     }
   };
 
-  const handleMediaSource = (source) => {
+  const _handleMediaSource = (source) => {
     if (source === 'drive' || source === 'dropbox') {
       alert(`Connecting to ${source}... (OAuth popup would appear here)`);
       setTimeout(() => {
@@ -600,18 +617,18 @@ function App() {
     }
   };
 
-  const insertHashtag = (tag) => {
+  const _insertHashtag = (tag) => {
     if (!hashtags.includes(tag)) {
        setHashtags(prev => [...prev, tag]);
     }
     setSocialContent(prev => prev + (prev.endsWith(' ') ? '' : ' ') + tag);
   };
 
-  const removeHashtag = (tag) => {
+  const _removeHashtag = (tag) => {
     setHashtags(prev => prev.filter(t => t !== tag));
   };
 
-  const togglePlatform = (platform) => {
+  const _togglePlatform = (platform) => {
     setSelectedPlatforms(prev => {
       const lower = platform.toLowerCase();
       const next = prev.includes(lower) ? prev.filter(p => p !== lower) : [...prev, lower];
@@ -669,12 +686,12 @@ function App() {
     }
   }, [summaryError, navigate]);
 
-  const handleAuditFix = (action) => {
-    setAuditFixContext(action);
+  const _handleAuditFix = (action) => {
+    _setAuditFixContext(action);
     setIsSocialModalOpen(true);
   };
 
-  const handleGenerateBlog = async (formData) => {
+  const _handleGenerateBlog = async (formData) => {
     setIsGenerating(true);
     try {
       const res = await apiRequest("/api/customer/ai/generate/blog", {
@@ -693,7 +710,7 @@ function App() {
     }
   };
 
-  const handleConfirmSocial = (result, editedVariants) => {
+  const _handleConfirmSocial = (result, editedVariants) => {
     setCurrentContentId(result.content_id);
     setSocialContent(result.baseCaption || "");
     setPlatformVariants(editedVariants || result.platformVariants || {});
@@ -701,7 +718,7 @@ function App() {
     setIsSocialModalOpen(false);
   };
 
-  const handleConfirmBlog = (result) => {
+  const _handleConfirmBlog = (result) => {
     setCurrentContentId(result.content_id);
     setArticleTitle(result.title || "");
     setArticleBody(result.body || "");
@@ -740,7 +757,7 @@ function App() {
     }
   };
 
-  const handleSaveBlogDraft = async () => {
+  const _handleSaveBlogDraft = async () => {
     if (!activeBrand?.id) return;
     try {
       await apiRequest("/api/customer/content/blog", {
@@ -775,13 +792,13 @@ function App() {
     }
   };
 
-  const handlePostSocialNow = async (draft) => {
+  const _handlePostSocialNow = async (draft) => {
     if (!connectedPlatforms.length) {
       alert("Please connect at least one social platform in Integrations first.");
       return;
     }
     if (!window.confirm("Publish this post to all connected platforms immediately?")) return;
-    
+
     try {
       await apiRequest(`/api/customer/content/social/${draft.id}/post`, {
         method: "POST"
@@ -794,7 +811,7 @@ function App() {
     }
   };
 
-  const handleRetry = async (draft) => {
+  const _handleRetry = async (draft) => {
     if (!window.confirm("Retry delivery for failed platforms?")) return;
     try {
       await apiRequest("/api/customer/delivery/retry", {
@@ -809,14 +826,14 @@ function App() {
     }
   };
 
-  const handleReject = async (draft) => {
+  const _handleReject = async (draft) => {
     const comment = window.prompt('Reason for requesting changes:');
     if (comment !== null) {
       await updateStatus(draft.id, 'draft', comment);
     }
   };
 
-  const handleCreateSchedule = async () => {
+  const _handleCreateSchedule = async () => {
     if (!currentContentId) {
       const confirmSave = window.confirm("Save draft before scheduling?");
       if (!confirmSave) return;
@@ -827,21 +844,21 @@ function App() {
     setIsSchModalOpen(true);
   };
 
-  const submitSchedule = async () => {
+  const _submitSchedule = async () => {
     if (!schDate) {
       alert("Please select a valid date and time.");
       return;
     }
-    
+
     if (selectedPlatforms.length === 0) {
       alert("Please select at least one platform to schedule.");
       return;
     }
-    
+
     setIsSchModalOpen(false);
     try {
       await Promise.all(
-        selectedPlatforms.map(platform => 
+        selectedPlatforms.map(platform =>
           apiRequest("/api/customer/schedule", {
             method: "POST",
             body: JSON.stringify({
@@ -970,158 +987,182 @@ function App() {
   }
 
   if (!token && !DEV_BYPASS) {
+    const AuthLeftPanel = () => (
+      <div className="auth-left-panel">
+        <a className="auth-panel-logo" href="/">
+          <img src="/logo-mpp.png" alt="myPilotPost" />
+        </a>
+        <img
+          src="/platform-data-myPilotPost.svg"
+          alt="myPilotPost platform dashboard"
+          className="auth-illustration"
+        />
+        <div className="auth-panel-copy">
+          <h2 className="auth-panel-headline">Your brand. One pilot seat.</h2>
+          <p className="auth-panel-sub">Schedule, analyze, and grow across every platform from a single command center.</p>
+          <div className="auth-social-proof">
+            <div className="auth-stat">
+              <span className="auth-stat-value">2,400+</span>
+              <span className="auth-stat-label">Active Brands</span>
+            </div>
+            <div className="auth-stat">
+              <span className="auth-stat-value">98%</span>
+              <span className="auth-stat-label">Uptime</span>
+            </div>
+            <div className="auth-stat">
+              <span className="auth-stat-value">8 min</span>
+              <span className="auth-stat-label">Avg Setup</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+
     if (isRegistering) {
       return (
         <div className="auth-page-wrapper">
-          <div className="signin-page">
-            <div className="auth-container">
-              <div className="signin-grid">
-                <div className="stats-container d-none d-lg-flex">
-                  <div className="auth-side-illustration" style={{ background: '#2563eb', borderRadius: '24px', width: '100%', height: '600px', display: 'flex', flexDirection: 'column', padding: '40px', color: 'white' }}>
-                    <div style={{ background: 'white', borderRadius: '12px', padding: '20px', color: '#1a1a1a', marginBottom: '20px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', width: '240px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
-                        <div style={{ width: '32px', height: '32px', background: '#1877F2', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyCenter: 'center' }}><i className="fab fa-facebook-f" style={{ color: 'white', fontSize: '14px' }}></i></div>
-                        <span style={{ fontWeight: '600', fontSize: '14px' }}>Followers</span>
-                      </div>
-                      <div style={{ fontSize: '24px', fontWeight: '700' }}>1.1K <span style={{ fontSize: '12px', color: '#10b981', fontWeight: '500' }}><i className="fas fa-arrow-up"></i> 1.2%</span></div>
-                    </div>
+          <div className="auth-split-layout">
+            <AuthLeftPanel />
+            <div className="auth-right-panel">
+              <div className="auth-form-box">
+                <div className="auth-form-logo">
+                  <img src="/logo-mpp.png" alt="myPilotPost" />
+                </div>
+                <h1 className="auth-title">Create your account</h1>
+                <p className="auth-subtitle">Start managing your brand in under 8 minutes.</p>
 
-                    <div style={{ background: 'white', borderRadius: '12px', padding: '20px', color: '#1a1a1a', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', flex: 1 }}>
-                      <h4 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '15px' }}>Latest Followers</h4>
-                      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                        {[1,2,3,4,5,6].map(i => (
-                          <div key={i} style={{ width: '35px', height: '35px', background: '#f1f5f9', borderRadius: '50%', border: '2px solid white' }}></div>
-                        ))}
-                      </div>
-                      <h4 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '10px' }}>Followers Target</h4>
-                      <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden', marginBottom: '10px' }}>
-                        <div style={{ width: '90%', height: '100%', background: '#2563eb' }}></div>
-                      </div>
-                      <span style={{ fontSize: '12px', color: '#64748b' }}>90% target achieved</span>
+                {loginError && <div className="auth-alert-error" role="alert">{loginError}</div>}
+
+                <form onSubmit={handleRegister} noValidate>
+                  <div className="auth-form-row auth-form-group">
+                    <div>
+                      <label className="auth-label" htmlFor="reg-first">First Name</label>
+                      <input id="reg-first" type="text" className="auth-input" value={firstName} onChange={e => setFirstName(e.target.value)} required placeholder="John" autoComplete="given-name" />
+                    </div>
+                    <div>
+                      <label className="auth-label" htmlFor="reg-last">Last Name</label>
+                      <input id="reg-last" type="text" className="auth-input" value={lastName} onChange={e => setLastName(e.target.value)} required placeholder="Doe" autoComplete="family-name" />
                     </div>
                   </div>
-                </div>
-
-                <div className="register-container">
-                  <div className="auth-logo-brand mb-4">
-                    <img src="https://mypilotpost.com/images/myPilotPost-Logo.png" alt="myPilotPost" style={{ height: '40px' }} />
+                  <div className="auth-form-group">
+                    <label className="auth-label" htmlFor="reg-company">Company Name</label>
+                    <input id="reg-company" type="text" className="auth-input" value={companyName} onChange={e => setCompanyName(e.target.value)} required placeholder="Acme Inc." autoComplete="organization" />
                   </div>
-                  <h2 className="auth-title">Get Started</h2>
-                  <p className="auth-subtitle">We'll check if you have an account, and help create one if you don't.</p>
-                  
-                  <form onSubmit={handleRegister}>
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label className="form-label">First Name</label>
-                        <input type="text" className="form-input" value={firstName} onChange={e => setFirstName(e.target.value)} required placeholder="John" />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">Last Name</label>
-                        <input type="text" className="form-input" value={lastName} onChange={e => setLastName(e.target.value)} required placeholder="Doe" />
-                      </div>
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Company Name</label>
-                      <input type="text" className="form-input" value={companyName} onChange={e => setCompanyName(e.target.value)} required placeholder="Acme Inc." />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Email Address</label>
-                      <input type="email" className="form-input" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} required placeholder="john@example.com" />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Password</label>
-                      <input type="password" className="form-input" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} required placeholder="••••••••" />
-                    </div>
-                    <button type="submit" className="btn-auth-primary" disabled={isLoggingIn}>
-                      {isLoggingIn ? "Creating Account..." : "Continue"}
-                    </button>
-                    
-                    <div className="divider"><span>Or continue with</span></div>
-                    
-                    <button type="button" className="btn-auth-google" onClick={() => handleSocialAuth('google')}>
-                      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" style={{ width: '18px' }} />
-                      Sign in using Google
-                    </button>
-                    
-                    <p className="auth-footer-link">
-                      Already have an account? <a href="#" onClick={(e) => { e.preventDefault(); navigate("/login"); }}>Sign in now</a>
-                    </p>
-                  </form>
-                </div>
+                  <div className="auth-form-group">
+                    <label className="auth-label" htmlFor="reg-email">Email Address</label>
+                    <input id="reg-email" type="email" className="auth-input" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} required placeholder="john@acme.com" autoComplete="email" />
+                  </div>
+                  <div className="auth-form-group">
+                    <label className="auth-label" htmlFor="reg-password">Password</label>
+                    <input id="reg-password" type="password" className="auth-input" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} required placeholder="••••••••" autoComplete="new-password" />
+                  </div>
+                  <button type="submit" className="auth-btn-primary" disabled={isLoggingIn}>
+                    {isLoggingIn ? "Creating account…" : "Create Account"}
+                  </button>
+
+                  <div className="auth-divider"><span>or continue with</span></div>
+
+                  <button type="button" className="auth-btn-social" disabled aria-label="Sign in with Google — Coming Soon">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" />
+                    Sign in with Google
+                    <span className="auth-btn-social-badge">Coming Soon</span>
+                  </button>
+
+                  <p className="auth-footer-link">
+                    Already have an account?{" "}
+                    <button type="button" onClick={() => navigate("/login")}>Sign in</button>
+                  </p>
+                </form>
               </div>
             </div>
           </div>
         </div>
       );
     }
+
+    if (showForgotPassword) {
+      return (
+        <div className="auth-page-wrapper">
+          <div className="auth-split-layout">
+            <AuthLeftPanel />
+            <div className="auth-right-panel">
+              <div className="auth-form-box">
+                <div className="auth-form-logo">
+                  <img src="/logo-mpp.png" alt="myPilotPost" />
+                </div>
+                <button type="button" className="auth-forgot-back" onClick={() => { setShowForgotPassword(false); setForgotSent(false); }}>
+                  ← Back to sign in
+                </button>
+                <h1 className="auth-title">Reset your password</h1>
+                <p className="auth-subtitle">Enter your email and we'll send a reset link if your account exists.</p>
+
+                {forgotSent ? (
+                  <div className="auth-alert-success" role="status">
+                    If that email is registered, a reset link is on its way.
+                  </div>
+                ) : (
+                  <form onSubmit={handleForgotPassword} noValidate>
+                    <div className="auth-form-group">
+                      <label className="auth-label" htmlFor="forgot-email">Email Address</label>
+                      <input id="forgot-email" type="email" className="auth-input" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} required placeholder="john@acme.com" autoComplete="email" />
+                    </div>
+                    <button type="submit" className="auth-btn-primary" disabled={forgotLoading}>
+                      {forgotLoading ? "Sending…" : "Send Reset Link"}
+                    </button>
+                  </form>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="auth-page-wrapper">
-        <div className="signin-page">
-          <div className="auth-container">
-            <div className="signin-grid">
-              <div className="stats-container d-none d-lg-flex">
-                <div className="auth-side-illustration" style={{ background: '#2563eb', borderRadius: '24px', width: '100%', height: '600px', display: 'flex', flexDirection: 'column', padding: '40px', color: 'white' }}>
-                  <div style={{ background: 'white', borderRadius: '12px', padding: '20px', color: '#1a1a1a', marginBottom: '20px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', width: '240px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
-                      <div style={{ width: '32px', height: '32px', background: '#1877F2', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><i className="fab fa-facebook-f" style={{ color: 'white', fontSize: '14px' }}></i></div>
-                      <span style={{ fontWeight: '600', fontSize: '14px' }}>Followers</span>
-                    </div>
-                    <div style={{ fontSize: '24px', fontWeight: '700' }}>1.1K <span style={{ fontSize: '12px', color: '#10b981', fontWeight: '500' }}><i className="fas fa-arrow-up"></i> 1.2%</span></div>
-                  </div>
-
-                  <div style={{ background: 'white', borderRadius: '12px', padding: '20px', color: '#1a1a1a', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', flex: 1 }}>
-                    <h4 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '15px' }}>Latest Followers</h4>
-                    <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                      {[1,2,3,4,5,6].map(i => (
-                        <div key={i} style={{ width: '35px', height: '35px', background: '#f1f5f9', borderRadius: '50%', border: '2px solid white' }}></div>
-                      ))}
-                    </div>
-                    <h4 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '10px' }}>Followers Target</h4>
-                    <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden', marginBottom: '10px' }}>
-                      <div style={{ width: '90%', height: '100%', background: '#2563eb' }}></div>
-                    </div>
-                    <span style={{ fontSize: '12px', color: '#64748b' }}>90% target achieved</span>
-                  </div>
-                </div>
+        <div className="auth-split-layout">
+          <AuthLeftPanel />
+          <div className="auth-right-panel">
+            <div className="auth-form-box">
+              <div className="auth-form-logo">
+                <img src="/logo-mpp.png" alt="myPilotPost" />
               </div>
+              <h1 className="auth-title">Welcome back</h1>
+              <p className="auth-subtitle">Sign in to manage your brand fleet.</p>
 
-              <div className="signin-container">
-                <div className="auth-logo-brand mb-4">
-                  <img src="https://mypilotpost.com/images/myPilotPost-Logo.png" alt="myPilotPost" style={{ height: '40px' }} />
+              {loginError && <div className="auth-alert-error" role="alert">{loginError}</div>}
+
+              <form onSubmit={handleLogin} noValidate>
+                <div className="auth-form-group">
+                  <label className="auth-label" htmlFor="login-email">Email Address</label>
+                  <input id="login-email" type="email" className="auth-input" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} required placeholder="john@acme.com" autoComplete="email" />
                 </div>
-                <h2 className="auth-title">Welcome Back</h2>
-                <p className="auth-subtitle">Sign in to manage your brand fleet</p>
-                
-                {loginError && <div className="alert alert-danger mb-4 py-2 small">{loginError}</div>}
-                
-                <form onSubmit={handleLogin}>
-                  <div className="form-group">
-                    <label className="form-label">Email Address</label>
-                    <input type="email" className="form-input" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} required placeholder="john@example.com" />
+                <div className="auth-form-group">
+                  <div className="auth-label-row">
+                    <label className="auth-label" htmlFor="login-password">Password</label>
+                    <button type="button" className="auth-forgot-btn" onClick={() => setShowForgotPassword(true)}>
+                      Forgot password?
+                    </button>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label d-flex justify-content-between">
-                      Password
-                      <span className="text-primary extra-small fw-bold cursor-pointer">Forgot?</span>
-                    </label>
-                    <input type="password" className="form-input" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} required placeholder="••••••••" />
-                  </div>
-                  <button type="submit" className="btn-auth-primary" disabled={isLoggingIn}>
-                    {isLoggingIn ? "Authenticating..." : "Sign In"}
-                  </button>
-                  
-                  <div className="divider"><span>Or continue with</span></div>
-                  
-                  <button type="button" className="btn-auth-google" onClick={() => handleSocialAuth('google')}>
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" style={{ width: '18px' }} />
-                    Sign in using Google
-                  </button>
-                  
-                  <p className="auth-footer-link">
-                    Don't have an account? <a href="#" onClick={(e) => { e.preventDefault(); navigate("/register"); }}>Sign up now</a>
-                  </p>
-                </form>
-              </div>
+                  <input id="login-password" type="password" className="auth-input" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} required placeholder="••••••••" autoComplete="current-password" />
+                </div>
+                <button type="submit" className="auth-btn-primary" disabled={isLoggingIn}>
+                  {isLoggingIn ? "Signing in…" : "Sign In"}
+                </button>
+
+                <div className="auth-divider"><span>or continue with</span></div>
+
+                <button type="button" className="auth-btn-social" disabled aria-label="Sign in with Google — Coming Soon">
+                  <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" />
+                  Sign in with Google
+                  <span className="auth-btn-social-badge">Coming Soon</span>
+                </button>
+
+                <p className="auth-footer-link">
+                  Don't have an account?{" "}
+                  <button type="button" onClick={() => navigate("/register")}>Sign up free</button>
+                </p>
+              </form>
             </div>
           </div>
         </div>
@@ -1149,6 +1190,7 @@ function App() {
 
   return (
     <div id="root">
+      <EmailVerificationBanner onVerified={() => {}} />
       <LayoutShell
         activeTab={activeTab}
         switchTab={setActiveTab}

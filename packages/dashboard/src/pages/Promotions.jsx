@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { 
   Users, 
   Gift, 
@@ -22,11 +22,7 @@ const Promotions = () => {
   const [promoStatus, setPromoStatus] = useState(null);
   const [copying, setCopying] = useState(false);
 
-  useEffect(() => {
-    fetchPromoData();
-  }, []);
-
-  const fetchPromoData = async () => {
+  const fetchPromoData = useCallback(async () => {
     setLoading(true);
     try {
       const resp = await apiRequest("/api/customer/promotions");
@@ -35,7 +31,12 @@ const Promotions = () => {
       console.error("Failed to load promotion data", err);
     }
     setLoading(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => fetchPromoData(), 0);
+    return () => clearTimeout(timer);
+  }, [fetchPromoData]);
 
   const handleCopy = () => {
     const link = `https://mypilotpost.com/signup?ref=${promoStatus?.referral_code}`;

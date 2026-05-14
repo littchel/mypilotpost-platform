@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useOnboarding } from '../../../contexts/OnboardingContext';
 import { useBrand } from '../../../contexts/BrandContext';
-import { motion } from 'framer-motion';
 
 const BrandStep = ({ isReview = false }) => {
   const { data, updateStep } = useOnboarding();
@@ -40,7 +39,7 @@ const BrandStep = ({ isReview = false }) => {
         } else {
           setError(res.error || "Failed to create brand");
         }
-      } catch (err) {
+      } catch {
           setError("Network error. Please try again.");
       } finally {
           setLoading(false);

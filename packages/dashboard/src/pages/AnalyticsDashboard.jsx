@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { 
   LineChart, 
   Line, 
@@ -27,18 +27,14 @@ import { apiRequest } from "../lib/api/client";
 
 const AnalyticsDashboard = () => {
   const { token } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [data, setData] = useState({
     trends: [],
     platforms: [],
     topContent: []
   });
 
-  useEffect(() => {
-    if (token) fetchAnalytics();
-  }, [token]);
-
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     setLoading(true);
     try {
       // Fetching multiple analytics views
@@ -57,7 +53,14 @@ const AnalyticsDashboard = () => {
       console.error("Failed to fetch analytics", e);
     }
     setLoading(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    if (token) {
+      const timer = setTimeout(() => fetchAnalytics(), 0);
+      return () => clearTimeout(timer);
+    }
+  }, [token, fetchAnalytics]);
 
   const COLORS = ['#2563eb', '#35C961', '#f59e0b', '#8b5cf6', '#ef4444'];
 

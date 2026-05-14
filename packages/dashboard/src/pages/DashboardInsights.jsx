@@ -97,7 +97,7 @@ const ExecutivePanel = ({ activeBrand }) => (
   </div>
 );
 
-const CompetitivePanel = ({ activeBrand }) => (
+const CompetitivePanel = () => (
   <div>
     <NarrativeCard
       eyebrow="Competitive Landscape"
@@ -119,7 +119,7 @@ const CompetitivePanel = ({ activeBrand }) => (
   </div>
 );
 
-const AudiencePanel = ({ activeBrand }) => (
+const AudiencePanel = () => (
   <div>
     <NarrativeCard
       eyebrow="Audience Intelligence"
@@ -138,7 +138,7 @@ const AudiencePanel = ({ activeBrand }) => (
   </div>
 );
 
-const GrowthPanel = ({ activeBrand }) => (
+const GrowthPanel = () => (
   <div>
     <NarrativeCard
       eyebrow="Growth Intelligence"
@@ -157,7 +157,7 @@ const GrowthPanel = ({ activeBrand }) => (
   </div>
 );
 
-const ContentPanel = ({ activeBrand }) => (
+const ContentPanel = () => (
   <div>
     <NarrativeCard
       eyebrow="Content Intelligence"
@@ -198,7 +198,7 @@ const ContentPanel = ({ activeBrand }) => (
   </div>
 );
 
-const SEOPanel = ({ activeBrand }) => (
+const SEOPanel = () => (
   <div>
     <NarrativeCard
       eyebrow="SEO & Visibility Intelligence"

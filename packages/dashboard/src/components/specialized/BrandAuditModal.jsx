@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { 
   Zap, 
   Target, 
@@ -32,47 +32,35 @@ const BrandAuditModal = ({ auditData, onClose, onRefresh, onFix }) => {
     <div className="brand-audit-overlay">
       <AnimatePresence mode="wait">
         {stage === "loading" && (
-          <motion.div 
+          <div
             key="loading"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
             className="audit-stage-fullscreen"
           >
             <div className="audit-loading-content">
-              <motion.div 
-                animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-                transition={{ repeat: Infinity, duration: 2 }}
-                className="ai-pulse-orb"
-              >
+              <div className="ai-pulse-orb">
                 <Zap size={60} fill="#2563eb" color="#2563eb" />
-              </motion.div>
+              </div>
               <h2>Analyzing your brand...</h2>
               <p>Cross-referencing engagement trends and delivery patterns.</p>
             </div>
-          </motion.div>
+          </div>
         )}
 
         {stage === "reveal" && (
-          <motion.div 
+          <div
             key="reveal"
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 1.1, opacity: 0 }}
             className="audit-stage-fullscreen reveal-stage"
           >
             <div className="reveal-content text-center">
               <Sparkles size={80} className="text-primary mb-4" />
               <h1 className="reveal-title">Your Brand Intelligence is Ready</h1>
             </div>
-          </motion.div>
+          </div>
         )}
 
         {stage === "audit" && (
-          <motion.div 
+          <div
             key="audit"
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
             className="audit-modal-container"
           >
             <div className="audit-modal-header">
@@ -200,7 +188,7 @@ const BrandAuditModal = ({ auditData, onClose, onRefresh, onFix }) => {
                   <PilotButton type="secondary" onClick={onRefresh}>Re-run AI Analysis</PilotButton>
                </div>
             </div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
 

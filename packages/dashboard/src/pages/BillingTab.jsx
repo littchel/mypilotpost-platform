@@ -47,7 +47,7 @@ const BillingTab = () => {
   // Hardened State Models
   const [history, setHistory] = useState({ status: 'loading', data: [] });
   const [usage, setUsage] = useState({ status: 'loading', data: [] });
-  const [currentPlan, setCurrentPlan] = useState({
+  const [currentPlan, _setCurrentPlan] = useState({
     name: "Growth",
     price: "R250",
     billingCycle: "Monthly",
@@ -84,7 +84,8 @@ const BillingTab = () => {
   }, []);
 
   useEffect(() => {
-    fetchBillingData();
+    const timer = setTimeout(() => fetchBillingData(), 0);
+    return () => clearTimeout(timer);
   }, [fetchBillingData]);
 
   return (

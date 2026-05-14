@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useOnboarding } from '../../../contexts/OnboardingContext';
 import { apiRequest } from '../../../lib/api/client';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 
 const ImportStep = ({ isWizard, onNext }) => {
     const onboarding = useOnboarding();
@@ -113,11 +113,7 @@ const ImportStep = ({ isWizard, onNext }) => {
 
             <AnimatePresence>
                 {error && (
-                    <motion.div 
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="alert alert-warning small py-2 mt-4 mb-0"
-                    >
+                    <div className="alert alert-warning small py-2 mt-4 mb-0">
                         <i className="fas fa-exclamation-triangle me-2"></i>
                         {error}
                         <div className="mt-2">
@@ -125,7 +121,7 @@ const ImportStep = ({ isWizard, onNext }) => {
                                 Continue Manually
                             </button>
                         </div>
-                    </motion.div>
+                    </div>
                 )}
             </AnimatePresence>
 

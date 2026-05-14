@@ -12,29 +12,30 @@ export function useApi(endpoint, dependencies = []) {
 
   useEffect(() => {
     if (!endpoint) {
-      setLoading(false);
       return;
     }
 
     let mounted = true;
-    setLoading(true);
-
-    apiRequest(endpoint)
-      .then((res) => {
-        if (mounted) {
-          setData(res);
-          setError(null);
-        }
-      })
-      .catch((err) => {
-        if (mounted) setError(err);
-      })
-      .finally(() => {
-        if (mounted) setLoading(false);
-      });
+    const timer = setTimeout(() => {
+      setLoading(true);
+      apiRequest(endpoint)
+        .then((res) => {
+          if (mounted) {
+            setData(res);
+            setError(null);
+          }
+        })
+        .catch((err) => {
+          if (mounted) setError(err);
+        })
+        .finally(() => {
+          if (mounted) setLoading(false);
+        });
+    }, 0);
 
     return () => {
       mounted = false;
+      clearTimeout(timer);
     };
   }, [endpoint, ...dependencies]);
 

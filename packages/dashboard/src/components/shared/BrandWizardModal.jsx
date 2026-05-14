@@ -1,8 +1,5 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { useBrand } from '../../contexts/BrandContext';
-import { useAuth } from '../../contexts/AuthContext';
-import { apiRequest } from '../../lib/api/client';
 
 // We will need to wrap this in a provider or mock context for reuse
 import OnboardingLayout from '../onboarding/OnboardingLayout';
@@ -30,12 +27,12 @@ const BrandWizardModal = ({ isOpen, onClose }) => {
   // Since we want 1-to-1 parity, we will handle the wizard flow here
   // but use the same logic as the onboarding.
   
-  const nextStep = (stepData) => {
+  const _nextStep = (stepData) => {
     if (stepData) setData(prev => ({ ...prev, ...stepData }));
     setStep(s => s + 1);
   };
 
-  const prevStep = () => setStep(s => s - 1);
+  const _prevStep = () => setStep(s => s - 1);
 
   const handleFinish = async () => {
     onClose();

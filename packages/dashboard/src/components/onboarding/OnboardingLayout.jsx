@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useOnboarding } from '../../contexts/OnboardingContext';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 
 const OnboardingLayout = ({ children }) => {
   const { step, prevStep, onboardingMode } = useOnboarding();

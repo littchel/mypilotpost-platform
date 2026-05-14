@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import BrandPreview from '../components/shared/BrandPreview';
-import { apiRequest } from '../lib/api/client';
 
 const API_BASE = import.meta.env.VITE_API_URL || "https://api.mypilotpost.com";
 
@@ -60,7 +59,7 @@ const PublicApproval = ({ contentId }) => {
         })
       });
       setDecision(status);
-    } catch (e) {
+    } catch {
       alert('Failed to submit. Please try again.');
     } finally {
       setSubmitting(false);
@@ -84,7 +83,7 @@ const PublicApproval = ({ contentId }) => {
         author_name: 'You (Client)'
       }]);
       setNewComment('');
-    } catch (e) {
+    } catch {
       alert('Failed to post comment.');
     } finally {
       setSubmitting(false);

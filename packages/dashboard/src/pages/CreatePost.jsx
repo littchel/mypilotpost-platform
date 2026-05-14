@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { useAuth } from "../contexts/AuthContext";
-import { useBrand } from "../contexts/BrandContext";
 import PlatformPreviewPanel from "../components/publishing/PlatformPreviewPanel";
 import PostVerificationModal from "../components/publishing/PostVerificationModal";
 import SocialAssistantModal from "../components/shared/SocialAssistantModal";
@@ -13,11 +11,7 @@ import { generateVisualIntelligence, fetchFreepikSuggestions } from "../lib/free
 
 export default function CreatePost({
   selectedCampaignId: propCampaignId,
-  setSelectedCampaignId,
-  switchTab
 }) {
-  const { token } = useAuth();
-  const { activeBrand } = useBrand();
 
   // ── Core Content State ──
   const [content, setContent] = useState("");
@@ -31,7 +25,7 @@ export default function CreatePost({
 
   // ── Scheduling State ──
   const [scheduledTime, setScheduledTime] = useState("");
-  const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const [timezone, _setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
   const [selectedCampaignId, setLocalCampaignId] = useState(propCampaignId || "");
 
   // ── Freepik State ──

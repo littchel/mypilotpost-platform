@@ -5,7 +5,7 @@ import { useAuth } from './AuthContext';
 const OnboardingContext = createContext();
 
 export const OnboardingProvider = ({ children }) => {
-  const { token, user } = useAuth();
+  const { token } = useAuth();
   const [step, setStep] = useState(1);
   const [data, setData] = useState({
     brandName: "",

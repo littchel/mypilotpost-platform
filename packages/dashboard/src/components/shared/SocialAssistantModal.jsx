@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 const INTENTIONS = ['Awareness', 'Engagement', 'Authority', 'Lead Generation'];
 const PLATFORMS = ['facebook', 'instagram', 'linkedin', 'tiktok', 'x', 'pinterest', 'youtube', 'shorts'];

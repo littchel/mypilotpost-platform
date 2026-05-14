@@ -33,7 +33,7 @@ const STATUS_COLORS = {
   published: 'var(--status-success)'
 };
 
-const CalendarSchedule = ({ activeBrand, onJobClick, listVersion }) => {
+const CalendarSchedule = ({ activeBrand, onJobClick, listVersion, onScheduleNew }) => {
   const { token } = useAuth();
   
   // Navigation & Tabs
@@ -87,7 +87,7 @@ const CalendarSchedule = ({ activeBrand, onJobClick, listVersion }) => {
     allDrafts.filter(d => d.status === 'approved' && !scheduledJobs.some(j => j.id === d.id)),
   [allDrafts, scheduledJobs]);
 
-  const activityHistory = useMemo(() => 
+  const _activityHistory = useMemo(() =>
     allDrafts.filter(d => ['draft', 'approval', 'published'].includes(d.status))
       .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || b.created_at)),
   [allDrafts]);
@@ -227,7 +227,7 @@ const CalendarSchedule = ({ activeBrand, onJobClick, listVersion }) => {
                   onCardClick={onJobClick}
                   onSlotClick={(date) => {
                     // Open New Post with prefilled date
-                    props.onScheduleNew?.(date);
+                    onScheduleNew?.(date);
                   }}
                 />
              ) : (
@@ -356,7 +356,7 @@ const CalendarSchedule = ({ activeBrand, onJobClick, listVersion }) => {
     }
   };
 
-  const navItemStyle = (tab) => ({
+  const _navItemStyle = (tab) => ({
     padding: '8px 20px',
     borderRadius: 'var(--radius-md)',
     background: activeTab === tab ? 'var(--surface-primary)' : 'transparent',

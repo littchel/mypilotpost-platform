@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useOnboarding } from '../../../contexts/OnboardingContext';
-import { motion } from 'framer-motion';
 
 const PlatformsStep = () => {
     const { data, nextStep } = useOnboarding();
@@ -56,9 +55,7 @@ const PlatformsStep = () => {
                     const isSelected = selected.includes(platform.id);
                     return (
                         <div key={platform.id} className="col-12 col-md-4">
-                            <motion.div 
-                                whileHover={{ y: -2 }}
-                                whileTap={{ scale: 0.98 }}
+                            <div
                                 onClick={() => togglePlatform(platform.id)}
                                 className={`platform-card p-3 rounded-4 d-flex align-items-center gap-3 cursor-pointer border ${isSelected ? 'border-primary bg-light' : 'border-light'}`}
                                 style={{ cursor: 'pointer' }}
@@ -67,7 +64,7 @@ const PlatformsStep = () => {
                                 <span className={`fw-bold small ${isSelected ? 'text-primary' : 'text-dark'}`}>
                                     {platform.name}
                                 </span>
-                            </motion.div>
+                            </div>
                         </div>
                     );
                 })}

@@ -35,7 +35,7 @@ const BrandDNAWizardModal = ({ isOpen, onClose }) => {
       });
       onClose();
       window.dispatchEvent(new CustomEvent('refresh-data'));
-    } catch (err) {
+    } catch {
       alert("Failed to save Brand DNA");
     } finally {
       setLoading(false);

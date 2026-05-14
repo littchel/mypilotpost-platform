@@ -6,7 +6,7 @@ import { UserPlus, Shield, User, Trash2, Mail } from "lucide-react";
 const Teams = ({ brandId }) => {
   const [listVersion, setListVersion] = useState(0);
   const { data: teamData, loading: teamLoading } = useApi(brandId ? "/api/customer/teams/members" : null, [brandId, listVersion]);
-  const { data: inviteData, loading: inviteLoading } = useApi(brandId ? "/api/customer/teams/invites" : null, [brandId, listVersion]);
+  const { data: inviteData } = useApi(brandId ? "/api/customer/teams/invites" : null, [brandId, listVersion]);
   
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("team");

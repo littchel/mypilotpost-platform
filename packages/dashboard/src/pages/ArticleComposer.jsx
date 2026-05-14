@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import BlogAssistantModal from "../components/shared/BlogAssistantModal";
 
 /**
@@ -211,7 +211,7 @@ function computeEEAT(body) {
 
 // ── Score display helpers ─────────────────────────────────────────────────────
 function seoColor(score) { return score >= 75 ? 'dot-green' : score >= 50 ? 'dot-yellow' : 'dot-red'; }
-function seoLabel(score) { return score >= 75 ? 'Good' : score >= 50 ? 'Fair' : score > 0 ? 'Weak' : 'No keyword set'; }
+function _seoLabel(score) { return score >= 75 ? 'Good' : score >= 50 ? 'Fair' : score > 0 ? 'Weak' : 'No keyword set'; }
 function readabilityColor(level) { return level === 'easy' ? 'dot-green' : level === 'moderate' ? 'dot-yellow' : 'dot-red'; }
 function eeatColor(score) { return score >= 70 ? 'dot-green' : score >= 40 ? 'dot-yellow' : 'dot-red'; }
 
@@ -223,8 +223,11 @@ function DomainAutosuggest({ value, onChange }) {
   const wrapRef = useRef(null);
   useEffect(() => {
     const q = query.toLowerCase().trim();
-    if (!q) { setFiltered([]); return; }
-    setFiltered(GOOGLE_DOMAINS.filter(d => d.domain.includes(q) || d.region.toLowerCase().includes(q)).slice(0, 8));
+    const timer = setTimeout(() => {
+      if (!q) { setFiltered([]); return; }
+      setFiltered(GOOGLE_DOMAINS.filter(d => d.domain.includes(q) || d.region.toLowerCase().includes(q)).slice(0, 8));
+    }, 0);
+    return () => clearTimeout(timer);
   }, [query]);
   useEffect(() => {
     const handler = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };

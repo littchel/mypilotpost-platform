@@ -5,7 +5,7 @@ import React, { useState } from 'react';
  * Implementation of the 7-step AI Article flow as per Phase 3.
  * Steps: Intention, Audience, Tone, Keyword, Structure, Review, Results
  */
-const BlogGeneratorModal = ({ isOpen, onClose, onGenerate, onConfirm, isGenerating, activeBrand }) => {
+const BlogGeneratorModal = ({ isOpen, onClose, onGenerate, onConfirm }) => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     intention: 'Thought Leadership',
@@ -168,7 +168,7 @@ const BlogGeneratorModal = ({ isOpen, onClose, onGenerate, onConfirm, isGenerati
                   className="form-control border-light p-3 rounded-3 mb-4"
                   placeholder="e.g. Sustainable Aviation Fuel"
                   value={formData.keyword}
-                  onChange={(e) => setKeyword({...formData, keyword: e.target.value})}
+                  onChange={(e) => setFormData({...formData, keyword: e.target.value})}
                 />
                 
                 <p className="text-muted small mb-3">Article Structure</p>

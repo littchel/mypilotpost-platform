@@ -3,11 +3,11 @@ import { useApi } from "../lib/api/hooks";
 import { Trophy, Star, TrendingUp, Zap, Target, Award } from "lucide-react";
 
 const Growth = ({ brandId, growth }) => {
-  const { data: historyData, loading: historyLoading } = useApi(brandId ? `/api/customer/growth/activity?brandId=${brandId}` : null, [brandId]);
+  const { data: historyData } = useApi(brandId ? `/api/customer/growth/activity?brandId=${brandId}` : null, [brandId]);
 
   const profile = growth || { points: 0, level: 'Starter', streak_days: 0, progress_percentage: 0 };
   const history = historyData?.data || [];
-  const nextReward = growth?.next_reward || null;
+  const _nextReward = growth?.next_reward || null;
 
   return (
     <div className="container-fluid py-4 animate__animated animate__fadeIn">

@@ -25,7 +25,7 @@ const ScheduleStep = () => {
       });
 
       await updateStep(8, { isScheduled: true });
-    } catch (err) {
+    } catch {
       setError("Scheduling failed. Please try again.");
     } finally {
       setLoading(false);

@@ -116,10 +116,11 @@ const SEOCentre = ({ activeBrand }) => {
 
     setSummary(sumRes);
     setKeywords(kwRes);
-  }, [activeBrand?.id, searchDomain]);
+  }, [activeBrand, searchDomain]);
 
   useEffect(() => {
-    fetchSEOData();
+    const timer = setTimeout(() => fetchSEOData(), 0);
+    return () => clearTimeout(timer);
   }, [fetchSEOData]);
 
   const filteredDomains = useMemo(() => {

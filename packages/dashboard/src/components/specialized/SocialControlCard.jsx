@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import SocialPreview from './SocialPreview';
 import PilotButton from '../shared/PilotButton';
 import MediaSourceModal from '../shared/MediaSourceModal';
@@ -15,39 +15,32 @@ import { useAuth } from '../../contexts/AuthContext';
 const SocialControlCard = ({ 
   draft, 
   brand, 
-  status = 'draft',
-  onPreview, 
-  onEdit, 
-  onApprove, 
+  onPreview,
+  onEdit,
+  onApprove,
   onReject,
   onSchedule,
   onPostNow,
   onCancel,
-  onDelete,
   onRetry
 }) => {
   const { apiUrl } = useAuth();
   const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
   const [attachedMedia, setAttachedMedia] = useState([]);
-  const [loadingMedia, setLoadingMedia] = useState(false);
+  const [_loadingMedia, setLoadingMedia] = useState(false);
   const [showSmartHelper, setShowSmartHelper] = useState(false);
   const [smartTips, setSmartTips] = useState([]);
 
   // Logic: draft.content || first variant
   const contentFallback = draft.content || Object.values(draft.variants || {})[0] || "";
 
-  useEffect(() => {
-    fetchAttachedMedia();
-    fetchStrategicGuidance();
-  }, [draft.id]);
-
-  const fetchStrategicGuidance = async () => {
+  const fetchStrategicGuidance = useCallback(async () => {
     try {
       const res = await fetch(`${apiUrl}/api/customer/intelligence`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       const data = await res.json();
-      
+
       // HYBRID LOGIC: Platform Specific + Brand Fallback
       // If draft has specific platforms, filter for them
       const platforms = Object.keys(draft.variants || {});
@@ -62,9 +55,9 @@ const SocialControlCard = ({
     } catch (e) {
       console.error("Failed to load strategic guidance", e);
     }
-  };
+  }, [apiUrl, draft.variants]);
 
-  const fetchAttachedMedia = async () => {
+  const fetchAttachedMedia = useCallback(async () => {
     setLoadingMedia(true);
     try {
       const res = await fetch(`${apiUrl}/api/customer/media/attached/social/${draft.id}`, {
@@ -77,7 +70,15 @@ const SocialControlCard = ({
     } finally {
       setLoadingMedia(false);
     }
-  };
+  }, [apiUrl, draft.id]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchAttachedMedia();
+      fetchStrategicGuidance();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [fetchAttachedMedia, fetchStrategicGuidance]);
 
   const handleMediaSelect = async (media) => {
     try {

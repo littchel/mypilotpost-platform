@@ -64,14 +64,14 @@ const ContentPreviewModal = ({
       await onAddComment?.(draft.id, newComment.trim());
       setNewComment('');
       fetchComments();
-    } catch (e) {
+    } catch {
       alert("Failed to add comment.");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleAction = async (action, status) => {
+  const handleAction = async (action) => {
     setSaving(true);
     try {
       if (action === 'approve') {

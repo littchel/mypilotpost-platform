@@ -6,7 +6,7 @@
 
 // Simulating an AI translation layer that would normally happen backend-side.
 export const generateVisualIntelligence = (context) => {
-  const { caption, goal, tone, platforms, topic } = context;
+  const { goal, platforms, topic } = context;
 
   const intelligence = {
     searchQueries: [],

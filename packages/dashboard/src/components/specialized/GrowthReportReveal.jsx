@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { Search, ShieldAlert, TrendingUp, Cpu, CheckCircle } from "lucide-react";
 
 /**
@@ -34,11 +34,7 @@ const GrowthReportReveal = ({ onComplete }) => {
 
   return (
     <div className="report-reveal-overlay">
-       <motion.div 
-         initial={{ opacity: 0, scale: 0.9 }}
-         animate={{ opacity: 1, scale: 1 }}
-         className="reveal-card"
-       >
+       <div className="reveal-card">
           <div className="reveal-header">
              <div className="ai-status-pulse"></div>
              <span>STRATEGIC ENGINE ACTIVE</span>
@@ -46,24 +42,17 @@ const GrowthReportReveal = ({ onComplete }) => {
 
           <div className="reveal-body">
              <AnimatePresence mode="wait">
-                <motion.div 
-                   key={step}
-                   initial={{ x: 20, opacity: 0 }}
-                   animate={{ x: 0, opacity: 1 }}
-                   exit={{ x: -20, opacity: 0 }}
-                   className="reveal-step-content"
-                >
+                <div key={step} className="reveal-step-content">
                    {React.createElement(steps[step].icon, { size: 40, className: "text-primary mb-3" })}
                    <h3>{steps[step].label}</h3>
-                </motion.div>
+                </div>
              </AnimatePresence>
 
              <div className="reveal-progress-container mt-4">
                 <div className="reveal-progress-track">
-                   <motion.div 
+                   <div
                      className="reveal-progress-fill"
-                     initial={{ width: "0%" }}
-                     animate={{ width: `${((step + 1) / steps.length) * 100}%` }}
+                     style={{ width: `${((step + 1) / steps.length) * 100}%` }}
                    />
                 </div>
                 <div className="reveal-steps-counter">
@@ -71,7 +60,7 @@ const GrowthReportReveal = ({ onComplete }) => {
                 </div>
              </div>
           </div>
-       </motion.div>
+       </div>
 
        <style>{`
          .report-reveal-overlay {

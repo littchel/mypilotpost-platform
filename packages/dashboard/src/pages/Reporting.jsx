@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { 
   FileText, Download, Share2, Calendar, Layout, 
   ChevronRight, Plus, History, Clock, FileCheck,
@@ -103,7 +103,7 @@ const Reporting = ({ activeBrand }) => {
     roadmap: "<h3>Next 30 Days</h3><p>We will focus heavily on engagement recovery and deploying the new case study sequences...</p>"
   });
 
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     if (!activeBrand?.id) {
       setReportsState({ status: "empty", data: [] });
       return;
@@ -111,11 +111,12 @@ const Reporting = ({ activeBrand }) => {
     setReportsState({ status: 'loading', data: null });
     const result = await apiSafeFetch(`/api/customer/reports?brandId=${activeBrand.id}`);
     setReportsState(result);
-  };
+  }, [activeBrand]);
 
   useEffect(() => {
-    fetchReports();
-  }, [activeBrand?.id]);
+    const timer = setTimeout(() => fetchReports(), 0);
+    return () => clearTimeout(timer);
+  }, [fetchReports]);
 
   const handleExportPDF = () => {
     window.print(); // [Estimated] Browser print API acting as PDF generation placeholder

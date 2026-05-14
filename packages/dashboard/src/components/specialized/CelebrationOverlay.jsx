@@ -1,21 +1,31 @@
-import React from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Trophy, Star, TrendingUp } from "lucide-react";
+import React, { useMemo } from "react";
+import { AnimatePresence } from "framer-motion";
+import { Trophy, TrendingUp } from "lucide-react";
+
+// Pre-computed particle positions to avoid calling Math.random() during render
+const PARTICLE_POSITIONS = [...Array(20)].map((_, i) => ({
+  left: ((i * 17 + 7) % 100),
+  delay: ((i * 0.3) % 3),
+  color: ['#FFD700', '#60a5fa', '#35C961', '#fdf2f8'][i % 4],
+}));
 
 /**
  * CelebrationOverlay
  * A high-impact, full-screen animation trigger for level-ups and viral milestones.
  */
 const CelebrationOverlay = ({ show, message, subtext }) => {
+  const particleStyles = useMemo(() => PARTICLE_POSITIONS.map((p, i) => `
+               .p-${i} {
+                  left: ${p.left}%;
+                  animation-delay: ${p.delay}s;
+                  background: ${p.color};
+               }
+            `).join(''), []);
+
   return (
     <AnimatePresence>
       {show && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="celebration-overlay-fixed"
-        >
+        <div className="celebration-overlay-fixed">
           <div className="confetti-container">
              {/* Dynamic CSS Confetti Particles */}
              {[...Array(20)].map((_, i) => (
@@ -23,23 +33,19 @@ const CelebrationOverlay = ({ show, message, subtext }) => {
              ))}
           </div>
 
-          <motion.div 
-            initial={{ scale: 0.5, y: 50 }}
-            animate={{ scale: 1, y: 0 }}
-            className="celebration-content"
-          >
+          <div className="celebration-content">
              <div className="icon-pulse">
                 <Trophy size={80} color="#FFD700" />
              </div>
-             
+
              <h1 className="celebration-title">{message}</h1>
              <p className="celebration-subtext">{subtext || "You're outperforming 85% of brands in your industry."}</p>
-             
+
              <div className="growth-indicator-hero">
                 <TrendingUp size={24} />
                 <span>Strategic Milestone Unlocked</span>
              </div>
-          </motion.div>
+          </div>
 
           <style>{`
             .celebration-overlay-fixed {
@@ -54,7 +60,7 @@ const CelebrationOverlay = ({ show, message, subtext }) => {
             }
 
             .celebration-content { text-align: center; color: white; }
-            
+
             .celebration-title { font-size: 3rem; font-weight: 900; margin: 20px 0 10px; }
             .celebration-subtext { font-size: 1.2rem; opacity: 0.7; margin-bottom: 40px; }
 
@@ -88,19 +94,13 @@ const CelebrationOverlay = ({ show, message, subtext }) => {
                top: -10px;
                animation: drop 3s infinite linear;
             }
-            ${[...Array(20)].map((_, i) => `
-               .p-${i} { 
-                  left: ${Math.random() * 100}%; 
-                  animation-delay: ${Math.random() * 3}s; 
-                  background: ${['#FFD700', '#60a5fa', '#35C961', '#fdf2f8'][i % 4]};
-               }
-            `).join('')}
+            ${particleStyles}
 
             @keyframes drop {
                to { transform: translateY(100vh) rotate(360deg); }
             }
           `}</style>
-        </motion.div>
+        </div>
       )}
     </AnimatePresence>
   );

@@ -1,6 +1,5 @@
 import React from 'react';
 import { useOnboarding } from '../../../contexts/OnboardingContext';
-import { motion } from 'framer-motion';
 
 const ModeStep = ({ isWizard, onSelect }) => {
     const onboarding = useOnboarding();
@@ -30,9 +29,7 @@ const ModeStep = ({ isWizard, onSelect }) => {
             
             <div className="row g-3 mb-5">
                 <div className="col-md-6">
-                    <motion.div 
-                        whileHover={{ y: -5 }}
-                        whileTap={{ scale: 0.98 }}
+                    <div
                         className={`mode-card ${mode === 'smart' ? 'active' : ''}`}
                         onClick={() => handleSelect('smart')}
                     >
@@ -44,13 +41,11 @@ const ModeStep = ({ isWizard, onSelect }) => {
                         <p className="small text-muted mb-0">
                             Paste your URL and we'll extract your logo, colors, and tone for you.
                         </p>
-                    </motion.div>
+                    </div>
                 </div>
-                
+
                 <div className="col-md-6">
-                    <motion.div 
-                        whileHover={{ y: -5 }}
-                        whileTap={{ scale: 0.98 }}
+                    <div
                         className={`mode-card ${mode === 'manual' ? 'active' : ''}`}
                         onClick={() => handleSelect('manual')}
                     >
@@ -61,7 +56,7 @@ const ModeStep = ({ isWizard, onSelect }) => {
                         <p className="small text-muted mb-0">
                             Enter your brand details step-by-step for full control.
                         </p>
-                    </motion.div>
+                    </div>
                 </div>
             </div>
 

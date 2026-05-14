@@ -56,7 +56,6 @@ export const generateIntelligence = ({
   growth = {},
   auditData = null,
   brandDna = {},
-  scheduledCount: _sc,
 }) => {
   const now = new Date();
   const messages = [];

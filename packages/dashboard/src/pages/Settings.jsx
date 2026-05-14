@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import WorkspaceCard from "../components/shared/WorkspaceCard";
 import PilotButton from "../components/shared/PilotButton";
 import { 
@@ -19,11 +19,7 @@ const Settings = () => {
     agency_logo_url: ""
   });
 
-  useEffect(() => {
-    fetchBranding();
-  }, []);
-
-  const fetchBranding = async () => {
+  const fetchBranding = useCallback(async () => {
     try {
       const data = await apiRequest("/api/customer/settings/agency");
       setBranding(data);
@@ -31,7 +27,12 @@ const Settings = () => {
       console.error("Failed to fetch branding", e);
     }
     setLoading(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => fetchBranding(), 0);
+    return () => clearTimeout(timer);
+  }, [fetchBranding]);
 
   const handleSave = async (e) => {
     e.preventDefault();

@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { 
   Zap, TrendingUp, CheckCircle, Clock, Plus, 
   ArrowRight, Search, FileText, Share2, Target, 
   BarChart2, ShieldCheck, HelpCircle, ChevronRight,
   Layout, MessageSquare, AlertCircle, RefreshCw
 } from "lucide-react";
-import { apiSafeFetch } from "../lib/api/client";
 
 /**
  * Dashboard Intelligence Activation
@@ -47,7 +46,7 @@ const DNARing = ({ pct }) => {
 
 // ── Activation States ───────────────────────────────────────────────────────
 
-const State1NewUser = ({ activeBrand, switchTab, auditData, brandDna }) => (
+const State1NewUser = ({ switchTab, brandDna }) => (
   <div className="card-workspace p-5 bg-white shadow-sm border border-primary border-opacity-25" style={{ borderRadius: '24px' }}>
     <div className="text-center mb-5">
       <div className="d-inline-flex p-3 bg-primary bg-opacity-10 rounded-circle mb-3">
@@ -88,7 +87,7 @@ const State1NewUser = ({ activeBrand, switchTab, auditData, brandDna }) => (
   </div>
 );
 
-const State2PartialActivation = ({ switchTab, brandDna, connectedPlatforms }) => (
+const State2PartialActivation = ({ switchTab, brandDna }) => (
   <div>
     <div className="card-workspace p-4 mb-4 bg-white shadow-sm" style={{ borderRadius: 20 }}>
       <div className="d-flex justify-content-between align-items-center mb-4">
@@ -173,7 +172,7 @@ const State3Active = ({ brandIntelligence, switchTab, onInsightClick, growth }) 
   );
 };
 
-const State4Advanced = ({ metrics, switchTab }) => (
+const State4Advanced = ({ switchTab }) => (
   <div>
     <div className="card-workspace p-4 mb-4 bg-white shadow-sm" style={{ borderRadius: 20 }}>
       <div className="d-flex justify-content-between align-items-center mb-4">

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useOnboarding } from '../../../contexts/OnboardingContext';
-import { apiRequest } from '../../../lib/api/client';
 
 const MarketStep = ({ isWizard, onNext }) => {
   const onboarding = useOnboarding();

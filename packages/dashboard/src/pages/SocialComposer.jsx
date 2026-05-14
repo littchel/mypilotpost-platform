@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { apiRequest } from "../lib/api/client";
 import { useAuth } from "../contexts/AuthContext";
-import { useBrand } from "../contexts/BrandContext";
 import SocialAssistantModal from "../components/shared/SocialAssistantModal";
 
 /**
@@ -72,7 +71,7 @@ const PLATFORMS = [
 
 // ── Per-platform preview cards ───────────────────────────────────────────────
 const PlatformPreviewCard = ({ platform, content }) => {
-  const meta = PLATFORMS.find(p => p.key === platform);
+  const _meta = PLATFORMS.find(p => p.key === platform);
 
   const previews = {
     facebook: (
@@ -174,13 +173,10 @@ const PlatformPreviewCard = ({ platform, content }) => {
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function SocialComposer({
   selectedCampaignId: propCampaignId,
-  setSelectedCampaignId,
   selectedAsset,
-  onOpenAssistant,
   switchTab
 }) {
   const { token } = useAuth();
-  const { activeBrand } = useBrand();
 
   const [content, setContent] = useState("");
   const [selectedPlatforms, setSelectedPlatforms] = useState(["facebook"]);
@@ -193,21 +189,27 @@ export default function SocialComposer({
   const [assistantOpen, setAssistantOpen] = useState(false);
 
   useEffect(() => {
-    if (propCampaignId) setLocalCampaignId(propCampaignId);
+    if (propCampaignId) {
+      const timer = setTimeout(() => setLocalCampaignId(propCampaignId), 0);
+      return () => clearTimeout(timer);
+    }
   }, [propCampaignId]);
 
-  useEffect(() => {
-    if (token) fetchCampaigns();
-  }, [token]);
-
-  const fetchCampaigns = async () => {
+  const fetchCampaigns = useCallback(async () => {
     try {
       const resp = await apiRequest("/api/customer/campaigns");
       setCampaigns(resp.data || []);
     } catch (e) {
       console.error("Failed to fetch campaigns", e);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (token) {
+      const timer = setTimeout(() => fetchCampaigns(), 0);
+      return () => clearTimeout(timer);
+    }
+  }, [token, fetchCampaigns]);
 
   // Multi-select: toggle platform in/out of selection, keep at least 1
   const togglePlatform = (key) => {

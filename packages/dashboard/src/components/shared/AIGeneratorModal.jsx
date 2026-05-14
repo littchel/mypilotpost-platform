@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const AIGeneratorModal = ({ isOpen, onClose, onGenerate, onConfirm, isGenerating, activeBrand, initialContext }) => {
+const AIGeneratorModal = ({ isOpen, onClose, onGenerate, onConfirm, initialContext }) => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     intention: initialContext?.title || 'Brand Awareness & Recognition',

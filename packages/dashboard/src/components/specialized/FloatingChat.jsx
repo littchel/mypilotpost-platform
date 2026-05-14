@@ -68,7 +68,7 @@ const FloatingChat = () => {
                   setUnreadCount(prev => prev + 1);
                 }
               }
-            } catch (e) { /* ignore pings */ }
+            } catch { /* ignore pings */ }
           };
 
           es.onerror = () => {
@@ -94,7 +94,7 @@ const FloatingChat = () => {
     };
   }, [isOpen]);
 
-  const fetchHistory = async (uid) => {
+  const fetchHistory = async () => {
     try {
       const res = await apiRequest(`/api/v1/support/history/${SUPPORT_ID}`);
       if (res.success && res.messages) {
