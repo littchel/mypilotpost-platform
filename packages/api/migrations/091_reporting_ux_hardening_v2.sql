@@ -1,0 +1,29 @@
+-- Migration: 091_reporting_ux_hardening_v2.sql
+-- Reconciles schema conflict from 080_reporting_ux_hardening.sql.
+--
+-- PROBLEM:
+--   074_reporting.sql dropped and recreated the reports table with report_type TEXT NOT NULL
+--   already in the schema. 080's first ALTER TABLE ADD COLUMN report_type therefore fails
+--   with "duplicate column name: report_type". 080 is backfilled in the tracker; this
+--   migration delivers its one missing effect.
+--
+-- COLUMNS ALREADY PRESENT (from 074):
+--   report_type TEXT NOT NULL — present at cid:4, no action needed
+--
+-- MISSING COLUMN (from 080):
+--   template_id INTEGER DEFAULT 1 — absent from live schema, added here
+--
+-- INDEX:
+--   idx_reports_type ON reports(report_type) — report_type exists, safe to create
+--
+-- APPLICATION IMPACT:
+--   No known runtime reference to template_id in current application code.
+--   Adding it is low-risk; prevents future breakage if code is wired up.
+--
+-- ROLLBACK:
+--   SQLite / D1 does not support ALTER TABLE DROP COLUMN.
+--   To roll back: rebuild reports excluding template_id (see 045 pattern).
+
+ALTER TABLE reports ADD COLUMN template_id INTEGER DEFAULT 1;
+
+CREATE INDEX IF NOT EXISTS idx_reports_type ON reports(report_type);
