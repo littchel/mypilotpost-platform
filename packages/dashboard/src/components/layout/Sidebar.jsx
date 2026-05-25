@@ -52,6 +52,7 @@ const Sidebar = ({ activeTab, switchTab, brands, activeBrand, onSwitchBrand }) =
         <NavLink tab="social"   activeTab={activeTab} switchTab={switchTab} icon="fas fa-edit"     label="Create Social Post" />
         <NavLink tab="blog"     activeTab={activeTab} switchTab={switchTab} icon="fas fa-file-alt" label="Create Article" />
         <NavLink tab="campaign" activeTab={activeTab} switchTab={switchTab} icon="fas fa-bullhorn" label="Campaigns" />
+        <NavLink tab="hashtags" activeTab={activeTab} switchTab={switchTab} icon="fas fa-hashtag"  label="Hashtag Manager" />
       </nav>
 
       {/* ── PUBLISHING ── */}
@@ -73,11 +74,8 @@ const Sidebar = ({ activeTab, switchTab, brands, activeBrand, onSwitchBrand }) =
       {/* ── SYSTEM ── */}
       <div className="nav-group-title">System</div>
       <nav aria-label="System">
-        <NavLink tab="integrations" activeTab={activeTab} switchTab={switchTab} icon="fas fa-plug"        label="Integrations" />
-        <NavLink tab="teams"        activeTab={activeTab} switchTab={switchTab} icon="fas fa-users"       label="Team & Clients" />
-        <NavLink tab="growth"       activeTab={activeTab} switchTab={switchTab} icon="fas fa-trophy"      label="Rewards" />
-        <NavLink tab="billing"      activeTab={activeTab} switchTab={switchTab} icon="fas fa-credit-card" label="Billing" />
-        <NavLink tab="settings"     activeTab={activeTab} switchTab={switchTab} icon="fas fa-cog"         label="Settings" />
+        <NavLink tab="integrations" activeTab={activeTab} switchTab={switchTab} icon="fas fa-plug"  label="Integrations" />
+        <NavLink tab="teams"        activeTab={activeTab} switchTab={switchTab} icon="fas fa-users" label="Team & Clients" />
       </nav>
     </aside>
   );

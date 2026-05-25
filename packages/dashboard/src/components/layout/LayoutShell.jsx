@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import FloatingChat from "../specialized/FloatingChat";
+import EmailVerificationBanner from "../shared/EmailVerificationBanner";
 import { getCategoryMeta } from "../../lib/intelligence";
 
 /* ── Brand Intelligence Feed ── */
@@ -188,6 +189,7 @@ const LayoutShell = ({
           notifications={notifications}
           growth={growth}
         />
+        <EmailVerificationBanner onVerified={() => {}} />
         <main>
           <div id="workspace-area">
             {children}

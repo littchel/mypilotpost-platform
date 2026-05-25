@@ -103,14 +103,41 @@ const Reporting = ({ activeBrand }) => {
     roadmap: "<h3>Next 30 Days</h3><p>We will focus heavily on engagement recovery and deploying the new case study sequences...</p>"
   });
 
+  const [analytics, setAnalytics] = useState({
+    summary: { reach: "—", reachDelta: null, engagement: "—", engagementDelta: null, conversions: "—", conversionsDelta: null },
+    timeSeries: []
+  });
+
   const fetchReports = useCallback(async () => {
     if (!activeBrand?.id) {
       setReportsState({ status: "empty", data: [] });
       return;
     }
     setReportsState({ status: 'loading', data: null });
-    const result = await apiSafeFetch(`/api/customer/reports?brandId=${activeBrand.id}`);
+    const [result, overviewRes, timeseriesRes] = await Promise.all([
+      apiSafeFetch(`/api/customer/reports?brandId=${activeBrand.id}`),
+      apiSafeFetch(`/api/customer/analytics/overview?brandId=${activeBrand.id}`),
+      apiSafeFetch(`/api/customer/analytics/timeseries?brandId=${activeBrand.id}&range=30d`)
+    ]);
     setReportsState(result);
+    if (overviewRes.status === 'success') {
+      const s = overviewRes.data?.summary || {};
+      const g = overviewRes.data?.growth || {};
+      setAnalytics(prev => ({
+        ...prev,
+        summary: {
+          reach: s.reach ?? "—",
+          reachDelta: g.reach != null ? parseFloat(g.reach) : null,
+          engagement: s.engagement_rate ?? "—",
+          engagementDelta: g.engagement_rate != null ? parseFloat(g.engagement_rate) : null,
+          conversions: s.published ?? "—",
+          conversionsDelta: g.posts != null ? parseFloat(g.posts) : null
+        }
+      }));
+    }
+    if (timeseriesRes.status === 'success' && Array.isArray(timeseriesRes.data)) {
+      setAnalytics(prev => ({ ...prev, timeSeries: timeseriesRes.data }));
+    }
   }, [activeBrand]);
 
   useEffect(() => {
@@ -132,13 +159,6 @@ const Reporting = ({ activeBrand }) => {
   }
 
   const history = reportsState.data || [];
-  const analytics = {
-    summary: { reach: "142k", reachDelta: 12, engagement: "3.4%", engagementDelta: -2, conversions: "48", conversionsDelta: 8 },
-    timeSeries: [
-      { name: "Week 1", value: 12000 }, { name: "Week 2", value: 19000 },
-      { name: "Week 3", value: 15000 }, { name: "Week 4", value: 24000 }
-    ]
-  };
 
   return (
     <div className="reporting-engine animate__animated animate__fadeIn p-2">

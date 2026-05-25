@@ -20,6 +20,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(
               <Route path="/public/approval/:contentId" element={<PublicApproval />} />
               <Route path="/login" element={<App />} />
               <Route path="/register" element={<App />} />
+              <Route path="/reset-password" element={<App />} />
+              <Route path="/brand-audit" element={<App />} />
               <Route path="/onboarding" element={<App />} />
               <Route path="/dashboard" element={<App />} />
               <Route path="/*" element={<App />} />

@@ -1,14 +1,18 @@
 import React, { useMemo } from 'react';
 import { useOnboarding } from '../../contexts/OnboardingContext';
-import { AnimatePresence } from 'framer-motion';
+import { useAuth } from '../../contexts/AuthContext';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const OnboardingLayout = ({ children }) => {
-  const { step, prevStep, onboardingMode } = useOnboarding();
+  const { logout } = useAuth();
+  const { step, prevStep, data, signupSource } = useOnboarding();
+  const onboardingMode = data?.onboardingMode;
+  const isAuditPath = signupSource === 'brand_audit';
 
-  const totalSteps = onboardingMode === 'smart' ? 5 : 6;
+  // Audit path: 7 steps. Direct path: 9 steps.
+  const totalSteps = isAuditPath ? 7 : 9;
   const progress = Math.round(((step - 1) / totalSteps) * 100);
 
-  // V1.2.1 Photorealistic Illustration Mapping
   const illustration = useMemo(() => {
     const assets = {
       welcome: "/ob_welcome.png",
@@ -21,25 +25,35 @@ const OnboardingLayout = ({ children }) => {
       success: "/onboarding_success_illustration.png"
     };
 
+    if (isAuditPath) {
+      if (step === 1) return assets.activation; // "workspace ready" moment
+      if (step === 2) return assets.brand;
+      if (step === 3) return assets.platforms; // Goals
+      if (step === 4) return assets.platforms; // Platforms
+      if (step >= 5) return assets.activation;
+      return assets.activation;
+    }
+
     if (step === 1) return assets.welcome;
     if (step === 2) return assets.mode;
 
     if (onboardingMode === 'smart') {
       if (step === 3) return assets.import;
       if (step === 4) return assets.brand;
-      if (step === 5) return assets.activation;
+      if (step >= 5 && step <= 6) return assets.platforms;
+      if (step >= 7) return assets.activation;
     } else if (onboardingMode === 'manual') {
       if (step === 3) return assets.brand;
       if (step === 4) return assets.market;
-      if (step === 5) return assets.platforms;
-      if (step === 6) return assets.activation;
+      if (step >= 5 && step <= 6) return assets.platforms;
+      if (step >= 7) return assets.activation;
     }
     return assets.welcome;
-  }, [step, onboardingMode]);
+  }, [step, onboardingMode, isAuditPath]);
 
   return (
     <div className="onboarding-split-layout min-vh-100 w-100 d-flex">
-      {/* Left: Illustration Area (50/50 Split) */}
+      {/* Left: Illustration Area */}
       <div className="onboarding-illustration-sidebar d-none d-lg-flex col-lg-6 p-0">
         <div className="illustration-gradient-overlay"></div>
         <AnimatePresence mode="wait">
@@ -56,20 +70,31 @@ const OnboardingLayout = ({ children }) => {
         </AnimatePresence>
       </div>
 
-      {/* Right: Content Area (50/50 Split) */}
+      {/* Right: Content Area */}
       <div className="onboarding-content-area col-12 col-lg-6 d-flex flex-column h-100 min-vh-100 bg-white">
         <header className="onboarding-header px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
           <div className="d-flex align-items-center gap-3">
             <img src="/logo.png" alt="myPilotPost" height="28" />
+            {isAuditPath && (
+              <span className="badge rounded-pill px-3 py-1"
+                style={{ background: '#fef9c3', color: '#854d0e', fontSize: '0.7rem', fontWeight: 700, border: '1px solid #fde68a' }}>
+                Audit Fast-Track
+              </span>
+            )}
           </div>
-          <button className="btn btn-link text-muted text-decoration-none small" onClick={() => window.location.href = '/login'}>
-            Exit to Login
+          <button
+            className="btn btn-link text-muted text-decoration-none small"
+            onClick={() => {
+              if (window.confirm('Exit onboarding and sign out?')) logout();
+            }}
+          >
+            Exit &amp; Sign Out
           </button>
         </header>
 
         <div className="progress rounded-0" style={{ height: '4px' }}>
-          <motion.div 
-            className="progress-bar bg-primary" 
+          <motion.div
+            className="progress-bar bg-primary"
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
             transition={{ duration: 0.5 }}
@@ -81,20 +106,22 @@ const OnboardingLayout = ({ children }) => {
             <div className="mb-4 d-flex justify-content-between align-items-center">
               <div className="d-flex align-items-center gap-2">
                 {step > 1 && (
-                  <button 
+                  <button
                     onClick={prevStep}
-                    className="btn btn-sm btn-light rounded-circle d-flex align-items-center justify-content-center p-0" 
+                    className="btn btn-sm btn-light rounded-circle d-flex align-items-center justify-content-center p-0"
                     style={{ width: '32px', height: '32px' }}
                     title="Go Back"
                   >
                     <i className="fas fa-chevron-left small"></i>
                   </button>
                 )}
-                <span className="text-muted x-small fw-bold text-uppercase tracking-wider">Step {step} of {totalSteps}</span>
+                <span className="text-muted x-small fw-bold text-uppercase tracking-wider">
+                  Step {step} of {totalSteps}
+                </span>
               </div>
               <span className="text-muted x-small fw-bold">{progress}% Complete</span>
             </div>
-            
+
             <AnimatePresence mode="wait">
               <motion.div
                 key={step}

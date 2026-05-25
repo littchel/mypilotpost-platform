@@ -16,16 +16,29 @@ export async function refreshSocialConnection(db, connection, env) {
   
   try {
     const refreshToken = await decrypt(connection.refresh_token, secret);
-    
+
+    const credKey = (provider.credential_key || connection.platform).toUpperCase();
+    const client_id = env[`${credKey}_CLIENT_ID`];
+    const client_secret = env[`${credKey}_CLIENT_SECRET`];
+
+    // X and Pinterest require HTTP Basic auth — credentials must NOT appear in body
+    const useBasicAuth = connection.platform === 'x' || connection.platform === 'pinterest';
+
+    const headers = { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" };
+    if (useBasicAuth) {
+      headers["Authorization"] = `Basic ${btoa(`${client_id}:${client_secret}`)}`;
+    }
+
+    const tokenParams = new URLSearchParams({ grant_type: "refresh_token", refresh_token: refreshToken });
+    if (!useBasicAuth) {
+      tokenParams.set("client_id", client_id);
+      tokenParams.set("client_secret", client_secret);
+    }
+
     const res = await fetch(provider.endpoints.token, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
-      body: new URLSearchParams({
-        grant_type: "refresh_token",
-        refresh_token: refreshToken,
-        client_id: env[`${connection.platform.toUpperCase()}_CLIENT_ID`],
-        client_secret: env[`${connection.platform.toUpperCase()}_CLIENT_SECRET`]
-      })
+      headers,
+      body: tokenParams
     });
 
     const data = await res.json();

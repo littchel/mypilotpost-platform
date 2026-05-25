@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import BrandPreview from '../components/shared/BrandPreview';
 
-const API_BASE = import.meta.env.VITE_API_URL || "https://api.mypilotpost.com";
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8788";
 
 /**
  * PublicApproval — Phase 6: External Approval Portal

@@ -3,14 +3,13 @@
  */
 
 export async function normalize(tokenData, env) {
-  const profileRes = await fetch("https://open-api.tiktok.com/user/info/", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      access_token: tokenData.access_token,
-      fields: ["open_id", "union_id", "avatar_url", "display_name"]
-    })
-  });
+  const profileRes = await fetch(
+    "https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name",
+    {
+      method: "GET",
+      headers: { "Authorization": `Bearer ${tokenData.access_token}` }
+    }
+  );
 
   const { data: profile } = await profileRes.json();
   if (!profileRes.ok) throw new Error("TikTok profile fetch failed");

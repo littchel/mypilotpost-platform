@@ -8,7 +8,7 @@ import { createSocialAsset } from "../content/social.js";
 import { saveSocialVariants } from "../content/social_variants.js";
 import { checkAndIncrement } from "../billing/enforcement.js";
 
-import { runLLM } from "./ai_client.js";
+import { trackedRunLLM } from "./ai_client.js";
 
 const ALLOWED_PLATFORMS = [
   "facebook",
@@ -66,19 +66,19 @@ Tone: ${tone}. CTA: ${cta}.
 Context: ${intention || issue_context}.
 Respond in strict JSON format: { "posts": [{ "content": string, "platform": string, "tone": string, "cta": string, "hashtags": string[] }] }`;
 
-  const { output } = await runLLM(env, systemPrompt, { brand });
-  
-  let generatedPosts = [];
-  try {
-    const data = JSON.parse(output);
-    generatedPosts = data.posts || [];
-  } catch (e) {
-    console.error("AI Generation failed or returned malformed JSON:", output);
-    return json({ error: "AI service unavailable" }, 503);
-  }
+  const result = await trackedRunLLM(env, {
+    brand,
+    prompt: systemPrompt,
+    brand_id: auth.brand_id,
+    user_id: auth.user_id,
+    content_type: "social",
+    platform: platforms[0] || null,
+  });
+
+  const generatedPosts = result?.posts || [];
 
   if (generatedPosts.length === 0) {
-    return json({ error: "AI service unavailable" }, 503);
+    return json({ error: "AI service temporarily unavailable. Please try again." }, 503);
   }
 
   /* ---------------- RESPONSE ---------------- */

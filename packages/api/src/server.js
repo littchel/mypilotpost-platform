@@ -14,7 +14,10 @@ import {
   startOAuth,
   handleCallback,
   listIntegrations,
-  disconnectIntegration
+  disconnectIntegration,
+  listSocialConnections,
+  disconnectSocialConnection,
+  refreshConnectionOnDemand
 } from "./integrations/handlers.js";
 
 import {
@@ -23,7 +26,9 @@ import {
 } from "./integrations/oauth_unified.js";
 
 import { requireAuth, requirePermission, requireAdmin, requireBrandContext } from "./auth/middleware.js";
+import { hasPermission } from "./auth/permissions.js";
 import { logAdminAction } from "./lib/admin_logger.js";
+import { getDB } from "./lib/db.js";
 import { rateLimit } from "./lib/rate-limit.js";
 
 import {
@@ -32,12 +37,14 @@ import {
   verifyEmail,
   forgotPassword,
   resetPassword,
-  getProfile
+  getProfile,
+  changePassword
 } from "./auth/customer.js";
 
 /* ======================================================
-   ADMIN AUTH (RBAC UPGRADED)
+   ADMIN AUTH (COMPLETELY SEPARATE FROM CUSTOMER AUTH)
 ====================================================== */
+import { adminLogin, requireAdminAuth } from "./auth/admin.js";
 
 /* ======================================================
    CORE
@@ -85,7 +92,7 @@ import {
   registerReferral as registerGrowthReferral 
 } from "./core/growth/handlers.js";
 import { listInsights, resolveInsight, listAudits, getFullAudit } from "./core/intelligence/handlers.js";
-import { runPublicAudit, captureAuditLead } from "./core/intelligence/public_audit.js";
+import { runPublicAudit, captureAuditLead, getPublicAuditById } from "./core/intelligence/public_audit.js";
 
 
 /* ======================================================
@@ -151,7 +158,9 @@ import {
   attachMedia,
   detachMedia,
   registerFreepikMedia,
-  getAttachedMedia
+  getAttachedMedia,
+  uploadMedia,
+  serveMediaFile
 } from "./core/media/media.js";
 
 import { getMediaSuggestions } from "./core/media/intelligence/index.js";
@@ -202,14 +211,14 @@ import {
   handleEmailTemplates
 } from "./api/admin/campaigns-emails.js";
 
-import { handleAdminUsers, toggleAdminUserStatus } from "./api/admin/users.js";
+import { handleAdminUsers, handleAdminUserDetail, toggleAdminUserStatus } from "./api/admin/users.js";
 
 import { 
   billingOverview,
   mrrHistory 
 } from "./api/admin/billing.js";
 import { deliveryAnalytics } from "./api/admin/analytics.js";
-import { handleYocoWebhook } from "./webhooks/yoco.js";
+import { handleYocoWebhook } from "./core/billing/yoco-webhook.js";
 import { getCurrentPlan } from "./core/billing/billing.js";
 // Using global error import
 
@@ -236,6 +245,23 @@ import {
 } from "./core/onboarding/platforms.js";
 
 import { getReadiness } from "./core/onboarding/readiness.js";
+
+/* ======================================================
+   COMPLIANCE (PHASE 13)
+====================================================== */
+import {
+  handleDeleteRequest,
+  handleDeleteCancel,
+  handleDeleteStatus,
+  handleDataExport,
+  handleExportHistory,
+  handleConsentUpdate,
+  handleConsentGet,
+  adminListDeletions,
+  adminComplianceAuditLog,
+  adminListExports,
+  processPendingDeletions,
+} from "./api/customer/compliance.js";
 
 /* ======================================================
    CUSTOMER ANALYTICS (AUTHORITATIVE)
@@ -297,6 +323,7 @@ import {
 } from "./core/marketing/blog.js";
 import { getAuditReport, getAuditReportPDF } from "./core/reports/audit_report.js";
 import { handleAdminPricing, handleAdminPricingById, togglePlanStatus, createAdminPricing, getPublicPricing } from "./api/admin/pricing.js";
+import { getSystemEvents } from "./api/admin/observability-api.js";
 
 /* ======================================================
    DELIVERY ENGINE
@@ -332,9 +359,11 @@ function getCorsHeaders(request) {
     "http://localhost:5173",
     "http://localhost:8081",
     "http://localhost:8082",
+    "http://localhost:8090",
     "https://mypilotpost.com",
     "https://www.mypilotpost.com",
-    "https://app.mypilotpost.com"
+    "https://app.mypilotpost.com",
+    "https://admin.mypilotpost.com"
   ];
 
   const headers = {
@@ -355,17 +384,25 @@ const defaultCorsHeaders = {
   "Access-Control-Max-Age": "86400"
 };
 
+const securityHeaders = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
+  "Permissions-Policy": "geolocation=(), camera=(), microphone=()"
+};
+
 /* ======================================================
    ERROR HANDLER
 ====================================================== */
 function handleError(err, request = null) {
   const cors = request ? getCorsHeaders(request) : defaultCorsHeaders;
+  const allHeaders = { ...securityHeaders, ...cors };
 
-  // If it's already a Response, we must ensure it has CORS headers
   if (err instanceof Response) {
     const newHeaders = new Headers(err.headers);
-    Object.entries(cors).forEach(([k, v]) => newHeaders.set(k, v));
-    
+    Object.entries(allHeaders).forEach(([k, v]) => newHeaders.set(k, v));
+
     return new Response(err.body, {
       status: err.status,
       statusText: err.statusText,
@@ -388,12 +425,9 @@ function handleError(err, request = null) {
 
   // PRODUCTION SAFETY: No stack traces or details to client
   return json(
-    { 
-      error: message,
-      code
-    },
+    { error: message, code },
     status,
-    cors
+    allHeaders
   );
 }
 
@@ -403,26 +437,25 @@ function handleError(err, request = null) {
 ====================================================== */
 async function withCors(request, responsePromise) {
   const cors = getCorsHeaders(request);
+  const allHeaders = { ...securityHeaders, ...cors };
   try {
     const response = await responsePromise;
-    
+
     if (!response) {
       return handleError(new Error("Empty response"), request);
     }
 
-    // If it's a stream (like SSE), don't consume it
     const contentType = response.headers.get("Content-Type") || "";
     if (contentType.includes("text/event-stream")) {
       return new Response(response.body, {
         status: response.status,
         headers: {
           ...Object.fromEntries(response.headers.entries()),
-          ...cors
+          ...allHeaders
         }
       });
     }
 
-    // Capture response details before creating a new Response object
     const status = response.status;
     const body = await response.text();
 
@@ -430,12 +463,172 @@ async function withCors(request, responsePromise) {
       status,
       headers: {
         "Content-Type": contentType || "application/json",
-        ...cors
+        ...allHeaders
       }
     });
   } catch (error) {
     return handleError(error, request);
   }
+}
+
+/* ======================================================
+   ADMIN HANDLER FUNCTIONS
+====================================================== */
+
+async function handleAdminCustomers(request, env) {
+  const db = getDB(env);
+  const url = new URL(request.url);
+  const page = parseInt(url.searchParams.get("page") || "1");
+  const limit = 50;
+  const offset = (page - 1) * limit;
+  const search = url.searchParams.get("search") || "";
+
+  let query = `
+    SELECT u.id, u.email, u.role, u.plan_id, u.subscription_status,
+           u.is_active, u.created_at,
+           (SELECT COUNT(*) FROM brands b WHERE b.id IN (SELECT brand_id FROM brand_users bu WHERE bu.user_id = u.id)) as brand_count,
+           p.name as plan_name
+    FROM users u
+    LEFT JOIN plans p ON p.id = u.plan_id
+    WHERE u.role = 'user'
+  `;
+  const binds = [];
+  if (search) {
+    query += " AND LOWER(u.email) LIKE ?";
+    binds.push(`%${search.toLowerCase()}%`);
+  }
+  query += ` ORDER BY u.created_at DESC LIMIT ${limit} OFFSET ${offset}`;
+
+  const { results } = binds.length
+    ? await db.prepare(query).bind(...binds).all()
+    : await db.prepare(query).all();
+
+  return json({ success: true, data: results || [], page, limit });
+}
+
+async function getAdminSupportThreads(request, env) {
+  const db = getDB(env);
+  const { results } = await db.prepare(`
+    SELECT
+      sm.sender_id,
+      u.email as sender_email,
+      MAX(sm.created_at) as last_message_at,
+      COUNT(*) as message_count,
+      SUM(CASE WHEN sm.read_at IS NULL AND sm.is_admin_msg = 0 THEN 1 ELSE 0 END) as unread_count,
+      (SELECT message FROM support_messages WHERE sender_id = sm.sender_id ORDER BY created_at DESC LIMIT 1) as last_message
+    FROM support_messages sm
+    LEFT JOIN users u ON u.id = sm.sender_id
+    GROUP BY sm.sender_id
+    ORDER BY last_message_at DESC
+    LIMIT 100
+  `).all();
+  return json({ threads: results || [] });
+}
+
+async function sendAdminMessage(request, env, auth) {
+  const db = getDB(env);
+  const { receiver_id, message } = await request.json();
+  if (!receiver_id || !message) return error("receiver_id and message required", "BAD_REQUEST", null, 400);
+
+  const msgId = crypto.randomUUID();
+  const timestamp = new Date().toISOString();
+  await db.prepare(
+    "INSERT INTO support_messages (id, sender_id, receiver_id, message, is_admin_msg, created_at) VALUES (?, ?, ?, ?, 1, ?)"
+  ).bind(msgId, auth.user_id, receiver_id, message, timestamp).run();
+
+  await logAdminAction(env, auth, "send_message", "support_message", msgId, { receiver_id });
+  return json({ success: true, id: msgId });
+}
+
+async function broadcastAdminMessage(request, env, auth) {
+  const db = getDB(env);
+  const { message, filter } = await request.json();
+  if (!message) return error("message required", "BAD_REQUEST", null, 400);
+
+  let query = "SELECT id FROM users WHERE role = 'user' AND is_active = 1";
+  const binds = [];
+  if (filter?.plan_id) { query += " AND plan_id = ?"; binds.push(filter.plan_id); }
+
+  const { results: users } = binds.length
+    ? await db.prepare(query).bind(...binds).all()
+    : await db.prepare(query).all();
+
+  const timestamp = new Date().toISOString();
+  let sent = 0;
+  for (const u of users) {
+    try {
+      await db.prepare(
+        "INSERT INTO support_messages (id, sender_id, receiver_id, message, is_admin_msg, created_at) VALUES (?, ?, ?, ?, 1, ?)"
+      ).bind(crypto.randomUUID(), auth.user_id, u.id, message, timestamp).run();
+      sent++;
+    } catch { /* continue */ }
+  }
+
+  await logAdminAction(env, auth, "broadcast_message", "support_messages", "broadcast", { sent, filter });
+  return json({ success: true, sent });
+}
+
+async function getAdminSystemStatus(env) {
+  const db = getDB(env);
+  const [delivery, events] = await Promise.all([
+    db.prepare(`
+      SELECT COUNT(*) as total,
+             SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
+             SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed
+      FROM delivery_jobs WHERE created_at > datetime('now', '-24 hours')
+    `).first(),
+    db.prepare("SELECT severity, source, message, created_at FROM admin_system_events ORDER BY created_at DESC LIMIT 20").all()
+  ]);
+  const failRate = delivery.total > 0 ? delivery.failed / delivery.total : 0;
+  return json({
+    status: failRate > 0.3 ? "degraded" : "operational",
+    delivery_24h: { total: delivery.total || 0, failed: delivery.failed || 0, completed: delivery.completed || 0, fail_rate: failRate },
+    recent_events: events.results || [],
+    timestamp: new Date().toISOString()
+  });
+}
+
+async function getOperationsHealth(env) {
+  const db = getDB(env);
+  const [aiUsage, oauthFails, deliveryFails] = await Promise.all([
+    db.prepare("SELECT COUNT(*) as count FROM ai_generations WHERE created_at > datetime('now', '-1 hour')").first(),
+    db.prepare("SELECT COUNT(*) as count FROM admin_system_events WHERE source = 'oauth' AND severity = 'critical' AND created_at > datetime('now', '-24 hours')").first().catch(() => ({ count: 0 })),
+    db.prepare("SELECT COUNT(*) as count FROM delivery_jobs WHERE status = 'failed' AND updated_at > datetime('now', '-1 hour')").first()
+  ]);
+  return json({
+    ai_generations_last_hour: aiUsage?.count || 0,
+    oauth_failures_24h: oauthFails?.count || 0,
+    delivery_failures_last_hour: deliveryFails?.count || 0,
+    timestamp: new Date().toISOString()
+  });
+}
+
+async function getAdminPromotions(env) {
+  const db = getDB(env);
+  const { results } = await db.prepare(`
+    SELECT id, code, discount_type, discount_value, max_uses, uses_count,
+           is_active, expires_at, created_at
+    FROM promotions ORDER BY created_at DESC LIMIT 50
+  `).all().catch(() => ({ results: [] }));
+  return json({ promotions: results || [] });
+}
+
+async function createAdminPromotion(request, env, auth) {
+  const db = getDB(env);
+  const { code, discount_type, discount_value, max_uses, expires_at } = await request.json();
+  if (!code || !discount_type || !discount_value) {
+    return error("code, discount_type, discount_value required", "BAD_REQUEST", null, 400);
+  }
+  const id = crypto.randomUUID();
+  await db.prepare(`
+    INSERT INTO promotions (id, code, discount_type, discount_value, max_uses, is_active, expires_at, created_at)
+    VALUES (?, UPPER(?), ?, ?, ?, 1, ?, CURRENT_TIMESTAMP)
+  `).bind(id, code, discount_type, discount_value, max_uses || null, expires_at || null).run().catch(err => {
+    if (err.message?.includes("UNIQUE")) throw error("Promo code already exists", "CONFLICT", null, 409);
+    throw err;
+  });
+  await logAdminAction(env, auth, "create_promotion", "promotion", id, { code, discount_type, discount_value });
+  return json({ success: true, id });
 }
 
 /* ======================================================
@@ -457,7 +650,7 @@ export default {
 
     try {
       /* ================= HEALTH ================= */
-      if (path === "/api/health") return withCors(request, Promise.resolve(json({ status: "ok", version: "1.1.1-qa" })));
+      if (path === "/api/health") return withCors(request, Promise.resolve(json({ status: "ok", version: "1.1.1" })));
 
       /* ================= SUPPORT (SSE & MESSAGES) ================= */
       if (path.startsWith("/api/v1/support")) {
@@ -466,8 +659,9 @@ export default {
 
       /* ================= INTERNAL PERFORMANCE INGESTION ================= */
       if (method === "POST" && path === "/api/internal/performance/ingest") {
+        await requireAdmin(request, env);
         await runPerformanceIngestion(env);
-        return json({ success: true }, 200, defaultCorsHeaders);
+        return json({ success: true }, 200, { ...securityHeaders, ...defaultCorsHeaders });
       }
 
       /* ================= INTERNAL BRAND INTELLIGENCE ================= */
@@ -530,6 +724,15 @@ export default {
         return withCors(request, runPublicAudit(request, env));
       }
 
+      if (method === "GET" && path.startsWith("/api/public/brand-audit/")) {
+        const auditId = path.split("/")[4];
+        return withCors(request, getPublicAuditById(request, env, auditId));
+      }
+
+      if (method === "POST" && path === "/api/public/audit-lead") {
+        return withCors(request, captureAuditLead(request, env));
+      }
+
       /* ================= PUBLIC APPROVAL (NO AUTH) ================= */
       if (method === "GET" && path.startsWith("/api/public/approval/") && !path.endsWith("/comment")) {
         const contentId = path.split("/")[4];
@@ -549,9 +752,8 @@ export default {
       /* ================= PUBLIC AUTH ================= */
       if (path === "/api/customer/profile" && method === "GET") {
         const auth = await requireAuth(request, env);
-        if (auth instanceof Response) return auth;
         request.user = { id: auth.user_id, ...auth };
-        return await getProfile(request, env);
+        return withCors(request, getProfile(request, env));
       }
 
       if (path === "/api/customer/register" && method === "POST") {
@@ -614,6 +816,13 @@ export default {
         return withCors(request, resetPassword(request, env));
       }
 
+      if (method === "POST" && path === "/api/customer/account/change-password") {
+        const auth = await requireAuth(request, env);
+        if (auth instanceof Response) return auth;
+        request.user = { id: auth.user_id };
+        return withCors(request, changePassword(request, env));
+      }
+
       /* ---------- PUBLIC INVITE ACCEPTANCE ---------- */
       if (method === "POST" && path === "/api/customer/invites/accept") {
         return withCors(request, acceptInvite(request, env));
@@ -632,78 +841,103 @@ export default {
         return handleUnifiedCallback(request, env);
       }
 
-      /* ================= ADMIN ================= */
+      /* ---------- UNIFIED OAUTH START (PROTECTED — requires JWT) ---------- */
+      if (method === "GET" && path.startsWith("/api/oauth/") && path.endsWith("/connect")) {
+        const auth = await requireAuth(request, env);
+        return withCors(request, startUnifiedOAuth(request, env, auth));
+      }
+
+      /* ================= ADMIN AUTH (SEPARATE FROM CUSTOMER) ================= */
+      if (path === "/api/admin/login" && method === "POST") {
+        const limited = await rateLimit(request, env, "auth");
+        if (limited) return withCors(request, Promise.resolve(limited));
+        return withCors(request, adminLogin(request, env));
+      }
+
+      if (path === "/api/admin/session" && method === "GET") {
+        const auth = await requireAdminAuth(request, env);
+        return withCors(request, Promise.resolve(json({ user_id: auth.user_id, email: auth.email, role: auth.role })));
+      }
+
+      if (path === "/api/admin/profile" && method === "GET") {
+        const auth = await requireAdminAuth(request, env);
+        return withCors(request, Promise.resolve(json({ user_id: auth.user_id, email: auth.email, role: auth.role, is_admin: true })));
+      }
+
+      /* ================= ADMIN (all routes require admin JWT with is_admin:true) ================= */
       if (path.startsWith("/api/v1/admin")) {
         if (path === "/api/v1/admin/overview") {
-          await requireAdmin(request, env);
+          await requireAdminAuth(request, env);
           return billingOverview(env);
         }
 
         if (path === "/api/v1/admin/billing/overview") {
-          await requirePermission(request, env, "analytics:read");
+          await requireAdminAuth(request, env);
           return billingOverview(env);
         }
 
         if (path === "/api/v1/admin/billing/mrr-history") {
-          await requirePermission(request, env, "analytics:read");
-          return mrrHistory();
+          await requireAdminAuth(request, env);
+          return mrrHistory(env);
         }
 
         if (path === "/api/v1/admin/analytics/delivery") {
-          await requirePermission(request, env, "analytics:read");
+          await requireAdminAuth(request, env);
           return deliveryAnalytics(env);
         }
 
         if (path === "/api/v1/admin/users") {
-          await requirePermission(request, env, "users:read");
+          await requireAdminAuth(request, env);
           return handleAdminUsers(request, env);
         }
 
         if (path.startsWith("/api/v1/admin/users/") && path.endsWith("/toggle")) {
-          await requirePermission(request, env, "users:write");
+          await requireAdminAuth(request, env);
           return toggleAdminUserStatus(request, env, path.split("/")[5]);
         }
 
         if (path === "/api/v1/admin/campaigns") {
-          await requirePermission(request, env, "analytics:read");
+          await requireAdminAuth(request, env);
           return handleCampaigns(request, env);
         }
 
         if (path.startsWith("/api/v1/admin/campaigns/") && path.endsWith("/content")) {
-          await requirePermission(request, env, "analytics:read");
+          await requireAdminAuth(request, env);
           return handleCampaignContent(request, env, path.split("/")[5]);
         }
 
         if (path === "/api/v1/admin/emails/campaigns") {
-          await requirePermission(request, env, "analytics:read");
+          await requireAdminAuth(request, env);
           return handleEmailCampaigns(request, env);
         }
 
         if (path === "/api/v1/admin/emails/messages") {
-          await requirePermission(request, env, "analytics:read");
+          await requireAdminAuth(request, env);
           return handleEmailMessages(request, env);
         }
 
         if (path === "/api/v1/admin/emails/templates") {
-          await requirePermission(request, env, "analytics:read");
+          await requireAdminAuth(request, env);
           return handleEmailTemplates(request, env);
         }
 
-        /* ---------- PRICING MANAGEMENT (NEW) ---------- */
+        /* ---------- PRICING MANAGEMENT ---------- */
         if (path === "/api/v1/admin/pricing" && method === "GET") {
-          await requirePermission(request, env, "billing:read");
+          await requireAdminAuth(request, env);
           return handleAdminPricing(env);
         }
 
         if (path === "/api/v1/admin/pricing" && method === "POST") {
-          const auth = await requirePermission(request, env, "pricing:write");
+          const auth = await requireAdminAuth(request, env);
+          if (!hasPermission(auth.role, "pricing:write")) throw error("Pricing write requires admin role", "FORBIDDEN", null, 403);
           const res = await createAdminPricing(request, env);
           await logAdminAction(env, auth, "create_plan", "pricing", "new_plan", { method });
           return res;
         }
 
         if (path.startsWith("/api/v1/admin/pricing/") && path.endsWith("/toggle")) {
-          const auth = await requirePermission(request, env, "pricing:write");
+          const auth = await requireAdminAuth(request, env);
+          if (!hasPermission(auth.role, "pricing:write")) throw error("Pricing write requires admin role", "FORBIDDEN", null, 403);
           const planId = path.split("/")[5];
           const res = await togglePlanStatus(request, env);
           await logAdminAction(env, auth, "toggle_plan", "pricing", planId);
@@ -711,22 +945,126 @@ export default {
         }
 
         if (path.startsWith("/api/v1/admin/pricing/")) {
-          const auth = await requirePermission(request, env, "billing:read");
+          await requireAdminAuth(request, env);
           return handleAdminPricingById(request, env);
         }
+
+        /* ---------- CUSTOMERS (alias to /users for portal compat) ---------- */
+        if (path === "/api/v1/admin/customers") {
+          await requireAdminAuth(request, env);
+          return handleAdminCustomers(request, env);
+        }
+
+        if (path.startsWith("/api/v1/admin/customers/") && path.endsWith("/toggle")) {
+          await requireAdminAuth(request, env);
+          return toggleAdminUserStatus(request, env, path.split("/")[5]);
+        }
+
+        if (path.startsWith("/api/v1/admin/customers/") && method === "GET") {
+          await requireAdminAuth(request, env);
+          return handleAdminUserDetail(request, env, path.split("/")[5]);
+        }
+
+        /* ---------- SUPPORT THREADS ---------- */
+        if (path === "/api/v1/admin/support/threads") {
+          await requireAdminAuth(request, env);
+          return getAdminSupportThreads(request, env);
+        }
+
+        if (path === "/api/v1/admin/support/message" && method === "POST") {
+          const auth = await requireAdminAuth(request, env);
+          return sendAdminMessage(request, env, auth);
+        }
+
+        if (path === "/api/v1/admin/support/broadcast" && method === "POST") {
+          const auth = await requireAdminAuth(request, env);
+          return broadcastAdminMessage(request, env, auth);
+        }
+
+        /* ---------- COMPLIANCE (ADMIN, PHASE 13) ---------- */
+        if (path === "/api/v1/admin/compliance/deletions" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return withCors(request, adminListDeletions(request, env));
+        }
+        if (path === "/api/v1/admin/compliance/exports" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return withCors(request, adminListExports(request, env));
+        }
+        if (path === "/api/v1/admin/compliance/audit-log" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return withCors(request, adminComplianceAuditLog(request, env));
+        }
+
+        /* ---------- SYSTEM STATUS ---------- */
+        if (path === "/api/v1/admin/system/status") {
+          await requireAdminAuth(request, env);
+          return getAdminSystemStatus(env);
+        }
+
+        /* ---------- OPERATIONS / HEALTH ---------- */
+        if (path === "/api/v1/admin/operations/health") {
+          await requireAdminAuth(request, env);
+          return getOperationsHealth(env);
+        }
+
+        /* ---------- BLOG (MARKETING) ---------- */
+        if (path === "/api/v1/admin/blog" && method === "GET") {
+          const auth = await requireAdminAuth(request, env);
+          return listMarketingPosts(request, env, auth);
+        }
+        if (path === "/api/v1/admin/blog" && method === "POST") {
+          const auth = await requireAdminAuth(request, env);
+          return createMarketingPost(request, env, auth);
+        }
+        if (path.startsWith("/api/v1/admin/blog/") && method === "PATCH") {
+          const auth = await requireAdminAuth(request, env);
+          const id = path.split("/")[5];
+          return updateMarketingPost(request, env, auth, id);
+        }
+        if (path.startsWith("/api/v1/admin/blog/") && method === "DELETE") {
+          const auth = await requireAdminAuth(request, env);
+          const id = path.split("/")[5];
+          return deleteMarketingPost(request, env, auth, id);
+        }
+
+        /* ---------- PROMOTIONS ---------- */
+        if (path === "/api/v1/admin/promotions" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return getAdminPromotions(env);
+        }
+        if (path === "/api/v1/admin/promotions" && method === "POST") {
+          const auth = await requireAdminAuth(request, env);
+          return createAdminPromotion(request, env, auth);
+        }
+
+        /* ---------- STUBS for future sections (return empty, no error) ---------- */
+        if (path === "/api/v1/admin/memory")
+          return withCors(request, Promise.resolve(json({ brands: [], total: 0 })));
+        if (path === "/api/v1/admin/seo/overview")
+          return withCors(request, Promise.resolve(json({ pages: [], coverage: 0 })));
+        if (path === "/api/v1/admin/automation/rules")
+          return withCors(request, Promise.resolve(json({ rules: [] })));
+        if (path === "/api/v1/admin/ml/health")
+          return withCors(request, Promise.resolve(json({ status: "ok", models: [] })));
+        if (path === "/api/v1/admin/experiments")
+          return withCors(request, Promise.resolve(json({ experiments: [] })));
       }
+
+      /* ================= PUBLIC WEBHOOKS (NO AUTH) ================= */
+      if (method === "POST" && path === "/api/webhooks/yoco")
+        return handleYocoWebhook(request, env);
 
       /* ======================================================
          CUSTOMER (PROTECTED)
       ====================================================== */
+      /* ---------- AUDIT PDF (own auth — path starts with /api/v1/ not /api/customer/) ---------- */
+      if (method === "GET" && path.startsWith("/api/v1/audit/report/") && path.endsWith("/pdf")) {
+        const auth = await requireAuth(request, env);
+        return withCors(request, getAuditReportPDF(request, env, auth));
+      }
+
       if (path.startsWith("/api/customer")) {
         const auth = await requireAuth(request, env);
-
-        /* ---------- AUDIT REPORTS ---------- */
-        if (path.startsWith("/api/v1/audit/report/") && path.endsWith("/pdf")) {
-          const auth = await requireAuth(request, env);
-          return withCors(request, getAuditReportPDF(request, env, auth));
-        }
 
         if (path.startsWith("/api/customer/audit/report/")) {
           return withCors(request, getAuditReport(request, env, auth));
@@ -739,11 +1077,6 @@ export default {
           return startOAuth(request, env, auth);
         }
 
-        /* ---------- UNIFIED OAUTH START (PROTECTED) ---------- */
-        if (method === "GET" && path.startsWith("/api/oauth/") && path.endsWith("/connect")) {
-          return startUnifiedOAuth(request, env, auth);
-        }
-
         if (method === "GET" && path === "/api/customer/integrations")
           return listIntegrations(request, env, auth);
 
@@ -753,8 +1086,24 @@ export default {
           return disconnectIntegration(request, env, auth);
         }
 
+        /* ---------- SOCIAL CONNECTIONS (unified table) ---------- */
+        if (method === "GET" && path === "/api/customer/social-connections")
+          return withCors(request, listSocialConnections(request, env, auth));
+
+        if (method === "DELETE" && path.startsWith("/api/customer/social-connections/")) {
+          const id = path.split("/")[4];
+          request.params = { id };
+          return withCors(request, disconnectSocialConnection(request, env, auth));
+        }
+
+        if (method === "POST" && path.startsWith("/api/customer/social-connections/") && path.endsWith("/refresh")) {
+          const id = path.split("/")[4];
+          request.params = { id };
+          return withCors(request, refreshConnectionOnDemand(request, env, auth));
+        }
+
         /* ---------- BRANDS ---------- */
-        if (method === "POST" && path === "/api/customer/brand/import") return withCors(request, importBrandFromUrl(request, env));
+        if (method === "POST" && path === "/api/customer/brand/import") return withCors(request, importBrandFromUrl(request, env, auth));
         if (method === "POST" && path === "/api/customer/brands/create")
           return withCors(request, createBrandRequest(request, env, auth));
 
@@ -777,9 +1126,6 @@ export default {
         if (method === "POST" && path === "/api/customer/onboarding/complete")
           return withCors(request, completeOnboarding(request, env, auth));
 
-        if (method === "POST" && path === "/api/webhooks/yoco")
-          return handleYocoWebhook(request, env);
-
         /* ---------- BILLING ---------- */
         if (method === "GET" && path === "/api/customer/billing/plan") {
            const db = env.mypilotpost;
@@ -788,12 +1134,49 @@ export default {
         }
 
         if (method === "POST" && path === "/api/customer/billing/upgrade") {
-           // Simulated upgrade for MVP
            const body = await request.json();
            const { plan_id } = body;
+           if (!plan_id) return json({ error: "plan_id required" }, 400, getCorsHeaders(request));
            const db = env.mypilotpost;
-           await db.prepare("UPDATE subscriptions SET plan_id = ?, status = 'active' WHERE user_id = ?").bind(plan_id, auth.user_id).run();
-           return json({ success: true, plan_id }, 200, getCorsHeaders(request));
+           const validPlan = await db.prepare("SELECT id, name FROM plans WHERE id = ? AND is_active = 1").bind(plan_id).first();
+           if (!validPlan) return json({ error: "Invalid plan" }, 400, getCorsHeaders(request));
+           const now = new Date().toISOString();
+           const periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+           await db.batch([
+             db.prepare("UPDATE users SET plan_id = ?, subscription_status = 'active', current_period_start = ?, current_period_end = ? WHERE id = ?")
+               .bind(plan_id, now, periodEnd, auth.user_id),
+             db.prepare("UPDATE subscriptions SET plan_id = ?, plan = ?, status = 'active', current_period_start = ?, current_period_end = ?, updated_at = ? WHERE user_id = ?")
+               .bind(plan_id, validPlan.name, now, periodEnd, now, auth.user_id),
+           ]);
+           const updatedPlan = await getCurrentPlan(db, auth.user_id);
+           return json({ success: true, plan: updatedPlan }, 200, getCorsHeaders(request));
+        }
+
+        if (method === "GET" && path === "/api/customer/billing/history") {
+           const db = env.mypilotpost;
+           const { results } = await db.prepare(`
+             SELECT p.provider, p.amount, p.currency, p.status, p.occurred_at
+             FROM payments p
+             JOIN brands b ON b.id = p.brand_id
+             JOIN brand_users bu ON bu.brand_id = b.id
+             WHERE bu.user_id = ?
+             ORDER BY p.occurred_at DESC LIMIT 50
+           `).bind(auth.user_id).all();
+           return json({ history: results || [] }, 200, getCorsHeaders(request));
+        }
+
+        if (method === "GET" && path === "/api/customer/billing/usage") {
+           const db = env.mypilotpost;
+           const plan = await getCurrentPlan(db, auth.user_id);
+           const tracking = await db.prepare(
+             "SELECT posts_used, ai_generations_used, social_accounts_used FROM usage_tracking WHERE user_id = ?"
+           ).bind(auth.user_id).first();
+           const usage = [
+             { label: "Posts", used: tracking?.posts_used || 0, limit: plan.posts_per_month_limit || 30 },
+             { label: "AI Generations", used: tracking?.ai_generations_used || 0, limit: plan.ai_generations_limit || 10 },
+             { label: "Social Accounts", used: tracking?.social_accounts_used || 0, limit: plan.social_accounts_limit || 3 },
+           ];
+           return json({ usage }, 200, getCorsHeaders(request));
         }
          if (method === "POST" && path === "/api/customer/schedule")
            return withCors(request, createSchedule(request, env, auth));
@@ -1163,15 +1546,6 @@ export default {
           return withCors(request, deleteMarketingPost(request, env, auth, id));
         }
 
-        if (method === "POST" && path === "/api/customer/ai/social/generate")
-          return withCors(request, generateSocialContent(request, env, auth));
-
-        if (method === "POST" && path === "/api/customer/ai/blog/generate")
-          return withCors(request, generateBlogArticle(request, env, auth));
-
-        if (method === "POST" && path === "/api/customer/ai/hashtags")
-          return withCors(request, generateHashtags(request, env, auth));
-
         /* ---------- COLLABORATION & APPROVAL ---------- */
         if (method === "PATCH" && path.startsWith("/api/customer/content/") && path.endsWith("/status")) {
           const id = path.split("/")[4];
@@ -1319,6 +1693,12 @@ export default {
         if (method === "POST" && path === "/api/customer/media/from-canva")
           return withCors(request, importFromCanva(request, env, auth));
 
+        if (method === "POST" && path === "/api/customer/media/upload")
+          return withCors(request, uploadMedia(request, env, auth));
+
+        if (method === "GET" && path.startsWith("/api/customer/media/file/"))
+          return withCors(request, serveMediaFile(request, env, auth));
+
         /* ---------- ANALYTICS & REPORTING ---------- */
         if (method === "GET" && path === "/api/customer/analytics/overview")
           return withCors(request, getAnalyticsOverview(request, env, auth));
@@ -1348,6 +1728,28 @@ export default {
 
         if (method === "DELETE" && path === "/api/customer/compliance/delete-account")
           return withCors(request, handleDataDeletionRequest(request, env, auth));
+
+        /* ---------- COMPLIANCE (PHASE 13) ---------- */
+        if (method === "POST" && path === "/api/customer/account/delete-request")
+          return withCors(request, handleDeleteRequest(request, env, auth));
+
+        if (method === "DELETE" && path === "/api/customer/account/delete-request")
+          return withCors(request, handleDeleteCancel(request, env, auth));
+
+        if (method === "GET" && path === "/api/customer/account/delete-status")
+          return withCors(request, handleDeleteStatus(request, env, auth));
+
+        if (method === "POST" && path === "/api/customer/data/export")
+          return withCors(request, handleDataExport(request, env, auth));
+
+        if (method === "GET" && path === "/api/customer/data/export/history")
+          return withCors(request, handleExportHistory(request, env, auth));
+
+        if (method === "POST" && path === "/api/customer/consent")
+          return withCors(request, handleConsentUpdate(request, env, auth));
+
+        if (method === "GET" && path === "/api/customer/consent")
+          return withCors(request, handleConsentGet(request, env, auth));
 
         /* ---------- SETTINGS ---------- */
         if (method === "GET" && path === "/api/customer/settings/agency")
@@ -1457,6 +1859,15 @@ export default {
             await runLifecycleCron(env);
           } catch (err) {
             console.error("[CRON] Lifecycle cron failed:", err?.message || err);
+          }
+        }
+
+        // Every 4 hours: refresh expiring OAuth tokens
+        if (cron === "0 */4 * * *") {
+          try {
+            await runBackgroundRefresh(env);
+          } catch (err) {
+            console.error("[CRON] Token refresh failed:", err?.message || err);
           }
         }
       })()

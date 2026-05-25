@@ -4,7 +4,7 @@
  */
 
 import { getDB } from "../lib/db.js";
-import { encrypt, decrypt } from "../lib/crypto.js";
+import { encrypt } from "../lib/crypto.js";
 import { getProvider } from "./registry.js";
 import { getAdapter } from "./providers/index.js";
 
@@ -36,8 +36,12 @@ export async function startUnifiedOAuth(request, env, userContext) {
   const url = new URL(request.url);
   const platform = url.pathname.split("/")[3]; // /api/oauth/:platform/connect
   const provider = getProvider(platform);
-
-  if (!provider) throw new Error(`Unsupported platform: ${platform}`);
+  if (!provider) {
+    return new Response(JSON.stringify({ error: `Unsupported platform: ${platform}` }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
 
   const state = crypto.randomUUID();
   const stateData = {
@@ -47,42 +51,51 @@ export async function startUnifiedOAuth(request, env, userContext) {
     timestamp: Date.now()
   };
 
-  // PKCE Handling for X (Twitter)
+  // PKCE Handling for X (Twitter) — stored in state, never mutates shared provider object
+  let pkceChallenge = null;
   if (platform === 'x') {
     const pkce = await generatePKCE();
     stateData.code_verifier = pkce.verifier;
-    provider.auth_params = {
-      ...provider.auth_params,
-      code_challenge: pkce.challenge,
-      code_challenge_method: 'S256'
-    };
+    pkceChallenge = pkce.challenge;
   }
 
   // Store state in KV with 10 minute TTL
   await env.OAUTH_STATE.put(`state:${state}`, JSON.stringify(stateData), { expirationTtl: 600 });
 
+  const credKey = provider.credential_key || platform.toUpperCase();
   const authUrl = new URL(provider.endpoints.auth);
-  authUrl.searchParams.set("client_id", env[`${platform.toUpperCase()}_CLIENT_ID`]);
+  authUrl.searchParams.set("client_id", env[`${credKey}_CLIENT_ID`]);
   authUrl.searchParams.set("redirect_uri", `${env.BASE_URL}/api/oauth/${platform}/callback`);
   authUrl.searchParams.set("response_type", "code");
   authUrl.searchParams.set("state", state);
-  
-  // Scopes standardization
-  const scopes = provider.scopes || "";
-  authUrl.searchParams.set("scope", scopes);
 
-  // Platform specific params
+  // Scopes standardization — only set if provider defines scopes
+  if (provider.scopes) {
+    authUrl.searchParams.set("scope", provider.scopes);
+  }
+
+  // Platform-specific static params from registry
   if (provider.auth_params) {
     Object.entries(provider.auth_params).forEach(([k, v]) => authUrl.searchParams.set(k, v));
   }
 
-  // Force Google Select Account if needed
-  if (platform === 'google') {
+  // PKCE challenge appended directly to URL — registry object untouched
+  if (pkceChallenge) {
+    authUrl.searchParams.set("code_challenge", pkceChallenge);
+    authUrl.searchParams.set("code_challenge_method", "S256");
+  }
+
+  // Google providers require offline access to get a refresh_token
+  if (platform === 'google' || platform === 'google_drive' || platform === 'google_business') {
     authUrl.searchParams.set("access_type", "offline");
     authUrl.searchParams.set("prompt", "consent");
   }
 
-  return Response.redirect(authUrl.toString());
+  // Return JSON so SPA can fetch with Authorization header then navigate
+  return new Response(JSON.stringify({ url: authUrl.toString() }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" }
+  });
 }
 
 /**
@@ -92,10 +105,15 @@ export async function handleUnifiedCallback(request, env) {
   const url = new URL(request.url);
   const query = Object.fromEntries(url.searchParams);
   const { code, state, error } = query;
-  const platform = url.pathname.split("/")[2]; // /api/oauth/:platform/callback
+  const platform = url.pathname.split("/")[3]; // /api/oauth/:platform/callback → ["","api","oauth","linkedin","callback"]
 
-  if (error) throw new Error(`OAuth Error from ${platform}: ${error}`);
-  if (!code || !state) throw new Error("Missing code or state");
+  const failRedirect = (msg) =>
+    Response.redirect(`${env.FRONTEND_URL}?oauth_error=${encodeURIComponent(msg)}`, 302);
+
+  if (error) return failRedirect(`OAuth error from ${platform}: ${error}`);
+  if (!code || !state) return failRedirect("Missing code or state");
+
+  try {
 
   // Validate State from KV
   const storedState = await env.OAUTH_STATE.get(`state:${state}`);
@@ -105,25 +123,37 @@ export async function handleUnifiedCallback(request, env) {
   await env.OAUTH_STATE.delete(`state:${state}`); // Consume state
 
   const provider = getProvider(platform);
-  const client_id = env[`${platform.toUpperCase()}_CLIENT_ID`];
-  const client_secret = env[`${platform.toUpperCase()}_CLIENT_SECRET`];
+  if (!provider) throw new Error(`Unsupported platform: ${platform}`);
+  const credKey = provider.credential_key || platform.toUpperCase();
+  const client_id = env[`${credKey}_CLIENT_ID`];
+  const client_secret = env[`${credKey}_CLIENT_SECRET`];
 
   // Token Exchange
+  // X (Twitter) and Pinterest require HTTP Basic auth; credentials must NOT appear in body
+  const useBasicAuth = platform === 'x' || platform === 'pinterest';
+
   const tokenParams = new URLSearchParams({
     grant_type: "authorization_code",
     code,
     redirect_uri: `${env.BASE_URL}/api/oauth/${platform}/callback`,
-    client_id,
-    client_secret
+    ...(useBasicAuth ? {} : { client_id, client_secret })
   });
 
   if (code_verifier) {
     tokenParams.set("code_verifier", code_verifier);
   }
 
+  const tokenHeaders = {
+    "Content-Type": "application/x-www-form-urlencoded",
+    "Accept": "application/json"
+  };
+  if (useBasicAuth) {
+    tokenHeaders["Authorization"] = `Basic ${btoa(`${client_id}:${client_secret}`)}`;
+  }
+
   const tokenRes = await fetch(provider.endpoints.token, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
+    headers: tokenHeaders,
     body: tokenParams
   });
 
@@ -143,6 +173,8 @@ export async function handleUnifiedCallback(request, env) {
   }
 
   // SECURITY: Encrypt Tokens (AES-GCM 256)
+  if (!env.ENCRYPTION_SECRET) throw new Error("ENCRYPTION_SECRET not set in Worker environment");
+  if (!tokenData.access_token) throw new Error(`Token exchange succeeded but no access_token returned by ${platform}`);
   const access_enc = await encrypt(tokenData.access_token, env.ENCRYPTION_SECRET);
   const refresh_enc = tokenData.refresh_token ? await encrypt(tokenData.refresh_token, env.ENCRYPTION_SECRET) : null;
   
@@ -151,6 +183,7 @@ export async function handleUnifiedCallback(request, env) {
     : (tokenData.expires_at ? new Date(tokenData.expires_at).toISOString() : null);
 
   // Persistence logic with Duplicate Protection (UPSERT)
+  const db = getDB(env);
   const connection_id = crypto.randomUUID();
   await db.prepare(`
     INSERT INTO social_connections (
@@ -181,6 +214,10 @@ export async function handleUnifiedCallback(request, env) {
     JSON.stringify(normalized.meta || {})
   ).run();
 
-  // Redirect back to dashboard with success
-  return c.redirect(`${env.FRONTEND_URL}/settings/connections?success=${platform}`);
+    // Redirect back to dashboard with success (SPA root — tab state handled client-side)
+    return Response.redirect(`${env.FRONTEND_URL}?oauth_success=${platform}`, 302);
+  } catch (err) {
+    console.error(`[OAUTH_CALLBACK_FAILED] ${platform}:`, err.message);
+    return Response.redirect(`${env.FRONTEND_URL}?oauth_error=${encodeURIComponent(err.message)}`, 302);
+  }
 }

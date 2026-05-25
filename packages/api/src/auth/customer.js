@@ -9,7 +9,6 @@ import { issueJWT } from "./jwt.js";
 import { getRegion } from "../lib/geo.js";
 import { generateReferralCode, registerReferral } from "../core/promotions/promotions.js";
 import { emitEvent } from "../lib/bus.js";
-import { hydrateFromAudit } from "../core/onboarding/hydration.js";
 import { isDisposableEmail } from "../core/trust/verification.js";
 import { triggerLifecycleEmail } from "../core/lifecycle/engine.js";
 
@@ -76,7 +75,8 @@ export async function register(request, env) {
   try {
     const db = getDB(env);
     const body = await request.json();
-    const { email, password, referral_code, first_name, last_name, company, audit_id } = body || {};
+    const { email, password, referral_code, first_name, last_name, company, audit_id, signup_source } = body || {};
+    const resolvedSource = signup_source || (audit_id ? 'brand_audit' : 'direct');
     
     if (!email || !password) {
       return error("Missing email or password", "BAD_REQUEST", null, 400);
@@ -108,36 +108,71 @@ export async function register(request, env) {
     const country = request.cf?.country || "unknown";
     const region = getRegion(country);
 
+    const trialEnd = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+    const periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const now = new Date().toISOString();
+
     await db.prepare(
       `INSERT INTO users
-       (id, email, password_hash, verified_at, country, region, first_name, last_name, company_name)
-       VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?)`
+       (id, email, password_hash, verified_at, country, region, first_name, last_name, company_name, signup_source,
+        plan_id, subscription_status, trial_ends_at, current_period_start, current_period_end)
+       VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, 'starter', 'trial', ?, ?, ?)`
     )
-    .bind(userId, email, `${bytesToHex(salt)}:${hash}`, country, region, first_name || null, last_name || null, company || null)
+    .bind(userId, email, `${bytesToHex(salt)}:${hash}`, country, region, first_name || null, last_name || null, company || null, resolvedSource, trialEnd, now, periodEnd)
     .run();
 
     let brandId = null;
     let token = null;
 
-    // Handle Audit Hydration & Auto-Brand Creation
+    // Handle Audit-Source Registration: pre-populate onboarding, don't auto-create brand
+    // Brand is created during the guided onboarding confirmation flow
     if (audit_id) {
-      const audit = await db.prepare("SELECT brand_name, website_url FROM brand_audit_results_v2 WHERE id = ?").bind(audit_id).first();
-      if (audit) {
-        brandId = crypto.randomUUID();
-        await db.batch([
-          db.prepare("INSERT INTO brands (id, owner_user_id, name, created_at) VALUES (?, ?, ?, datetime('now'))").bind(brandId, userId, audit.brand_name),
-          db.prepare("INSERT INTO brand_users (user_id, brand_id, role, created_at) VALUES (?, ?, 'owner', datetime('now'))").bind(userId, brandId)
-        ]);
+      const audit = await db.prepare(`
+        SELECT brand_name, website_url, overall_score, score_breakdown_json,
+               strategic_actions_json, industry, goals_json, platforms_json, social_handles
+        FROM brand_audit_results_v2 WHERE id = ?
+      `).bind(audit_id).first();
 
-        await hydrateFromAudit(db, brandId, audit_id);
-        
-        // Auto-login after registration with audit
-        token = await issueJWT({
-          user_id: userId,
-          brand_id: brandId,
-          email,
-          role: "user"
-        }, env);
+      if (audit) {
+        // Link any existing lead record to this new user
+        await db.prepare("UPDATE public_audit_leads SET converted_user_id = ? WHERE audit_id = ?")
+          .bind(userId, audit_id).run();
+
+        // Build snapshot for onboarding confirmation steps
+        const strategicActions = JSON.parse(audit.strategic_actions_json || '[]');
+        const onboardingPreload = {
+          brandName: audit.brand_name || company || "",
+          websiteURL: audit.website_url || "",
+          industry: audit.industry || "",
+          goals: JSON.parse(audit.goals_json || '[]'),
+          platforms: JSON.parse(audit.platforms_json || '[]'),
+          auditId: audit_id,
+          auditScore: audit.overall_score,
+          auditBreakdown: JSON.parse(audit.score_breakdown_json || '{}'),
+          audit: {
+            score: audit.overall_score,
+            snapshot: {
+              keyIssues: strategicActions.slice(0, 3).map(a => a.cause || a.recommendation || 'Gap identified'),
+              opportunities: strategicActions.slice(0, 3).map(a => ({
+                label: a.metric || 'Opportunity',
+                desc: a.recommendation || '',
+                impact: a.impact || '+'
+              }))
+            }
+          }
+        };
+
+        // Pre-populate onboarding progress so audit context is available immediately
+        await db.prepare(`
+          INSERT INTO onboarding_progress (user_id, current_step, data, updated_at)
+          VALUES (?, 1, ?, datetime('now'))
+          ON CONFLICT(user_id) DO UPDATE SET
+            current_step = 1, data = excluded.data, updated_at = datetime('now')
+        `).bind(userId, JSON.stringify(onboardingPreload)).run();
+
+        // Issue token WITHOUT brand_id — user goes to onboarding confirmation flow
+        token = await issueJWT({ user_id: userId, email, role: "user" }, env);
+        // brandId stays null: frontend routes to /onboarding
       }
     }
 
@@ -160,6 +195,11 @@ export async function register(request, env) {
     )
     .bind(crypto.randomUUID(), userId, newToken())
     .run();
+
+    // Issue JWT for direct (non-audit) registrations — audit path already issued one above
+    if (!token) {
+      token = await issueJWT({ user_id: userId, email, role: "user" }, env);
+    }
 
     // Fire welcome email — awaited but non-fatal
     try {
@@ -196,7 +236,7 @@ export async function login(request, env) {
 
     const user = await db
       .prepare(
-        `SELECT id, password_hash, role, is_active
+        `SELECT id, password_hash, role, is_active, first_name
          FROM users
          WHERE email = ?`
       )
@@ -258,7 +298,8 @@ export async function login(request, env) {
         user_id: user.id,
         brand_id: resolvedBrandId,
         email,
-        role: user.role || "user"
+        role: user.role || "user",
+        first_name: user.first_name || null
       },
       env
     );
@@ -356,8 +397,8 @@ export async function forgotPassword(request, env) {
        VALUES (?, ?, ?, datetime('now','+1 hour'))`
     ).bind(crypto.randomUUID(), user.id, resetToken).run();
 
-    const BASE_URL = env.BASE_URL || "https://app.mypilotpost.com";
-    const reset_url = `${BASE_URL}/reset-password?token=${resetToken}`;
+    const FRONTEND_URL = env.FRONTEND_URL || "https://app.mypilotpost.com";
+    const reset_url = `${FRONTEND_URL}/reset-password?token=${resetToken}`;
 
     try {
       await triggerLifecycleEmail(env, {
@@ -420,6 +461,53 @@ export async function resetPassword(request, env) {
   } catch (err) {
     console.error("[AUTH:RESET_PASSWORD:FAILED]", err);
     return error("Reset failed", "SERVER_ERROR", String(err), 500);
+  }
+}
+
+/* ================================
+   CHANGE PASSWORD (PROTECTED)
+ ================================ */
+
+export async function changePassword(request, env) {
+  try {
+    const db = getDB(env);
+    const userId = request.user?.id;
+    if (!userId) return error("Unauthorized", "UNAUTHORIZED", null, 401);
+
+    const { current_password, new_password } = await request.json();
+    if (!current_password || !new_password) {
+      return error("Both current and new password are required", "BAD_REQUEST", null, 400);
+    }
+    if (new_password.length < 8) {
+      return error("New password must be at least 8 characters", "BAD_REQUEST", null, 400);
+    }
+
+    const user = await db.prepare(
+      "SELECT password_hash FROM users WHERE id = ? LIMIT 1"
+    ).bind(userId).first();
+
+    if (!user?.password_hash) return error("User not found", "NOT_FOUND", null, 404);
+
+    const parts = user.password_hash.split(":");
+    if (parts.length < 2) return error("Invalid credentials", "UNAUTHORIZED", null, 401);
+
+    const [saltHex, expectedHash] = parts;
+    const salt = hexToBytes(saltHex);
+    const actualHash = await hashPassword(current_password, salt);
+    if (actualHash !== expectedHash) {
+      return error("Current password is incorrect", "UNAUTHORIZED", null, 401);
+    }
+
+    const newSalt = randomBytes();
+    const newHash = await hashPassword(new_password, newSalt);
+    await db.prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?")
+      .bind(`${bytesToHex(newSalt)}:${newHash}`, userId)
+      .run();
+
+    return json({ ok: true, message: "Password updated successfully" });
+  } catch (err) {
+    console.error("[AUTH:CHANGE_PASSWORD:FAILED]", err);
+    return error("Password change failed", "SERVER_ERROR", String(err), 500);
   }
 }
 

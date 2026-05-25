@@ -4,370 +4,1044 @@
 <meta charset="utf-8" />
 <title>myPilotPost — Admin Mission Control</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
 <style>
-/* ===== RESET & TOKENS ===== */
 :root{
-  --bg:#f8fafc; --panel:#ffffff; --border:#e2e8f0;
-  --text:#0f172a; --muted:#64748b; --accent:#2563eb;
-  --good:#16a34a; --warn:#d97706; --bad:#dc2626;
+  --bg:#f8fafc;--panel:#fff;--border:#e2e8f0;
+  --text:#0f172a;--muted:#64748b;--accent:#2563eb;--accent-light:#eff6ff;
+  --good:#16a34a;--warn:#d97706;--bad:#dc2626;
 }
-*{box-sizing:border-box;font-family:Inter,sans-serif}
-html,body{margin:0;height:100%}
-body{background:var(--bg);color:var(--text);display:flex}
+*{box-sizing:border-box;font-family:Inter,sans-serif;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);display:flex;flex-direction:column}
 
-/* ===== LAYOUT ===== */
-nav{
-  width:280px; background:var(--panel); border-right:1px solid var(--border);
-  padding:1.25rem; display:flex; flex-direction:column; gap:.35rem;
-}
-.brand{font-weight:800;font-size:1.1rem;margin-bottom:1rem}
-.nav{
-  padding:.55rem .8rem; border-radius:8px; cursor:pointer; color:var(--muted)
-}
-.nav.active,.nav:hover{background:#eff6ff;color:var(--accent)}
-
-main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+/* ── HEADER ── */
 header{
-  padding:1rem 2rem; border-bottom:1px solid var(--border);
-  display:flex; justify-content:space-between; align-items:center;
+  background:var(--panel);border-bottom:1px solid var(--border);
+  padding:.75rem 1.5rem;display:flex;justify-content:space-between;align-items:center;
+  position:sticky;top:0;z-index:100
 }
-section{display:none; padding:2rem; overflow:auto}
-section.active{display:block}
+.brand{font-weight:800;font-size:1rem;color:var(--accent)}
+.header-right{display:flex;align-items:center;gap:1rem}
+.admin-badge{font-size:.65rem;font-weight:700;padding:.25rem .6rem;border-radius:999px;background:var(--accent-light);color:var(--accent)}
+.logout-btn{
+  background:none;border:1px solid var(--border);padding:.3rem .75rem;
+  border-radius:6px;cursor:pointer;font-size:.75rem;font-weight:600;color:var(--bad)
+}
 
-/* ===== UI ===== */
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem}
-.card{
-  background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.2rem
+/* ── LAYOUT ── */
+.shell{display:flex;flex:1;overflow:hidden}
+nav{
+  width:220px;background:var(--panel);border-right:1px solid var(--border);
+  padding:1rem .75rem;display:flex;flex-direction:column;gap:.2rem;overflow-y:auto;flex-shrink:0
 }
-.card h6{font-size:.7rem;text-transform:uppercase;color:var(--muted);margin:0 0 .4rem}
+.nav-section{font-size:.6rem;font-weight:700;text-transform:uppercase;color:var(--muted);padding:.75rem .5rem .25rem;letter-spacing:.08em}
+.nav-item{
+  padding:.5rem .75rem;border-radius:8px;cursor:pointer;color:var(--muted);
+  font-size:.82rem;font-weight:500;display:flex;align-items:center;gap:.5rem
+}
+.nav-item:hover,.nav-item.active{background:var(--accent-light);color:var(--accent)}
+
+main{flex:1;overflow:auto}
+.section{display:none;padding:1.5rem}
+.section.active{display:block}
+
+/* ── GRID / CARDS ── */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:1.5rem}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1.25rem}
+.card h6{font-size:.65rem;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem;font-weight:700}
 .value{font-size:1.6rem;font-weight:800}
+.card-flat{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1rem}
 
+/* ── TABLES ── */
+.table-wrap{background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:1rem}
+.table-header{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.table-header h5{font-size:.85rem;font-weight:700}
 table{width:100%;border-collapse:collapse}
-th,td{padding:.6rem;border-bottom:1px solid var(--border);font-size:.82rem}
-thead{background:#f1f5f9}
+th{padding:.6rem 1rem;background:#f1f5f9;font-size:.7rem;text-transform:uppercase;color:var(--muted);text-align:left;font-weight:700}
+td{padding:.65rem 1rem;border-top:1px solid var(--border);font-size:.82rem}
+tr:hover td{background:var(--accent-light)}
 
+/* ── BADGES ── */
 .badge{padding:.2rem .6rem;border-radius:999px;font-size:.65rem;font-weight:700}
 .ok{background:#dcfce7;color:#166534}
 .warn{background:#fef3c7;color:#92400e}
 .bad{background:#fee2e2;color:#991b1b}
+.neutral{background:#f1f5f9;color:#475569}
+.accent{background:var(--accent-light);color:var(--accent)}
 
-.empty{color:var(--muted);font-size:.85rem;padding:1rem 0}
-.error{color:var(--bad);font-size:.85rem;padding:1rem 0}
-pre{font-size:.75rem;background:#f8fafc;border:1px solid var(--border);padding:.75rem;border-radius:8px}
+/* ── FORMS ── */
+.form-group{margin-bottom:1rem}
+.form-group label{display:block;font-size:.75rem;font-weight:600;margin-bottom:.35rem;color:var(--text)}
+.form-group input,.form-group select,.form-group textarea{
+  width:100%;padding:.6rem .75rem;border:1px solid var(--border);border-radius:8px;
+  font-size:.85rem;outline:none;background:#fff
+}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent)}
+.form-group textarea{resize:vertical;min-height:120px}
+.btn{
+  padding:.55rem 1.25rem;border-radius:8px;border:none;font-size:.82rem;
+  font-weight:600;cursor:pointer
+}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-danger{background:var(--bad);color:#fff}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn-sm{padding:.35rem .75rem;font-size:.75rem}
+
+/* ── MISC ── */
+.empty{color:var(--muted);font-size:.85rem;padding:1.5rem 0;text-align:center}
+.error-msg{color:var(--bad);font-size:.82rem;padding:.75rem 1rem;background:#fee2e2;border-radius:8px;margin-bottom:1rem}
+pre{font-size:.72rem;background:#f8fafc;border:1px solid var(--border);padding:.75rem;border-radius:8px;overflow:auto}
+.divider{height:1px;background:var(--border);margin:1.25rem 0}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.search-bar{display:flex;gap:.5rem;margin-bottom:1rem}
+.search-bar input{flex:1;padding:.6rem .75rem;border:1px solid var(--border);border-radius:8px;font-size:.85rem}
+
+/* ── LOGIN OVERLAY ── */
+#loginScreen{
+  display:none;position:fixed;inset:0;
+  background:rgba(15,23,42,.92);backdrop-filter:blur(8px);z-index:9999;
+  align-items:center;justify-content:center
+}
+.login-card{
+  background:#fff;border-radius:16px;padding:2.5rem;width:100%;max-width:400px;
+  box-shadow:0 25px 50px -12px rgba(0,0,0,.5)
+}
+.login-card .brand{font-size:1.2rem;text-align:center;margin-bottom:.5rem}
+.login-card .sub{text-align:center;color:var(--muted);font-size:.82rem;margin-bottom:2rem}
+#loginError{
+  display:none;background:#fee2e2;color:var(--bad);
+  padding:.75rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:.82rem;text-align:center
+}
 </style>
 </head>
-
 <body>
 
-<!-- ================= NAV ================= -->
-<nav>
-  <div class="brand">myPilotPost</div>
-  <div class="nav active" data-section="overview">Overview</div>
-  <div class="nav" data-section="customers">Customers</div>
-  <div class="nav" data-section="analytics">Analytics</div>
-  <div class="nav" data-section="billing">Billing</div>
-  <div class="nav" data-section="memory">Brand Memory</div>
-  <div class="nav" data-section="seo">SEO</div>
-  <div class="nav" data-section="automation">Automation</div>
-  <div class="nav" data-section="ml">ML</div>
-  <div class="nav" data-section="experiments">Experiments</div>
-  <div class="nav" data-section="emails">Emails</div>
-  <div class="nav" data-section="support">Support</div>
-  <div class="nav" data-section="system">System</div>
-</nav>
-
-<!-- ================= MAIN ================= -->
-<main>
-<header>
-  <div>
-    <strong>Admin Mission Control</strong>
-    <span class="badge ok">PRODUCTION</span>
-  </div>
-  <div style="display:flex; align-items:center; gap:1.5rem">
-    <div style="text-align:right">
-      <div id="adminName" style="font-weight:700; font-size:0.85rem">—</div>
-      <div id="adminRole" style="font-size:0.65rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em">—</div>
-    </div>
-    <button onclick="logout()" style="background:none; border:1px solid var(--border); padding:.4rem .8rem; border-radius:6px; cursor:pointer; font-size:.75rem; font-weight:600; color:var(--bad)">Logout</button>
-  </div>
-</header>
-
-<section id="overview" class="active">
-  <div class="grid">
-    <div class="card"><h6>Customers</h6><div id="ovCustomers" class="value">—</div></div>
-    <div class="card"><h6>MRR</h6><div id="ovMRR" class="value">$—</div></div>
-    <div class="card"><h6>Delivery Health</h6><div id="ovDelivery" class="value">—</div></div>
-  </div>
-</section>
-
-<section id="customers"><div id="customersOut" class="empty">Loading…</div></section>
-<section id="analytics"><div id="analyticsOut" class="empty">Loading…</div></section>
-<section id="billing"><div id="billingOut" class="empty">Loading…</div></section>
-<section id="memory"><div id="memoryOut" class="empty">Loading…</div></section>
-<section id="seo"><div id="seoOut" class="empty">Loading…</div></section>
-<section id="automation"><div id="automationOut" class="empty">Loading…</div></section>
-<section id="ml"><div id="mlOut" class="empty">Loading…</div></section>
-<section id="experiments"><div id="experimentsOut" class="empty">Loading…</div></section>
-<section id="emails"><div id="emailsOut" class="empty">Loading…</div></section>
-<section id="support"><div id="supportOut" class="empty">Loading…</div></section>
-<section id="system"><div id="systemOut" class="empty">Loading…</div></section>
-
-</main>
-
-<!-- ================= LOGIN ================= -->
-<div id="loginScreen" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.9); backdrop-filter:blur(8px); z-index:9999; display:flex; align-items:center; justify-content:center;">
-  <div class="card" style="width:100%; max-width:400px; padding:2rem; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5)">
-    <div class="brand" style="text-align:center; margin-bottom:2rem; color:var(--accent)">myPilotPost Admin</div>
-    <div id="loginError" class="error" style="display:none; background:#fee2e2; padding:.75rem; border-radius:8px; margin-bottom:1rem; text-align:center"></div>
+<!-- ── LOGIN ── -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="brand">myPilotPost</div>
+    <div class="sub">Admin Mission Control — Restricted Access</div>
+    <div id="loginError"></div>
     <form id="loginForm">
-      <div style="margin-bottom:1rem">
-        <label style="display:block; font-size:.75rem; font-weight:600; margin-bottom:.4rem">Email Address</label>
-        <input type="email" id="loginEmail" required style="width:100%; padding:.75rem; border:1px solid var(--border); border-radius:8px; outline:none" placeholder="admin@mypilotpost.com">
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="loginEmail" placeholder="admin@mypilotpost.com" required autocomplete="email">
       </div>
-      <div style="margin-bottom:1.5rem">
-        <label style="display:block; font-size:.75rem; font-weight:600; margin-bottom:.4rem">Password</label>
-        <input type="password" id="loginPass" required style="width:100%; padding:.75rem; border:1px solid var(--border); border-radius:8px; outline:none" placeholder="••••••••">
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="loginPass" placeholder="••••••••" required autocomplete="current-password">
       </div>
-      <button type="submit" style="width:100%; padding:.75rem; background:var(--accent); color:white; border:none; border-radius:8px; font-weight:600; cursor:pointer">Enter Mission Control</button>
+      <button type="submit" class="btn btn-primary" style="width:100%;padding:.75rem">Enter Mission Control</button>
     </form>
   </div>
 </div>
 
+<!-- ── APP SHELL ── -->
+<header>
+  <div class="brand">✈ myPilotPost Admin</div>
+  <div class="header-right">
+    <span class="admin-badge" id="adminRoleBadge">—</span>
+    <span style="font-size:.82rem;font-weight:600;color:var(--muted)" id="adminEmail">—</span>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
+</header>
+
+<div class="shell">
+<!-- ── NAV ── -->
+<nav>
+  <div class="nav-section">Platform</div>
+  <div class="nav-item active" data-section="overview">📊 Overview</div>
+  <div class="nav-item" data-section="customers">👥 Customers</div>
+  <div class="nav-item" data-section="analytics">📈 Analytics</div>
+  <div class="nav-item" data-section="billing">💰 Billing</div>
+
+  <div class="nav-section">Commerce</div>
+  <div class="nav-item" data-section="pricing">🏷 Pricing</div>
+  <div class="nav-item" data-section="promotions">🎁 Promotions</div>
+
+  <div class="nav-section">Content</div>
+  <div class="nav-item" data-section="blog">📝 Blog</div>
+  <div class="nav-item" data-section="emails">📧 Emails</div>
+
+  <div class="nav-section">Support</div>
+  <div class="nav-item" data-section="support">💬 Support</div>
+  <div class="nav-item" data-section="messaging">📣 Messaging</div>
+
+  <div class="nav-section">Operations</div>
+  <div class="nav-item" data-section="operations">⚙️ Operations</div>
+  <div class="nav-item" data-section="system">🔍 System Log</div>
+  <div class="nav-section">Compliance</div>
+  <div class="nav-item" data-section="compliance">🛡️ Compliance</div>
+</nav>
+
+<!-- ── MAIN ── -->
+<main>
+
+<!-- OVERVIEW -->
+<div class="section active" id="overview">
+  <div class="grid">
+    <div class="card"><h6>Total Customers</h6><div class="value" id="ovCustomers">—</div></div>
+    <div class="card"><h6>Active Subs</h6><div class="value" id="ovActive">—</div></div>
+    <div class="card"><h6>Trial Accounts</h6><div class="value" id="ovTrial">—</div></div>
+    <div class="card"><h6>Monthly MRR</h6><div class="value" id="ovMRR">—</div></div>
+    <div class="card"><h6>Delivery Health</h6><div class="value" id="ovDelivery">—</div></div>
+    <div class="card"><h6>Audit Conversion</h6><div class="value" id="ovConversion">—</div></div>
+  </div>
+  <div class="card-flat">
+    <h5 style="font-size:.85rem;font-weight:700;margin-bottom:1rem">Platform Status</h5>
+    <div id="overviewStatus" class="empty">Loading…</div>
+  </div>
+</div>
+
+<!-- CUSTOMERS -->
+<div class="section" id="customers">
+  <div class="search-bar">
+    <input type="text" id="customerSearch" placeholder="Search by email…" oninput="debounce(loadCustomers, 400)()">
+    <button class="btn btn-outline btn-sm" onclick="loadCustomers()">Search</button>
+  </div>
+  <div class="table-wrap">
+    <div class="table-header"><h5>Customer Accounts</h5><span id="customerCount" class="badge neutral">0</span></div>
+    <table>
+      <thead><tr><th>Email</th><th>Plan</th><th>Status</th><th>Brands</th><th>Joined</th><th>Actions</th></tr></thead>
+      <tbody id="customersBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ANALYTICS -->
+<div class="section" id="analytics">
+  <div class="grid">
+    <div class="card"><h6>Total Jobs</h6><div class="value" id="anTotalJobs">—</div></div>
+    <div class="card"><h6>Delivered</h6><div class="value" id="anDelivered">—</div></div>
+    <div class="card"><h6>Failed</h6><div class="value" id="anFailed">—</div></div>
+    <div class="card"><h6>Success Rate</h6><div class="value" id="anRate">—</div></div>
+  </div>
+  <div class="card-flat">
+    <h5 style="font-size:.85rem;font-weight:700;margin-bottom:1rem">Platform Reliability by Channel</h5>
+    <div id="analyticsOut" class="empty">Loading…</div>
+  </div>
+</div>
+
+<!-- BILLING -->
+<div class="section" id="billing">
+  <div class="grid">
+    <div class="card"><h6>MRR</h6><div class="value" id="bilMRR">—</div></div>
+    <div class="card"><h6>Active Subscriptions</h6><div class="value" id="bilActive">—</div></div>
+    <div class="card"><h6>Trial Accounts</h6><div class="value" id="bilTrial">—</div></div>
+    <div class="card"><h6>Conversion Rate</h6><div class="value" id="bilConversion">—</div></div>
+  </div>
+  <div class="table-wrap">
+    <div class="table-header"><h5>Plan Distribution</h5></div>
+    <table>
+      <thead><tr><th>Plan</th><th>Customers</th></tr></thead>
+      <tbody id="billingDistBody"><tr><td colspan="2" class="empty">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- PRICING -->
+<div class="section" id="pricing">
+  <div class="table-wrap">
+    <div class="table-header">
+      <h5>Pricing Plans</h5>
+      <button class="btn btn-primary btn-sm" onclick="showPlanForm()">+ New Plan</button>
+    </div>
+    <table>
+      <thead><tr><th>Name</th><th>Price / mo</th><th>Posts</th><th>AI Gen</th><th>Accounts</th><th>Trial</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody id="pricingBody"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="card-flat" id="planForm" style="display:none">
+    <h5 style="font-size:.85rem;font-weight:700;margin-bottom:1rem" id="planFormTitle">New Plan</h5>
+    <div class="two-col">
+      <div class="form-group"><label>Plan Name</label><input type="text" id="pf_name" placeholder="e.g. Solo"></div>
+      <div class="form-group"><label>Price (ZAR / month)</label><input type="number" id="pf_price" placeholder="499"></div>
+    </div>
+    <div class="two-col">
+      <div class="form-group"><label>Posts / Month Limit</label><input type="number" id="pf_posts" placeholder="60"></div>
+      <div class="form-group"><label>AI Generations Limit</label><input type="number" id="pf_ai" placeholder="50"></div>
+    </div>
+    <div class="two-col">
+      <div class="form-group"><label>Social Accounts Limit</label><input type="number" id="pf_accounts" placeholder="5"></div>
+      <div class="form-group"><label>Trial Days</label><input type="number" id="pf_trial" placeholder="14"></div>
+    </div>
+    <div style="display:flex;gap:.75rem">
+      <button class="btn btn-primary" onclick="savePlan()">Save Plan</button>
+      <button class="btn btn-outline" onclick="hidePlanForm()">Cancel</button>
+    </div>
+    <div id="planFormError" class="error-msg" style="display:none;margin-top:.75rem"></div>
+  </div>
+</div>
+
+<!-- PROMOTIONS -->
+<div class="section" id="promotions">
+  <div class="table-wrap">
+    <div class="table-header">
+      <h5>Promo Codes & Campaigns</h5>
+      <button class="btn btn-primary btn-sm" onclick="showPromoForm()">+ New Promo</button>
+    </div>
+    <table>
+      <thead><tr><th>Code</th><th>Type</th><th>Value</th><th>Uses</th><th>Max</th><th>Expires</th><th>Status</th></tr></thead>
+      <tbody id="promoBody"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="card-flat" id="promoForm" style="display:none">
+    <h5 style="font-size:.85rem;font-weight:700;margin-bottom:1rem">New Promotion</h5>
+    <div class="two-col">
+      <div class="form-group"><label>Promo Code</label><input type="text" id="pr_code" placeholder="LAUNCH50" style="text-transform:uppercase"></div>
+      <div class="form-group">
+        <label>Discount Type</label>
+        <select id="pr_type">
+          <option value="percent">Percent Off (%)</option>
+          <option value="fixed">Fixed Amount (ZAR)</option>
+          <option value="trial_days">Free Trial Days</option>
+        </select>
+      </div>
+    </div>
+    <div class="two-col">
+      <div class="form-group"><label>Discount Value</label><input type="number" id="pr_value" placeholder="50"></div>
+      <div class="form-group"><label>Max Uses (blank = unlimited)</label><input type="number" id="pr_max_uses" placeholder="100"></div>
+    </div>
+    <div class="form-group"><label>Expires At (optional)</label><input type="datetime-local" id="pr_expires"></div>
+    <div style="display:flex;gap:.75rem">
+      <button class="btn btn-primary" onclick="savePromo()">Create Promo</button>
+      <button class="btn btn-outline" onclick="hidePromoForm()">Cancel</button>
+    </div>
+    <div id="promoFormError" class="error-msg" style="display:none;margin-top:.75rem"></div>
+  </div>
+</div>
+
+<!-- BLOG -->
+<div class="section" id="blog">
+  <div class="table-wrap">
+    <div class="table-header">
+      <h5>Marketing Blog Posts</h5>
+      <button class="btn btn-primary btn-sm" onclick="showBlogForm()">+ New Post</button>
+    </div>
+    <table>
+      <thead><tr><th>Title</th><th>Status</th><th>Category</th><th>Published</th><th>Actions</th></tr></thead>
+      <tbody id="blogBody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="card-flat" id="blogForm" style="display:none">
+    <h5 style="font-size:.85rem;font-weight:700;margin-bottom:1rem" id="blogFormTitle">New Post</h5>
+    <input type="hidden" id="bf_id">
+    <div class="two-col">
+      <div class="form-group"><label>Title</label><input type="text" id="bf_title" placeholder="Your post title"></div>
+      <div class="form-group"><label>Slug (URL)</label><input type="text" id="bf_slug" placeholder="your-post-title"></div>
+    </div>
+    <div class="form-group"><label>Excerpt</label><input type="text" id="bf_excerpt" placeholder="Short summary…"></div>
+    <div class="two-col">
+      <div class="form-group"><label>Category</label><input type="text" id="bf_category" placeholder="Marketing"></div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="bf_status">
+          <option value="draft">Draft</option>
+          <option value="published">Published</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Author</label><input type="text" id="bf_author" placeholder="myPilotPost Team"></div>
+    <div class="form-group"><label>Content (HTML)</label><textarea id="bf_content" rows="8" placeholder="<p>Your content here…</p>"></textarea></div>
+    <div style="display:flex;gap:.75rem">
+      <button class="btn btn-primary" onclick="saveBlogPost()">Save Post</button>
+      <button class="btn btn-outline" onclick="hideBlogForm()">Cancel</button>
+    </div>
+    <div id="blogFormError" class="error-msg" style="display:none;margin-top:.75rem"></div>
+  </div>
+</div>
+
+<!-- EMAILS -->
+<div class="section" id="emails">
+  <div class="card-flat">
+    <div id="emailsOut" class="empty">Loading…</div>
+  </div>
+</div>
+
+<!-- SUPPORT -->
+<div class="section" id="support">
+  <div class="table-wrap">
+    <div class="table-header"><h5>Support Conversations</h5></div>
+    <table>
+      <thead><tr><th>Customer</th><th>Messages</th><th>Unread</th><th>Last Active</th><th>Actions</th></tr></thead>
+      <tbody id="supportBody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+    </table>
+  </div>
+  <div class="card-flat" id="supportReplyBox" style="display:none">
+    <h5 style="font-size:.85rem;font-weight:700;margin-bottom:1rem">Reply to: <span id="supportReplyTarget">—</span></h5>
+    <div class="form-group"><textarea id="supportReplyMsg" rows="4" placeholder="Type your message…"></textarea></div>
+    <div style="display:flex;gap:.75rem">
+      <button class="btn btn-primary" onclick="sendSupportReply()">Send Reply</button>
+      <button class="btn btn-outline" onclick="document.getElementById('supportReplyBox').style.display='none'">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- MESSAGING -->
+<div class="section" id="messaging">
+  <div class="card-flat">
+    <h5 style="font-size:.85rem;font-weight:700;margin-bottom:1rem">📣 Broadcast Message</h5>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:1rem">Send a message to all active customers or a filtered group.</p>
+    <div class="form-group">
+      <label>Filter by Plan (optional)</label>
+      <select id="broadcastPlan">
+        <option value="">All Active Users</option>
+      </select>
+    </div>
+    <div class="form-group"><textarea id="broadcastMsg" rows="5" placeholder="Your message to customers…"></textarea></div>
+    <div id="broadcastResult" class="error-msg" style="display:none"></div>
+    <button class="btn btn-primary" onclick="sendBroadcast()">Send Broadcast</button>
+  </div>
+</div>
+
+<!-- OPERATIONS -->
+<div class="section" id="operations">
+  <div class="grid">
+    <div class="card"><h6>AI Calls (last hour)</h6><div class="value" id="opAI">—</div></div>
+    <div class="card"><h6>OAuth Failures (24h)</h6><div class="value" id="opOAuth">—</div></div>
+    <div class="card"><h6>Delivery Failures (last hour)</h6><div class="value" id="opDelivery">—</div></div>
+    <div class="card"><h6>Platform Status</h6><div class="value" id="opStatus">—</div></div>
+  </div>
+  <div class="card-flat">
+    <h5 style="font-size:.85rem;font-weight:700;margin-bottom:1rem">Cron Jobs</h5>
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr><th style="padding:.5rem;background:#f1f5f9;font-size:.7rem;text-align:left">Schedule</th><th style="padding:.5rem;background:#f1f5f9;font-size:.7rem;text-align:left">Job</th><th style="padding:.5rem;background:#f1f5f9;font-size:.7rem;text-align:left">Status</th></tr></thead>
+      <tbody>
+        <tr><td style="padding:.5rem;font-size:.82rem">* * * * *</td><td style="padding:.5rem;font-size:.82rem">Delivery Scheduler + Email Worker</td><td style="padding:.5rem"><span class="badge ok">Active</span></td></tr>
+        <tr><td style="padding:.5rem;font-size:.82rem">0 3 * * *</td><td style="padding:.5rem;font-size:.82rem">Lifecycle Email Campaigns</td><td style="padding:.5rem"><span class="badge ok">Active</span></td></tr>
+        <tr><td style="padding:.5rem;font-size:.82rem">0 */4 * * *</td><td style="padding:.5rem;font-size:.82rem">OAuth Token Refresh</td><td style="padding:.5rem"><span class="badge ok">Active</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- SYSTEM LOG -->
+<div class="section" id="system">
+  <div class="card-flat">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <h5 style="font-size:.85rem;font-weight:700">Platform Event Log</h5>
+      <select id="systemSeverity" onchange="loadSystem()">
+        <option value="">All Severities</option>
+        <option value="info">Info</option>
+        <option value="warning">Warning</option>
+        <option value="critical">Critical</option>
+      </select>
+    </div>
+    <div id="systemOut" class="empty">Loading…</div>
+  </div>
+</div>
+
+<!-- COMPLIANCE -->
+<div class="section" id="compliance">
+  <div class="card-flat" style="margin-bottom:1.5rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <h5 style="font-size:.85rem;font-weight:700">Account Deletion Requests</h5>
+      <select id="deletionStatusFilter" onchange="loadCompliance()">
+        <option value="pending">Pending</option>
+        <option value="completed">Completed</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+    </div>
+    <div id="deletionsOut" class="empty">Loading…</div>
+  </div>
+  <div class="card-flat" style="margin-bottom:1.5rem">
+    <h5 style="font-size:.85rem;font-weight:700;margin-bottom:1rem">Data Export Requests</h5>
+    <div id="exportsOut" class="empty">Loading…</div>
+  </div>
+  <div class="card-flat">
+    <h5 style="font-size:.85rem;font-weight:700;margin-bottom:1rem">Compliance Audit Log</h5>
+    <div id="complianceAuditOut" class="empty">Loading…</div>
+  </div>
+</div>
+
+</main>
+</div>
+
 <script>
-/* ================= CONFIG ================= */
-const API_BASE = window.location.origin === 'http://localhost:8082' ? "http://localhost:8788/api" : "/api";
+/* ── CONFIG ── */
+function resolveApi() {
+  const h = location.hostname;
+  if (h === "localhost" || h === "127.0.0.1") return "http://localhost:8787/api";
+  return "https://api.mypilotpost.com/api";
+}
+const API = resolveApi();
 
-/* ================= AUTH ================= */
+/* ── AUTH ── */
 let token = localStorage.getItem("adminToken");
+let currentAdmin = null;
 
-function updateAuthHeaders() {
-  return {
-    "Content-Type": "application/json",
-    "Authorization": `Bearer ${token}`
-  };
+function authHeaders(extra = {}) {
+  return { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, ...extra };
 }
 
-/* ================= FETCH ================= */
-async function api(path, options = {}){
-  try{
-    const res = await fetch(API_BASE + path, { 
-      ...options,
-      headers: { ...updateAuthHeaders(), ...(options.headers || {}) } 
-    });
-    
-    if (res.status === 401 || res.status === 403) {
-      const errData = await res.json().catch(() => ({}));
-      if (errData.error === "Unauthorized" || errData.error === "Invalid or expired token") {
-        logout();
-        return { error: "Session expired" };
-      }
-    }
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(API + path, { headers: authHeaders(), ...opts });
+  if (res.status === 401 || res.status === 403) { logout(); return null; }
+  const txt = await res.text();
+  try { return JSON.parse(txt); } catch { return null; }
+}
 
-    const txt = await res.text();
-    if(!res.ok) return { error: txt };
-    try {
-      return JSON.parse(txt);
-    } catch(e) {
-      return { success: true, data: txt };
-    }
-  }catch(e){
-    return { error: e.message };
+/* ── LOGIN ── */
+document.getElementById("loginForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const errEl = document.getElementById("loginError");
+  errEl.style.display = "none";
+  const email = document.getElementById("loginEmail").value;
+  const pass = document.getElementById("loginPass").value;
+
+  const res = await fetch(API + "/admin/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password: pass })
+  });
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    errEl.textContent = data.error || "Login failed";
+    errEl.style.display = "block";
+    return;
   }
-}
 
-/* ================= LOGIN/LOGOUT ================= */
-function showLogin() {
-  document.getElementById("loginScreen").style.display = "flex";
-  document.querySelector("nav").style.display = "none";
-  document.querySelector("main").style.display = "none";
-}
+  token = data.token;
+  localStorage.setItem("adminToken", token);
+  currentAdmin = { email: data.email, role: data.role };
+  applySession();
+  hideLogin();
+  loadSection("overview");
+};
 
-function hideLogin() {
-  document.getElementById("loginScreen").style.display = "none";
-  document.querySelector("nav").style.display = "flex";
-  document.querySelector("main").style.display = "flex";
+function applySession() {
+  if (!currentAdmin) return;
+  document.getElementById("adminEmail").textContent = currentAdmin.email;
+  document.getElementById("adminRoleBadge").textContent = currentAdmin.role.toUpperCase().replace("_", " ");
 }
 
 function logout() {
   localStorage.removeItem("adminToken");
   token = null;
+  currentAdmin = null;
   showLogin();
 }
 
-document.getElementById("loginForm").onsubmit = async (e) => {
-  e.preventDefault();
-  const email = document.getElementById("loginEmail").value;
-  const password = document.getElementById("loginPass").value;
-  const errorEl = document.getElementById("loginError");
-  
-  errorEl.style.display = "none";
-  
-  try {
-    const res = await fetch(API_BASE + "/customer/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password })
-    });
-    
-    const data = await res.json();
-    if (!res.ok) {
-      errorEl.textContent = data.error || "Login failed";
-      errorEl.style.display = "block";
-      return;
-    }
-    
-    token = data.token;
-    localStorage.setItem("adminToken", token);
-    
-    // Check if user is actually an admin
-    const profile = await api("/customer/profile");
-    if (profile.error || !['super_admin', 'admin', 'operations', 'support'].includes(profile.user.role)) {
-      errorEl.textContent = "Access denied: Administrative privileges required.";
-      errorEl.style.display = "block";
-      logout();
-      return;
-    }
-    
-    document.getElementById("adminName").textContent = profile.user.email.split('@')[0];
-    document.getElementById("adminRole").textContent = profile.user.role.toUpperCase();
-    
-    hideLogin();
-    loaders.overview();
-  } catch (err) {
-    errorEl.textContent = "Connection failed";
-    errorEl.style.display = "block";
-  }
-};
+function showLogin() {
+  document.getElementById("loginScreen").style.display = "flex";
+}
+function hideLogin() {
+  document.getElementById("loginScreen").style.display = "none";
+}
 
-/* ================= NAV ================= */
-document.querySelectorAll(".nav").forEach(n=>{
-  n.onclick = ()=>{
-    document.querySelectorAll(".nav").forEach(x=>x.classList.remove("active"));
-    document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
+/* ── NAV ── */
+document.querySelectorAll(".nav-item").forEach(n => {
+  n.onclick = () => {
+    document.querySelectorAll(".nav-item").forEach(x => x.classList.remove("active"));
+    document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
     n.classList.add("active");
     const id = n.dataset.section;
     document.getElementById(id).classList.add("active");
-    loaders[id]?.();
+    loadSection(id);
   };
 });
 
-/* ================= LOADERS ================= */
-const loaders = {};
+function loadSection(id) {
+  const map = {
+    overview: loadOverview, customers: loadCustomers, analytics: loadAnalytics,
+    billing: loadBilling, pricing: loadPricing, promotions: loadPromotions,
+    blog: loadBlog, emails: loadEmails, support: loadSupport,
+    messaging: loadMessaging, operations: loadOperations, system: loadSystem,
+    compliance: loadCompliance
+  };
+  if (map[id]) map[id]();
+}
 
-/* Overview */
-loaders.overview = async()=>{
-  const d = await api("/v1/admin/overview");
-  if(d.error) return;
-  ovCustomers.textContent = d.customers ?? "0";
-  ovMRR.textContent = "$" + (d.mrr ?? 0);
-  ovDelivery.textContent = d.delivery_health ?? "—";
-};
+/* ── UTIL ── */
+function fmt(n) { return n?.toLocaleString() ?? "—"; }
+function fmtDate(s) { return s ? new Date(s).toLocaleDateString() : "—"; }
+function fmtMoney(n) { return n != null ? `R${Number(n).toLocaleString()}` : "—"; }
 
-/* Customers */
-loaders.customers = async()=>{
-  const d = await api("/v1/admin/customers");
-  if(d.error) return customersOut.innerHTML = `<div class="error">${d.error}</div>`;
-  const customers = d.data || d.customers || [];
-  customersOut.innerHTML = `
-    <table>
-      <thead><tr><th>ID</th><th>Plan</th><th>MRR</th><th>Created</th></tr></thead>
-      <tbody>
-        ${customers.map(c=>`
-          <tr>
-            <td><code style="font-size:0.7rem">${c.id}</code></td>
-            <td>${c.plan || 'starter'}</td>
-            <td>$${(c.mrr||0)/100}</td>
-            <td>${new Date(c.created_at).toLocaleDateString()}</td>
-          </tr>
-        `).join("")}
-      </tbody>
-    </table>
-  `;
-};
+function debounce(fn, delay) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
+}
 
-/* Analytics */
-loaders.analytics = async()=>{
-  const d = await api("/v1/admin/analytics/delivery");
-  analyticsOut.innerHTML = d.error ? `<div class="error">${d.error}</div>` : `<pre>${JSON.stringify(d,null,2)}</pre>`;
-};
+/* ── LOADERS ── */
 
-/* Billing */
-loaders.billing = async()=>{
-  const d = await api("/v1/admin/billing/overview");
-  billingOut.innerHTML = d.error ? `<div class="error">${d.error}</div>` :
-    `<div class="card"><h6>Total MRR</h6><div class="value">$${d.mrr}</div></div>`;
-};
+async function loadOverview() {
+  const [bil, sys] = await Promise.all([
+    apiFetch("/v1/admin/billing/overview"),
+    apiFetch("/v1/admin/system/status")
+  ]);
+  if (bil) {
+    document.getElementById("ovCustomers").textContent = fmt(bil.total_customers);
+    document.getElementById("ovActive").textContent = fmt(bil.active_subscriptions);
+    document.getElementById("ovTrial").textContent = fmt(bil.trial_subscriptions);
+    document.getElementById("ovMRR").textContent = fmtMoney(bil.mrr);
+    document.getElementById("ovConversion").textContent = bil.conversion_rate || "0%";
+  }
+  if (sys) {
+    const rate = sys.delivery_24h?.fail_rate ?? 0;
+    const health = rate > 0.3 ? "Degraded" : rate > 0.1 ? "Warning" : "Healthy";
+    const cls = rate > 0.3 ? "bad" : rate > 0.1 ? "warn" : "ok";
+    document.getElementById("ovDelivery").innerHTML = `<span class="badge ${cls}">${health}</span>`;
+    document.getElementById("overviewStatus").innerHTML = `
+      <div style="display:flex;gap:1rem;flex-wrap:wrap">
+        <div><strong>${sys.delivery_24h?.total ?? 0}</strong> jobs in last 24h</div>
+        <div><strong>${sys.delivery_24h?.failed ?? 0}</strong> failed</div>
+        <div>Status: <span class="badge ${sys.status === 'operational' ? 'ok' : 'warn'}">${sys.status}</span></div>
+      </div>
+    `;
+  }
+}
 
-/* Memory */
-loaders.memory = async()=>{
-  const d = await api("/v1/admin/memory");
-  memoryOut.innerHTML = d.error ? `<div class="error">${d.error}</div>` : `<pre>${JSON.stringify(d,null,2)}</pre>`;
-};
+async function loadCustomers() {
+  const search = document.getElementById("customerSearch")?.value || "";
+  const d = await apiFetch(`/v1/admin/customers?search=${encodeURIComponent(search)}`);
+  const body = document.getElementById("customersBody");
+  if (!d) { body.innerHTML = `<tr><td colspan="6" class="empty">Failed to load</td></tr>`; return; }
+  const rows = d.data || [];
+  document.getElementById("customerCount").textContent = fmt(d.total || rows.length);
+  if (!rows.length) { body.innerHTML = `<tr><td colspan="6" class="empty">No customers found</td></tr>`; return; }
+  body.innerHTML = rows.map(c => `
+    <tr>
+      <td>${c.email}</td>
+      <td><span class="badge neutral">${c.plan_name || c.plan_id || "—"}</span></td>
+      <td><span class="badge ${c.subscription_status === 'active' ? 'ok' : c.subscription_status === 'trial' ? 'warn' : 'neutral'}">${c.subscription_status || "—"}</span></td>
+      <td>${c.brand_count ?? 0}</td>
+      <td>${fmtDate(c.created_at)}</td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="toggleCustomer('${c.id}')">
+          ${c.is_active ? 'Disable' : 'Enable'}
+        </button>
+      </td>
+    </tr>
+  `).join("");
+}
 
-/* SEO */
-loaders.seo = async()=>{
-  const d = await api("/v1/admin/seo/overview");
-  seoOut.innerHTML = d.error ? `<div class="error">${d.error}</div>` : `<pre>${JSON.stringify(d,null,2)}</pre>`;
-};
+async function toggleCustomer(id) {
+  const d = await apiFetch(`/v1/admin/customers/${id}/toggle`, { method: "POST" });
+  if (d?.success) loadCustomers();
+}
 
-/* Automation */
-loaders.automation = async()=>{
-  const d = await api("/v1/admin/automation/rules");
-  automationOut.innerHTML = d.error ? `<div class="error">${d.error}</div>` : `<pre>${JSON.stringify(d,null,2)}</pre>`;
-};
-
-/* ML */
-loaders.ml = async()=>{
-  const d = await api("/v1/admin/ml/health");
-  mlOut.innerHTML = d.error ? `<div class="error">${d.error}</div>` : `<pre>${JSON.stringify(d,null,2)}</pre>`;
-};
-
-/* Experiments */
-loaders.experiments = async()=>{
-  const d = await api("/v1/admin/experiments");
-  experimentsOut.innerHTML = d.error ? `<div class="error">${d.error}</div>` : `<pre>${JSON.stringify(d,null,2)}</pre>`;
-};
-
-/* Emails */
-loaders.emails = async()=>{
-  const d = await api("/v1/admin/emails/campaigns");
-  emailsOut.innerHTML = d.error ? `<div class="error">${d.error}</div>` : `<pre>${JSON.stringify(d,null,2)}</pre>`;
-};
-
-/* Support */
-loaders.support = async()=>{
-  const d = await api("/v1/admin/support/threads");
-  supportOut.innerHTML = d.error ? `<div class="error">${d.error}</div>` : `<pre>${JSON.stringify(d,null,2)}</pre>`;
-};
-
-/* System */
-loaders.system = async()=>{
-  const d = await api("/v1/admin/system/status");
-  systemOut.innerHTML = d.error ? `<div class="error">${d.error}</div>` : `<pre>${JSON.stringify(d,null,2)}</pre>`;
-};
-
-/* ================= INIT ================= */
-async function init() {
-  if (!token) {
-    showLogin();
+async function loadAnalytics() {
+  const d = await apiFetch("/v1/admin/analytics/delivery");
+  if (!d) return;
+  document.getElementById("anTotalJobs").textContent = fmt(d.total_jobs);
+  document.getElementById("anDelivered").textContent = fmt(d.delivered);
+  document.getElementById("anFailed").textContent = fmt(d.failed);
+  const rate = (d.success_rate * 100).toFixed(1);
+  const rateEl = document.getElementById("anRate");
+  rateEl.innerHTML = `<span class="badge ${rate >= 90 ? 'ok' : rate >= 70 ? 'warn' : 'bad'}">${rate}%</span>`;
+  const out = document.getElementById("analyticsOut");
+  if (d.platforms?.length) {
+    out.innerHTML = `<table style="width:100%">
+      <thead><tr><th>Platform</th><th>Total</th><th>Delivered</th><th>Failed</th><th>Rate</th></tr></thead>
+      <tbody>${d.platforms.map(p => {
+        const r = p.total > 0 ? ((p.delivered / p.total) * 100).toFixed(1) : "0.0";
+        return `<tr>
+          <td style="padding:.5rem;font-size:.82rem">${p.platform}</td>
+          <td style="padding:.5rem;font-size:.82rem">${p.total}</td>
+          <td style="padding:.5rem;font-size:.82rem">${p.delivered}</td>
+          <td style="padding:.5rem;font-size:.82rem">${p.failed}</td>
+          <td style="padding:.5rem;font-size:.82rem"><span class="badge ${r >= 90 ? 'ok' : r >= 70 ? 'warn' : 'bad'}">${r}%</span></td>
+        </tr>`;
+      }).join("")}</tbody>
+    </table>`;
   } else {
-    const profile = await api("/customer/profile");
-    if (profile.error) {
-      logout();
-    } else {
-      document.getElementById("adminName").textContent = profile.user.email.split('@')[0];
-      document.getElementById("adminRole").textContent = profile.user.role.toUpperCase();
-      hideLogin();
-      loaders.overview();
-    }
+    out.innerHTML = `<div class="empty">No delivery data yet</div>`;
+  }
+}
+
+async function loadBilling() {
+  const d = await apiFetch("/v1/admin/billing/overview");
+  if (!d) return;
+  document.getElementById("bilMRR").textContent = fmtMoney(d.mrr);
+  document.getElementById("bilActive").textContent = fmt(d.active_subscriptions);
+  document.getElementById("bilTrial").textContent = fmt(d.trial_subscriptions);
+  document.getElementById("bilConversion").textContent = d.conversion_rate || "0%";
+  const body = document.getElementById("billingDistBody");
+  body.innerHTML = (d.distribution || []).map(r =>
+    `<tr><td>${r.name}</td><td>${r.count}</td></tr>`
+  ).join("") || `<tr><td colspan="2" class="empty">No data</td></tr>`;
+}
+
+async function loadPricing() {
+  const d = await apiFetch("/v1/admin/pricing");
+  const body = document.getElementById("pricingBody");
+  if (!d) { body.innerHTML = `<tr><td colspan="8" class="empty">Failed to load</td></tr>`; return; }
+  const plans = d.plans || [];
+  if (!plans.length) { body.innerHTML = `<tr><td colspan="8" class="empty">No plans yet</td></tr>`; return; }
+  body.innerHTML = plans.map(p => `
+    <tr>
+      <td><strong>${p.name}</strong><br><span style="font-size:.7rem;color:var(--muted)">${p.id}</span></td>
+      <td>${fmtMoney(p.price_monthly)}</td>
+      <td>${p.posts_per_month_limit ?? "—"}</td>
+      <td>${p.ai_generations_limit ?? "—"}</td>
+      <td>${p.social_accounts_limit ?? "—"}</td>
+      <td>${p.trial_days ?? 14}d</td>
+      <td><span class="badge ${p.is_active ? 'ok' : 'neutral'}">${p.is_active ? 'Active' : 'Inactive'}</span></td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="editPlan(${JSON.stringify(JSON.stringify(p))})">Edit</button>
+        <button class="btn btn-outline btn-sm" onclick="togglePlan('${p.id}')">${p.is_active ? 'Disable' : 'Enable'}</button>
+      </td>
+    </tr>
+  `).join("");
+
+  // Populate broadcast plan filter
+  const sel = document.getElementById("broadcastPlan");
+  if (sel && plans.length) {
+    sel.innerHTML = `<option value="">All Active Users</option>` +
+      plans.map(p => `<option value="${p.id}">${p.name}</option>`).join("");
+  }
+}
+
+let editingPlanId = null;
+function showPlanForm(id) {
+  editingPlanId = id || null;
+  document.getElementById("planFormTitle").textContent = id ? "Edit Plan" : "New Plan";
+  document.getElementById("planForm").style.display = "block";
+  document.getElementById("planFormError").style.display = "none";
+  if (!id) {
+    ["pf_name","pf_price","pf_posts","pf_ai","pf_accounts","pf_trial"].forEach(f => document.getElementById(f).value = "");
+  }
+}
+function hidePlanForm() { document.getElementById("planForm").style.display = "none"; }
+
+async function editPlan(jsonStr) {
+  const p = JSON.parse(jsonStr);
+  showPlanForm(p.id);
+  document.getElementById("pf_name").value = p.name || "";
+  document.getElementById("pf_price").value = p.price_monthly || "";
+  document.getElementById("pf_posts").value = p.posts_per_month_limit || "";
+  document.getElementById("pf_ai").value = p.ai_generations_limit || "";
+  document.getElementById("pf_accounts").value = p.social_accounts_limit || "";
+  document.getElementById("pf_trial").value = p.trial_days || 14;
+}
+
+async function savePlan() {
+  const errEl = document.getElementById("planFormError");
+  errEl.style.display = "none";
+  const body = {
+    name: document.getElementById("pf_name").value,
+    price_monthly: parseFloat(document.getElementById("pf_price").value),
+    posts_per_month_limit: parseInt(document.getElementById("pf_posts").value),
+    ai_generations_limit: parseInt(document.getElementById("pf_ai").value),
+    social_accounts_limit: parseInt(document.getElementById("pf_accounts").value),
+    trial_days: parseInt(document.getElementById("pf_trial").value || "14"),
+    is_active: 1
+  };
+  const url = editingPlanId ? `/v1/admin/pricing/${editingPlanId}` : "/v1/admin/pricing";
+  const method = editingPlanId ? "PUT" : "POST";
+  const d = await apiFetch(url, { method, body: JSON.stringify(body) });
+  if (d?.success || d?.id) { hidePlanForm(); loadPricing(); }
+  else { errEl.textContent = d?.error || "Save failed"; errEl.style.display = "block"; }
+}
+
+async function togglePlan(id) {
+  const d = await apiFetch(`/v1/admin/pricing/${id}/toggle`, { method: "PATCH" });
+  if (d?.success) loadPricing();
+}
+
+/* PROMOTIONS */
+async function loadPromotions() {
+  const d = await apiFetch("/v1/admin/promotions");
+  const body = document.getElementById("promoBody");
+  if (!d) { body.innerHTML = `<tr><td colspan="7" class="empty">Failed to load</td></tr>`; return; }
+  const promos = d.promotions || [];
+  if (!promos.length) { body.innerHTML = `<tr><td colspan="7" class="empty">No promotions yet</td></tr>`; return; }
+  body.innerHTML = promos.map(p => `
+    <tr>
+      <td><strong>${p.code}</strong></td>
+      <td>${p.discount_type}</td>
+      <td>${p.discount_type === "percent" ? p.discount_value + "%" : p.discount_type === "fixed" ? "R" + p.discount_value : p.discount_value + " days"}</td>
+      <td>${p.uses_count ?? 0}</td>
+      <td>${p.max_uses ?? "∞"}</td>
+      <td>${fmtDate(p.expires_at)}</td>
+      <td><span class="badge ${p.is_active ? 'ok' : 'neutral'}">${p.is_active ? 'Active' : 'Inactive'}</span></td>
+    </tr>
+  `).join("");
+}
+
+function showPromoForm() { document.getElementById("promoForm").style.display = "block"; document.getElementById("promoFormError").style.display = "none"; }
+function hidePromoForm() { document.getElementById("promoForm").style.display = "none"; }
+
+async function savePromo() {
+  const errEl = document.getElementById("promoFormError");
+  errEl.style.display = "none";
+  const body = {
+    code: document.getElementById("pr_code").value.toUpperCase(),
+    discount_type: document.getElementById("pr_type").value,
+    discount_value: parseFloat(document.getElementById("pr_value").value),
+    max_uses: parseInt(document.getElementById("pr_max_uses").value) || null,
+    expires_at: document.getElementById("pr_expires").value || null
+  };
+  const d = await apiFetch("/v1/admin/promotions", { method: "POST", body: JSON.stringify(body) });
+  if (d?.success) { hidePromoForm(); loadPromotions(); }
+  else { errEl.textContent = d?.error || "Failed to create promo"; errEl.style.display = "block"; }
+}
+
+/* BLOG */
+async function loadBlog() {
+  const d = await apiFetch("/v1/admin/blog");
+  const body = document.getElementById("blogBody");
+  if (!d) { body.innerHTML = `<tr><td colspan="5" class="empty">Failed to load</td></tr>`; return; }
+  const posts = Array.isArray(d) ? d : (d.posts || []);
+  if (!posts.length) { body.innerHTML = `<tr><td colspan="5" class="empty">No posts yet</td></tr>`; return; }
+  body.innerHTML = posts.map(p => `
+    <tr>
+      <td><strong>${p.title}</strong></td>
+      <td><span class="badge ${p.status === 'published' ? 'ok' : 'neutral'}">${p.status}</span></td>
+      <td>${p.category || "—"}</td>
+      <td>${fmtDate(p.published_at)}</td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="editBlogPost(${JSON.stringify(JSON.stringify(p))})">Edit</button>
+        <button class="btn btn-outline btn-sm" style="color:var(--bad)" onclick="deleteBlogPost('${p.id}')">Delete</button>
+      </td>
+    </tr>
+  `).join("");
+}
+
+function showBlogForm(post) {
+  document.getElementById("blogFormTitle").textContent = post ? "Edit Post" : "New Post";
+  document.getElementById("blogForm").style.display = "block";
+  document.getElementById("blogFormError").style.display = "none";
+  if (!post) {
+    ["bf_id","bf_title","bf_slug","bf_excerpt","bf_category","bf_content","bf_author"].forEach(f => {
+      const el = document.getElementById(f);
+      if (el) el.value = "";
+    });
+    document.getElementById("bf_status").value = "draft";
+  }
+}
+function hideBlogForm() { document.getElementById("blogForm").style.display = "none"; }
+
+function editBlogPost(jsonStr) {
+  const p = JSON.parse(jsonStr);
+  showBlogForm(p);
+  document.getElementById("bf_id").value = p.id || "";
+  document.getElementById("bf_title").value = p.title || "";
+  document.getElementById("bf_slug").value = p.slug || "";
+  document.getElementById("bf_excerpt").value = p.excerpt || "";
+  document.getElementById("bf_category").value = p.category || "";
+  document.getElementById("bf_status").value = p.status || "draft";
+  document.getElementById("bf_author").value = p.author || "";
+  document.getElementById("bf_content").value = p.content_html || "";
+}
+
+async function saveBlogPost() {
+  const errEl = document.getElementById("blogFormError");
+  errEl.style.display = "none";
+  const id = document.getElementById("bf_id").value;
+  const body = {
+    title: document.getElementById("bf_title").value,
+    slug: document.getElementById("bf_slug").value,
+    excerpt: document.getElementById("bf_excerpt").value,
+    category: document.getElementById("bf_category").value,
+    status: document.getElementById("bf_status").value,
+    author: document.getElementById("bf_author").value || "myPilotPost Team",
+    content_html: document.getElementById("bf_content").value,
+    published_at: document.getElementById("bf_status").value === "published" ? new Date().toISOString() : null
+  };
+  const url = id ? `/v1/admin/blog/${id}` : "/v1/admin/blog";
+  const method = id ? "PATCH" : "POST";
+  const d = await apiFetch(url, { method, body: JSON.stringify(body) });
+  if (d?.success || d?.id) { hideBlogForm(); loadBlog(); }
+  else { errEl.textContent = d?.error || "Save failed"; errEl.style.display = "block"; }
+}
+
+async function deleteBlogPost(id) {
+  if (!confirm("Delete this post?")) return;
+  const d = await apiFetch(`/v1/admin/blog/${id}`, { method: "DELETE" });
+  if (d?.success) loadBlog();
+}
+
+/* EMAILS */
+async function loadEmails() {
+  const d = await apiFetch("/v1/admin/emails/campaigns");
+  const out = document.getElementById("emailsOut");
+  if (!d) { out.innerHTML = `<div class="empty">Failed to load</div>`; return; }
+  out.innerHTML = `<pre>${JSON.stringify(d, null, 2)}</pre>`;
+}
+
+/* SUPPORT */
+async function loadSupport() {
+  const d = await apiFetch("/v1/admin/support/threads");
+  const body = document.getElementById("supportBody");
+  if (!d) { body.innerHTML = `<tr><td colspan="5" class="empty">Failed to load</td></tr>`; return; }
+  const threads = d.threads || [];
+  if (!threads.length) { body.innerHTML = `<tr><td colspan="5" class="empty">No conversations yet</td></tr>`; return; }
+  body.innerHTML = threads.map(t => `
+    <tr>
+      <td>${t.sender_email || t.sender_id}</td>
+      <td>${t.message_count}</td>
+      <td><span class="badge ${t.unread_count > 0 ? 'warn' : 'ok'}">${t.unread_count}</span></td>
+      <td>${fmtDate(t.last_message_at)}</td>
+      <td>
+        <button class="btn btn-primary btn-sm" onclick="openSupportReply('${t.sender_id}','${t.sender_email || t.sender_id}')">Reply</button>
+      </td>
+    </tr>
+  `).join("");
+}
+
+let supportReplyReceiverId = null;
+function openSupportReply(id, label) {
+  supportReplyReceiverId = id;
+  document.getElementById("supportReplyTarget").textContent = label;
+  document.getElementById("supportReplyMsg").value = "";
+  document.getElementById("supportReplyBox").style.display = "block";
+}
+
+async function sendSupportReply() {
+  if (!supportReplyReceiverId) return;
+  const msg = document.getElementById("supportReplyMsg").value.trim();
+  if (!msg) return;
+  const d = await apiFetch("/v1/admin/support/message", {
+    method: "POST",
+    body: JSON.stringify({ receiver_id: supportReplyReceiverId, message: msg })
+  });
+  if (d?.success) {
+    document.getElementById("supportReplyBox").style.display = "none";
+    loadSupport();
+  }
+}
+
+/* MESSAGING */
+async function loadMessaging() {
+  await loadPricing();
+}
+
+async function sendBroadcast() {
+  const msg = document.getElementById("broadcastMsg").value.trim();
+  const plan = document.getElementById("broadcastPlan").value;
+  const resultEl = document.getElementById("broadcastResult");
+  if (!msg) { resultEl.textContent = "Message required"; resultEl.style.display = "block"; return; }
+  if (!confirm(`Send this message to ${plan ? 'users on selected plan' : 'ALL active users'}?`)) return;
+
+  resultEl.style.display = "none";
+  const body = { message: msg };
+  if (plan) body.filter = { plan_id: plan };
+  const d = await apiFetch("/v1/admin/support/broadcast", { method: "POST", body: JSON.stringify(body) });
+  if (d?.success) {
+    resultEl.style.color = "var(--good)";
+    resultEl.textContent = `Sent to ${d.sent} users`;
+  } else {
+    resultEl.style.color = "var(--bad)";
+    resultEl.textContent = d?.error || "Broadcast failed";
+  }
+  resultEl.style.display = "block";
+}
+
+/* OPERATIONS */
+async function loadOperations() {
+  const d = await apiFetch("/v1/admin/operations/health");
+  if (!d) return;
+  document.getElementById("opAI").textContent = fmt(d.ai_generations_last_hour);
+  document.getElementById("opOAuth").textContent = fmt(d.oauth_failures_24h);
+  document.getElementById("opDelivery").textContent = fmt(d.delivery_failures_last_hour);
+  const sys = await apiFetch("/v1/admin/system/status");
+  if (sys) {
+    const cls = sys.status === "operational" ? "ok" : "warn";
+    document.getElementById("opStatus").innerHTML = `<span class="badge ${cls}">${sys.status}</span>`;
+  }
+}
+
+/* SYSTEM LOG */
+async function loadSystem() {
+  const sev = document.getElementById("systemSeverity")?.value || "";
+  const d = await apiFetch(`/v1/admin/system/status`);
+  const out = document.getElementById("systemOut");
+  if (!d) { out.innerHTML = `<div class="empty">Failed to load</div>`; return; }
+  const events = d.recent_events || [];
+  if (!events.length) { out.innerHTML = `<div class="empty">No events logged</div>`; return; }
+  out.innerHTML = `<table style="width:100%;border-collapse:collapse">
+    <thead><tr>
+      <th style="padding:.5rem;background:#f1f5f9;font-size:.7rem;text-align:left">Time</th>
+      <th style="padding:.5rem;background:#f1f5f9;font-size:.7rem;text-align:left">Severity</th>
+      <th style="padding:.5rem;background:#f1f5f9;font-size:.7rem;text-align:left">Source</th>
+      <th style="padding:.5rem;background:#f1f5f9;font-size:.7rem;text-align:left">Message</th>
+    </tr></thead>
+    <tbody>${events.map(e => `
+      <tr>
+        <td style="padding:.5rem;font-size:.75rem;white-space:nowrap">${fmtDate(e.created_at)}</td>
+        <td style="padding:.5rem"><span class="badge ${e.severity==='critical'?'bad':e.severity==='warning'?'warn':'neutral'}">${e.severity}</span></td>
+        <td style="padding:.5rem;font-size:.75rem">${e.source}</td>
+        <td style="padding:.5rem;font-size:.75rem">${e.message}</td>
+      </tr>
+    `).join("")}</tbody>
+  </table>`;
+}
+
+/* ── INIT ── */
+async function init() {
+  if (!token) { showLogin(); return; }
+
+  const d = await apiFetch("/admin/session");
+  if (!d) { showLogin(); return; }
+
+  currentAdmin = { email: d.email, role: d.role };
+  applySession();
+  hideLogin();
+  loadSection("overview");
+}
+
+async function loadCompliance() {
+  const status = document.getElementById("deletionStatusFilter")?.value || "pending";
+  const [deletions, exports, auditLog] = await Promise.all([
+    apiFetch(`/v1/admin/compliance/deletions?status=${status}`).catch(() => ({ deletions: [] })),
+    apiFetch("/v1/admin/compliance/exports").catch(() => ({ exports: [] })),
+    apiFetch("/v1/admin/compliance/audit-log?limit=50").catch(() => ({ events: [] })),
+  ]);
+
+  const dEl = document.getElementById("deletionsOut");
+  if (!deletions.deletions?.length) {
+    dEl.innerHTML = `<div class="empty">No ${status} deletion requests.</div>`;
+  } else {
+    dEl.innerHTML = `<table style="width:100%;font-size:.8rem;border-collapse:collapse">
+      <thead><tr style="background:var(--hover)"><th style="padding:6px 10px;text-align:left">User</th><th style="padding:6px 10px;text-align:left">Email</th><th style="padding:6px 10px;text-align:left">Requested</th><th style="padding:6px 10px;text-align:left">Scheduled For</th><th style="padding:6px 10px;text-align:left">Status</th></tr></thead>
+      <tbody>${deletions.deletions.map(d => `
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:6px 10px">${d.first_name || ""} ${d.last_name || ""}</td>
+          <td style="padding:6px 10px">${d.email || d.user_id}</td>
+          <td style="padding:6px 10px">${fmtDate(d.requested_at)}</td>
+          <td style="padding:6px 10px">${fmtDate(d.scheduled_for)}</td>
+          <td style="padding:6px 10px"><span style="font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:99px;background:${d.status==='pending'?'#fef3c7':d.status==='completed'?'#d1fae5':'#f3f4f6'};color:${d.status==='pending'?'#92400e':d.status==='completed'?'#065f46':'#374151'}">${d.status}</span></td>
+        </tr>`).join("")}</tbody></table>`;
+  }
+
+  const eEl = document.getElementById("exportsOut");
+  if (!exports.exports?.length) {
+    eEl.innerHTML = `<div class="empty">No export requests found.</div>`;
+  } else {
+    eEl.innerHTML = `<table style="width:100%;font-size:.8rem;border-collapse:collapse">
+      <thead><tr style="background:var(--hover)"><th style="padding:6px 10px;text-align:left">Email</th><th style="padding:6px 10px;text-align:left">Requested</th><th style="padding:6px 10px;text-align:left">Format</th><th style="padding:6px 10px;text-align:left">Status</th></tr></thead>
+      <tbody>${exports.exports.map(e => `
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:6px 10px">${e.email || e.user_id}</td>
+          <td style="padding:6px 10px">${fmtDate(e.requested_at)}</td>
+          <td style="padding:6px 10px">${e.format}</td>
+          <td style="padding:6px 10px">${e.status}</td>
+        </tr>`).join("")}</tbody></table>`;
+  }
+
+  const aEl = document.getElementById("complianceAuditOut");
+  if (!auditLog.events?.length) {
+    aEl.innerHTML = `<div class="empty">No compliance events recorded.</div>`;
+  } else {
+    aEl.innerHTML = `<table style="width:100%;font-size:.8rem;border-collapse:collapse">
+      <thead><tr style="background:var(--hover)"><th style="padding:6px 10px;text-align:left">Event</th><th style="padding:6px 10px;text-align:left">User</th><th style="padding:6px 10px;text-align:left">Date</th><th style="padding:6px 10px;text-align:left">Details</th></tr></thead>
+      <tbody>${auditLog.events.map(e => `
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:6px 10px;font-weight:600">${e.event_type}</td>
+          <td style="padding:6px 10px">${e.email || e.user_id || "—"}</td>
+          <td style="padding:6px 10px">${fmtDate(e.created_at)}</td>
+          <td style="padding:6px 10px;color:var(--muted)">${e.details ? e.details.substring(0, 80) : "—"}</td>
+        </tr>`).join("")}</tbody></table>`;
   }
 }
 
 init();
 </script>
-
 </body>
 </html>

@@ -219,6 +219,30 @@ main {
   background: var(--pilot-blue-dark);
 }
 
+/* Onboarding primary CTA button */
+.btn-pilot-ob {
+  background: var(--pilot-blue);
+  color: var(--white);
+  border: none;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  transition: 0.2s ease;
+  cursor: pointer;
+  width: 100%;
+}
+.btn-pilot-ob:hover:not(:disabled) {
+  background: var(--pilot-blue-dark);
+  color: var(--white);
+}
+.btn-pilot-ob:disabled {
+  background: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+  border: none;
+}
+
 .btn-grey { 
   background: var(--surface-secondary); 
   color: var(--text-main); 

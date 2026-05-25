@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { apiRequest } from '../lib/api/client';
 import { useAuth } from './AuthContext';
 
@@ -15,16 +15,20 @@ export const OnboardingProvider = ({ children }) => {
     goals: [],
     platforms: [],
     isScheduled: false,
-    onboardingMode: null // 'smart' or 'manual'
+    onboardingMode: null // 'smart' | 'manual' (audit path uses signupSource instead)
   });
   const [loading, setLoading] = useState(true);
   const [isComplete, setIsComplete] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [signupSource, setSignupSource] = useState('direct'); // 'direct' | 'brand_audit'
+  const fetchDone = useRef(false);
 
   useEffect(() => {
-    if (token) {
+    if (token && !fetchDone.current) {
+      fetchDone.current = true;
       fetchProgress();
-    } else {
+    } else if (!token) {
+      fetchDone.current = false;
       setLoading(false);
     }
   }, [token]);
@@ -32,6 +36,10 @@ export const OnboardingProvider = ({ children }) => {
   const fetchProgress = async () => {
     try {
       const res = await apiRequest("/api/customer/onboarding");
+
+      // Source determines which onboarding path the user follows
+      if (res.signup_source) setSignupSource(res.signup_source);
+
       if (res.progress) {
         setStep(res.progress.current_step);
         if (res.progress.data) {
@@ -55,23 +63,18 @@ export const OnboardingProvider = ({ children }) => {
 
     try {
       if (token) {
-        // Sanitize: strip any non-serializable values before sending to backend
         const safeData = JSON.parse(JSON.stringify(updatedData, (key, val) => {
           if (typeof val === 'function' || val instanceof Event) return undefined;
           return val;
         }));
         await apiRequest("/api/customer/onboarding/step", {
           method: "POST",
-          body: JSON.stringify({
-            step: newStep,
-            data: safeData
-          })
+          body: JSON.stringify({ step: newStep, data: safeData })
         });
       }
       setStep(newStep);
     } catch (err) {
       console.error("Failed to update onboarding step", err);
-      // Still update UI local state if backend fails momentarily during navigation
       setStep(newStep);
     }
   };
@@ -81,28 +84,18 @@ export const OnboardingProvider = ({ children }) => {
     if (step > 1) updateStep(step - 1);
   };
 
+  const trackOnboardingEvent = (eventName, meta = {}) => {
+    if (!token) return;
+    apiRequest("/api/customer/growth/action", {
+      method: "POST",
+      body: JSON.stringify({ action: eventName, metadata: meta })
+    }).catch(() => {});
+  };
+
   const completeOnboarding = async () => {
     try {
-      // 1. Create the brand if it doesn't exist yet (from onboarding data)
-      const brandName = data.brandName || data.name || '';
-      if (brandName) {
-        const brandRes = await apiRequest("/api/customer/brands/create", {
-          method: "POST",
-          body: JSON.stringify({
-            name: brandName,
-            industry: data.industry || '',
-            tone: data.tone || "Professional",
-            goals: data.goals?.join(', ') || ""
-          })
-        });
-        
-        if (brandRes.id) {
-          console.log("Brand created during onboarding:", brandRes.id);
-        }
-      }
-
-      // 2. Mark onboarding as complete
       await apiRequest("/api/customer/onboarding/complete", { method: "POST" });
+      trackOnboardingEvent("onboarding_complete", { mode: data.onboardingMode || signupSource });
       setShowCelebration(true);
       setTimeout(() => setShowCelebration(false), 3500);
       setIsComplete(true);
@@ -114,7 +107,6 @@ export const OnboardingProvider = ({ children }) => {
 
   const setOnboardingMode = (mode) => {
     setData(prev => ({ ...prev, onboardingMode: mode }));
-    // We don't necessarily need to persist to backend yet, but we will in updateStep
   };
 
   const value = {
@@ -125,11 +117,14 @@ export const OnboardingProvider = ({ children }) => {
     loading,
     isComplete,
     showCelebration,
+    signupSource,
+    onboardingMode: data.onboardingMode,
     updateStep,
     nextStep,
     prevStep,
     completeOnboarding,
-    setOnboardingMode
+    setOnboardingMode,
+    trackOnboardingEvent
   };
 
   return (

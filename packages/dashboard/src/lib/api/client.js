@@ -1,4 +1,6 @@
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8788";
+// In dev, VITE_API_URL is set to http://localhost:8787 (wrangler default).
+// In production, it must be set to https://api.mypilotpost.com via deployment env vars.
+const API_BASE = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 
 /**
  * Global API Request Wrapper
@@ -22,12 +24,13 @@ export async function apiRequest(endpoint, options = {}) {
   const data = await res.json();
 
   if (!res.ok) {
-    throw {
-      error: data.error || "An unknown error occurred",
-      code: data.code || "UNKNOWN_ERROR",
-      detail: data.detail || null,
-      status: res.status
-    };
+    const message = data.error || "An unknown error occurred";
+    const err = new Error(message);
+    err.error = message;
+    err.code = data.code || "UNKNOWN_ERROR";
+    err.detail = data.detail || null;
+    err.status = res.status;
+    throw err;
   }
 
   return data;

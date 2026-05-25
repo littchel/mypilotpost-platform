@@ -3,6 +3,7 @@ import { getDB } from "../lib/db.js";
 import { generateState, verifyAndConsumeState, exchangeCode, saveConnection } from "./engine.js";
 import { PROVIDERS } from "./registry.js";
 import { isValidUUID } from "../lib/validation.js";
+import { refreshSocialConnection } from "./refresh_manager.js";
 
 /**
  * GET /api/customer/oauth/:provider/start
@@ -125,4 +126,89 @@ export async function disconnectIntegration(request, env, auth) {
   if (!result.meta.changes) return error("Integration not found or unauthorized", "NOT_FOUND", null, 404);
 
   return json({ success: true, message: "Integration disconnected" });
+}
+
+/**
+ * GET /api/customer/social-connections
+ * Reads from the unified social_connections table (written by oauth_unified.js).
+ */
+export async function listSocialConnections(request, env, auth) {
+  const db = getDB(env);
+
+  const { results } = await db.prepare(`
+    SELECT
+      id,
+      platform,
+      platform_username,
+      account_id,
+      status,
+      expires_at,
+      last_refreshed_at,
+      scopes,
+      meta,
+      created_at
+    FROM social_connections
+    WHERE brand_id = ? AND status != 'disconnected'
+    ORDER BY created_at DESC
+  `).bind(auth.brand_id).all();
+
+  const connections = (results || []).map(row => ({
+    id: row.id,
+    platform: row.platform,
+    platform_username: row.platform_username || row.account_id,
+    status: row.status,
+    expires_at: row.expires_at,
+    last_refreshed_at: row.last_refreshed_at,
+    meta: row.meta ? JSON.parse(row.meta) : {}
+  }));
+
+  return json({ connections });
+}
+
+/**
+ * DELETE /api/customer/social-connections/:id
+ * Soft disconnect from social_connections — nullifies tokens, marks disconnected.
+ */
+export async function disconnectSocialConnection(request, env, auth) {
+  const id = request.params?.id;
+  if (!id || !isValidUUID(id)) return error("Invalid connection ID", "INVALID_ID", null, 400);
+
+  const db = getDB(env);
+
+  const result = await db.prepare(`
+    UPDATE social_connections
+    SET
+      status = 'disconnected',
+      access_token = NULL,
+      refresh_token = NULL,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = ? AND brand_id = ?
+  `).bind(id, auth.brand_id).run();
+
+  if (!result.meta.changes) return error("Connection not found or unauthorized", "NOT_FOUND", null, 404);
+
+  return json({ success: true });
+}
+
+/**
+ * POST /api/customer/social-connections/:id/refresh
+ * On-demand token refresh for a single connection.
+ */
+export async function refreshConnectionOnDemand(request, env, auth) {
+  const id = request.params?.id;
+  if (!id || !isValidUUID(id)) return error("Invalid connection ID", "INVALID_ID", null, 400);
+
+  const db = getDB(env);
+
+  const connection = await db.prepare(`
+    SELECT * FROM social_connections WHERE id = ? AND brand_id = ?
+  `).bind(id, auth.brand_id).first();
+
+  if (!connection) return error("Connection not found", "NOT_FOUND", null, 404);
+  if (!connection.refresh_token) return error("No refresh token available — reconnect required", "NO_REFRESH_TOKEN", null, 400);
+
+  const result = await refreshSocialConnection(db, connection, env);
+  if (!result.success) return error("Token refresh failed", "REFRESH_FAILED", null, 502);
+
+  return json({ success: true });
 }

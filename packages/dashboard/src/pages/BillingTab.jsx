@@ -44,41 +44,49 @@ const ErrorState = ({ message = "Unable to load data", onRetry }) => (
 );
 
 const BillingTab = () => {
-  // Hardened State Models
   const [history, setHistory] = useState({ status: 'loading', data: [] });
   const [usage, setUsage] = useState({ status: 'loading', data: [] });
-  const [currentPlan, _setCurrentPlan] = useState({
-    name: "Growth",
-    price: "R250",
-    billingCycle: "Monthly",
-    nextBillingDate: "12 June 2026",
-    status: 'Active'
-  });
+  const [currentPlan, setCurrentPlan] = useState(null);
+  const [isUpgrading, setIsUpgrading] = useState(false);
 
-  // Rewards Placeholders (Pre-Wiring)
-  const growthStats = {
-    level: "—",
-    points: "—",
-    streak: "—",
-    progress: 0
-  };
+  const growthStats = { level: "—", points: "—", streak: "—", progress: 0 };
 
-  const plans = [
-    { name: "Consistency", price: "R120", desc: "Keep your brand active" },
-    { name: "Growth", price: "R250", desc: "Scale your reach (Active)", isActive: true },
-    { name: "Reporting", price: "R450", desc: "Deep analytics & insights" },
-    { name: "Pro", price: "R800", desc: "Full automation & priority" }
+  const PLANS = [
+    { id: "starter", name: "Starter", price: "R0", desc: "Free forever" },
+    { id: "growth",  name: "Growth",  price: "R499", desc: "Scale your reach" },
+    { id: "pro",     name: "Pro",     price: "R999", desc: "Full agency power" },
   ];
+
+  const handleUpgrade = useCallback(async (planId) => {
+    if (isUpgrading || currentPlan?.id === planId) return;
+    setIsUpgrading(true);
+    try {
+      const res = await apiSafeFetch('/api/customer/billing/upgrade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan_id: planId }),
+      });
+      if (res.status === 'success' && res.data?.plan) {
+        setCurrentPlan(res.data.plan);
+      }
+    } finally {
+      setIsUpgrading(false);
+    }
+  }, [isUpgrading, currentPlan]);
 
   const fetchBillingData = useCallback(async () => {
     setHistory(prev => ({ ...prev, status: 'loading' }));
     setUsage(prev => ({ ...prev, status: 'loading' }));
 
-    const [histRes, usageRes] = await Promise.all([
+    const [planRes, histRes, usageRes] = await Promise.all([
+      apiSafeFetch('/api/customer/billing/plan'),
       apiSafeFetch('/api/customer/billing/history'),
-      apiSafeFetch('/api/customer/billing/usage')
+      apiSafeFetch('/api/customer/billing/usage'),
     ]);
 
+    if (planRes.status === 'success' && planRes.data?.plan) {
+      setCurrentPlan(planRes.data.plan);
+    }
     setHistory(histRes);
     setUsage(usageRes);
   }, []);
@@ -93,7 +101,7 @@ const BillingTab = () => {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h3 className="fw-bold mb-0 text-main" style={{ letterSpacing: '-0.02em' }}>Billing & Plans</h3>
         <div className="badge bg-primary px-3 py-2 rounded-pill" style={{ fontSize: '0.65rem' }}>
-          {currentPlan.name} Plan Active
+          {currentPlan?.name ?? '—'} Plan Active
         </div>
       </div>
 
@@ -107,32 +115,36 @@ const BillingTab = () => {
                 <CreditCard size={24} />
               </div>
               <div>
-                <h5 className="fw-bold mb-0 text-main">{currentPlan.name} Plan</h5>
-                <p className="extra-small text-muted mb-0" style={{ fontSize: '0.65rem' }}>{currentPlan.billingCycle} Billing • {currentPlan.price}/month</p>
+                <h5 className="fw-bold mb-0 text-main">{currentPlan?.name ?? '—'} Plan</h5>
+                <p className="extra-small text-muted mb-0" style={{ fontSize: '0.65rem' }}>
+                  Monthly Billing • R{currentPlan ? Math.round((currentPlan.price_monthly || 0) / 100) : '—'}/month
+                </p>
               </div>
             </div>
 
             <div className="row g-3">
               <div className="col-md-4">
                 <div className="p-3 rounded-4 border bg-surface-secondary border-subtle">
-                  <div className="extra-small text-muted mb-1 fw-bold text-uppercase" style={{ fontSize: '0.65rem' }}>Next Payment</div>
+                  <div className="extra-small text-muted mb-1 fw-bold text-uppercase" style={{ fontSize: '0.65rem' }}>Period End</div>
                   <div className="fw-bold text-main d-flex align-items-center gap-2" style={{ fontSize: '0.85rem' }}>
                     <Calendar size={14} className="text-primary" />
-                    {currentPlan.nextBillingDate}
+                    {currentPlan?.current_period_end
+                      ? new Date(currentPlan.current_period_end).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
+                      : '—'}
                   </div>
                 </div>
               </div>
               <div className="col-md-4">
                 <div className="p-3 rounded-4 border bg-surface-secondary border-subtle">
                   <div className="extra-small text-muted mb-1 fw-bold text-uppercase" style={{ fontSize: '0.65rem' }}>Billing Cycle</div>
-                  <div className="fw-bold text-main" style={{ fontSize: '0.85rem' }}>{currentPlan.billingCycle}</div>
+                  <div className="fw-bold text-main" style={{ fontSize: '0.85rem' }}>Monthly</div>
                 </div>
               </div>
               <div className="col-md-4">
                 <div className="p-3 rounded-4 border bg-surface-secondary border-subtle">
                   <div className="extra-small text-muted mb-1 fw-bold text-uppercase" style={{ fontSize: '0.65rem' }}>Status</div>
-                  <div className="fw-bold text-success d-flex align-items-center gap-2" style={{ fontSize: '0.85rem' }}>
-                    <CheckCircle2 size={14} /> {currentPlan.status}
+                  <div className={`fw-bold d-flex align-items-center gap-2 ${currentPlan?.status === 'active' ? 'text-success' : 'text-warning'}`} style={{ fontSize: '0.85rem' }}>
+                    <CheckCircle2 size={14} /> {currentPlan?.status ?? '—'}
                   </div>
                 </div>
               </div>
@@ -175,18 +187,26 @@ const BillingTab = () => {
               <ArrowUpCircle size={18} className="text-primary" /> Upgrade Plans
             </h6>
             <div className="row g-3">
-              {plans.map((plan, idx) => (
-                <div className="col" key={idx}>
-                  <div className={`p-3 rounded-4 border h-100 transition-all ${plan.isActive ? 'border-primary bg-pilot-blue-light' : 'bg-surface-primary border-subtle'}`}>
-                    <div className="fw-bold text-main mb-1" style={{ fontSize: '0.85rem' }}>{plan.name}</div>
-                    <div className="fw-bold text-primary mb-2" style={{ fontSize: '1rem' }}>{plan.price}</div>
-                    <p className="extra-small text-muted mb-3 leading-tight" style={{ fontSize: '0.65rem' }}>{plan.desc}</p>
-                    <button className={`btn w-100 extra-small fw-bold py-2 ${plan.isActive ? 'btn-primary' : 'btn-grey border'}`} style={{ fontSize: '0.75rem' }}>
-                      {plan.isActive ? 'Current Plan' : 'Upgrade'}
-                    </button>
+              {PLANS.map((plan) => {
+                const isActive = currentPlan?.id === plan.id;
+                return (
+                  <div className="col" key={plan.id}>
+                    <div className={`p-3 rounded-4 border h-100 transition-all ${isActive ? 'border-primary bg-pilot-blue-light' : 'bg-surface-primary border-subtle'}`}>
+                      <div className="fw-bold text-main mb-1" style={{ fontSize: '0.85rem' }}>{plan.name}</div>
+                      <div className="fw-bold text-primary mb-2" style={{ fontSize: '1rem' }}>{plan.price}</div>
+                      <p className="extra-small text-muted mb-3 leading-tight" style={{ fontSize: '0.65rem' }}>{plan.desc}</p>
+                      <button
+                        className={`btn w-100 extra-small fw-bold py-2 ${isActive ? 'btn-primary' : 'btn-grey border'}`}
+                        style={{ fontSize: '0.75rem' }}
+                        disabled={isActive || isUpgrading}
+                        onClick={() => handleUpgrade(plan.id)}
+                      >
+                        {isActive ? 'Current Plan' : isUpgrading ? '…' : 'Upgrade'}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

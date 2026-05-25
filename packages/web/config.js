@@ -5,7 +5,7 @@
 const MPP_CONFIG = {
     // Determine Dashboard URL based on environment
     APP_URL: (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-        ? 'http://localhost:5173'
+        ? 'http://localhost:3000'
         : 'https://app.mypilotpost.com',
     
     // Determine API URL (if needed by static pages)

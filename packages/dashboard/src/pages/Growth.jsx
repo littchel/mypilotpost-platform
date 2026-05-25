@@ -6,6 +6,7 @@ const Growth = ({ brandId, growth }) => {
   const { data: historyData } = useApi(brandId ? `/api/customer/growth/activity?brandId=${brandId}` : null, [brandId]);
 
   const profile = growth || { points: 0, level: 'Starter', streak_days: 0, progress_percentage: 0 };
+  const quests = growth?.quests || { social_consistency: { current: 0, goal: 3 }, seo_optimizer: { current: 0, goal: 5 } };
   const history = historyData?.data || [];
   const _nextReward = growth?.next_reward || null;
 
@@ -76,10 +77,10 @@ const Growth = ({ brandId, growth }) => {
             <div className="mt-auto">
               <div className="d-flex justify-content-between small fw-bold mb-1">
                 <span>Weekly Goal</span>
-                <span>2/3</span>
+                <span>{quests.social_consistency.current}/{quests.social_consistency.goal}</span>
               </div>
               <div className="progress rounded-pill" style={{ height: '6px' }}>
-                <div className="progress-bar rounded-pill" style={{ width: '66%' }}></div>
+                <div className="progress-bar rounded-pill" style={{ width: `${Math.min(100, Math.round((quests.social_consistency.current / quests.social_consistency.goal) * 100))}%` }}></div>
               </div>
             </div>
           </div>
@@ -95,10 +96,10 @@ const Growth = ({ brandId, growth }) => {
             <div className="mt-auto">
               <div className="d-flex justify-content-between small fw-bold mb-1">
                 <span>Progress</span>
-                <span>3/5</span>
+                <span>{quests.seo_optimizer.current}/{quests.seo_optimizer.goal}</span>
               </div>
               <div className="progress rounded-pill" style={{ height: '6px' }}>
-                <div className="progress-bar bg-success rounded-pill" style={{ width: '60%' }}></div>
+                <div className="progress-bar bg-success rounded-pill" style={{ width: `${Math.min(100, Math.round((quests.seo_optimizer.current / quests.seo_optimizer.goal) * 100))}%` }}></div>
               </div>
             </div>
           </div>

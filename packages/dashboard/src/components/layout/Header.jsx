@@ -1,22 +1,46 @@
-import React, { useState } from "react";
-import { Bell, Mail, CheckCircle, AlertCircle, Zap } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import { Bell, Mail, CheckCircle, AlertCircle, ChevronDown, Settings, CreditCard, Trophy, Shield, Lock, LogOut } from "lucide-react";
 import { apiRequest } from "../../lib/api/client";
 
 const Header = ({ activeBrand, user, logout, switchTab, notifications = [], growth = { points: 0, level: 1 } }) => {
-  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showUserMenu, setShowUserMenu]   = useState(false);
   const [showNotifMenu, setShowNotifMenu] = useState(false);
-  
+  const userMenuRef  = useRef(null);
+  const notifMenuRef = useRef(null);
+
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (userMenuRef.current  && !userMenuRef.current.contains(e.target))  setShowUserMenu(false);
+      if (notifMenuRef.current && !notifMenuRef.current.contains(e.target)) setShowNotifMenu(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const handleMarkAllRead = async () => {
     try {
       await apiRequest('/api/customer/notifications/read-all', { method: 'POST' });
-      // Force refresh of notification data via event
       window.dispatchEvent(new CustomEvent('refresh-data'));
     } catch (e) {
       console.error("Failed to mark all read", e);
     }
   };
+
+  const goTo = (tab, subtab) => {
+    setShowUserMenu(false);
+    if (subtab) {
+      switchTab(tab);
+      setTimeout(() => window.dispatchEvent(new CustomEvent('settings-subtab', { detail: subtab })), 50);
+    } else {
+      switchTab(tab);
+    }
+  };
+
+  const initials = (user?.email?.[0] || 'U').toUpperCase();
+  const displayName = user?.first_name || user?.email?.split('@')[0] || 'Account';
 
   return (
     <header>
@@ -24,63 +48,56 @@ const Header = ({ activeBrand, user, logout, switchTab, notifications = [], grow
         <h5 className="fw-bold mb-0" style={{ color: 'var(--text-main)' }}>
           {activeBrand?.name || "No Brand Selected"}
         </h5>
-        <span className="badge bg-pilot-light text-pilot" style={{ background: 'var(--pilot-blue-light)', color: 'var(--pilot-blue)' }}>
-          Pro Plan
-        </span>
+        {activeBrand && (
+          <span className="badge" style={{ background: 'var(--pilot-blue-light)', color: 'var(--pilot-blue)', fontSize: '0.65rem', fontWeight: 700 }}>
+            {growth?.plan || 'Pro Plan'}
+          </span>
+        )}
       </div>
 
-      <div className="d-flex align-items-center gap-4">
-        
-        {/* Notifications Dropdown */}
-        <div className="dropdown position-relative">
-          <div 
-            className="p-2 rounded-3 hover-bg-light cursor-pointer position-relative transition-all"
-            onClick={() => {
-              setShowNotifMenu(!showNotifMenu);
-              setShowUserMenu(false);
-            }}
+      <div className="d-flex align-items-center gap-3">
+
+        {/* Notifications */}
+        <div className="position-relative" ref={notifMenuRef}>
+          <button
+            className="btn p-2 rounded-3 position-relative"
+            style={{ background: 'none', border: 'none' }}
+            onClick={() => { setShowNotifMenu(v => !v); setShowUserMenu(false); }}
           >
             <Mail size={20} className="text-muted" />
             {unreadCount > 0 && (
-              <span 
-                className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-white"
-                style={{ fontSize: '0.6rem', padding: '0.35em 0.5em', marginTop: '6px', marginLeft: '-4px' }}
+              <span
+                className="position-absolute badge rounded-pill bg-danger border border-white"
+                style={{ fontSize: '0.6rem', padding: '0.35em 0.5em', top: 4, right: 4 }}
               >
                 {unreadCount}
               </span>
             )}
-          </div>
+          </button>
 
           {showNotifMenu && (
-            <div 
-              className="position-absolute end-0 mt-2 bg-white border rounded-4 shadow-lg p-0 overflow-hidden animate__animated animate__fadeInUp" 
-              style={{ width: '320px', zIndex: 1000, border: '1px solid var(--border-subtle)' }}
+            <div
+              className="position-absolute end-0 mt-2 bg-white rounded-4 shadow-lg overflow-hidden animate__animated animate__fadeInUp"
+              style={{ width: 320, zIndex: 1000, border: '1px solid var(--border-subtle)', top: '100%' }}
             >
               <div className="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
                 <h6 className="fw-bold mb-0">Notifications</h6>
-                <span 
-                  className="extra-small text-primary fw-bold cursor-pointer hover-underline"
-                  onClick={handleMarkAllRead}
-                >
+                <button className="btn btn-link btn-sm text-primary p-0 fw-bold text-decoration-none" onClick={handleMarkAllRead}>
                   Mark all read
-                </span>
+                </button>
               </div>
-              <div className="max-h-300 overflow-auto">
+              <div style={{ maxHeight: 300, overflowY: 'auto' }}>
                 {notifications.length === 0 ? (
                   <div className="p-4 text-center text-muted small">No notifications yet</div>
                 ) : (
                   notifications.map(n => (
-                    <div key={n.id} className={`p-3 border-bottom hover-bg-light cursor-pointer transition-all ${!n.read ? 'bg-pilot-light' : ''}`}>
+                    <div key={n.id} className={`p-3 border-bottom ${!n.read ? 'bg-pilot-light' : ''}`} style={{ cursor: 'default' }}>
                       <div className="d-flex gap-3">
-                        <div className={`p-2 rounded-3 h-fit ${
-                          n.type === 'success' ? 'bg-success bg-opacity-10 text-success' :
-                          n.type === 'warning' ? 'bg-warning bg-opacity-10 text-warning' :
-                          'bg-primary bg-opacity-10 text-primary'
-                        }`}>
+                        <div className={`p-2 rounded-3 h-fit ${n.type === 'success' ? 'bg-success bg-opacity-10 text-success' : n.type === 'warning' ? 'bg-warning bg-opacity-10 text-warning' : 'bg-primary bg-opacity-10 text-primary'}`}>
                           {n.type === 'success' ? <CheckCircle size={16} /> : n.type === 'warning' ? <AlertCircle size={16} /> : <Bell size={16} />}
                         </div>
                         <div>
-                          <div className={`small mb-1 ${!n.read ? 'fw-bold text-main' : 'text-muted'}`}>{n.message}</div>
+                          <div className={`small mb-1 ${!n.read ? 'fw-bold' : 'text-muted'}`}>{n.message}</div>
                           <div className="extra-small text-muted">{new Date(n.created_at).toLocaleString()}</div>
                         </div>
                       </div>
@@ -88,68 +105,102 @@ const Header = ({ activeBrand, user, logout, switchTab, notifications = [], grow
                   ))
                 )}
               </div>
-              <div 
-                className="p-2 text-center bg-white border-top cursor-pointer hover-text-primary transition-all"
-                onClick={() => {
-                  switchTab('notifications');
-                  setShowNotifMenu(false);
-                }}
+              <button
+                className="d-block w-100 p-2 text-center bg-white border-top extra-small fw-bold text-primary"
+                style={{ border: 'none', cursor: 'pointer' }}
+                onClick={() => { switchTab('notifications'); setShowNotifMenu(false); }}
               >
-                <span className="extra-small fw-bold">View all notifications</span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="dropdown">
-          <div 
-            className="d-flex align-items-center gap-2 cursor-pointer"
-            onClick={() => setShowUserMenu(!showUserMenu)}
-          >
-            <div 
-              className="rounded-circle d-flex align-items-center justify-content-center fw-bold"
-              style={{ width: '32px', height: '32px', background: 'var(--pilot-blue)', color: 'white', fontSize: '0.8rem' }}
-            >
-              {user?.email?.[0].toUpperCase() || "U"}
-            </div>
-            <div className="d-none d-md-block text-start">
-              <div className="fw-bold small line-height-1" style={{ fontSize: '0.8rem' }}>
-                {user?.email?.split('@')[0]}
-                <span className="ms-2 badge rounded-pill bg-pilot-blue text-white" style={{ fontSize: '0.6rem', verticalAlign: 'middle' }}>
-                  Lvl {growth.level} • {growth.points} pts
-                </span>
-              </div>
-              <div className="text-muted" style={{ fontSize: '0.65rem' }}>Account Owner</div>
-            </div>
-            <i className={`fas fa-chevron-${showUserMenu ? 'up' : 'down'} text-muted small`}></i>
-          </div>
-
-          {showUserMenu && (
-            <div 
-              className="position-absolute end-0 mt-2 bg-white border rounded shadow-sm p-2" 
-              style={{ minWidth: '200px', zIndex: 1000, border: '1px solid var(--border-subtle)' }}
-            >
-              <div className="px-2 py-1 mb-1 border-bottom">
-                <div className="fw-bold small">{user?.email}</div>
-                <div className="text-muted extra-small" style={{ fontSize: '0.6rem' }}>Organization Admin</div>
-              </div>
-              <a href="#" className="nav-link py-1 px-2 small">
-                <i className="fas fa-user-circle me-2"></i> Profile Settings
-              </a>
-              <a href="#" className="nav-link py-1 px-2 small">
-                <i className="fas fa-shield-alt me-2"></i> Security
-              </a>
-              <hr className="my-1" />
-              <button 
-                className="btn btn-link nav-link py-1 px-2 small text-danger text-decoration-none w-100 text-start"
-                onClick={logout}
-              >
-                <i className="fas fa-sign-out-alt me-2"></i> Sign Out
+                View all notifications
               </button>
             </div>
           )}
         </div>
+
+        {/* Account Dropdown */}
+        <div className="position-relative" ref={userMenuRef}>
+          <button
+            className="d-flex align-items-center gap-2"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 8 }}
+            onClick={() => { setShowUserMenu(v => !v); setShowNotifMenu(false); }}
+          >
+            <div
+              className="rounded-circle d-flex align-items-center justify-content-center fw-bold flex-shrink-0"
+              style={{ width: 32, height: 32, background: 'var(--pilot-blue)', color: 'white', fontSize: '0.8rem' }}
+            >
+              {initials}
+            </div>
+            <div className="d-none d-md-block text-start">
+              <div className="fw-bold" style={{ fontSize: '0.8rem', lineHeight: 1.2 }}>
+                {displayName}
+              </div>
+              <div className="text-muted" style={{ fontSize: '0.65rem' }}>
+                Lvl {growth?.level || 1} · {growth?.points || 0} pts
+              </div>
+            </div>
+            <ChevronDown size={14} className="text-muted d-none d-md-block" />
+          </button>
+
+          {showUserMenu && (
+            <div
+              className="position-absolute end-0 mt-2 bg-white rounded-4 shadow-lg overflow-hidden animate__animated animate__fadeInUp"
+              style={{ minWidth: 220, zIndex: 1000, border: '1px solid var(--border-subtle)', top: '100%' }}
+            >
+              {/* Account identity */}
+              <div className="px-4 py-3 border-bottom bg-light">
+                <div className="fw-bold small">{user?.email}</div>
+                <div className="text-muted" style={{ fontSize: '0.65rem' }}>Account Owner</div>
+              </div>
+
+              {/* Account nav items */}
+              <div className="py-1">
+                <button className="account-menu-item" onClick={() => goTo('settings', 'Branding')}>
+                  <Settings size={15} />
+                  <span>Settings</span>
+                </button>
+                <button className="account-menu-item" onClick={() => goTo('settings', 'Security')}>
+                  <Lock size={15} />
+                  <span>Security</span>
+                </button>
+                <button className="account-menu-item" onClick={() => goTo('settings', 'Privacy & Data')}>
+                  <Shield size={15} />
+                  <span>Privacy &amp; Data</span>
+                </button>
+              </div>
+
+              <div className="border-top border-bottom py-1">
+                <button className="account-menu-item" onClick={() => goTo('billing')}>
+                  <CreditCard size={15} />
+                  <span>Billing &amp; Plan</span>
+                </button>
+                <button className="account-menu-item" onClick={() => goTo('growth')}>
+                  <Trophy size={15} />
+                  <span>Rewards</span>
+                </button>
+              </div>
+
+              <div className="py-1">
+                <button className="account-menu-item account-menu-item--danger" onClick={logout}>
+                  <LogOut size={15} />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+
+      <style>{`
+        .account-menu-item {
+          display: flex; align-items: center; gap: 10px;
+          width: 100%; padding: 8px 16px;
+          background: none; border: none; cursor: pointer;
+          font-size: 0.85rem; font-weight: 500; color: var(--text-main, #0f172a);
+          text-align: left; transition: background 0.12s;
+        }
+        .account-menu-item:hover { background: var(--bg-body, #f8fafc); }
+        .account-menu-item--danger { color: #dc2626; }
+        .account-menu-item--danger:hover { background: #fff1f2; }
+      `}</style>
     </header>
   );
 };

@@ -3,28 +3,21 @@
 import { applyBillingEvent } from "./subscription-engine.js";
 
 /**
- * Yoco Webhook Handler
- * --------------------
- * Responsibilities (Milestone 8):
- * 1. Verify webhook signature (Yoco spec)
- * 2. Prevent replay attacks
- * 3. Parse payment event
- * 4. Extract brand_id from metadata
- * 5. Insert payment (idempotent)
- * 6. Create billing_event (audit trail)
- * 7. Trigger subscription state machine
- * 8. Always return 200 OK to Yoco
+ * Yoco Webhook Handler (Svix spec)
+ * ---------------------------------
+ * 1. Verify signature (HMAC-SHA256, whsec_ base64 secret)
+ * 2. Replay protection (±3 min timestamp window)
+ * 3. Parse event
+ * 4. Insert payment (idempotent via UNIQUE provider_event_id)
+ * 5. Create billing event + trigger subscription state machine
+ * 6. Always return 200 to Yoco
  *
- * IMPORTANT:
- * - No admin auth
- * - No customer auth
- * - No hard enforcement
- * - Provider-agnostic core logic
+ * NOT behind any auth middleware — called directly from server.js public block.
  */
 
 export async function handleYocoWebhook(request, env) {
   /* =====================================================
-     1️⃣ READ RAW BODY (REQUIRED FOR SIGNATURE)
+     1. READ RAW BODY (required before any await on request)
      ===================================================== */
   const rawBody = await request.text();
   const headers = request.headers;
@@ -38,7 +31,7 @@ export async function handleYocoWebhook(request, env) {
   }
 
   /* =====================================================
-     2️⃣ REPLAY PROTECTION (3 MINUTES)
+     2. REPLAY PROTECTION (±3 minutes)
      ===================================================== */
   const now = Math.floor(Date.now() / 1000);
   if (Math.abs(now - Number(timestamp)) > 180) {
@@ -46,18 +39,16 @@ export async function handleYocoWebhook(request, env) {
   }
 
   /* =====================================================
-     3️⃣ SIGNATURE VERIFICATION (YOCO SPEC)
+     3. SIGNATURE VERIFICATION (constant-time via subtle.verify)
      ===================================================== */
-  const signedContent = `${webhookId}.${timestamp}.${rawBody}`;
-
   const fullSecret = env.YOCO_WEBHOOK_SECRET;
   if (!fullSecret || !fullSecret.startsWith("whsec_")) {
+    console.error("[YOCO] YOCO_WEBHOOK_SECRET missing or malformed");
     return new Response("Webhook secret misconfigured", { status: 500 });
   }
 
-  const secretBase64 = fullSecret.split("_")[1];
   const secretBytes = Uint8Array.from(
-    atob(secretBase64),
+    atob(fullSecret.slice("whsec_".length)),
     (c) => c.charCodeAt(0)
   );
 
@@ -66,42 +57,41 @@ export async function handleYocoWebhook(request, env) {
     secretBytes,
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["sign"]
+    ["verify"]
   );
 
-  const signatureBuffer = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    new TextEncoder().encode(signedContent)
-  );
+  const signedContent = `${webhookId}.${timestamp}.${rawBody}`;
 
-  const expectedSignature = btoa(
-    String.fromCharCode(...new Uint8Array(signatureBuffer))
-  );
+  // Signature header format: "v1,<base64>" — Svix may send multiple, take first v1
+  const providedSig = signatureHeader.split(" ")
+    .map(s => s.trim())
+    .find(s => s.startsWith("v1,"))
+    ?.slice(3);
 
-  const providedSignature = signatureHeader.split(",")[1];
-  if (!providedSignature) {
+  if (!providedSig) {
     return new Response("Invalid signature format", { status: 401 });
   }
 
-  const expectedBytes = Uint8Array.from(
-    atob(expectedSignature),
-    (c) => c.charCodeAt(0)
-  );
-  const providedBytes = Uint8Array.from(
-    atob(providedSignature),
-    (c) => c.charCodeAt(0)
+  let sigBytes;
+  try {
+    sigBytes = Uint8Array.from(atob(providedSig), (c) => c.charCodeAt(0));
+  } catch {
+    return new Response("Malformed signature", { status: 401 });
+  }
+
+  const valid = await crypto.subtle.verify(
+    "HMAC",
+    key,
+    sigBytes,
+    new TextEncoder().encode(signedContent)
   );
 
-  if (
-    expectedBytes.length !== providedBytes.length ||
-    !crypto.timingSafeEqual(expectedBytes, providedBytes)
-  ) {
+  if (!valid) {
     return new Response("Invalid webhook signature", { status: 401 });
   }
 
   /* =====================================================
-     4️⃣ PARSE EVENT (SAFE AFTER VERIFICATION)
+     4. PARSE EVENT (safe after verification)
      ===================================================== */
   let event;
   try {
@@ -111,18 +101,18 @@ export async function handleYocoWebhook(request, env) {
   }
 
   /* =====================================================
-     5️⃣ MAP YOCO EVENT → CANONICAL PAYMENT
+     5. MAP EVENT TYPE
      ===================================================== */
   const eventType = event.type;
   const data = event.data;
 
-  // brand_id MUST be provided via metadata
-  if (!data || !data.metadata || !data.metadata.brand_id) {
-    // Cannot associate payment → ignore safely
+  // brand_id MUST be in metadata to associate payment with a customer
+  if (!data?.metadata?.brand_id) {
     return new Response("OK", { status: 200 });
   }
 
   const brandId = data.metadata.brand_id;
+  const planId = data.metadata.plan_id || null;
 
   let paymentStatus;
   let billingEventType;
@@ -135,80 +125,62 @@ export async function handleYocoWebhook(request, env) {
     billingEventType = "payment_failed";
   } else if (eventType === "refund.succeeded") {
     paymentStatus = "refunded";
-    billingEventType = null; // refunds do not auto-change entitlement
+    billingEventType = null;
   } else {
-    // Unsupported / irrelevant event
     return new Response("OK", { status: 200 });
   }
 
   /* =====================================================
-     6️⃣ INSERT PAYMENT (IDEMPOTENT FACT RECORD)
+     6. INSERT PAYMENT (idempotent — UNIQUE on provider+provider_event_id)
      ===================================================== */
+  let isNewPayment = true;
   try {
-    await env.DB.prepare(
-      `
-      INSERT INTO payments (
-        id,
-        customer_id,
-        provider,
-        provider_event_id,
-        amount,
-        currency,
-        status,
-        occurred_at,
-        created_at
-      ) VALUES (
-        ?, ?, ?, ?, ?, ?, ?, ?, ?
-      )
-      `
-    ).bind(
+    await env.DB.prepare(`
+      INSERT INTO payments (id, brand_id, provider, provider_event_id, amount, currency, status, occurred_at, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
       crypto.randomUUID(),
       brandId,
       "yoco",
       event.id,
       data.amount,
-      data.currency,
+      data.currency || "ZAR",
       paymentStatus,
-      new Date(event.created * 1000).toISOString(),
+      new Date((event.created || 0) * 1000).toISOString(),
       new Date().toISOString()
     ).run();
   } catch {
-    // Duplicate payment (provider + provider_event_id)
-    // Safe to ignore (idempotency)
+    // UNIQUE violation = duplicate event; skip state machine to ensure full idempotency
+    isNewPayment = false;
   }
 
   /* =====================================================
-     7️⃣ CREATE BILLING EVENT + APPLY STATE MACHINE
+     7. BILLING EVENT + SUBSCRIPTION STATE MACHINE
+     Only runs for genuinely new payments to prevent duplicate billing events.
      ===================================================== */
-  if (billingEventType) {
-    await env.DB.prepare(
-      `
-      INSERT INTO billing_events (
-        id,
-        customer_id,
-        event_type,
-        amount,
-        created_at
-      ) VALUES (?, ?, ?, ?, ?)
-      `
-    ).bind(
-      crypto.randomUUID(),
-      brandId,
-      billingEventType,
-      data.amount,
-      new Date().toISOString()
-    ).run();
+  if (billingEventType && isNewPayment) {
+    try {
+      await env.DB.prepare(`
+        INSERT INTO billing_events (id, brand_id, event_type, amount, created_at)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(
+        crypto.randomUUID(),
+        brandId,
+        billingEventType,
+        data.amount,
+        new Date().toISOString()
+      ).run();
+    } catch (err) {
+      console.error("[YOCO] billing_events insert failed", err);
+    }
 
-    // Apply subscription state transition (rules-based)
     await applyBillingEvent(env, {
       customerId: brandId,
       eventType: billingEventType,
       amount: data.amount,
+      planId,
     });
   }
 
-  /* =====================================================
-     ✅ COMPLETE — ALWAYS ACKNOWLEDGE YOCO
-     ===================================================== */
   return new Response("OK", { status: 200 });
 }

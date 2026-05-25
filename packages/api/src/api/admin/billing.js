@@ -55,7 +55,22 @@ export async function billingOverview(env) {
 /**
  * GET /api/admin/billing/mrr-history
  */
-export async function mrrHistory() {
-  // Phase 1: no historical billing yet
-  return json({ history: [] });
+export async function mrrHistory(env) {
+  const db = getDB(env);
+  const { results } = await db.prepare(`
+    SELECT snapshot_month, SUM(mrr) as total_mrr, COUNT(DISTINCT brand_id) as paying_customers
+    FROM mrr_snapshots
+    GROUP BY snapshot_month
+    ORDER BY snapshot_month DESC
+    LIMIT 12
+  `).all();
+
+  const history = (results || []).map(r => ({
+    month: r.snapshot_month,
+    mrr: Math.round(r.total_mrr / 100),
+    customers: r.paying_customers,
+    currency: "ZAR"
+  }));
+
+  return json({ history });
 }

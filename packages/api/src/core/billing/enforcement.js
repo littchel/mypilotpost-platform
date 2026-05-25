@@ -60,10 +60,16 @@ export async function checkAndIncrement(db, userId, action) {
     data = { ...data, posts_used: 0, ai_generations_used: 0, social_accounts_used: 0 };
   }
 
-  // 2. Self-Healing: Reset Period if needed
-  if (now > data.current_period_end) {
+  // 2. Self-Healing: Initialize or reset billing period
+  if (!data.current_period_end) {
+    // New user — initialize a 30-day period from today
+    const start = now.slice(0, 10);
+    const end = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    await db.prepare(`UPDATE users SET current_period_start = ?, current_period_end = ? WHERE id = ?`)
+      .bind(start, end, userId).run();
+    // Continue with zeroed usage — don't recurse
+  } else if (now > data.current_period_end) {
     await resetUsagePeriod(db, userId, data.current_period_end);
-    // Recursively call to get fresh state after reset
     return checkAndIncrement(db, userId, action);
   }
 
@@ -91,12 +97,13 @@ export async function checkAndIncrement(db, userId, action) {
     return throwLimitError(data, action, "Limit reached", "limit_reached");
   }
 
-  // 6. Atomic Increment
-  await db.prepare(`
-    UPDATE usage_tracking 
-    SET ${usageKey} = ${usageKey} + 1, updated_at = CURRENT_TIMESTAMP
-    WHERE user_id = ?
-  `).bind(userId).run();
+  // 6. Atomic Increment — explicit column map avoids SQL template injection
+  const INCREMENT_SQL = {
+    posts:    "UPDATE usage_tracking SET posts_used = posts_used + 1, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+    ai:       "UPDATE usage_tracking SET ai_generations_used = ai_generations_used + 1, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+    accounts: "UPDATE usage_tracking SET social_accounts_used = social_accounts_used + 1, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+  };
+  await db.prepare(INCREMENT_SQL[action]).bind(userId).run();
 
   return { success: true, remaining: limit - (used + 1) };
 }

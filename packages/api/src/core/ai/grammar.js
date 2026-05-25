@@ -1,8 +1,9 @@
 // packages/api/src/core/ai/grammar.js
-// myPilotPost — AI Grammar Correction (v1.1.1 Stabilization)
 
 import { json, error } from "../../lib/json.js";
+import { getDB } from "../../lib/db.js";
 import { logEvent } from "../../lib/events.js";
+import { runLLM } from "./ai_client.js";
 
 export async function grammarCheck(request, env, auth) {
   let body;
@@ -18,17 +19,39 @@ export async function grammarCheck(request, env, auth) {
     return json({ correctedText: "", suggestions: [] });
   }
 
-  // Deterministic Response
-  const correctedText = text.replace(/\bteh\b/g, "the")
-                           .replace(/\baviation\b/g, "Aviation");
-  
-  const suggestions = [
-    "Capitalized 'Aviation' for brand consistency",
-    "Corrected 'teh' to 'the'"
-  ];
+  const prompt = `Fix all grammar, spelling, and punctuation errors in the text below.
+Preserve the author's voice and intent. Do not change meaning.
+
+Text: "${text.slice(0, 1500)}"
+
+Respond in strict JSON:
+{
+  "corrected": "corrected version of the full text",
+  "suggestions": ["brief description of each change made"]
+}`;
+
+  let correctedText = text;
+  let suggestions = [];
+
+  if (auth?.brand_id) {
+    const db = getDB(env);
+    const brand = await db.prepare("SELECT * FROM brands WHERE id = ?").bind(auth.brand_id).first();
+
+    const { output } = await runLLM(env, prompt, { brand, mode: 'fast' });
+    try {
+      const parsed = JSON.parse(output);
+      if (parsed?.corrected) {
+        correctedText = parsed.corrected;
+        suggestions = parsed.suggestions || [];
+      }
+    } catch {
+      // AI unavailable — return original text unchanged
+    }
+  }
 
   try {
     if (auth?.brand_id) {
+      const db = getDB(env);
       await logEvent(env, {
         event_type: "grammar_checked",
         brand_id: auth.brand_id,
@@ -40,9 +63,5 @@ export async function grammarCheck(request, env, auth) {
     console.error("[grammarCheck:event]", err);
   }
 
-  return json({
-    correctedText,
-    suggestions
-  });
+  return json({ correctedText, suggestions });
 }
-

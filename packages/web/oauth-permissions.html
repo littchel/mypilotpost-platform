@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OAuth &amp; Permissions — myPilotPost Trust Center</title>
+    <meta name="description" content="Exactly what permissions we request from each connected platform and why — maintained for platform review by Meta, Google, LinkedIn, TikTok, X, Pinterest, Threads, Canva, Dropbox, and WordPress.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="config.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { line-height: 1.15; -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+        body { font-family: 'Inter', sans-serif; font-weight: 300; color: #1a1a1a; background: #ffffff; overflow-x: hidden; }
+        :root {
+            --primary-blue: #2563EB; --dark-blue: #1D4ED8;
+            --text-dark: #000000; --text-gray: #646565;
+            --light-gray: #EEF0F1; --border-gray: #CECECE;
+            --white: #FFFFFF; --footer-bg: #002F86; --hover-bg: #E6EEFF;
+            --space-unit: 16px; --space-half: 8px; --space-onehalf: 24px;
+            --space-two: 32px; --space-three: 48px; --space-four: 64px;
+            --space-five: 80px; --space-six: 96px;
+            --radius-small: 4px; --radius-medium: 8px;
+            --container-width: 1280px; --container-padding: 20px;
+        }
+        .container { max-width: var(--container-width); margin: 0 auto; padding: 0 var(--container-padding); width: 100%; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: var(--radius-medium); font-weight: 500; font-size: 18px; cursor: pointer; transition: all 0.3s ease; border: none; text-decoration: none; }
+        .btn--primary { background: var(--primary-blue); color: var(--white); }
+        .btn--primary:hover { background: var(--dark-blue); transform: translateY(-2px); box-shadow: 0 10px 25px rgba(37,99,235,0.3); }
+        .btn--secondary { background: transparent; border: 1px solid var(--border-gray); color: var(--text-gray); }
+        .btn--secondary:hover { background: var(--light-gray); transform: translateY(-2px); }
+        .header { position: sticky; top: 0; background: var(--white); box-shadow: 0 2px 20px rgba(0,0,0,0.05); z-index: 1000; padding: 20px 0; }
+        .header__container { display: flex; align-items: center; justify-content: space-between; }
+        .logo { width: 272px; height: 54px; background-image: url('images/myPilotPost-Logo.png'); background-size: contain; background-repeat: no-repeat; background-position: center; cursor: pointer; }
+        .nav-menu { display: flex; gap: 28px; align-items: center; }
+        .nav-menu__item { font-size: 18px; color: var(--text-gray); cursor: pointer; transition: color 0.3s; text-decoration: none; }
+        .nav-menu__item:hover { color: var(--primary-blue); }
+        .header__buttons { display: flex; gap: 20px; }
+        .mobile-toggle { display: none; flex-direction: column; cursor: pointer; padding: 10px; }
+        .mobile-toggle span { width: 25px; height: 3px; background: var(--text-dark); margin: 3px 0; transition: 0.3s; }
+        .mobile-menu { display: none; }
+        .page-hero { background: var(--footer-bg); color: var(--white); padding: var(--space-five) 0; -webkit-font-smoothing: antialiased; }
+        .page-hero__breadcrumb { font-size: 14px; color: rgba(255,255,255,0.6); margin-bottom: var(--space-unit); }
+        .page-hero__breadcrumb a { color: rgba(255,255,255,0.6); text-decoration: none; }
+        .page-hero__breadcrumb a:hover { color: rgba(255,255,255,0.9); }
+        .page-hero__icon { width: 56px; height: 56px; background: rgba(255,255,255,0.12); border-radius: var(--radius-medium); display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-onehalf); font-size: 24px; color: rgba(255,255,255,0.9); }
+        .page-hero h1 { font-size: 42px; font-weight: 800; line-height: 1.15; margin-bottom: var(--space-unit); }
+        .page-hero p { font-size: 18px; color: rgba(255,255,255,0.75); max-width: 640px; line-height: 1.7; }
+        .page-hero__meta { margin-top: var(--space-onehalf); font-size: 13px; color: rgba(255,255,255,0.5) !important; }
+        .content-page { padding: var(--space-five) 0 var(--space-six); }
+        .content-inner { max-width: 900px; }
+        h2.section-heading { font-size: 28px; font-weight: 700; color: var(--text-dark); margin-bottom: var(--space-onehalf); padding-top: var(--space-three); border-top: 1px solid var(--light-gray); margin-top: var(--space-three); }
+        h3.sub-heading { font-size: 19px; font-weight: 700; color: var(--text-dark); margin-bottom: var(--space-unit); margin-top: var(--space-two); }
+        .body-text { font-size: 16px; line-height: 1.75; color: var(--text-gray); margin-bottom: var(--space-unit); }
+        .body-text strong { color: var(--text-dark); font-weight: 600; }
+        .body-text a { color: var(--primary-blue); text-decoration: none; }
+        .body-text a:hover { text-decoration: underline; }
+        .data-table { width: 100%; border-collapse: collapse; margin: var(--space-unit) 0 var(--space-two); font-size: 15px; }
+        .data-table th { background: var(--light-gray); text-align: left; padding: 12px 16px; font-weight: 700; color: var(--text-dark); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 2px solid var(--border-gray); }
+        .data-table td { padding: 12px 16px; border-bottom: 1px solid var(--light-gray); color: var(--text-gray); vertical-align: top; }
+        .data-table td:first-child { font-weight: 600; color: var(--text-dark); width: 30%; }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tr:hover td { background: rgba(37,99,235,0.03); }
+        .callout { padding: 18px 24px; border-radius: var(--radius-medium); margin: var(--space-onehalf) 0; border-left: 4px solid var(--primary-blue); background: var(--hover-bg); font-size: 15px; line-height: 1.7; color: var(--text-dark); font-style: italic; }
+        .callout--note { border-left-color: #16a34a; background: #f0fdf4; color: #166534; font-style: normal; }
+        .check-list { list-style: none; padding: 0; margin: var(--space-unit) 0 var(--space-onehalf); }
+        .check-list li { display: flex; align-items: flex-start; gap: 12px; padding: 8px 0; font-size: 15px; color: var(--text-gray); border-bottom: 1px solid var(--light-gray); line-height: 1.6; }
+        .check-list li:last-child { border-bottom: none; }
+        .check-list li i { color: var(--primary-blue); margin-top: 3px; flex-shrink: 0; }
+        .check-list li i.fa-xmark { color: #dc2626; }
+        .check-list li strong { color: var(--text-dark); }
+        .check-list li a { color: var(--primary-blue); text-decoration: none; }
+        .footer { background: var(--footer-bg); color: var(--white); padding: var(--space-five) 0 var(--space-three); -webkit-font-smoothing: antialiased; }
+        .footer__grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: var(--space-four); margin-bottom: var(--space-four); }
+        .footer__logo { width: 302px; height: 49px; background-image: url('images/myPilotPost-Logo.png'); background-size: contain; background-repeat: no-repeat; background-position: left; margin-bottom: var(--space-unit); cursor: pointer; }
+        .footer__tagline { color: rgba(255,255,255,0.9); margin-bottom: var(--space-unit); font-size: 16px; font-weight: 600;}
+        .footer__desc { color: rgba(255,255,255,0.75); font-size: 15px; font-weight: 400; line-height: 1.6; margin-bottom: 30px; }
+        .social-links { display: flex; gap: 18px; }
+        .social-link { cursor: pointer; transition: transform 0.3s, filter 0.3s; }
+        .social-link:hover { transform: translateY(-2px); filter: brightness(1.2); }
+        .footer__column-title { font-size: 14px; font-weight: 700; color: rgba(255,255,255,0.85); margin-bottom: var(--space-onehalf); text-transform: uppercase; letter-spacing: 0.06em; }
+        .footer__link { display: block; color: rgba(255,255,255,0.75); text-decoration: none; margin-bottom: var(--space-half); transition: all 0.3s ease; font-size: 15px; }
+        .footer__link:hover { color: #ffffff; padding-left: 4px; }
+        .footer__divider { width: 100%; height: 1px; background: rgba(255,255,255,0.15); margin: var(--space-three) 0 var(--space-two); }
+        .footer__copyright { text-align: center; color: rgba(255,255,255,0.6); font-size: 15px; }
+        @media (max-width: 1024px) { .footer__grid { grid-template-columns: repeat(3, 1fr); gap: var(--space-three); } }
+        @media (max-width: 768px) {
+            .nav-menu, .header__buttons { display: none; }
+            .mobile-toggle { display: flex; }
+            .mobile-menu { display: block; position: fixed; top: 0; right: -100%; width: 80%; max-width: 400px; height: 100vh; background: var(--white); box-shadow: -2px 0 20px rgba(0,0,0,0.1); z-index: 1001; padding: 80px 30px; transition: right 0.3s ease; }
+            .mobile-menu.active { right: 0; }
+            .mobile-menu__item { display: block; padding: 15px 0; font-size: 18px; color: var(--text-dark); text-decoration: none; border-bottom: 1px solid var(--border-gray); }
+            .mobile-menu__buttons { margin-top: 30px; display: flex; flex-direction: column; gap: 15px; }
+            .page-hero h1 { font-size: 32px; }
+            .footer__grid { grid-template-columns: 1fr 1fr; gap: var(--space-three); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="mobile-menu" id="mobileMenu">
+    <a href="index.html" class="mobile-menu__item">Home</a>
+    <a href="features.html" class="mobile-menu__item">Features</a>
+    <a href="solutions.html" class="mobile-menu__item">Solutions</a>
+    <a href="pricing.html" class="mobile-menu__item">Pricing</a>
+    <a href="resources.html" class="mobile-menu__item">Resources</a>
+
+    <div class="mobile-menu__buttons">
+        <a href="sign-in.html"><button class="btn btn--secondary">Sign In</button></a>
+        <a href="register.html"><button class="btn btn--primary">Get Started</button></a>
+    </div>
+</div>
+
+<header class="header">
+    <div class="container header__container">
+        <div class="logo" onclick="window.location.href='index.html'" aria-label="myPilotPost Logo"></div>
+        <nav class="nav-menu" aria-label="Main Navigation">
+            <a href="features.html" class="nav-menu__item">Features</a>
+            <a href="solutions.html" class="nav-menu__item">Solutions</a>
+            <a href="pricing.html" class="nav-menu__item">Pricing</a>
+            <a href="resources.html" class="nav-menu__item">Resources</a>
+
+        </nav>
+        <div class="header__buttons">
+            <button class="btn btn--secondary" onclick="window.location.href='sign-in.html'">Sign In <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4.17 10H15.83" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 4.17L15.83 10L10 15.83" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <button class="btn btn--primary" onclick="window.location.href='register.html'">Get Started</button>
+        </div>
+        <div class="mobile-toggle" onclick="toggleMobileMenu()" aria-label="Toggle mobile menu"><span></span><span></span><span></span></div>
+    </div>
+</header>
+
+<section class="page-hero">
+    <div class="container">
+        <p class="page-hero__breadcrumb"><a href="trust.html">Trust Center</a> / OAuth &amp; Permissions</p>
+        <div class="page-hero__icon"><i class="fa-solid fa-key" aria-hidden="true"></i></div>
+        <h1>OAuth &amp; Permissions</h1>
+        <p>Exactly what permissions we request from each connected platform and why — maintained for platform review by Meta, Google, LinkedIn, TikTok, X, Pinterest, Threads, Canva, Dropbox, and WordPress.</p>
+        <p class="page-hero__meta">Thuthu (Pty) Ltd t/a myPilotPost &nbsp;·&nbsp; Reg. No. 2025/102758/07</p>
+    </div>
+</section>
+
+<section class="content-page">
+    <div class="container">
+        <div class="content-inner">
+
+            <p class="body-text">myPilotPost connects to social media and productivity platforms on your behalf using OAuth 2.0 — an industry-standard authorisation protocol that allows you to grant specific, revocable permissions to a third-party application without sharing your account password. This page is relevant to users of myPilotPost and to the platform review processes of Meta, Google, LinkedIn, TikTok, Canva, and other connected services.</p>
+            <div class="callout">We request only the permissions necessary to deliver the specific features you use. We never request permissions beyond what is required for stated functionality.</div>
+
+            <!-- SECTION: How OAuth Works -->
+            <h2 class="section-heading">How OAuth Works</h2>
+            <ul class="check-list">
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> <div><strong>Step 1:</strong> You click Connect within the myPilotPost Integration Hub</div></li>
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> <div><strong>Step 2:</strong> You are redirected to that platform's official authentication and authorisation screen — hosted by that platform, not by us</div></li>
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> <div><strong>Step 3:</strong> You review the permissions being requested and choose to approve or deny</div></li>
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> <div><strong>Step 4:</strong> If approved, the platform issues an access token to myPilotPost — your password is never transmitted to us at any point</div></li>
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> <div><strong>Step 5:</strong> We store this token encrypted, scoped to your brand and connected account within our Cloudflare infrastructure</div></li>
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> <div><strong>Step 6:</strong> You can revoke access at any time — either from within myPilotPost or directly from the connected platform's settings</div></li>
+            </ul>
+
+            <!-- SECTION: Permissions We Request — By Platform -->
+            <h2 class="section-heading">Permissions We Request — By Platform</h2>
+            <p class="body-text">The table below documents every OAuth permission (scope) requested from each connected platform, the reason for the request, and key account requirements. All scope lists reflect the live configuration in our OAuth provider registry.</p>
+
+            <!-- Facebook -->
+            <h3 class="sub-heading"><i class="fa-brands fa-facebook" aria-hidden="true" style="color: var(--primary-blue); margin-right: 8px;"></i>Facebook Pages</h3>
+            <div class="callout callout--note"><strong>Account requirement:</strong> You must be an admin of a Facebook Page. Personal profiles cannot be connected for publishing. <strong>Business Manager / Advanced Access</strong> is required for production use of <code style="font-family:monospace;background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:3px;font-size:12px;">pages_manage_posts</code>.</div>
+            <table class="data-table">
+                <thead><tr><th>OAuth Scope</th><th>Access Type</th><th>Why We Request It</th></tr></thead>
+                <tbody>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">pages_show_list</code></td><td>Read</td><td>To display your available Facebook Pages during the account connection flow so you can select which Page to connect</td></tr>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">pages_read_engagement</code></td><td>Read</td><td>To retrieve post engagement metrics — likes, comments, shares, reach — for your Mission Analytics dashboard</td></tr>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">pages_manage_posts</code></td><td>Publish</td><td>To publish scheduled posts to your connected Facebook Page via the Meta Graph API</td></tr>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">business_management</code></td><td>Read</td><td>To retrieve the list of Pages and assets associated with your Business Manager account during the connection flow</td></tr>
+                </tbody>
+            </table>
+            <p class="body-text">We do not request <code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">pages_messaging</code>, <code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">ads_management</code>, or any permission enabling inbox, ad, or personal profile access.</p>
+            <p class="body-text"><strong>Token behaviour:</strong> Meta issues long-lived user access tokens (60 days) and long-lived Page access tokens (no expiry). Token refresh is handled server-side and transparently. Tokens are scoped to the specific Page selected during connection and stored encrypted in our Cloudflare infrastructure.</p>
+            <p class="body-text"><strong>Data stored:</strong> Page ID, Page name, and OAuth access token (encrypted). Engagement metrics retrieved via the API are stored for display in Mission Analytics and are not shared or sold.</p>
+
+            <!-- Instagram -->
+            <h3 class="sub-heading"><i class="fa-brands fa-instagram" aria-hidden="true" style="color: var(--primary-blue); margin-right: 8px;"></i>Instagram</h3>
+            <div class="callout callout--note"><strong>Account requirement:</strong> An Instagram Business Account or Creator Account connected to a Facebook Page is required. Personal Instagram accounts are not supported. <strong>Advanced Access</strong> (Meta App Review) is required for <code style="font-family:monospace;background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:3px;font-size:12px;">instagram_content_publish</code> in production.</div>
+            <table class="data-table">
+                <thead><tr><th>OAuth Scope</th><th>Access Type</th><th>Why We Request It</th></tr></thead>
+                <tbody>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">instagram_basic</code></td><td>Read</td><td>To verify the connected Instagram Business/Creator account identity and retrieve basic profile data for display within myPilotPost</td></tr>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">instagram_content_publish</code></td><td>Publish</td><td>To publish scheduled posts, images, videos, carousels, and Reels to your connected Instagram Business or Creator account via the Content Publishing API</td></tr>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">pages_show_list</code></td><td>Read</td><td>To discover Facebook Pages linked to your account, which is required to connect an Instagram Business Account</td></tr>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">pages_read_engagement</code></td><td>Read</td><td>To retrieve post engagement metrics for your Mission Analytics dashboard</td></tr>
+                </tbody>
+            </table>
+            <p class="body-text">We do not request <code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">instagram_manage_messages</code>, <code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">instagram_manage_insights</code> beyond what is needed, or any permission relating to DM or inbox access.</p>
+            <p class="body-text"><strong>Token behaviour:</strong> Instagram uses Meta's token infrastructure. Long-lived tokens last 60 days; Page tokens for connected accounts do not expire. Token refresh is handled server-side. <strong>Revocation:</strong> facebook.com → Settings → Security → Apps and Websites → Remove myPilotPost.</p>
+
+            <!-- Threads -->
+            <h3 class="sub-heading"><i class="fa-brands fa-threads" aria-hidden="true" style="color: var(--primary-blue); margin-right: 8px;"></i>Threads</h3>
+            <div class="callout callout--note"><strong>Account requirement:</strong> A Threads account linked to your Instagram account is required. Threads uses the Meta OAuth infrastructure but operates its own separate token and API system (graph.threads.net). <strong>Long-lived token exchange is required</strong> — short-lived tokens (1 hour) are immediately exchanged server-side for long-lived tokens (60 days).</div>
+            <table class="data-table">
+                <thead><tr><th>OAuth Scope</th><th>Access Type</th><th>Why We Request It</th></tr></thead>
+                <tbody>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">threads_basic</code></td><td>Read</td><td>To verify the connected Threads account identity, retrieve the username, and confirm account availability for publishing</td></tr>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">threads_content_publish</code></td><td>Publish</td><td>To publish scheduled posts to your Threads account via the Threads Content Publishing API</td></tr>
+                </tbody>
+            </table>
+            <p class="body-text"><strong>Token behaviour:</strong> Threads issues short-lived tokens (1 hour) upon OAuth callback. myPilotPost immediately exchanges these for long-lived tokens (approximately 60 days) server-side using the <code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">th_exchange_token</code> grant. <strong>Threads does not issue refresh tokens</strong> — when the long-lived token expires, reconnection is required. We surface this to the user before expiry.</p>
+            <p class="body-text"><strong>Data stored:</strong> Threads user ID, username, and access token (encrypted, 60-day lifecycle). We do not store or access Threads DMs, replies from other accounts, or any private content. <strong>Revocation:</strong> Threads app settings → Connected apps → Remove myPilotPost, or via Instagram Settings → Apps and Websites.</p>
+
+            <!-- YouTube -->
+            <h3 class="sub-heading"><i class="fa-brands fa-youtube" aria-hidden="true" style="color: var(--primary-blue); margin-right: 8px;"></i>YouTube</h3>
+            <div class="callout callout--note"><strong>Account requirement:</strong> A Google account with an associated YouTube channel is required. The YouTube connection is used for analytics retrieval only — myPilotPost does not publish video content to YouTube at this time.</div>
+            <table class="data-table">
+                <thead><tr><th>OAuth Scope</th><th>Access Type</th><th>Why We Request It</th></tr></thead>
+                <tbody>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">openid email profile</code></td><td>Read</td><td>To verify the connected Google account identity during the OAuth flow</td></tr>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">https://www.googleapis.com/auth/youtube.readonly</code></td><td>Read</td><td>To retrieve YouTube channel and video performance data for your Mission Analytics dashboard — no publishing or modification of channel content</td></tr>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">https://www.googleapis.com/auth/analytics.readonly</code></td><td>Read</td><td>Where a Google Analytics property is linked to your YouTube channel, to retrieve audience and traffic analytics data</td></tr>
+                </tbody>
+            </table>
+            <p class="body-text"><strong>Token behaviour:</strong> Google issues access tokens with a 1-hour expiry and refresh tokens with no fixed expiry. Token refresh is handled server-side and transparently — you do not need to reconnect unless you revoke access. <strong>Revocation:</strong> myaccount.google.com → Security → Third-party apps with account access → Remove myPilotPost.</p>
+
+            <!-- Google Analytics -->
+            <h3 class="sub-heading"><i class="fa-brands fa-google" aria-hidden="true" style="color: var(--primary-blue); margin-right: 8px;"></i>Google Analytics</h3>
+            <div class="callout callout--note"><strong>Account requirement:</strong> A Google account with access to a Google Analytics 4 (GA4) property is required. This connection provides read-only access to your GA4 reporting data.</div>
+            <table class="data-table">
+                <thead><tr><th>OAuth Scope</th><th>Access Type</th><th>Why We Request It</th></tr></thead>
+                <tbody>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">openid email profile</code></td><td>Read</td><td>To verify the connected Google account identity during the OAuth flow</td></tr>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">https://www.googleapis.com/auth/analytics.readonly</code></td><td>Read</td><td>To retrieve GA4 property data — sessions, users, traffic sources, conversions — for your Mission Analytics dashboard. Read-only; we cannot modify your GA4 property or configuration.</td></tr>
+                </tbody>
+            </table>
+            <p class="body-text">We comply with Google's <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer">API Services User Data Policy</a>, including the Limited Use requirements. Analytics data retrieved via the API is used solely to populate your Mission Analytics dashboard and is not shared with or sold to third parties. <strong>Revocation:</strong> myaccount.google.com → Security → Third-party apps with account access → Remove myPilotPost.</p>
+
+            <!-- Google Business Profile -->
+            <h3 class="sub-heading"><i class="fa-brands fa-google" aria-hidden="true" style="color: var(--primary-blue); margin-right: 8px;"></i>Google Business Profile</h3>
+            <div class="callout callout--note"><strong>Account requirement:</strong> A Google account with admin access to a Google Business Profile (formerly Google My Business) listing is required.</div>
+            <table class="data-table">
+                <thead><tr><th>OAuth Scope</th><th>Access Type</th><th>Why We Request It</th></tr></thead>
+                <tbody>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">openid email profile</code></td><td>Read</td><td>To verify the connected Google account identity during the OAuth flow</td></tr>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">https://www.googleapis.com/auth/business.manage</code></td><td>Read / Publish</td><td>To retrieve your Business Profile listing, location data, and review metrics for the Mission Analytics dashboard, and to publish Google Business Posts on your behalf when scheduling through myPilotPost</td></tr>
+                </tbody>
+            </table>
+            <p class="body-text"><strong>Token behaviour:</strong> Google issues access tokens (1-hour expiry) and refresh tokens. Token refresh is handled server-side. <strong>Revocation:</strong> myaccount.google.com → Security → Third-party apps with account access → Remove myPilotPost.</p>
+
+            <!-- LinkedIn -->
+            <h3 class="sub-heading"><i class="fa-brands fa-linkedin" aria-hidden="true" style="color: var(--primary-blue); margin-right: 8px;"></i>LinkedIn</h3>
+            <div class="callout callout--note"><strong>Account requirement:</strong> A personal LinkedIn account is required. Company Page publishing additionally requires that the authenticated user holds admin rights to the target Company Page. LinkedIn's <strong>Marketing Developer Platform (MDP)</strong> program approval is required for production use of organisation posting.</div>
+            <table class="data-table">
+                <thead><tr><th>OAuth Scope</th><th>Access Type</th><th>Why We Request It</th></tr></thead>
+                <tbody>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">r_liteprofile</code></td><td>Read</td><td>To retrieve your LinkedIn profile ID, first name, last name, and profile picture for account identity verification and display within myPilotPost</td></tr>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">r_emailaddress</code></td><td>Read</td><td>To retrieve your primary LinkedIn email address for account identity and notification purposes</td></tr>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">w_member_social</code></td><td>Publish</td><td>To publish scheduled posts to your LinkedIn personal profile or to Company Pages for which you hold admin rights</td></tr>
+                </tbody>
+            </table>
+            <p class="body-text"><strong>Token behaviour:</strong> LinkedIn access tokens expire after 60 days. LinkedIn does not issue refresh tokens for all products — when the token expires, reconnection may be required. We surface expiry warnings to users in advance. <strong>offline_access</strong> is requested where available to extend the token lifetime. <strong>Revocation:</strong> linkedin.com → Settings &amp; Privacy → Data Privacy → Permitted Services → Remove myPilotPost.</p>
+            <p class="body-text"><strong>Data stored:</strong> LinkedIn member URN (ID), display name, email address, and OAuth access token (encrypted). No private messages, connection data, or feed content is accessed or stored.</p>
+
+            <!-- X / Twitter -->
+            <h3 class="sub-heading"><i class="fa-brands fa-x-twitter" aria-hidden="true" style="color: var(--primary-blue); margin-right: 8px;"></i>X (formerly Twitter)</h3>
+            <div class="callout callout--note"><strong>Account requirement:</strong> Any X account (personal or professional) can be connected. X uses <strong>OAuth 2.0 with PKCE</strong> (Proof Key for Code Exchange) — a security-enhanced authorisation flow that does not require a client secret in the browser. The PKCE challenge method used is S256.</div>
+            <table class="data-table">
+                <thead><tr><th>OAuth Scope</th><th>Access Type</th><th>Why We Request It</th></tr></thead>
+                <tbody>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">tweet.read</code></td><td>Read</td><td>To retrieve your post history, engagement metrics, and timeline data for Mission Analytics</td></tr>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">tweet.write</code></td><td>Publish</td><td>To publish scheduled posts (tweets) to your X account via the X API v2</td></tr>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">users.read</code></td><td>Read</td><td>To retrieve your X account profile information — username, display name, and account ID — for identity verification and display within myPilotPost</td></tr>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">offline.access</code></td><td>Refresh</td><td>To obtain a refresh token enabling server-side token renewal without requiring you to reconnect your account each time the access token expires</td></tr>
+                </tbody>
+            </table>
+            <p class="body-text"><strong>Token behaviour:</strong> X API v2 access tokens typically expire after 2 hours. The <code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">offline.access</code> scope provides a refresh token enabling server-side renewal. Token refresh is handled transparently. We do not read DMs, follow/unfollow accounts, or perform any interaction-type actions on your behalf. <strong>Revocation:</strong> twitter.com/settings/connected_apps → Remove myPilotPost.</p>
+
+            <!-- TikTok -->
+            <h3 class="sub-heading"><i class="fa-brands fa-tiktok" aria-hidden="true" style="color: var(--primary-blue); margin-right: 8px;"></i>TikTok</h3>
+            <div class="callout callout--note"><strong>Account requirement:</strong> A TikTok Creator or Business account is required. Standard personal accounts may have limited API access depending on TikTok's eligibility criteria. <strong>TikTok Content Posting API approval</strong> is required for production video upload access — this is a platform review process conducted by TikTok, not myPilotPost.</div>
+            <table class="data-table">
+                <thead><tr><th>OAuth Scope</th><th>Access Type</th><th>Why We Request It</th></tr></thead>
+                <tbody>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">user.info.basic</code></td><td>Read</td><td>To retrieve your TikTok account's open_id, display name, and avatar URL for identity verification and display within myPilotPost</td></tr>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">video.upload</code></td><td>Publish</td><td>To upload and publish scheduled video content to your TikTok account via the TikTok Content Posting API v2</td></tr>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">video.list</code></td><td>Read</td><td>To retrieve a list of your TikTok videos and associated performance data for Mission Analytics</td></tr>
+                </tbody>
+            </table>
+            <p class="body-text"><strong>Token behaviour:</strong> TikTok access tokens have a limited lifespan as defined by TikTok's API terms. Token refresh is handled server-side where TikTok issues refresh tokens. We use TikTok's Open API v2 endpoints exclusively. We do not access your TikTok inbox, followers list, or any private content. <strong>Revocation:</strong> TikTok app → Profile → Settings → Privacy → Manage app permissions → Remove myPilotPost.</p>
+            <p class="body-text"><strong>Data stored:</strong> TikTok open_id, union_id, display name, and access token (encrypted). Video performance metrics retrieved via the API are stored for display in Mission Analytics and are not shared or sold.</p>
+
+            <!-- Pinterest -->
+            <h3 class="sub-heading"><i class="fa-brands fa-pinterest" aria-hidden="true" style="color: var(--primary-blue); margin-right: 8px;"></i>Pinterest</h3>
+            <div class="callout callout--note"><strong>Account requirement:</strong> Any Pinterest account (personal or business) can be connected for Pin publishing. Business accounts provide access to analytics data.</div>
+            <table class="data-table">
+                <thead><tr><th>OAuth Scope</th><th>Access Type</th><th>Why We Request It</th></tr></thead>
+                <tbody>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">boards:read</code></td><td>Read</td><td>To retrieve a list of your Pinterest boards so you can select which board to publish a Pin to during the scheduling flow</td></tr>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">pins:read</code></td><td>Read</td><td>To retrieve your existing Pins and engagement metrics for Mission Analytics</td></tr>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">pins:write</code></td><td>Publish</td><td>To create and publish scheduled Pins to your selected Pinterest board via the Pinterest API v5</td></tr>
+                </tbody>
+            </table>
+            <p class="body-text"><strong>Token behaviour:</strong> Pinterest issues access tokens and refresh tokens via the Pinterest API v5 OAuth flow. Token refresh is handled server-side. We do not read your followers, send messages, or access any private content. <strong>Revocation:</strong> pinterest.com → Settings → Security → Apps → Remove myPilotPost.</p>
+
+            <!-- Canva -->
+            <h3 class="sub-heading"><i class="fa-solid fa-palette" aria-hidden="true" style="color: var(--primary-blue); margin-right: 8px;"></i>Canva</h3>
+            <div class="callout callout--note"><strong>Account requirement:</strong> Any Canva account (free or paid) can be connected. The Canva connection is used for media import only — to bring designs you create in Canva into your myPilotPost Content Hangar. myPilotPost does not write to or modify your Canva designs.</div>
+            <table class="data-table">
+                <thead><tr><th>OAuth Scope</th><th>Access Type</th><th>Why We Request It</th></tr></thead>
+                <tbody>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">design:content:read</code></td><td>Read</td><td>To retrieve the list of designs in your Canva account so you can select which design to import into your myPilotPost Content Hangar</td></tr>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">asset:read</code></td><td>Read</td><td>To retrieve design assets (images, exported files) associated with your selected Canva designs for import into myPilotPost</td></tr>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">profile:read</code></td><td>Read</td><td>To verify the connected Canva account identity — display name and account ID — during the connection flow</td></tr>
+                </tbody>
+            </table>
+            <p class="body-text">We do not request <code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">design:content:write</code> or any scope that would allow myPilotPost to create, modify, or delete your Canva designs. The Canva integration is import-only. <strong>Revocation:</strong> canva.com → Account Settings → Connected Apps → Disconnect myPilotPost.</p>
+
+            <!-- Google Drive -->
+            <h3 class="sub-heading"><i class="fa-brands fa-google-drive" aria-hidden="true" style="color: var(--primary-blue); margin-right: 8px;"></i>Google Drive</h3>
+            <div class="callout callout--note"><strong>Account requirement:</strong> Any Google account with Google Drive can be connected. This integration is used for media import only — to bring files you explicitly select from your Drive into your myPilotPost Content Hangar.</div>
+            <table class="data-table">
+                <thead><tr><th>OAuth Scope</th><th>Access Type</th><th>Why We Request It</th></tr></thead>
+                <tbody>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">https://www.googleapis.com/auth/drive.readonly</code></td><td>Read</td><td>To retrieve and import media files you explicitly select from your Google Drive into your myPilotPost Content Hangar. Read-only — we cannot create, modify, or delete any files in your Drive.</td></tr>
+                </tbody>
+            </table>
+            <p class="body-text">We request read-only access to the specific files you select. We do not request access to your full Drive contents, contacts, Gmail, or any other Google service. <strong>Revocation:</strong> myaccount.google.com → Security → Third-party apps with account access → Remove myPilotPost.</p>
+
+            <!-- Dropbox -->
+            <h3 class="sub-heading"><i class="fa-brands fa-dropbox" aria-hidden="true" style="color: var(--primary-blue); margin-right: 8px;"></i>Dropbox</h3>
+            <div class="callout callout--note"><strong>Account requirement:</strong> Any Dropbox account (personal or business) can be connected. This integration is used for media import only — to bring files you explicitly select from your Dropbox into your myPilotPost Content Hangar.</div>
+            <table class="data-table">
+                <thead><tr><th>OAuth Scope</th><th>Access Type</th><th>Why We Request It</th></tr></thead>
+                <tbody>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">account_info.read</code></td><td>Read</td><td>To verify the connected Dropbox account identity — display name and account ID — during the connection flow</td></tr>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">files.content.read</code></td><td>Read</td><td>To retrieve and download media files you explicitly select from your Dropbox for import into your myPilotPost Content Hangar</td></tr>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">files.metadata.read</code></td><td>Read</td><td>To retrieve file names, types, and metadata for the files you select during the import flow — enabling the file picker to display and navigate your Dropbox</td></tr>
+                </tbody>
+            </table>
+            <p class="body-text"><strong>Token behaviour:</strong> Dropbox is configured with <code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">token_access_type: offline</code>, which requests a long-lived offline access token to avoid requiring reconnection for each import session. We do not use this access to monitor or scan your Dropbox in the background. <strong>Revocation:</strong> dropbox.com → Account → Security → Apps → Revoke myPilotPost.</p>
+
+            <!-- WordPress -->
+            <h3 class="sub-heading"><i class="fa-brands fa-wordpress" aria-hidden="true" style="color: var(--primary-blue); margin-right: 8px;"></i>WordPress</h3>
+            <div class="callout callout--note"><strong>Account requirement:</strong> A WordPress.com account or a self-hosted WordPress site using Jetpack (which provides WordPress.com OAuth credentials) is required. This integration enables blog post publishing from myPilotPost to your WordPress site.</div>
+            <table class="data-table">
+                <thead><tr><th>OAuth Scope</th><th>Access Type</th><th>Why We Request It</th></tr></thead>
+                <tbody>
+                    <tr><td><code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">global</code></td><td>Publish / Read</td><td>The WordPress.com OAuth system uses a <code style="font-family:monospace;background:var(--light-gray);padding:2px 6px;border-radius:4px;font-size:13px;">global</code> scope token that grants access to the WordPress REST API for the authenticated site. myPilotPost uses this only to create and publish blog posts to your connected WordPress site on your behalf.</td></tr>
+                </tbody>
+            </table>
+            <p class="body-text"><strong>Data used:</strong> We use the WordPress REST API to create and publish posts — title, body content, categories, tags, and featured image — as configured in your myPilotPost mission. We do not access your WordPress user management, plugin configuration, or any data unrelated to post publishing. <strong>Revocation:</strong> Your WordPress.com account → Apps → Revoke myPilotPost, or via your site's Jetpack settings.</p>
+
+            <!-- SECTION: What We Do NOT Do -->
+            <h2 class="section-heading">What We Do NOT Do With OAuth Access</h2>
+            <div class="callout">These restrictions are enforced by the permission scopes we request. We do not request permissions that would enable these actions, and we do not perform them.</div>
+            <ul class="check-list">
+                <li><i class="fa-solid fa-xmark" aria-hidden="true"></i> We never read or access direct messages, private inboxes, or private conversations on any connected platform</li>
+                <li><i class="fa-solid fa-xmark" aria-hidden="true"></i> We never publish content without explicit user scheduling and confirmation via the myPilotPost Launch Pad — no AI-initiated or background publishing occurs</li>
+                <li><i class="fa-solid fa-xmark" aria-hidden="true"></i> We never follow, unfollow, like, comment on, or interact with third-party accounts or content on your behalf</li>
+                <li><i class="fa-solid fa-xmark" aria-hidden="true"></i> We never sell, share, licence, or otherwise expose your OAuth tokens or connected account data to any third party, except Cloudflare as our infrastructure provider</li>
+                <li><i class="fa-solid fa-xmark" aria-hidden="true"></i> We never use the OAuth access of one connected platform to access data from another</li>
+                <li><i class="fa-solid fa-xmark" aria-hidden="true"></i> We never retain OAuth tokens after a connected account is disconnected — tokens are deleted immediately upon disconnection</li>
+                <li><i class="fa-solid fa-xmark" aria-hidden="true"></i> We do not use OAuth access to scrape, harvest, or store data from connected platforms beyond what is necessary for the features described in this document</li>
+                <li><i class="fa-solid fa-xmark" aria-hidden="true"></i> We do not access platform data from accounts you have not explicitly connected — no cross-account access occurs</li>
+            </ul>
+
+            <!-- SECTION: How Tokens Are Stored -->
+            <h2 class="section-heading">How Tokens Are Stored</h2>
+            <ul class="check-list">
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> OAuth access tokens are encrypted before storage using Cloudflare's infrastructure encryption layer</li>
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Tokens are scoped per brand and per connected account — cross-brand access is architecturally prevented at the API and database layer</li>
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Access tokens are never logged in plaintext in application logs or error reports</li>
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Token refresh (where supported by the connected platform) is handled server-side and transparently — you do not need to reconnect unless the platform revokes the token or the token expires without a refresh grant</li>
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Tokens are stored in Cloudflare D1 (relational) and/or KV, both encrypted at rest by Cloudflare's storage layer</li>
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> On account deletion, all stored OAuth tokens are deleted within 30 days of confirmed deletion</li>
+            </ul>
+
+            <!-- SECTION: Revoking Access -->
+            <h2 class="section-heading">Revoking Access</h2>
+
+            <h3 class="sub-heading">From myPilotPost</h3>
+            <ul class="check-list">
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Navigate to <strong>Control Tower &rarr; Integration Hub</strong></li>
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Locate the connected account you wish to disconnect</li>
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Select <strong>Disconnect</strong> — the access token is deleted from our system immediately</li>
+            </ul>
+
+            <h3 class="sub-heading">From the Connected Platform Directly</h3>
+            <p class="body-text">Revoking directly from the platform will invalidate the token in our system on the next API call. We recommend also disconnecting from within myPilotPost to ensure our stored token record is removed.</p>
+            <ul class="check-list">
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> <strong>Facebook / Instagram:</strong> facebook.com → Settings → Security &amp; Login → Apps and Websites → Remove myPilotPost</li>
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> <strong>Threads:</strong> Threads app → Privacy → Connected apps → Remove myPilotPost (or via Instagram Settings → Apps and Websites)</li>
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> <strong>Google (YouTube / Analytics / Business Profile / Drive):</strong> myaccount.google.com → Security → Third-party apps with account access → Remove myPilotPost</li>
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> <strong>LinkedIn:</strong> linkedin.com → Settings &amp; Privacy → Data Privacy → Permitted Services → Remove myPilotPost</li>
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> <strong>X (Twitter):</strong> twitter.com/settings/connected_apps → Revoke access for myPilotPost</li>
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> <strong>TikTok:</strong> TikTok app → Profile → Settings → Privacy → Manage app permissions → Remove myPilotPost</li>
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> <strong>Pinterest:</strong> pinterest.com → Settings → Security → Apps → Remove myPilotPost</li>
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> <strong>Canva:</strong> canva.com → Account Settings → Connected Apps → Disconnect myPilotPost</li>
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> <strong>Dropbox:</strong> dropbox.com → Account → Security → Apps → Revoke myPilotPost</li>
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> <strong>WordPress:</strong> wordpress.com → Account → Security → Connected Applications → Revoke myPilotPost</li>
+            </ul>
+
+            <!-- SECTION: Platform Review Reference -->
+            <h2 class="section-heading">Platform Review Reference</h2>
+            <p class="body-text">This page is maintained to support the app review processes of all connected platforms. If you are a platform reviewer, the following confirms our data use:</p>
+            <ul class="check-list">
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> myPilotPost is a social media content scheduling, publishing, and analytics platform for brands and agencies, operated by <strong>Thuthu (Pty) Ltd</strong> (Registration No. 2025/102758/07), South Africa</li>
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> All permission requests are directly and exclusively tied to the product features described on this page and in our <a href="privacy-policy.html">Privacy Policy</a></li>
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Data obtained via OAuth is used only for scheduling, publishing, and analytics retrieval as described per platform above</li>
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> We do not transfer, sell, or use OAuth data for advertising, data brokering, or any purpose unrelated to platform functionality</li>
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Users can revoke all permissions at any time through both our platform and the connected platform's native settings</li>
+                <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> We comply with: Meta's Platform Terms and Developer Policies; Google's API Services User Data Policy (Limited Use); LinkedIn's API Terms of Use; TikTok's Developer Terms; Canva's API Terms; Dropbox's API Terms; Pinterest's API Terms; X's Developer Agreement</li>
+            </ul>
+
+            <p class="body-text" style="margin-top: var(--space-three); padding-top: var(--space-onehalf); border-top: 1px solid var(--light-gray);">
+                Platform review enquiries: <a href="mailto:legal@mypilotpost.com">legal@mypilotpost.com</a> &nbsp;&middot;&nbsp;
+                Privacy: <a href="mailto:privacy@mypilotpost.com">privacy@mypilotpost.com</a> &nbsp;&middot;&nbsp;
+                <a href="trust.html">&larr; Back to Trust Center</a>
+            </p>
+
+        </div>
+    </div>
+</section>
+
+<footer class="footer">
+    <div class="container">
+        <div class="footer__grid">
+            <div>
+                <div class="footer__logo" onclick="window.location.href='index.html'" aria-label="myPilotPost Logo"></div>
+                <p class="footer__tagline">Land the right message every time.</p>
+                <p class="footer__desc">Social media management and content operations platform for founders, small businesses, modern brands, agencies, and marketing teams.</p>
+                <div class="social-links">
+                    <a href="https://www.facebook.com/profile.php?id=61587795843300" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M18 2H15C13.67 2 12.4 2.53 11.46 3.46C10.53 4.4 10 5.67 10 7V10H7V14H10V22H14V14H17L18 10H14V7C14 6.73 14.11 6.48 14.29 6.29C14.48 6.11 14.73 6 15 6H18V2Z"/></svg></a>
+                    <a href="https://www.instagram.com/mypilotpost_/" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="5" stroke="white" stroke-width="1.5"/><circle cx="18" cy="6" r="1.5" fill="white"/><circle cx="12" cy="12" r="4" stroke="white" stroke-width="1.5"/></svg></a>
+                    <a href="https://www.linkedin.com/company/mypilotpost" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M16 8C17.59 8 19.12 8.63 20.24 9.76C21.37 10.88 22 12.41 22 14V21H18V14C18 13.47 17.79 12.96 17.41 12.59C17.04 12.21 16.53 12 16 12C15.47 12 14.96 12.21 14.59 12.59C14.21 12.96 14 13.47 14 14V21H10V14C10 12.41 10.63 10.88 11.76 9.76C12.88 8.63 14.41 8 16 8Z"/><path d="M6 9H2V21H6V9Z"/><circle cx="4" cy="4" r="2" fill="white"/></svg></a>
+                    <a href="https://x.com/mypilotpost" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="X / Twitter"><svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.74l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+                </div>
+            </div>
+            <div>
+                <h6 class="footer__column-title">Product</h6>
+                <a href="features.html" class="footer__link">Features</a>
+                <a href="solutions.html" class="footer__link">Solutions</a>
+                <a href="pricing.html" class="footer__link">Pricing</a>
+                <a href="resources.html" class="footer__link">Integrations</a>
+            </div>
+            <div>
+                <h6 class="footer__column-title">Resources</h6>
+                <a href="resources.html" class="footer__link">Blog</a>
+                <a href="resources.html" class="footer__link">News &amp; Updates</a>
+                <a href="help-center.html" class="footer__link">Help Center</a>
+                <a href="mailto:support@mypilotpost.com" class="footer__link">Request a Feature</a>
+            </div>
+            <div>
+                <h6 class="footer__column-title">Trust</h6>
+                <a href="trust.html" class="footer__link">Trust Center</a>
+                <a href="security.html" class="footer__link">Security</a>
+                <a href="ai-principles.html" class="footer__link">AI Principles</a>
+                <a href="oauth-permissions.html" class="footer__link">OAuth Permissions</a>
+                <a href="status.html" class="footer__link">Status</a>
+            </div>
+            <div>
+                <h6 class="footer__column-title">Legal</h6>
+                <a href="compliance.html" class="footer__link">Compliance</a>
+                <a href="privacy.html" class="footer__link">Privacy Policy</a>
+                <a href="terms.html" class="footer__link">Terms of Service</a>
+                <a href="refund-policy.html" class="footer__link">Refund Policy</a>
+                <a href="images/PAIA_Manual.pdf" class="footer__link">PAIA Manual</a>
+                <a href="support.html" class="footer__link">Support</a>
+            </div>
+        </div>
+        <div class="footer__divider"></div>
+        <p class="footer__copyright">&copy; 2026 myPilotPost. All rights reserved.</p>
+    </div>
+</footer>
+
+<script>
+    function toggleMobileMenu() {
+        const menu = document.getElementById('mobileMenu');
+        menu.classList.toggle('active');
+        document.body.style.overflow = menu.classList.contains('active') ? 'hidden' : 'auto';
+    }
+    document.addEventListener('click', function(e) {
+        const menu = document.getElementById('mobileMenu');
+        const toggle = document.querySelector('.mobile-toggle');
+        if (!menu.contains(e.target) && !toggle.contains(e.target) && menu.classList.contains('active')) {
+            menu.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+    });
+</script>
+</body>
+</html>

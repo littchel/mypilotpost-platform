@@ -5,6 +5,7 @@
 
 import { getDB } from "../../lib/db.js";
 import { triggerLifecycleEmail } from "./engine.js";
+import { processPendingDeletions } from "../../api/customer/compliance.js";
 
 /**
  * Master cron entry point. Called from server.js scheduled handler.
@@ -17,6 +18,7 @@ export async function runLifecycleCron(env) {
     runChurnRiskEmails(env),
     runWeeklyDigestEmails(env),
     runOnboardingReminderEmails(env),
+    processPendingDeletions(env),
   ]);
 
   console.log("[LIFECYCLE-CRON] Daily lifecycle run complete");
@@ -29,17 +31,20 @@ export async function runLifecycleCron(env) {
 async function runTrialExpiryEmails(env) {
   const db = getDB(env);
 
+  // Query users table directly — users.subscription_status and trial_ends_at are
+  // the authoritative trial state (seeded at registration, synced on payment).
+  // subscriptions.plan_id = 'trial' never matched any row (no plan with that id).
   const { results } = await db.prepare(`
     SELECT DISTINCT u.id as user_id, u.first_name, u.email,
                     b.id as brand_id, b.name as brand_name,
-                    s.current_period_end
-    FROM subscriptions s
-    JOIN users u ON u.id = s.user_id
-    JOIN brands b ON b.owner_user_id = u.id
-    WHERE s.plan_id = 'trial'
-      AND s.current_period_end IS NOT NULL
-      AND s.current_period_end <= datetime('now', '+3 days')
-      AND s.current_period_end > datetime('now')
+                    u.trial_ends_at as current_period_end
+    FROM users u
+    JOIN brand_users bu ON bu.user_id = u.id
+    JOIN brands b ON b.id = bu.brand_id
+    WHERE u.subscription_status = 'trial'
+      AND u.trial_ends_at IS NOT NULL
+      AND u.trial_ends_at <= datetime('now', '+3 days')
+      AND u.trial_ends_at > datetime('now')
     LIMIT 100
   `).all();
 

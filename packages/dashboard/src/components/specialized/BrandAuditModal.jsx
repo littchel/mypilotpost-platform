@@ -173,7 +173,7 @@ const BrandAuditModal = ({ auditData, onClose, onRefresh, onFix }) => {
                     type="outline" 
                     onClick={() => {
                       const token = localStorage.getItem("mpp_token");
-                      const baseUrl = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8787";
+                      const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:8788";
                       window.open(`${baseUrl}/api/v1/audit/report/${auditData.id}/pdf?token=${token}`, '_blank');
                     }}
                   >

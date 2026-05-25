@@ -1,5 +1,6 @@
 import { json, error } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
+import { buildR2Key } from "./r2.js";
 
 /**
  * myPilotPost — Media Engine (Core Phase 1)
@@ -234,4 +235,57 @@ export async function getAttachedMedia(req, env, auth) {
     .all();
 
   return json({ items: results || [] });
+}
+
+/* ======================================================
+   POST /api/customer/media/upload
+ ====================================================== */
+export async function uploadMedia(req, env, auth) {
+  if (!auth?.brand_id) return error("Unauthorized", 401);
+
+  const formData = await req.formData().catch(() => null);
+  const file = formData?.get("file");
+  if (!file || typeof file === "string") return error("No file provided", 400);
+
+  const assetId = crypto.randomUUID();
+  const filename = file.name || `upload-${assetId}`;
+  const mimeType = file.type || "application/octet-stream";
+  const r2Key = buildR2Key({ brandId: auth.brand_id, assetId, filename });
+
+  await env.MEDIA_BUCKET.put(r2Key, file.stream(), {
+    httpMetadata: { contentType: mimeType }
+  });
+
+  const db = getDB(env);
+  await db.prepare(`
+    INSERT INTO media_assets (id, brand_id, provider, external_id, preview_url, mime_type, created_at)
+    VALUES (?, ?, 'direct', ?, ?, ?, CURRENT_TIMESTAMP)
+  `).bind(assetId, auth.brand_id, r2Key, `/api/customer/media/file/${encodeURIComponent(r2Key)}`, mimeType).run();
+
+  return json({ id: assetId, filename, mime_type: mimeType });
+}
+
+/* ======================================================
+   GET /api/customer/media/file/*key
+ ====================================================== */
+export async function serveMediaFile(req, env, auth) {
+  if (!auth?.brand_id) return error("Unauthorized", 401);
+
+  const url = new URL(req.url);
+  const r2Key = decodeURIComponent(url.pathname.replace("/api/customer/media/file/", ""));
+
+  if (!r2Key.startsWith(`brands/${auth.brand_id}/`)) {
+    return error("Forbidden", 403);
+  }
+
+  const object = await env.MEDIA_BUCKET.get(r2Key);
+  if (!object) return error("Not found", 404);
+
+  return new Response(object.body, {
+    headers: {
+      "Content-Type": object.httpMetadata?.contentType || "application/octet-stream",
+      "Cache-Control": "public, max-age=31536000",
+      "Access-Control-Allow-Origin": "*"
+    }
+  });
 }

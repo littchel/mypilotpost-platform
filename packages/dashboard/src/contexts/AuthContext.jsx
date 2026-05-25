@@ -24,7 +24,8 @@ export const AuthProvider = ({ children }) => {
           id: payload.user_id,
           email: payload.email,
           role: payload.role,
-          activeBrandId: payload.brand_id
+          activeBrandId: payload.brand_id,
+          first_name: payload.first_name || null
         });
       } catch (e) {
         console.error("Invalid token", e);

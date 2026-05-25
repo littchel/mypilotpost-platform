@@ -29,6 +29,10 @@ export const PROVIDERS = {
     type: "media",
     capabilities: ["import_media"],
     auth: "oauth2",
+    scopes: "account_info.read files.content.read files.metadata.read",
+    auth_params: {
+      token_access_type: "offline"
+    },
     endpoints: {
       auth: "https://www.dropbox.com/oauth2/authorize",
       token: "https://api.dropboxapi.com/oauth2/token"
@@ -53,6 +57,31 @@ export const PROVIDERS = {
     capabilities: ["publish_social", "sync_analytics"],
     auth: "oauth2",
     scopes: "pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish",
+    endpoints: {
+      auth: "https://www.facebook.com/v19.0/dialog/oauth",
+      token: "https://graph.facebook.com/v19.0/oauth/access_token"
+    }
+  },
+  // Aliases — both frontend IDs route through the unified Meta OAuth flow
+  facebook: {
+    name: "Facebook",
+    type: "publishing",
+    capabilities: ["publish_social", "sync_analytics"],
+    auth: "oauth2",
+    credential_key: "META",  // uses META_CLIENT_ID / META_CLIENT_SECRET
+    scopes: "pages_show_list,pages_read_engagement,pages_manage_posts,business_management",
+    endpoints: {
+      auth: "https://www.facebook.com/v19.0/dialog/oauth",
+      token: "https://graph.facebook.com/v19.0/oauth/access_token"
+    }
+  },
+  instagram: {
+    name: "Instagram",
+    type: "publishing",
+    capabilities: ["publish_social"],
+    auth: "oauth2",
+    credential_key: "META",  // uses META_CLIENT_ID / META_CLIENT_SECRET
+    scopes: "pages_show_list,pages_read_engagement,instagram_basic,instagram_content_publish",
     endpoints: {
       auth: "https://www.facebook.com/v19.0/dialog/oauth",
       token: "https://graph.facebook.com/v19.0/oauth/access_token"
@@ -90,8 +119,8 @@ export const PROVIDERS = {
     auth: "oauth2",
     scopes: "user.info.basic,video.upload,video.list",
     endpoints: {
-      auth: "https://www.tiktok.com/auth/authorize/",
-      token: "https://open-api.tiktok.com/oauth/access_token/"
+      auth: "https://www.tiktok.com/v2/auth/authorize/",
+      token: "https://open.tiktokapis.com/v2/oauth/token/"
     }
   },
   pinterest: {
@@ -112,10 +141,39 @@ export const PROVIDERS = {
     type: "publishing",
     capabilities: ["publish_social"],
     auth: "oauth2",
+    credential_key: "META",
     scopes: "threads_basic,threads_content_publish",
     endpoints: {
       auth: "https://threads.net/oauth/authorize",
       token: "https://graph.threads.net/oauth/access_token"
+    }
+  },
+
+  // --- YOUTUBE (separate OAuth app — uses YOUTUBE_CLIENT_ID / YOUTUBE_CLIENT_SECRET secrets) ---
+  youtube: {
+    name: "YouTube",
+    type: "publishing",
+    capabilities: ["publish_social", "sync_analytics"],
+    auth: "oauth2",
+    credential_key: "YOUTUBE",
+    scopes: "openid email profile https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly",
+    endpoints: {
+      auth: "https://accounts.google.com/o/oauth2/v2/auth",
+      token: "https://oauth2.googleapis.com/token"
+    }
+  },
+
+  // --- GOOGLE ANALYTICS (separate OAuth app — uses GA_CLIENT_ID / GA_CLIENT_SECRET secrets) ---
+  google_analytics: {
+    name: "Google Analytics",
+    type: "analytics",
+    capabilities: ["sync_analytics"],
+    auth: "oauth2",
+    credential_key: "GA",
+    scopes: "openid email profile https://www.googleapis.com/auth/analytics.readonly",
+    endpoints: {
+      auth: "https://accounts.google.com/o/oauth2/v2/auth",
+      token: "https://oauth2.googleapis.com/token"
     }
   },
 
@@ -137,6 +195,7 @@ export const PROVIDERS = {
     type: "publishing",
     capabilities: ["publish_blog"],
     auth: "oauth2",
+    scopes: "global",
     endpoints: {
       auth: "https://public-api.wordpress.com/oauth2/authorize",
       token: "https://public-api.wordpress.com/oauth2/token"
@@ -154,6 +213,6 @@ export const PROVIDERS = {
 
 export function getProvider(key) {
   const provider = PROVIDERS[key];
-  if (!provider) throw new Error(`Unknown provider: ${key}`);
+  if (!provider) return null;
   return provider;
 }

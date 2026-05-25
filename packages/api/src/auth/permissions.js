@@ -1,39 +1,52 @@
 /**
- * myPilotPost — Permissions Map
+ * myPilotPost — Admin Permissions Map
  * AUTHORITATIVE • GRANULAR • RBAC
  */
 
 export const PERMISSIONS = {
   super_admin: ["*"],
-  operations: [
-    "users:read",
+
+  admin: [
+    "users:read", "users:write",
     "audits:read",
     "analytics:read",
     "billing:read",
-    "blog:write",
-    "blog:read"
+    "blog:write", "blog:read",
+    "support:read", "support:write",
+    "pricing:write", "pricing:read",
+    "promotions:write", "promotions:read",
+    "messaging:write",
+    "operations:read"
   ],
+
+  operations: [
+    "users:read", "users:write",
+    "audits:read",
+    "analytics:read",
+    "billing:read",
+    "blog:write", "blog:read",
+    "support:read", "support:write",
+    "pricing:read",
+    "messaging:write",
+    "operations:read"
+  ],
+
   support: [
     "users:read",
     "audits:read",
     "usage:read",
-    "support:read",
-    "support:write",
+    "support:read", "support:write",
     "reports:read",
-    "connections:read"
+    "connections:read",
+    "blog:read",
+    "messaging:write"
   ],
-  admin: ["*"], // Legacy compatibility
-  user: [] // Standard users have no admin/system permissions
+
+  user: []
 };
 
-/**
- * Check if a role has a specific permission
- */
 export function hasPermission(role, permission) {
   const rolePermissions = PERMISSIONS[role] || [];
-  
   if (rolePermissions.includes("*")) return true;
-  if (rolePermissions.includes(permission)) return true;
-  
-  return false;
+  return rolePermissions.includes(permission);
 }

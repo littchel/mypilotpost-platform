@@ -18,6 +18,8 @@ import CompletionStep from "./components/onboarding/steps/CompletionStep";
 import ModeStep from "./components/onboarding/steps/ModeStep";
 import ImportStep from "./components/onboarding/steps/ImportStep";
 import ActivationStep from "./components/onboarding/steps/ActivationStep";
+import AuditPreloadStep from "./components/onboarding/steps/AuditPreloadStep";
+import BrandAuditPage from "./pages/BrandAuditPage";
 import CalendarSchedule from "./pages/CalendarSchedule";
 import ArticleComposer from "./pages/ArticleComposer";
 import Campaigns from "./pages/Campaigns";
@@ -27,7 +29,7 @@ import Reporting from "./pages/Reporting";
 import CanvaTab from "./pages/CanvaTab";
 import MediaLibrary from "./pages/MediaLibrary";
 import Settings from "./pages/Settings";
-import Integrations from "./pages/Integrations";
+import Integrations from "./pages/IntegrationsManager";
 import DashboardOverview from "./pages/DashboardOverview";
 import SocialComposer from "./pages/SocialComposer"; // DEPRECATED: Keep for safe migration reference
 import CreatePost from "./pages/CreatePost";
@@ -46,11 +48,9 @@ import ContentPreviewModal from "./components/shared/ContentPreviewModal";
 import BrandDNAWizardModal from "./components/shared/BrandDNAWizardModal";
 import FloatingChat from "./components/specialized/FloatingChat";
 import InsightModal from "./components/shared/InsightModal";
-import EmailVerificationBanner from "./components/shared/EmailVerificationBanner";
+import HashtagManager from "./pages/HashtagManager";
 import { generateIntelligence } from "./lib/intelligence";
 import "./styles/auth.css";
-
-const USE_FAKE_AI = true;
 
 const PLATFORM_ICONS = {
   facebook: (color = "#1877F2") => (
@@ -144,7 +144,7 @@ function App() {
   };
 
   const { brands, activeBrand, switchBrand, createBrand: contextCreateBrand, loading: brandLoading } = useBrand();
-  const { step, loading: onboardingLoading, data: onboardingData, showCelebration } = useOnboarding();
+  const { step, loading: onboardingLoading, data: onboardingData, showCelebration, isComplete, signupSource } = useOnboarding();
   const _onboardingMode = onboardingData?.onboardingMode;
 
   const location = useLocation();
@@ -205,6 +205,35 @@ function App() {
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSent, setForgotSent] = useState(false);
   const [forgotLoading, setForgotLoading] = useState(false);
+
+  // Reset Password state (token-based from email link)
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetConfirm, setResetConfirm] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetDone, setResetDone] = useState(false);
+  const [resetError, setResetError] = useState('');
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token');
+    if (!token) { setResetError('Missing reset token.'); return; }
+    if (resetPassword.length < 8) { setResetError('Password must be at least 8 characters.'); return; }
+    if (resetPassword !== resetConfirm) { setResetError('Passwords do not match.'); return; }
+    setResetLoading(true);
+    setResetError('');
+    try {
+      await apiRequest('/api/customer/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({ token, password: resetPassword })
+      });
+      setResetDone(true);
+    } catch (err) {
+      setResetError(err.message || 'Reset failed. The link may have expired.');
+    } finally {
+      setResetLoading(false);
+    }
+  };
 
   // Capture Audit Data (Task 9 & AHA Funnel)
   useEffect(() => {
@@ -324,17 +353,18 @@ function App() {
   const handleFreepikSearch = async (query) => {
     const searchQuery = query || freepikSearch || `${activeBrand?.industry || ''} ${extractKeywords(socialContent)}`.trim();
     if (!freepikSearch && !query) setFreepikSearch(searchQuery);
-    
     setIsFreepikSearching(true);
-    setTimeout(() => {
-      const mockResults = [1,2,3,4,5,6,7,8].map(i => ({
-        id: i,
-        url: `https://picsum.photos/seed/${searchQuery.replace(/\s+/g, '')}${i}/800/600`,
-        thumb: `https://picsum.photos/seed/${searchQuery.replace(/\s+/g, '')}${i}/300/300`
-      }));
-      setFreepikResults(mockResults);
+    try {
+      const data = await apiRequest(`/api/customer/media/suggestions`, {
+        method: "POST",
+        body: JSON.stringify({ query: searchQuery, brand_id: activeBrand?.id })
+      });
+      setFreepikResults(data?.suggestions || []);
+    } catch {
+      setFreepikResults([]);
+    } finally {
       setIsFreepikSearching(false);
-    }, 800);
+    }
   };
 
   const _fileInputRef = React.useRef(null);
@@ -351,12 +381,17 @@ function App() {
       });
       if (res.token) {
         setAuthToken(res.token);
-        navigate(res.user?.onboarding_complete || res.user?.company_name ? "/" : "/onboarding");
+        try {
+          const payload = JSON.parse(atob(res.token.split('.')[1]));
+          navigate(payload.brand_id ? '/' : '/onboarding');
+        } catch {
+          navigate('/onboarding');
+        }
       } else {
         setLoginError("Invalid credentials");
       }
     } catch (err) {
-      setLoginError(err.message || "Login failed");
+      setLoginError(err.error || err.message || "Login failed");
     } finally {
       setIsLoggingIn(false);
     }
@@ -368,6 +403,8 @@ function App() {
     setLoginError("");
     try {
       const searchParams = new URLSearchParams(location.search);
+      const auditId = searchParams.get('audit_id') || undefined;
+      const signupSourceParam = searchParams.get('source') || (auditId ? 'brand_audit' : 'direct');
       const res = await apiRequest("/api/customer/register", {
         method: "POST",
         body: JSON.stringify({
@@ -377,32 +414,19 @@ function App() {
           first_name: firstName,
           last_name: lastName,
           company: companyName,
-          audit_id: searchParams.get('audit_id') || undefined,
-          audit_website: searchParams.get('website') || undefined
+          audit_id: auditId,
+          audit_website: searchParams.get('website') || undefined,
+          signup_source: signupSourceParam
         })
       });
-      if (res.ok) {
-        if (res.token) {
-          setAuthToken(res.token);
-          navigate(res.brand_id ? "/" : "/onboarding");
-        } else {
-          const loginRes = await apiRequest("/api/customer/login", {
-            method: "POST",
-            body: JSON.stringify({ email: loginEmail, password: loginPassword })
-          });
-          if (loginRes.token) {
-            setAuthToken(loginRes.token);
-            navigate(loginRes.user?.onboarding_complete ? "/" : "/onboarding");
-          } else {
-            setLoginError("Account created. Please sign in.");
-            navigate("/login");
-          }
-        }
+      if (res.ok && res.token) {
+        setAuthToken(res.token);
+        navigate(res.brand_id ? "/" : "/onboarding");
       } else {
         setLoginError(res.error || "Registration failed");
       }
     } catch (err) {
-      setLoginError(err.message || "Registration failed");
+      setLoginError(err.error || err.message || "Registration failed");
     } finally {
       setIsLoggingIn(false);
     }
@@ -528,16 +552,16 @@ function App() {
   const { data: connectionsData } = useApi(brandId ? "/api/customer/integrations" : null, [brandId, listVersion]);
   const connectedPlatforms = (connectionsData?.integrations || []).map(i => i.platform);
 
-  const { data: draftListData, loading: _draftsLoading } = useApi(brandId ? "/api/customer/content/social/drafts" : null, [brandId, listVersion]);
+  const { data: draftListData, loading: _draftsLoading } = useApi(brandId ? "/api/customer/content/social" : null, [brandId, listVersion]);
   const _socialDrafts = draftListData?.data || [];
 
   const { data: allContentData, loading: _allContentLoading } = useApi(brandId ? "/api/customer/content" : null, [brandId, listVersion]);
   const allContent = allContentData?.data || allContentData?.content || [];
 
-  const { data: scheduleListData } = useApi(brandId ? "/api/customer/content/social/scheduled" : null, [brandId, listVersion]);
+  const { data: scheduleListData } = useApi(null, [brandId, listVersion]);
   const _socialSchedules = scheduleListData?.data || [];
 
-  const { data: mediaListData } = useApi(brandId ? "/api/customer/media" : null, [brandId, listVersion]);
+  const { data: mediaListData } = useApi(brandId ? "/api/customer/media/library" : null, [brandId, listVersion]);
   const _mediaItems = mediaListData?.data || [];
 
   const { data: seoData } = useApi(brandId ? "/api/customer/seo/analyze" : null, [brandId, listVersion]);
@@ -641,28 +665,7 @@ function App() {
   };
 
   const handleGenerateSocial = async (formData) => {
-    const USE_FAKE_AI = true;
     setIsGenerating(true);
-    
-    await new Promise(r => setTimeout(r, 1500));
-
-    if (USE_FAKE_AI) {
-      setIsGenerating(false);
-      const baseCaption = `🚀 Excited to announce our latest brand update! ${formData.intention} is our top priority. ${formData.cta}! #marketing #growth`;
-      return {
-        content_id: crypto.randomUUID(),
-        baseCaption,
-        hashtags: ['#marketing', '#growth', '#brand', '#innovation'],
-        platformVariants: {
-          facebook: `[Facebook] ${baseCaption}`,
-          instagram: `[Instagram] ${baseCaption}`,
-          linkedin: `[LinkedIn] ${baseCaption}`,
-          x: `[X] ${baseCaption}`,
-          youtube: `[YouTube] ${baseCaption}`
-        }
-      };
-    }
-
     try {
       const res = await apiRequest("/api/customer/ai/generate/social", {
         method: "POST",
@@ -953,6 +956,29 @@ function App() {
       url.searchParams.delete("success");
       window.history.replaceState({}, document.title, url.pathname);
       setListVersion(v => v + 1);
+      setActiveTab("integrations");
+    }
+
+    const oauthSuccess = url.searchParams.get("oauth_success");
+    if (oauthSuccess) {
+      url.searchParams.delete("oauth_success");
+      window.history.replaceState({}, document.title, url.pathname);
+      // Defer tab switch until after auth + onboarding checks complete
+      setTimeout(() => {
+        setActiveTab("integrations");
+        setListVersion(v => v + 1);
+      }, 500);
+    }
+
+    const oauthError = url.searchParams.get("oauth_error");
+    if (oauthError) {
+      const msg = decodeURIComponent(oauthError);
+      url.searchParams.delete("oauth_error");
+      window.history.replaceState({}, document.title, url.pathname);
+      setTimeout(() => {
+        setActiveTab("integrations");
+        alert(`Connection failed: ${msg}`);
+      }, 500);
     }
 
     if (tokenParam) {
@@ -966,18 +992,51 @@ function App() {
       url.searchParams.delete("error");
       window.history.replaceState({}, document.title, url.pathname);
     }
-
-    const script = document.createElement("script");
-    script.src = "https://sdk.canva.com/designbutton/v2/api.js";
-    script.async = true;
-    document.body.appendChild(script);
-
-    return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
-      }
-    };
   }, []);
+
+  // PUBLIC: Brand Audit page — accessible to anyone, no auth required
+  if (location.pathname === '/brand-audit') {
+    return <BrandAuditPage />;
+  }
+
+  // PUBLIC: Password reset via emailed token link
+  if (location.pathname === '/reset-password') {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F4F4F8' }}>
+        <div style={{ background: '#fff', borderRadius: 16, padding: '40px 36px', width: '100%', maxWidth: 420, boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
+          <div style={{ textAlign: 'center', marginBottom: 28 }}>
+            <img src="/logo-mpp.png" alt="myPilotPost" style={{ height: 36, marginBottom: 16 }} />
+            <h2 style={{ fontWeight: 700, fontSize: 22, margin: 0 }}>Set a new password</h2>
+          </div>
+          {resetDone ? (
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>✓</div>
+              <p style={{ color: '#4A4A6A', marginBottom: 20 }}>Your password has been updated.</p>
+              <button className="btn btn-primary w-100" onClick={() => navigate('/login')}>Back to Sign In</button>
+            </div>
+          ) : (
+            <form onSubmit={handleResetPassword}>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 14 }}>New Password</label>
+                <input type="password" className="form-control" value={resetPassword} onChange={e => setResetPassword(e.target.value)} placeholder="Min. 8 characters" required />
+              </div>
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 14 }}>Confirm Password</label>
+                <input type="password" className="form-control" value={resetConfirm} onChange={e => setResetConfirm(e.target.value)} placeholder="Repeat your password" required />
+              </div>
+              {resetError && <div className="alert alert-danger py-2 small mb-3">{resetError}</div>}
+              <button type="submit" className="btn btn-primary w-100 py-3 fw-bold rounded-pill" disabled={resetLoading}>
+                {resetLoading ? <span className="spinner-border spinner-border-sm"></span> : 'Reset Password'}
+              </button>
+              <div style={{ textAlign: 'center', marginTop: 16 }}>
+                <button type="button" className="btn btn-link btn-sm text-muted" onClick={() => navigate('/login')}>Back to Sign In</button>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (authLoading || brandLoading) {
     return (
@@ -1023,6 +1082,8 @@ function App() {
     );
 
     if (isRegistering) {
+      const regParams = new URLSearchParams(location.search);
+      const isFromAudit = regParams.get('source') === 'brand_audit';
       return (
         <div className="auth-page-wrapper">
           <div className="auth-split-layout">
@@ -1032,8 +1093,22 @@ function App() {
                 <div className="auth-form-logo">
                   <img src="/logo-mpp.png" alt="myPilotPost" />
                 </div>
-                <h1 className="auth-title">Create your account</h1>
-                <p className="auth-subtitle">Start managing your brand in under 8 minutes.</p>
+                {isFromAudit ? (
+                  <>
+                    <div className="d-flex align-items-center gap-2 px-3 py-2 rounded-3 mb-3"
+                      style={{ background: '#fef9c3', border: '1px solid #fde68a' }}>
+                      <i className="fas fa-star text-warning"></i>
+                      <span className="small fw-bold text-warning-emphasis">Your brand audit is ready</span>
+                    </div>
+                    <h1 className="auth-title">Access your personalised workspace</h1>
+                    <p className="auth-subtitle">Your audit results are pre-loaded. Create a free account to access your brand intelligence.</p>
+                  </>
+                ) : (
+                  <>
+                    <h1 className="auth-title">Create your account</h1>
+                    <p className="auth-subtitle">Start managing your brand in under 8 minutes.</p>
+                  </>
+                )}
 
                 {loginError && <div className="auth-alert-error" role="alert">{loginError}</div>}
 
@@ -1174,20 +1249,54 @@ function App() {
     );
   }
 
-  if (!activeBrand && !onboardingLoading && !DEV_BYPASS) {
+  // Show onboarding if user hasn't completed it — isComplete is authoritative
+  if (!isComplete && !onboardingLoading && !DEV_BYPASS) {
+    const obMode = onboardingData?.onboardingMode;
+    const isSmart = obMode === 'smart';
+    const isManual = obMode === 'manual';
+    const isAuditPath = signupSource === 'brand_audit';
+
     return (
       <OnboardingLayout>
-        {step === 1 && <WelcomeStep />}
-        {step === 2 && <BrandStep />}
-        {step === 3 && <MarketStep />}
-        {step === 4 && <GoalsStep />}
-        {step === 5 && <PlatformsStep />}
-        {step === 6 && <GenerationStep />}
-        {step === 7 && <ScheduleStep />}
-        {step === 8 && <CompletionStep />}
-        {step === 'mode' && <ModeStep />}
-        {step === 'import' && <ImportStep />}
-        {step === 'activation' && <ActivationStep />}
+        {/* ── AUDIT PATH (7 steps) ─────────────────────────────────────────
+            Step 1: Workspace preload confirmation
+            Step 2: Brand details (pre-filled from audit, creates brand)
+            Step 3: Goals (pre-selected from audit)
+            Step 4: Platforms (pre-selected from audit)
+            Step 5: Generate first post (AHA moment)
+            Step 6: Schedule
+            Step 7: Completion
+        ─────────────────────────────────────────────────────────────────── */}
+        {isAuditPath && step === 1 && <AuditPreloadStep />}
+        {isAuditPath && step === 2 && <BrandStep isReview />}
+        {isAuditPath && step === 3 && <GoalsStep />}
+        {isAuditPath && step === 4 && <PlatformsStep />}
+        {isAuditPath && step === 5 && <GenerationStep />}
+        {isAuditPath && step === 6 && <ScheduleStep />}
+        {isAuditPath && step === 7 && <CompletionStep />}
+
+        {/* ── DIRECT PATH (9 steps) ───────────────────────────────────────
+            Smart:  Welcome → Mode → Import → Brand → Goals → Platforms → Generate → Schedule → Complete
+            Manual: Welcome → Mode → Brand → Market → Goals → Platforms → Generate → Schedule → Complete
+        ─────────────────────────────────────────────────────────────────── */}
+        {!isAuditPath && step === 1 && <WelcomeStep />}
+        {!isAuditPath && step === 2 && <ModeStep />}
+        {!isAuditPath && step === 3 && isSmart && <ImportStep />}
+        {!isAuditPath && step === 4 && isSmart && <BrandStep isReview />}
+        {!isAuditPath && step === 5 && isSmart && <GoalsStep />}
+        {!isAuditPath && step === 6 && isSmart && <PlatformsStep />}
+        {!isAuditPath && step === 7 && isSmart && <GenerationStep />}
+        {!isAuditPath && step === 8 && isSmart && <ScheduleStep />}
+        {!isAuditPath && step === 9 && isSmart && <CompletionStep />}
+        {!isAuditPath && step === 3 && isManual && <BrandStep />}
+        {!isAuditPath && step === 4 && isManual && <MarketStep />}
+        {!isAuditPath && step === 5 && isManual && <GoalsStep />}
+        {!isAuditPath && step === 6 && isManual && <PlatformsStep />}
+        {!isAuditPath && step === 7 && isManual && <GenerationStep />}
+        {!isAuditPath && step === 8 && isManual && <ScheduleStep />}
+        {!isAuditPath && step === 9 && isManual && <CompletionStep />}
+        {/* Fallback: mode not yet chosen */}
+        {!isAuditPath && step >= 3 && !obMode && <ModeStep />}
       </OnboardingLayout>
     );
   }
@@ -1199,7 +1308,6 @@ function App() {
         message="Welcome to the Mission! 🚀"
         subtext="Your brand is live. Let's start growing."
       />
-      <EmailVerificationBanner onVerified={() => {}} />
       <LayoutShell
         activeTab={activeTab}
         switchTab={setActiveTab}
@@ -1241,10 +1349,11 @@ function App() {
         </TabContent>
 
         <TabContent id="social" activeTab={activeTab}>
-          <CreatePost 
-            selectedCampaignId={selectedCampaignId} 
+          <CreatePost
+            selectedCampaignId={selectedCampaignId}
             setSelectedCampaignId={setSelectedCampaignId}
             switchTab={setActiveTab}
+            campaigns={campaignsList}
           />
         </TabContent>
 
@@ -1264,7 +1373,7 @@ function App() {
 
         {/* Analytics Tab */}
         <TabContent id="analytics" activeTab={activeTab}>
-          <Analytics activeBrand={activeBrand} />
+          <Analytics activeBrand={activeBrand} campaigns={campaignsList} />
         </TabContent>
 
         {/* SEO Tab */}
@@ -1350,6 +1459,15 @@ function App() {
         {/* Notifications Tab (Visual Only) */}
         <TabContent id="notifications" activeTab={activeTab}>
           <NotificationsTab />
+        </TabContent>
+
+        <TabContent id="hashtags" activeTab={activeTab}>
+          <HashtagManager
+            onInsertTags={(tags) => {
+              setHashtags(prev => [...prev, ...tags.filter(t => !prev.includes(t))]);
+              setActiveTab('social');
+            }}
+          />
         </TabContent>
       </LayoutShell>
 

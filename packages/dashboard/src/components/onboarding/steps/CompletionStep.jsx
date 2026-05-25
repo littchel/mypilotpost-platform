@@ -8,8 +8,7 @@ const CompletionStep = () => {
   const handleFinish = async () => {
     setLoading(true);
     await completeOnboarding();
-    // Re-rendering or location change will be handled by App.jsx
-    window.location.href = "/";
+    // isComplete is now true in context — App.jsx gate opens, dashboard renders without reload
   };
 
   return (

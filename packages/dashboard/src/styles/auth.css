@@ -498,9 +498,7 @@
   font-size: 0.85rem;
   color: #92400e;
   flex-wrap: wrap;
-  position: sticky;
-  top: 0;
-  z-index: 800;
+  flex-shrink: 0;
 }
 
 .email-verify-banner i {

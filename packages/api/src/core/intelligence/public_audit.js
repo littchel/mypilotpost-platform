@@ -10,9 +10,41 @@ import { generateStrategicAnalysis } from "./analysis_engine.js";
 import { generateNextSteps } from "./next_steps_generator.js";
 import { generateNarrativeDiagnosis } from "./narrative_engine.js";
 
+export async function getPublicAuditById(request, env, auditId) {
+  const db = getDB(env);
+  try {
+    const audit = await db.prepare(`
+      SELECT id, brand_name, website_url, social_handles, overall_score,
+             score_breakdown_json, strategic_actions_json, next_steps_json,
+             industry, goals_json, platforms_json, preview_mode, created_at
+      FROM brand_audit_results_v2 WHERE id = ?
+    `).bind(auditId).first();
+
+    if (!audit) return json({ error: 'Audit not found' }, 404);
+
+    return json({
+      audit_id: audit.id,
+      brand_name: audit.brand_name,
+      website_url: audit.website_url,
+      social_handles: JSON.parse(audit.social_handles || '[]'),
+      overall_score: audit.overall_score,
+      score_breakdown: JSON.parse(audit.score_breakdown_json || '{}'),
+      strategic_analysis: JSON.parse(audit.strategic_actions_json || '[]'),
+      next_steps: JSON.parse(audit.next_steps_json || '[]'),
+      industry: audit.industry || '',
+      goals: JSON.parse(audit.goals_json || '[]'),
+      platforms: JSON.parse(audit.platforms_json || '[]'),
+      preview_mode: audit.preview_mode,
+      created_at: audit.created_at
+    });
+  } catch (err) {
+    return json({ error: 'Failed to retrieve audit' }, 500);
+  }
+}
+
 export async function runPublicAudit(request, env) {
   const body = await request.json();
-  const { brand_name, website_url, social_handles } = body;
+  const { brand_name, website_url, social_handles, industry, goals, platforms } = body;
 
   const db = getDB(env);
 
@@ -28,19 +60,19 @@ export async function runPublicAudit(request, env) {
   };
 
   // 2. Strategic Scoring (Brand DNA Score™)
-  const dnaScore = calculateDNAScore(metrics, body.industry || 'General');
+  const dnaScore = calculateDNAScore(metrics, industry || 'General');
 
   // 3. Strategic Analysis (Upgraded Schema)
   const weaknesses = [];
   if (metrics.post_frequency < 4) weaknesses.push('low_consistency');
   if (metrics.engagement_rate < 0.02) weaknesses.push('low_engagement');
   if (metrics.platform_count < 3) weaknesses.push('platform_gap');
-  
-  const strategicAnalysis = generateStrategicAnalysis(weaknesses, body.industry);
+
+  const strategicAnalysis = generateStrategicAnalysis(weaknesses, industry);
   const nextSteps = generateNextSteps(dnaScore.breakdown);
-  
+
   // NARRATIVE DIAGNOSIS ENGINE
-  const narrative = generateNarrativeDiagnosis(dnaScore.breakdown, weaknesses, body.industry || 'General');
+  const narrative = generateNarrativeDiagnosis(dnaScore.breakdown, weaknesses, industry || 'General');
 
   // 4. Build Comprehensive Audit Result
   const audit_id = crypto.randomUUID();
@@ -51,10 +83,10 @@ export async function runPublicAudit(request, env) {
     score_breakdown: dnaScore.breakdown,
     methodology: dnaScore.methodology,
     confidence: dnaScore.confidence_indicators,
-    
+
     // Core Narrative Intelligence
     narrative: narrative,
-    
+
     // Diagnostic Snapshot
     diagnostic: {
       bio_seo: "OPTIMIZABLE",
@@ -84,17 +116,18 @@ export async function runPublicAudit(request, env) {
     }
   };
 
-  // 5. Persist for conversion hydration
+  // 5. Persist for conversion hydration (includes intake form fields)
   await db.prepare(`
     INSERT INTO brand_audit_results_v2 (
-      id, brand_name, website_url, social_handles, 
-      overall_score, score_breakdown_json, strategic_actions_json, 
-      next_steps_json, preview_mode
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+      id, brand_name, website_url, social_handles,
+      overall_score, score_breakdown_json, strategic_actions_json,
+      next_steps_json, industry, goals_json, platforms_json, preview_mode
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
   `).bind(
     audit_id, brand_name, website_url, JSON.stringify(social_handles || []),
     dnaScore.overall_score, JSON.stringify(dnaScore.breakdown),
-    JSON.stringify(strategicAnalysis), JSON.stringify(nextSteps)
+    JSON.stringify(strategicAnalysis), JSON.stringify(nextSteps),
+    industry || null, JSON.stringify(goals || []), JSON.stringify(platforms || [])
   ).run();
 
   return json(auditResult);
@@ -106,20 +139,23 @@ export async function captureAuditLead(request, env) {
   const { audit_id, name, email, business_name } = body;
   const db = getDB(env);
 
-  // Check if audit exists
   const audit = await db.prepare("SELECT * FROM brand_audit_results_v2 WHERE id = ?").bind(audit_id).first();
   if (!audit) {
     return json({ error: 'Audit not found' }, 404);
   }
 
-  // Update audit with lead info
   await db.prepare(`
-    UPDATE brand_audit_results_v2 
+    UPDATE brand_audit_results_v2
     SET lead_name = ?, lead_email = ?, lead_business_name = ?, lead_captured_at = datetime('now')
     WHERE id = ?
   `).bind(name, email, business_name, audit_id).run();
 
-  // Here we would trigger the snapshot email via the email engine
+  // Also upsert a lead record for conversion tracking
+  await db.prepare(`
+    INSERT INTO public_audit_leads (id, email, brand_name, website_url, audit_id, created_at)
+    VALUES (?, ?, ?, ?, ?, datetime('now'))
+    ON CONFLICT DO NOTHING
+  `).bind(crypto.randomUUID(), email, business_name, audit?.website_url, audit_id).run();
 
-  return json({ success: true, message: 'Snapshot report sent' });
+  return json({ success: true, message: 'Report delivery queued' });
 }

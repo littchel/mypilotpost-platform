@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infrastructure &amp; Reliability — myPilotPost Trust Center</title>
+    <meta name="description" content="Architecture, scheduling engine, publish lifecycle, reliability design, and uptime philosophy — built entirely on Cloudflare's global edge network.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="config.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { line-height: 1.15; -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+        body { font-family: 'Inter', sans-serif; font-weight: 300; color: #1a1a1a; background: #ffffff; overflow-x: hidden; }
+        :root {
+            --primary-blue: #2563EB; --dark-blue: #1D4ED8;
+            --text-dark: #000000; --text-gray: #646565;
+            --light-gray: #EEF0F1; --border-gray: #CECECE;
+            --white: #FFFFFF; --footer-bg: #002F86; --hover-bg: #E6EEFF;
+            --space-unit: 16px; --space-half: 8px; --space-onehalf: 24px;
+            --space-two: 32px; --space-three: 48px; --space-four: 64px;
+            --space-five: 80px; --space-six: 96px;
+            --radius-small: 4px; --radius-medium: 8px;
+            --container-width: 1280px; --container-padding: 20px;
+        }
+        .container { max-width: var(--container-width); margin: 0 auto; padding: 0 var(--container-padding); width: 100%; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: var(--radius-medium); font-weight: 500; font-size: 18px; cursor: pointer; transition: all 0.3s ease; border: none; text-decoration: none; }
+        .btn--primary { background: var(--primary-blue); color: var(--white); }
+        .btn--primary:hover { background: var(--dark-blue); transform: translateY(-2px); box-shadow: 0 10px 25px rgba(37,99,235,0.3); }
+        .btn--secondary { background: transparent; border: 1px solid var(--border-gray); color: var(--text-gray); }
+        .btn--secondary:hover { background: var(--light-gray); transform: translateY(-2px); }
+        .header { position: sticky; top: 0; background: var(--white); box-shadow: 0 2px 20px rgba(0,0,0,0.05); z-index: 1000; padding: 20px 0; }
+        .header__container { display: flex; align-items: center; justify-content: space-between; }
+        .logo { width: 272px; height: 54px; background-image: url('images/myPilotPost-Logo.png'); background-size: contain; background-repeat: no-repeat; background-position: center; cursor: pointer; }
+        .nav-menu { display: flex; gap: 28px; align-items: center; }
+        .nav-menu__item { font-size: 18px; color: var(--text-gray); cursor: pointer; transition: color 0.3s; text-decoration: none; }
+        .nav-menu__item:hover { color: var(--primary-blue); }
+        .header__buttons { display: flex; gap: 20px; }
+        .mobile-toggle { display: none; flex-direction: column; cursor: pointer; padding: 10px; }
+        .mobile-toggle span { width: 25px; height: 3px; background: var(--text-dark); margin: 3px 0; transition: 0.3s; }
+        .mobile-menu { display: none; }
+        .page-hero { background: var(--footer-bg); color: var(--white); padding: var(--space-five) 0; -webkit-font-smoothing: antialiased; }
+        .page-hero__breadcrumb { font-size: 14px; color: rgba(255,255,255,0.6); margin-bottom: var(--space-unit); }
+        .page-hero__breadcrumb a { color: rgba(255,255,255,0.6); text-decoration: none; }
+        .page-hero__breadcrumb a:hover { color: rgba(255,255,255,0.9); }
+        .page-hero__icon { width: 56px; height: 56px; background: rgba(255,255,255,0.12); border-radius: var(--radius-medium); display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-onehalf); font-size: 24px; color: rgba(255,255,255,0.9); }
+        .page-hero h1 { font-size: 42px; font-weight: 800; line-height: 1.15; margin-bottom: var(--space-unit); }
+        .page-hero p { font-size: 18px; color: rgba(255,255,255,0.75); max-width: 640px; line-height: 1.7; }
+        .page-hero__meta { margin-top: var(--space-onehalf); font-size: 13px; color: rgba(255,255,255,0.5) !important; }
+        .content-page { padding: var(--space-five) 0 var(--space-six); }
+        .content-inner { max-width: 900px; }
+        h2.section-heading { font-size: 28px; font-weight: 700; color: var(--text-dark); margin-bottom: var(--space-onehalf); padding-top: var(--space-three); border-top: 1px solid var(--light-gray); margin-top: var(--space-three); }
+        h3.sub-heading { font-size: 19px; font-weight: 700; color: var(--text-dark); margin-bottom: var(--space-unit); margin-top: var(--space-two); }
+        .body-text { font-size: 16px; line-height: 1.75; color: var(--text-gray); margin-bottom: var(--space-unit); }
+        .body-text strong { color: var(--text-dark); font-weight: 600; }
+        .body-text a { color: var(--primary-blue); text-decoration: none; }
+        .body-text a:hover { text-decoration: underline; }
+        .data-table { width: 100%; border-collapse: collapse; margin: var(--space-unit) 0 var(--space-two); font-size: 15px; }
+        .data-table th { background: var(--light-gray); text-align: left; padding: 12px 16px; font-weight: 700; color: var(--text-dark); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 2px solid var(--border-gray); }
+        .data-table td { padding: 12px 16px; border-bottom: 1px solid var(--light-gray); color: var(--text-gray); vertical-align: top; }
+        .data-table td:first-child { font-weight: 600; color: var(--text-dark); width: 30%; }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tr:hover td { background: rgba(37,99,235,0.03); }
+        .callout { padding: 18px 24px; border-radius: var(--radius-medium); margin: var(--space-onehalf) 0; border-left: 4px solid var(--primary-blue); background: var(--hover-bg); font-size: 15px; line-height: 1.7; color: var(--text-dark); font-style: italic; }
+        .callout--note { border-left-color: #16a34a; background: #f0fdf4; color: #166534; font-style: normal; }
+        .check-list { list-style: none; padding: 0; margin: var(--space-unit) 0 var(--space-onehalf); }
+        .check-list li { display: flex; align-items: flex-start; gap: 12px; padding: 8px 0; font-size: 15px; color: var(--text-gray); border-bottom: 1px solid var(--light-gray); line-height: 1.6; }
+        .check-list li:last-child { border-bottom: none; }
+        .check-list li i { color: var(--primary-blue); margin-top: 3px; flex-shrink: 0; }
+        .check-list li i.fa-xmark { color: #dc2626; }
+        .check-list li strong { color: var(--text-dark); }
+        .check-list li a { color: var(--primary-blue); text-decoration: none; }
+        .footer { background: var(--footer-bg); color: var(--white); padding: var(--space-five) 0 var(--space-three); -webkit-font-smoothing: antialiased; }
+        .footer__grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: var(--space-four); margin-bottom: var(--space-four); }
+        .footer__logo { width: 302px; height: 49px; background-image: url('images/myPilotPost-Logo.png'); background-size: contain; background-repeat: no-repeat; background-position: left; margin-bottom: var(--space-unit); cursor: pointer; }
+        .footer__tagline { color: rgba(255,255,255,0.9); margin-bottom: var(--space-unit); font-size: 16px; font-weight: 600;}
+        .footer__desc { color: rgba(255,255,255,0.75); font-size: 15px; font-weight: 400; line-height: 1.6; margin-bottom: 30px; }
+        .social-links { display: flex; gap: 18px; }
+        .social-link { cursor: pointer; transition: transform 0.3s, filter 0.3s; }
+        .social-link:hover { transform: translateY(-2px); filter: brightness(1.2); }
+        .footer__column-title { font-size: 14px; font-weight: 700; color: rgba(255,255,255,0.85); margin-bottom: var(--space-onehalf); text-transform: uppercase; letter-spacing: 0.06em; }
+        .footer__link { display: block; color: rgba(255,255,255,0.75); text-decoration: none; margin-bottom: var(--space-half); transition: all 0.3s ease; font-size: 15px; }
+        .footer__link:hover { color: #ffffff; padding-left: 4px; }
+        .footer__divider { width: 100%; height: 1px; background: rgba(255,255,255,0.15); margin: var(--space-three) 0 var(--space-two); }
+        .footer__copyright { text-align: center; color: rgba(255,255,255,0.6); font-size: 15px; }
+        @media (max-width: 1024px) { .footer__grid { grid-template-columns: repeat(3, 1fr); gap: var(--space-three); } }
+        @media (max-width: 768px) {
+            .nav-menu, .header__buttons { display: none; }
+            .mobile-toggle { display: flex; }
+            .mobile-menu { display: block; position: fixed; top: 0; right: -100%; width: 80%; max-width: 400px; height: 100vh; background: var(--white); box-shadow: -2px 0 20px rgba(0,0,0,0.1); z-index: 1001; padding: 80px 30px; transition: right 0.3s ease; }
+            .mobile-menu.active { right: 0; }
+            .mobile-menu__item { display: block; padding: 15px 0; font-size: 18px; color: var(--text-dark); text-decoration: none; border-bottom: 1px solid var(--border-gray); }
+            .mobile-menu__buttons { margin-top: 30px; display: flex; flex-direction: column; gap: 15px; }
+            .page-hero h1 { font-size: 32px; }
+            .footer__grid { grid-template-columns: 1fr 1fr; gap: var(--space-three); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="mobile-menu" id="mobileMenu">
+    <a href="index.html" class="mobile-menu__item">Home</a>
+    <a href="features.html" class="mobile-menu__item">Features</a>
+    <a href="solutions.html" class="mobile-menu__item">Solutions</a>
+    <a href="pricing.html" class="mobile-menu__item">Pricing</a>
+    <a href="resources.html" class="mobile-menu__item">Resources</a>
+
+    <div class="mobile-menu__buttons">
+        <a href="sign-in.html"><button class="btn btn--secondary">Sign In</button></a>
+        <a href="register.html"><button class="btn btn--primary">Get Started</button></a>
+    </div>
+</div>
+
+<header class="header">
+    <div class="container header__container">
+        <div class="logo" onclick="window.location.href='index.html'" aria-label="myPilotPost Logo"></div>
+        <nav class="nav-menu" aria-label="Main Navigation">
+            <a href="features.html" class="nav-menu__item">Features</a>
+            <a href="solutions.html" class="nav-menu__item">Solutions</a>
+            <a href="pricing.html" class="nav-menu__item">Pricing</a>
+            <a href="resources.html" class="nav-menu__item">Resources</a>
+
+        </nav>
+        <div class="header__buttons">
+            <button class="btn btn--secondary" onclick="window.location.href='sign-in.html'">Sign In <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4.17 10H15.83" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 4.17L15.83 10L10 15.83" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <button class="btn btn--primary" onclick="window.location.href='register.html'">Get Started</button>
+        </div>
+        <div class="mobile-toggle" onclick="toggleMobileMenu()" aria-label="Toggle mobile menu"><span></span><span></span><span></span></div>
+    </div>
+</header>
+
+<section class="page-hero">
+    <div class="container">
+        <p class="page-hero__breadcrumb"><a href="trust.html">Trust Center</a> / Infrastructure</p>
+        <div class="page-hero__icon"><i class="fa-solid fa-server" aria-hidden="true"></i></div>
+        <h1>Infrastructure &amp; Reliability</h1>
+        <p>Architecture, scheduling engine, publish lifecycle, reliability design, and uptime philosophy — built entirely on Cloudflare's global edge network.</p>
+        <p class="page-hero__meta">Thuthu (Pty) Ltd t/a myPilotPost &nbsp;·&nbsp; Reg. No. 2025/102758/07</p>
+    </div>
+</section>
+
+<section class="content-page">
+    <div class="container">
+        <div class="content-inner">
+
+            <p class="body-text">myPilotPost is built entirely on Cloudflare's global edge network. We do not operate physical servers, co-location facilities, or self-managed infrastructure. Our architecture is designed for deterministic, reliable delivery — not best-effort scheduling. Under POPIA's security safeguard obligations (section 19), Thuthu (Pty) Ltd is required to maintain appropriate, reasonable technical measures to secure the integrity and confidentiality of personal information. The infrastructure described on this page reflects those safeguards in practice.</p>
+            <div class="callout">Deterministic scheduling, fail-safe delivery, and edge-distributed compute are not aspirational goals — they are how the platform works today.</div>
+
+            <!-- SECTION: Infrastructure Overview -->
+            <h2 class="section-heading">Infrastructure Overview</h2>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Layer</th>
+                        <th>Technology &amp; Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>API / Compute</td>
+                        <td>Cloudflare Workers — serverless functions executing at Cloudflare's global edge, no cold-start delays, no single-region dependency</td>
+                    </tr>
+                    <tr>
+                        <td>Frontend Delivery</td>
+                        <td>Cloudflare Pages — static assets served from Cloudflare's global CDN, globally cached</td>
+                    </tr>
+                    <tr>
+                        <td>Primary Database</td>
+                        <td>Cloudflare D1 — SQLite-based relational database, all queries brand-scoped at the API layer</td>
+                    </tr>
+                    <tr>
+                        <td>Configuration &amp; Locks</td>
+                        <td>Cloudflare KV — distributed key-value store for flags, scheduling locks, rate-limit state, and configuration</td>
+                    </tr>
+                    <tr>
+                        <td>Media Storage</td>
+                        <td>Cloudflare R2 — S3-compatible object storage, no egress fees, brand-scoped buckets</td>
+                    </tr>
+                    <tr>
+                        <td>DNS &amp; Network</td>
+                        <td>Cloudflare DNS with DDoS protection, WAF, and automatic failover</td>
+                    </tr>
+                    <tr>
+                        <td>Transport Security</td>
+                        <td>HTTPS/TLS enforced globally at the Cloudflare edge — no unencrypted traffic reaches our application layer</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3 class="sub-heading">Data Location</h3>
+            <p class="body-text">Cloudflare operates edge nodes globally. Data processed by Cloudflare Workers and stored in D1 and R2 is distributed across Cloudflare's infrastructure in accordance with Cloudflare's data localisation terms. We do not operate dedicated data centres, and we do not own or manage the underlying physical infrastructure. Cross-border data transfers to Cloudflare's infrastructure are governed by Cloudflare's Data Processing Addendum and Standard Contractual Clauses (SCCs) where applicable.</p>
+
+            <!-- SECTION: Scheduling Architecture -->
+            <h2 class="section-heading">Scheduling Architecture</h2>
+
+            <h3 class="sub-heading">Deterministic Scheduling</h3>
+            <ul class="check-list">
+                <li><i class="fa-solid fa-check" aria-hidden="true"></i> All scheduled times are stored and processed in UTC — timezone localisation is handled at the UI layer to prevent time zone ambiguity errors</li>
+                <li><i class="fa-solid fa-check" aria-hidden="true"></i> Conflict detection enforces a 15-minute protection window between posts targeting the same platform and account, preventing accidental overlapping schedules</li>
+                <li><i class="fa-solid fa-check" aria-hidden="true"></i> Scheduled posts follow an immutable publish lifecycle — once confirmed, a scheduled post cannot be silently altered by any background process</li>
+                <li><i class="fa-solid fa-check" aria-hidden="true"></i> Cancellations are explicit user actions and are permanently logged — a cancelled post is never silently removed from records</li>
+            </ul>
+
+            <h3 class="sub-heading">Publish Lifecycle States</h3>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>State</th>
+                        <th>Meaning</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code style="font-family: monospace; background: var(--light-gray); padding: 2px 6px; border-radius: 4px; font-size: 13px;">scheduled</code></td>
+                        <td>Post is confirmed and queued for delivery at the configured UTC time</td>
+                    </tr>
+                    <tr>
+                        <td><code style="font-family: monospace; background: var(--light-gray); padding: 2px 6px; border-radius: 4px; font-size: 13px;">published</code></td>
+                        <td>Post was successfully delivered to the target platform via its API</td>
+                    </tr>
+                    <tr>
+                        <td><code style="font-family: monospace; background: var(--light-gray); padding: 2px 6px; border-radius: 4px; font-size: 13px;">cancelled</code></td>
+                        <td>Post was explicitly cancelled by the user — a permanent, auditable record</td>
+                    </tr>
+                    <tr>
+                        <td><code style="font-family: monospace; background: var(--light-gray); padding: 2px 6px; border-radius: 4px; font-size: 13px;">failed</code></td>
+                        <td>Delivery was attempted but the target platform API returned an error — visible in your delivery logs</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p class="body-text">There is no silent failure state. Every delivery attempt produces a visible, logged outcome. Failed deliveries surface to the user and are visible in the admin control plane.</p>
+
+            <!-- SECTION: Reliability Principles -->
+            <h2 class="section-heading">Reliability Principles</h2>
+
+            <h3 class="sub-heading">Fail-Safe Design</h3>
+            <ul class="check-list">
+                <li><i class="fa-solid fa-check" aria-hidden="true"></i> Failed deliveries are immediately logged and surfaced to the user in Mission Analytics and the Launch Pad delivery history</li>
+                <li><i class="fa-solid fa-check" aria-hidden="true"></i> Retry logic is applied to transient failures with exponential backoff — we do not retry indefinitely in ways that could cause duplicate publishing</li>
+                <li><i class="fa-solid fa-check" aria-hidden="true"></i> Scheduling conflicts are detected at the point of scheduling confirmation, not at delivery time</li>
+                <li><i class="fa-solid fa-check" aria-hidden="true"></i> API errors return structured, human-readable error responses — no silent 200-OK failures that mask underlying problems</li>
+                <li><i class="fa-solid fa-check" aria-hidden="true"></i> Cloudflare KV locks prevent duplicate delivery attempts on the same scheduled post record</li>
+            </ul>
+
+            <h3 class="sub-heading">Observability</h3>
+            <ul class="check-list">
+                <li><i class="fa-solid fa-check" aria-hidden="true"></i> Delivery success and failure rates are tracked per brand in real time</li>
+                <li><i class="fa-solid fa-check" aria-hidden="true"></i> The admin control plane provides live system health visibility across all customer accounts</li>
+                <li><i class="fa-solid fa-check" aria-hidden="true"></i> Error rates, delivery delays, and scheduler health are monitored continuously</li>
+                <li><i class="fa-solid fa-check" aria-hidden="true"></i> Platform incidents are communicated via <a href="status.html">status.mypilotpost.com</a></li>
+            </ul>
+
+            <!-- SECTION: Uptime -->
+            <h2 class="section-heading">Uptime</h2>
+            <p class="body-text">Because myPilotPost runs on Cloudflare Workers, our compute layer inherits the benefit of Cloudflare's distributed global network. There is no single-region failure mode in our architecture.</p>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Component</th>
+                        <th>Monthly Uptime Target</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>API layer</td>
+                        <td>99.9%</td>
+                    </tr>
+                    <tr>
+                        <td>Scheduling engine</td>
+                        <td>99.95%</td>
+                    </tr>
+                    <tr>
+                        <td>Frontend delivery</td>
+                        <td>99.99%</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p class="body-text">We do not guarantee 100% uptime. Service availability is subject to the terms stated in our Terms and Conditions. Planned maintenance and unplanned incidents are communicated transparently via the <a href="status.html">status page</a>.</p>
+            <div class="callout">When something goes wrong, it is visible, logged, and communicated. Silent failures are not acceptable in our architecture.</div>
+
+            <!-- SECTION: Maintenance & Deployment -->
+            <h2 class="section-heading">Maintenance &amp; Deployment</h2>
+            <ul class="check-list">
+                <li><i class="fa-solid fa-check" aria-hidden="true"></i> Cloudflare Workers deployments are zero-downtime by design — new code versions are deployed atomically without taking the service offline</li>
+                <li><i class="fa-solid fa-check" aria-hidden="true"></i> Database schema changes are applied via structured migrations — not in-place modifications that could corrupt live data</li>
+                <li><i class="fa-solid fa-check" aria-hidden="true"></i> Planned maintenance windows are announced via <a href="status.html">status.mypilotpost.com</a> in advance where possible</li>
+                <li><i class="fa-solid fa-check" aria-hidden="true"></i> All production changes follow environment separation — staging is validated before any change reaches production</li>
+            </ul>
+
+            <p class="body-text" style="margin-top: var(--space-three); padding-top: var(--space-onehalf); border-top: 1px solid var(--light-gray);">
+                System status: <a href="status.html">status.mypilotpost.com</a> &nbsp;·&nbsp;
+                Infrastructure questions: <a href="mailto:trust@mypilotpost.com">trust@mypilotpost.com</a> &nbsp;·&nbsp;
+                <a href="trust.html">&larr; Trust Center</a>
+            </p>
+
+        </div>
+    </div>
+</section>
+
+<footer class="footer">
+    <div class="container">
+        <div class="footer__grid">
+            <div>
+                <div class="footer__logo" onclick="window.location.href='index.html'" aria-label="myPilotPost Logo"></div>
+                <p class="footer__tagline">Land the right message every time.</p>
+                <p class="footer__desc">Social media management and content operations platform for founders, small businesses, modern brands, agencies, and marketing teams.</p>
+                <div class="social-links">
+                    <a href="https://www.facebook.com/profile.php?id=61587795843300" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M18 2H15C13.67 2 12.4 2.53 11.46 3.46C10.53 4.4 10 5.67 10 7V10H7V14H10V22H14V14H17L18 10H14V7C14 6.73 14.11 6.48 14.29 6.29C14.48 6.11 14.73 6 15 6H18V2Z"/></svg></a>
+                    <a href="https://www.instagram.com/mypilotpost_/" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="5" stroke="white" stroke-width="1.5"/><circle cx="18" cy="6" r="1.5" fill="white"/><circle cx="12" cy="12" r="4" stroke="white" stroke-width="1.5"/></svg></a>
+                    <a href="https://www.linkedin.com/company/mypilotpost" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M16 8C17.59 8 19.12 8.63 20.24 9.76C21.37 10.88 22 12.41 22 14V21H18V14C18 13.47 17.79 12.96 17.41 12.59C17.04 12.21 16.53 12 16 12C15.47 12 14.96 12.21 14.59 12.59C14.21 12.96 14 13.47 14 14V21H10V14C10 12.41 10.63 10.88 11.76 9.76C12.88 8.63 14.41 8 16 8Z"/><path d="M6 9H2V21H6V9Z"/><circle cx="4" cy="4" r="2" fill="white"/></svg></a>
+                    <a href="https://x.com/mypilotpost" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="X / Twitter"><svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.74l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+                </div>
+            </div>
+            <div>
+                <h6 class="footer__column-title">Product</h6>
+                <a href="features.html" class="footer__link">Features</a>
+                <a href="solutions.html" class="footer__link">Solutions</a>
+                <a href="pricing.html" class="footer__link">Pricing</a>
+                <a href="resources.html" class="footer__link">Integrations</a>
+            </div>
+            <div>
+                <h6 class="footer__column-title">Resources</h6>
+                <a href="resources.html" class="footer__link">Blog</a>
+                <a href="resources.html" class="footer__link">News &amp; Updates</a>
+                <a href="help-center.html" class="footer__link">Help Center</a>
+                <a href="mailto:support@mypilotpost.com" class="footer__link">Request a Feature</a>
+            </div>
+            <div>
+                <h6 class="footer__column-title">Trust</h6>
+                <a href="trust.html" class="footer__link">Trust Center</a>
+                <a href="security.html" class="footer__link">Security</a>
+                <a href="ai-principles.html" class="footer__link">AI Principles</a>
+                <a href="oauth-permissions.html" class="footer__link">OAuth Permissions</a>
+                <a href="status.html" class="footer__link">Status</a>
+            </div>
+            <div>
+                <h6 class="footer__column-title">Legal</h6>
+                <a href="compliance.html" class="footer__link">Compliance</a>
+                <a href="privacy.html" class="footer__link">Privacy Policy</a>
+                <a href="terms.html" class="footer__link">Terms of Service</a>
+                <a href="refund-policy.html" class="footer__link">Refund Policy</a>
+                <a href="images/PAIA_Manual.pdf" class="footer__link">PAIA Manual</a>
+                <a href="support.html" class="footer__link">Support</a>
+            </div>
+        </div>
+        <div class="footer__divider"></div>
+        <p class="footer__copyright">&copy; 2026 myPilotPost. All rights reserved.</p>
+    </div>
+</footer>
+
+<script>
+    function toggleMobileMenu() {
+        const menu = document.getElementById('mobileMenu');
+        menu.classList.toggle('active');
+        document.body.style.overflow = menu.classList.contains('active') ? 'hidden' : 'auto';
+    }
+    document.addEventListener('click', function(e) {
+        const menu = document.getElementById('mobileMenu');
+        const toggle = document.querySelector('.mobile-toggle');
+        if (!menu.contains(e.target) && !toggle.contains(e.target) && menu.classList.contains('active')) {
+            menu.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+    });
+</script>
+</body>
+</html>

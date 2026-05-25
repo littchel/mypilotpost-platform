@@ -17,7 +17,12 @@ import * as threads from "./threads.js";
 export const ADAPTERS = {
   linkedin,
   meta,
+  facebook: meta,           // alias — routes through unified Meta adapter
+  instagram: meta,          // alias — routes through unified Meta adapter
   google,
+  youtube: google,          // alias — routes through Google OAuth adapter
+  google_analytics: google, // alias — routes through Google OAuth adapter
+  google_business: google,  // alias — routes through Google OAuth adapter
   x,
   tiktok,
   pinterest,

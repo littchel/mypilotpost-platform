@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MessageSquare, X, Send, User, Shield } from 'lucide-react';
 import { apiRequest } from '../../lib/api/client';
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8787";
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8788";
 // Using the known admin ID for admin@test.com as the default support destination
 const SUPPORT_ID = "0f1bfe50-06d2-458d-bd54-ac4d47fa9e5e";
 

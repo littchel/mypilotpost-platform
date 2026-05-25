@@ -18,7 +18,7 @@ import { apiRequest } from "../lib/api/client";
 const Billing = () => {
   const [loading, setLoading] = useState(true);
   const [plan, setPlan] = useState(null);
-  const [usage, setUsage] = useState({ brands: 0, users: 0 });
+  const [usage, setUsage] = useState([]);
   const [isUpgrading, setIsUpgrading] = useState(false);
 
   useEffect(() => {
@@ -28,19 +28,24 @@ const Billing = () => {
   const fetchBillingData = async () => {
     setLoading(true);
     try {
-      const res = await apiRequest("/api/customer/billing/plan");
-      setPlan(res.plan);
-      // In a real app, usage would come from here too
-      // For MVP, we'll simulate based on plan limits
-      setUsage({ 
-        brands: res.plan.id === 'starter' ? 1 : 4, 
-        users: res.plan.id === 'starter' ? 1 : 2 
-      });
+      const [planRes, usageRes] = await Promise.all([
+        apiRequest("/api/customer/billing/plan"),
+        apiRequest("/api/customer/billing/usage").catch(() => ({ usage: [] })),
+      ]);
+      setPlan(planRes.plan);
+      setUsage(usageRes.usage || []);
     } catch (err) {
       console.error("Failed to fetch billing", err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const trialDaysRemaining = (plan) => {
+    if (!plan?.trial_ends_at) return null;
+    const diff = new Date(plan.trial_ends_at) - new Date();
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+    return days > 0 ? days : 0;
   };
 
   const handleUpgrade = async (targetPlanId) => {
@@ -93,9 +98,9 @@ const Billing = () => {
       featured: false
     },
     {
-      id: "pro",
-      name: "Professional",
-      price: "49",
+      id: "growth",
+      name: "Growth",
+      price: "499",
       description: "For growing brands and power users.",
       features: [
         { text: "5 Brand Accounts", included: true },
@@ -105,14 +110,14 @@ const Billing = () => {
         { text: "The Brain™ Intelligence", included: true },
         { text: "Agency Reporting", included: true }
       ],
-      cta: "Upgrade to Pro",
+      cta: "Upgrade to Growth",
       featured: true
     },
     {
-      id: "agency",
-      name: "Agency",
-      price: "199",
-      description: "Full white-label control for agencies.",
+      id: "pro",
+      name: "Pro",
+      price: "999",
+      description: "Full power for serious agencies.",
       features: [
         { text: "25 Brand Accounts", included: true },
         { text: "5 User Seats", included: true },
@@ -121,7 +126,7 @@ const Billing = () => {
         { text: "Priority Strategic Support", included: true },
         { text: "Full Intelligence Suite", included: true }
       ],
-      cta: "Go Agency",
+      cta: "Go Pro",
       featured: false
     }
   ];
@@ -143,72 +148,56 @@ const Billing = () => {
 
       {/* Usage Gauges */}
       <div className="row g-4 mb-5">
-        <div className="col-md-6 col-lg-4">
-          <div className="glass-card p-4 h-100 border-0 shadow-sm">
-            <div className="d-flex align-items-center gap-3 mb-4">
-              <div className="icon-box bg-blue-light text-blue rounded-3 p-3">
-                <Layout size={24} />
+        {usage.length > 0 ? usage.map((u, i) => (
+          <div key={i} className="col-md-6 col-lg-4">
+            <div className="glass-card p-4 h-100 border-0 shadow-sm">
+              <div className="d-flex align-items-center gap-3 mb-4">
+                <div className="icon-box bg-blue-light text-blue rounded-3 p-3">
+                  <Activity size={24} />
+                </div>
+                <div>
+                  <h4 className="mb-0 fw-bold">{u.label}</h4>
+                  <p className="text-muted small mb-0">This billing period</p>
+                </div>
               </div>
-              <div>
-                <h4 className="mb-0 fw-bold">Brand Slots</h4>
-                <p className="text-muted small mb-0">Consumed organization slots</p>
+              <div className="usage-stat mb-2">
+                <span className="fs-2 fw-bold">{u.used}</span>
+                <span className="text-muted fs-5"> / {u.limit}</span>
               </div>
+              <div className="progress rounded-pill mb-2" style={{ height: '8px' }}>
+                <div
+                  className={`progress-bar rounded-pill ${u.used / u.limit > 0.8 ? 'bg-warning' : 'bg-primary'}`}
+                  style={{ width: `${Math.min((u.used / u.limit) * 100, 100)}%` }}
+                />
+              </div>
+              <p className="text-muted x-small mb-0">{u.limit - u.used} remaining</p>
             </div>
-            <div className="usage-stat mb-2">
-              <span className="fs-2 fw-bold">{usage.brands}</span>
-              <span className="text-muted fs-5"> / {plan.social_accounts_limit ?? 1}</span>
-            </div>
-            <div className="progress rounded-pill mb-2" style={{ height: '8px' }}>
-              <div 
-                className={`progress-bar rounded-pill ${usage.brands / (plan.social_accounts_limit ?? 1) > 0.8 ? 'bg-warning' : 'bg-primary'}`} 
-                style={{ width: `${Math.min((usage.brands / (plan.social_accounts_limit ?? 1)) * 100, 100)}%` }}
-              ></div>
-            </div>
-            <p className="text-muted x-small mb-0">
-              {(plan.social_accounts_limit ?? 1) - usage.brands} account slot(s) remaining.
-            </p>
           </div>
-        </div>
-
-        <div className="col-md-6 col-lg-4">
-          <div className="glass-card p-4 h-100 border-0 shadow-sm">
-            <div className="d-flex align-items-center gap-3 mb-4">
-              <div className="icon-box bg-purple-light text-purple rounded-3 p-3">
-                <FileText size={24} />
-              </div>
-              <div>
-                <h4 className="mb-0 fw-bold">Monthly Posts</h4>
-                <p className="text-muted small mb-0">Scheduled posts this month</p>
-              </div>
-            </div>
-            <div className="usage-stat mb-2">
-              <span className="fs-2 fw-bold">{usage.users}</span>
-              <span className="text-muted fs-5"> / {plan.posts_per_month_limit ?? 10}</span>
-            </div>
-            <div className="progress rounded-pill mb-2" style={{ height: '8px' }}>
-              <div 
-                className="progress-bar bg-purple rounded-pill" 
-                style={{ width: `${Math.min((usage.users / (plan.posts_per_month_limit ?? 10)) * 100, 100)}%` }}
-              ></div>
-            </div>
-            <p className="text-muted x-small mb-0">
-              Based on your {plan.name} plan allowance.
-            </p>
+        )) : (
+          <div className="col-12">
+            <div className="glass-card p-4 text-muted text-center small">No usage data yet — start publishing to see your stats.</div>
           </div>
-        </div>
+        )}
 
         <div className="col-lg-4">
           <div className="glass-card p-4 h-100 border-0 shadow-sm position-relative overflow-hidden bg-gradient-premium text-white">
             <div className="position-relative z-1">
-              <h4 className="fw-bold mb-3">Trial Status</h4>
+              <h4 className="fw-bold mb-3">Subscription Status</h4>
               {plan.status === 'trial' ? (
                 <>
-                  <p className="mb-4 opacity-75">Your agency trial ends in <b>12 days</b>. Unlock full production mode today.</p>
-                  <button className="btn btn-white w-100 fw-bold">Unlock Enterprise Features</button>
+                  <p className="mb-4 opacity-75">
+                    Your trial ends in <b>{trialDaysRemaining(plan) ?? '—'} days</b>. Unlock full production mode today.
+                  </p>
+                  <button className="btn btn-white w-100 fw-bold" onClick={() => handleUpgrade('growth')}>Upgrade to Growth</button>
+                </>
+              ) : plan.status === 'trial_expired' ? (
+                <>
+                  <p className="mb-4 opacity-75">Your trial has expired. Choose a plan to continue.</p>
+                  <button className="btn btn-white w-100 fw-bold" onClick={() => handleUpgrade('growth')}>Choose a Plan</button>
                 </>
               ) : (
                 <>
-                  <p className="mb-4 opacity-75">Your subscription is <b>Active</b>. Payments are synced through Yoco.</p>
+                  <p className="mb-4 opacity-75">Your <b>{plan.name}</b> subscription is active. Payments via Yoco.</p>
                   <button className="btn btn-outline-white w-100">View Invoices</button>
                 </>
               )}

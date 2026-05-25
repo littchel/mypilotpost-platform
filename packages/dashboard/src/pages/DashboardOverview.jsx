@@ -177,24 +177,31 @@ const State4Advanced = ({ switchTab }) => (
     <div className="card-workspace p-4 mb-4 bg-white shadow-sm" style={{ borderRadius: 20 }}>
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h5 className="fw-bold text-main mb-1">Executive Optimization</h5>
-          <div className="extra-small text-muted">Predictive insights and strategic benchmarking active.</div>
+          <h5 className="fw-bold text-main mb-1">Executive Operations Active</h5>
+          <div className="extra-small text-muted">Strategic intelligence and automation fully engaged.</div>
         </div>
-        <button className="btn btn-outline-primary btn-sm extra-small fw-bold" onClick={() => switchTab('insights')}>View Executive Dashboard</button>
+        <button className="btn btn-outline-primary btn-sm extra-small fw-bold" onClick={() => switchTab('insights')}>View Intelligence Dashboard</button>
       </div>
       <div className="row g-3">
-        <div className="col-md-3">
-          <div className="p-3 bg-light rounded-3 border">
-            <div className="extra-small fw-bold text-muted text-uppercase mb-1">Est. ROI Trajectory</div>
-            <div className="h4 fw-bold text-success mb-0">+34%</div>
-            <div className="extra-small text-success mt-1">↑ Expected 90-day yield</div>
+        <div className="col-md-4">
+          <div className="p-3 bg-light rounded-3 border cursor-pointer hover-bg-white transition-all" onClick={() => switchTab('content-opportunities')}>
+            <div className="extra-small fw-bold text-muted text-uppercase mb-1">Next Action</div>
+            <div className="small fw-bold text-main mb-0">Content Opportunities</div>
+            <div className="extra-small text-muted mt-1">Scan for new content gaps →</div>
           </div>
         </div>
-        <div className="col-md-3">
-          <div className="p-3 bg-light rounded-3 border">
-            <div className="extra-small fw-bold text-muted text-uppercase mb-1">Authority Index</div>
-            <div className="h4 fw-bold text-primary mb-0">Top 12%</div>
-            <div className="extra-small text-muted mt-1">vs category benchmark</div>
+        <div className="col-md-4">
+          <div className="p-3 bg-light rounded-3 border cursor-pointer hover-bg-white transition-all" onClick={() => switchTab('reporting')}>
+            <div className="extra-small fw-bold text-muted text-uppercase mb-1">Reports</div>
+            <div className="small fw-bold text-main mb-0">Executive Reports</div>
+            <div className="extra-small text-muted mt-1">View performance summaries →</div>
+          </div>
+        </div>
+        <div className="col-md-4">
+          <div className="p-3 bg-light rounded-3 border cursor-pointer hover-bg-white transition-all" onClick={() => switchTab('analytics')}>
+            <div className="extra-small fw-bold text-muted text-uppercase mb-1">Analytics</div>
+            <div className="small fw-bold text-main mb-0">Platform Analytics</div>
+            <div className="extra-small text-muted mt-1">Review delivery data →</div>
           </div>
         </div>
       </div>
@@ -221,9 +228,12 @@ const DashboardOverview = ({
   const greetingText = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good Morning";
-    if (hour < 18) return "Good Afternoon";
-    return "Good Evening";
+    if (hour < 17) return "Good Afternoon";
+    if (hour < 21) return "Good Evening";
+    return "Good Night";
   };
+
+  const greetingName = user?.first_name || user?.email?.split('@')[0] || 'there';
 
   // Determine Activation State
   const publishedCount = allContent.filter(c => c.status === 'published').length;
@@ -243,7 +253,7 @@ const DashboardOverview = ({
       <div className="mb-4 d-flex justify-content-between align-items-end">
         <div>
           <h3 className="fw-bold text-main mb-1" style={{ letterSpacing: '-0.03em' }}>
-            {greetingText()}, {user?.first_name || 'Partner'}!
+            {greetingText()}, {greetingName}!
           </h3>
           <p className="small text-muted mb-0">
             {activationState === 1 && "Let's set up your strategic foundation today."}

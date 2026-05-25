@@ -3,7 +3,7 @@ import { useOnboarding } from '../../../contexts/OnboardingContext';
 import { apiRequest } from '../../../lib/api/client';
 
 const ScheduleStep = () => {
-  const { data, updateStep } = useOnboarding();
+  const { data, step, updateStep, trackOnboardingEvent } = useOnboarding();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -11,20 +11,23 @@ const ScheduleStep = () => {
     setLoading(true);
     setError("");
     try {
-      // If "Post Now", use current time, else tomorrow
       const date = new Date();
       if (type === 'later') date.setDate(date.getDate() + 1);
-      
-      await apiRequest("/api/customer/schedule", {
-        method: "POST",
-        body: JSON.stringify({
-          content_id: data.generatedContent?.content_id,
-          scheduled_at: date.toISOString(),
-          status: type === 'now' ? 'published' : 'scheduled'
-        })
-      });
 
-      await updateStep(8, { isScheduled: true });
+      const contentId = data.generatedContent?.content_id;
+      if (contentId) {
+        await apiRequest("/api/customer/schedule", {
+          method: "POST",
+          body: JSON.stringify({
+            content_id: contentId,
+            scheduled_at: date.toISOString(),
+            status: type === 'now' ? 'published' : 'scheduled'
+          })
+        });
+        trackOnboardingEvent("first_post_scheduled", { type, content_id: contentId });
+      }
+
+      await updateStep(step + 1, { isScheduled: true });
     } catch {
       setError("Scheduling failed. Please try again.");
     } finally {
@@ -59,9 +62,9 @@ const ScheduleStep = () => {
           {loading ? <span className="spinner-border spinner-border-sm me-2"></span> : <i className="fas fa-clock me-2"></i>}
           Schedule for Tomorrow
         </button>
-        <button 
-          className="btn btn-link text-muted small" 
-          onClick={() => updateStep(8, { isScheduled: false })}
+        <button
+          className="btn btn-link text-muted small"
+          onClick={() => updateStep(step + 1, { isScheduled: false })}
           disabled={loading}
         >
           Skip for now

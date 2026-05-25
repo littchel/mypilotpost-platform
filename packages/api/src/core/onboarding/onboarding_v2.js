@@ -1,35 +1,36 @@
 // packages/api/src/core/onboarding/onboarding_v2.js
 import { json, error } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
+import { hydrateFromAudit } from "./hydration.js";
 
 /**
  * GET /api/customer/onboarding
- * Get ongoing progress for the current user
+ * Returns progress + signup_source so the frontend can route the correct onboarding path.
  */
 export async function getOnboarding(request, env, auth) {
   const db = getDB(env);
   try {
-    const progress = await db
-      .prepare("SELECT * FROM onboarding_progress WHERE user_id = ?")
-      .bind(auth.user_id)
-      .first();
-    
+    const [progress, user] = await Promise.all([
+      db.prepare("SELECT * FROM onboarding_progress WHERE user_id = ?").bind(auth.user_id).first(),
+      db.prepare("SELECT signup_source, company_name, audit_website FROM users WHERE id = ?").bind(auth.user_id).first()
+    ]);
+
+    const signupSource = user?.signup_source || 'direct';
+
     if (progress) {
-      return json({ progress });
+      return json({ progress, signup_source: signupSource });
     }
 
-    // No progress? Preload from user table (Capture context from Audit/Registration)
-    const user = await db
-      .prepare("SELECT company_name, audit_website FROM users WHERE id = ?")
-      .bind(auth.user_id)
-      .first();
-
+    // No progress row yet — build minimal initial state from user table
     const initialData = {
       brandName: user?.company_name || "",
       websiteURL: user?.audit_website || ""
     };
 
-    return json({ progress: { current_step: 1, data: JSON.stringify(initialData) } });
+    return json({
+      progress: { current_step: 1, data: JSON.stringify(initialData) },
+      signup_source: signupSource
+    });
   } catch (err) {
     return error("Failed to fetch onboarding progress", "SERVER_ERROR", String(err), 500);
   }
@@ -98,16 +99,39 @@ export async function saveMarketContext(request, env, auth) {
 
 /**
  * POST /api/customer/onboarding/complete
- * Marks onboarding as finished
+ * Marks onboarding finished. For audit-source users, runs hydration to link audit intelligence to brand.
  */
 export async function completeOnboarding(request, env, auth) {
   const db = getDB(env);
   try {
     await db
-      .prepare("UPDATE onboarding_progress SET completed_at = datetime('now') WHERE user_id = ?")
+      .prepare(`
+        INSERT INTO onboarding_progress (user_id, current_step, completed_at, updated_at)
+        VALUES (?, 9, datetime('now'), datetime('now'))
+        ON CONFLICT(user_id) DO UPDATE SET
+          completed_at = datetime('now'),
+          updated_at = datetime('now')
+      `)
       .bind(auth.user_id)
       .run();
-    
+
+    // Audit-source users: hydrate Brand DNA from the original public audit now that brand exists
+    const [user, progress] = await Promise.all([
+      db.prepare("SELECT signup_source FROM users WHERE id = ?").bind(auth.user_id).first(),
+      db.prepare("SELECT data FROM onboarding_progress WHERE user_id = ?").bind(auth.user_id).first()
+    ]);
+
+    if (user?.signup_source === 'brand_audit' && progress?.data) {
+      try {
+        const onboardingData = JSON.parse(progress.data);
+        if (onboardingData.auditId && onboardingData.brandId) {
+          await hydrateFromAudit(db, onboardingData.brandId, onboardingData.auditId);
+        }
+      } catch (e) {
+        console.warn("[ONBOARDING:HYDRATION]", e.message);
+      }
+    }
+
     return json({ success: true });
   } catch (err) {
     return error("Failed to complete onboarding", "SERVER_ERROR", String(err), 500);

@@ -20,7 +20,7 @@ export async function importMediaAsset({
   sizeBytes,
   encryptedToken
 }) {
-  const token = await decrypt(encryptedToken, env.SECRET_KEY);
+  const token = await decrypt(encryptedToken, env.ENCRYPTION_SECRET);
   const downloader = PROVIDERS[provider];
 
   if (!downloader) {

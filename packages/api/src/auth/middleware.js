@@ -14,10 +14,11 @@ export async function requireAuth(request, env) {
 
   if (authHeader && authHeader.startsWith("Bearer ")) {
     token = authHeader.replace("Bearer ", "").trim();
-  } else {
-    const url = new URL(request.url);
-    token = url.searchParams.get("token");
   }
+
+  // NOTE: Token-in-URL deliberately removed. JWTs in query strings leak into
+  // Cloudflare access logs, CDN logs, and Referer headers.
+  // All clients must send Authorization: Bearer <token>.
 
   if (!token) {
     throw error("Unauthorized", "UNAUTHORIZED", null, 401);
@@ -66,6 +67,11 @@ export async function requireAuth(request, env) {
     `).bind(user_id).first();
 
     if (!link) {
+      // Admin roles operate without a brand context — bypass the brand gate
+      const ADMIN_ROLES = ['super_admin', 'admin', 'operations', 'support'];
+      if (ADMIN_ROLES.includes(payload.role || '')) {
+        brand_id = null;
+      } else {
       // 🚨 HARD BLOCK: NO BRANDS EXIST FOR THIS USER
       // We only allow this if the user is currently on an onboarding route
       const url = new URL(request.url);
@@ -81,6 +87,7 @@ export async function requireAuth(request, env) {
         throw error("Dashboard access blocked: Please complete onboarding first.", "ONBOARDING_REQUIRED", null, 403);
       }
       brand_id = null;
+      }
     } else {
       brand_id = link.brand_id;
     }

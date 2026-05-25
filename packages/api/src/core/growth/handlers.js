@@ -60,12 +60,33 @@ export async function getGrowthSummary(request, env, auth) {
     ORDER BY created_at DESC LIMIT 3
   `).bind(user_id, brand_id).all();
 
+  // Quest progress: posts published/scheduled this week
+  const weekStart = new Date();
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+  weekStart.setHours(0, 0, 0, 0);
+  const weekStartStr = weekStart.toISOString().slice(0, 19);
+
+  const postsThisWeek = await db.prepare(`
+    SELECT COUNT(*) as count FROM social_assets
+    WHERE brand_id = ? AND status IN ('published', 'scheduled')
+    AND created_at >= ?
+  `).bind(brand_id, weekStartStr).first();
+
+  const resolvedSeoInsights = await db.prepare(`
+    SELECT COUNT(*) as count FROM brand_insights
+    WHERE brand_id = ? AND type = 'seo' AND priority IN ('high', 'critical') AND resolved = 1
+  `).bind(brand_id).first();
+
   return json({
     ...profile,
     next_reward: nextReward,
     progress_percentage,
     unlocked_rewards: unlocked || [],
-    active_nudges: (nudges || []).map(n => n.message)
+    active_nudges: (nudges || []).map(n => n.message),
+    quests: {
+      social_consistency: { current: postsThisWeek?.count ?? 0, goal: 3 },
+      seo_optimizer: { current: resolvedSeoInsights?.count ?? 0, goal: 5 }
+    }
   });
 }
 

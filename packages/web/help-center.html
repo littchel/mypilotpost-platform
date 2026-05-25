@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Help Center — myPilotPost</title>
+    <meta name="description" content="myPilotPost Help Center — guides, FAQs, and answers for getting started, connecting platforms, scheduling content, analytics, billing, and account management.">
+    <meta name="author" content="myPilotPost">
+    <meta property="og:title" content="Help Center — myPilotPost">
+    <meta property="og:description" content="Find answers, guides, and support for every part of the myPilotPost platform.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://mypilotpost.com/help-center">
+    <link rel="icon" type="image/png" href="images/favicon-32x32.png">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="config.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { line-height: 1.15; -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+        body { font-family: 'Inter', sans-serif; font-weight: 300; color: #1a1a1a; background: #ffffff; overflow-x: hidden; }
+        :root {
+            --primary-blue: #2563EB; --dark-blue: #1D4ED8;
+            --text-dark: #000000; --text-gray: #646565;
+            --light-gray: #EEF0F1; --border-gray: #CECECE;
+            --white: #FFFFFF; --footer-bg: #002F86; --hover-bg: #E6EEFF;
+            --space-unit: 16px; --space-half: 8px; --space-onehalf: 24px;
+            --space-two: 32px; --space-three: 48px; --space-four: 64px;
+            --space-five: 80px; --space-six: 96px;
+            --radius-small: 4px; --radius-medium: 8px; --radius-large: 14px; --radius-xl: 24px;
+            --container-width: 1280px; --container-padding: 20px;
+        }
+        .container { max-width: var(--container-width); margin: 0 auto; padding: 0 var(--container-padding); width: 100%; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: var(--radius-medium); font-weight: 500; font-size: 18px; cursor: pointer; transition: all 0.3s ease; border: none; text-decoration: none; }
+        .btn--primary { background: var(--primary-blue); color: var(--white); }
+        .btn--primary:hover { background: var(--dark-blue); transform: translateY(-2px); box-shadow: 0 10px 25px rgba(37,99,235,0.3); }
+        .btn--secondary { background: transparent; border: 1px solid var(--border-gray); color: var(--text-gray); }
+        .btn--secondary:hover { background: var(--light-gray); transform: translateY(-2px); }
+
+        /* Header */
+        .header { position: sticky; top: 0; background: var(--white); box-shadow: 0 2px 20px rgba(0,0,0,0.05); z-index: 1000; padding: 20px 0; }
+        .header__container { display: flex; align-items: center; justify-content: space-between; }
+        .logo { width: 272px; height: 54px; background-image: url('images/myPilotPost-Logo.png'); background-size: contain; background-repeat: no-repeat; background-position: center; cursor: pointer; }
+        .nav-menu { display: flex; gap: 28px; align-items: center; }
+        .nav-menu__item { font-size: 18px; color: var(--text-gray); cursor: pointer; transition: color 0.3s; text-decoration: none; }
+        .nav-menu__item:hover { color: var(--primary-blue); }
+        .header__buttons { display: flex; gap: 20px; }
+        .mobile-toggle { display: none; flex-direction: column; cursor: pointer; padding: 10px; }
+        .mobile-toggle span { width: 25px; height: 3px; background: var(--text-dark); margin: 3px 0; transition: 0.3s; }
+        .mobile-menu { display: none; }
+
+        /* Hero */
+        .page-hero { background: var(--footer-bg); color: var(--white); padding: var(--space-five) 0 var(--space-four); -webkit-font-smoothing: antialiased; }
+        .page-hero__icon { width: 56px; height: 56px; background: rgba(255,255,255,0.12); border-radius: var(--radius-medium); display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-onehalf); font-size: 24px; color: rgba(255,255,255,0.9); }
+        .page-hero h1 { font-size: 42px; font-weight: 800; line-height: 1.15; margin-bottom: var(--space-unit); }
+        .page-hero p { font-size: 18px; color: rgba(255,255,255,0.75); max-width: 600px; line-height: 1.7; }
+        .page-hero__search { margin-top: var(--space-two); display: flex; gap: 12px; max-width: 520px; }
+        .page-hero__search-input { flex: 1; padding: 13px 18px; border-radius: var(--radius-medium); border: none; font-size: 16px; font-family: 'Inter', sans-serif; color: var(--text-dark); }
+        .page-hero__search-input:focus { outline: 2px solid rgba(255,255,255,0.5); }
+        .page-hero__search-btn { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: var(--white); padding: 13px 20px; border-radius: var(--radius-medium); cursor: pointer; font-size: 16px; font-family: 'Inter', sans-serif; font-weight: 500; transition: background 0.2s; white-space: nowrap; display: flex; align-items: center; gap: 8px; }
+        .page-hero__search-btn:hover { background: rgba(255,255,255,0.25); }
+
+        /* Main layout */
+        .hc-page { padding: var(--space-five) 0 var(--space-six); }
+        .hc-layout { display: grid; grid-template-columns: 260px 1fr; gap: var(--space-four); align-items: start; }
+
+        /* Sidebar */
+        .hc-sidebar { position: sticky; top: 100px; }
+        .hc-sidebar__label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-gray); margin-bottom: var(--space-unit); padding-bottom: 8px; border-bottom: 1px solid var(--border-gray); }
+        .hc-sidebar__link { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-medium); color: var(--text-gray); text-decoration: none; font-size: 14px; font-weight: 500; transition: all 0.2s; margin-bottom: 2px; }
+        .hc-sidebar__link:hover, .hc-sidebar__link.active { background: var(--hover-bg); color: var(--primary-blue); }
+        .hc-sidebar__link i { width: 16px; text-align: center; flex-shrink: 0; }
+        .hc-sidebar__divider { height: 1px; background: var(--border-gray); margin: var(--space-unit) 0; }
+        .hc-sidebar__cta { margin-top: var(--space-onehalf); background: var(--light-gray); border-radius: var(--radius-medium); padding: var(--space-unit); }
+        .hc-sidebar__cta-text { font-size: 13px; color: var(--text-gray); line-height: 1.6; margin-bottom: 10px; }
+        .hc-sidebar__cta-link { font-size: 13px; font-weight: 600; color: var(--primary-blue); text-decoration: none; display: flex; align-items: center; gap: 6px; }
+        .hc-sidebar__cta-link:hover { text-decoration: underline; }
+
+        /* Content */
+        .hc-content { min-width: 0; }
+        .hc-section { margin-bottom: var(--space-four); scroll-margin-top: 100px; }
+        .hc-section:not(:last-child) { padding-bottom: var(--space-four); border-bottom: 1px solid var(--light-gray); }
+
+        /* Section header */
+        .hc-section__header { display: flex; align-items: flex-start; gap: var(--space-onehalf); margin-bottom: var(--space-two); }
+        .hc-section__icon { width: 52px; height: 52px; background: var(--light-gray); border-radius: var(--radius-medium); display: flex; align-items: center; justify-content: center; color: var(--primary-blue); font-size: 20px; flex-shrink: 0; }
+        .hc-section__title { font-size: 26px; font-weight: 800; color: var(--text-dark); margin-bottom: 6px; line-height: 1.2; }
+        .hc-section__desc { font-size: 15px; color: var(--text-gray); line-height: 1.65; }
+        .hc-section__badge { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--primary-blue); background: var(--hover-bg); border-radius: 4px; padding: 2px 8px; margin-top: 6px; }
+
+        /* Article cards */
+        .hc-articles { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-unit); margin-bottom: var(--space-two); }
+        .hc-article { border: 1px solid var(--border-gray); border-radius: var(--radius-medium); padding: var(--space-onehalf); background: var(--white); transition: all 0.25s ease; cursor: default; }
+        .hc-article:hover { border-color: var(--primary-blue); box-shadow: 0 4px 16px rgba(37,99,235,0.08); transform: translateY(-2px); }
+        .hc-article__title { font-size: 15px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: flex; align-items: flex-start; gap: 8px; }
+        .hc-article__title i { color: var(--primary-blue); font-size: 13px; margin-top: 2px; flex-shrink: 0; }
+        .hc-article__desc { font-size: 13px; color: var(--text-gray); line-height: 1.6; }
+        .hc-article__tag { display: inline-block; font-size: 11px; font-weight: 600; color: var(--text-gray); background: var(--light-gray); border-radius: 3px; padding: 2px 6px; margin-top: 10px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+        /* FAQ inside section */
+        .hc-faq { margin-top: var(--space-onehalf); }
+        .hc-faq__title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-gray); margin-bottom: var(--space-unit); }
+        .faq-item { border: 1px solid var(--border-gray); border-radius: var(--radius-medium); margin-bottom: 8px; overflow: hidden; background: var(--white); }
+        .faq-question { display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 14px var(--space-onehalf); font-weight: 500; font-size: 15px; color: var(--text-dark); gap: var(--space-unit); user-select: none; }
+        .faq-question:hover { color: var(--primary-blue); }
+        .faq-toggle { color: var(--primary-blue); font-size: 14px; flex-shrink: 0; transition: transform 0.2s; }
+        .faq-answer { padding: 0 var(--space-onehalf) var(--space-onehalf); color: var(--text-gray); font-size: 14px; line-height: 1.75; display: none; }
+        .faq-answer.active { display: block; }
+        .faq-answer a { color: var(--primary-blue); text-decoration: none; }
+        .faq-answer a:hover { text-decoration: underline; }
+        .faq-answer code { font-family: monospace; background: var(--light-gray); padding: 1px 6px; border-radius: 3px; font-size: 13px; }
+
+        /* Placeholder notice */
+        .hc-coming-soon { background: var(--light-gray); border-radius: var(--radius-medium); padding: var(--space-onehalf); display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--text-gray); margin-top: var(--space-unit); }
+        .hc-coming-soon i { color: var(--primary-blue); }
+
+        /* Footer */
+        .footer { background: var(--footer-bg); color: var(--white); padding: var(--space-five) 0 var(--space-three); -webkit-font-smoothing: antialiased; }
+        .footer__grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: var(--space-four); margin-bottom: var(--space-four); }
+        .footer__logo { width: 302px; height: 49px; background-image: url('images/myPilotPost-Logo.png'); background-size: contain; background-repeat: no-repeat; background-position: left; margin-bottom: var(--space-unit); cursor: pointer; }
+        .footer__tagline { color: rgba(255,255,255,0.95); margin-bottom: 6px; font-size: 16px; font-weight: 600; }
+        .footer__desc { color: rgba(255,255,255,0.75); font-size: 15px; font-weight: 400; line-height: 1.6; margin-bottom: 30px; }
+        .social-links { display: flex; gap: 18px; }
+        .social-link { cursor: pointer; transition: transform 0.3s, filter 0.3s; }
+        .social-link:hover { transform: translateY(-2px); filter: brightness(1.2); }
+        .footer__column-title { font-size: 14px; font-weight: 700; color: rgba(255,255,255,0.85); margin-bottom: var(--space-onehalf); text-transform: uppercase; letter-spacing: 0.06em; }
+        .footer__link { display: block; color: rgba(255,255,255,0.75); text-decoration: none; margin-bottom: var(--space-half); transition: all 0.3s ease; font-size: 15px; }
+        .footer__link:hover { color: #ffffff; padding-left: 4px; }
+        .footer__divider { width: 100%; height: 1px; background: rgba(255,255,255,0.15); margin: var(--space-three) 0 var(--space-two); }
+        .footer__copyright { text-align: center; color: rgba(255,255,255,0.6); font-size: 15px; }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .hc-layout { grid-template-columns: 220px 1fr; gap: var(--space-three); }
+            .footer__grid { grid-template-columns: repeat(3, 1fr); gap: var(--space-three); }
+        }
+        @media (max-width: 768px) {
+            .nav-menu, .header__buttons { display: none; }
+            .mobile-toggle { display: flex; }
+            .mobile-menu { display: block; position: fixed; top: 0; right: -100%; width: 80%; max-width: 400px; height: 100vh; background: var(--white); box-shadow: -2px 0 20px rgba(0,0,0,0.1); z-index: 1001; padding: 80px 30px; transition: right 0.3s ease; }
+            .mobile-menu.active { right: 0; }
+            .mobile-menu__item { display: block; padding: 15px 0; font-size: 18px; color: var(--text-dark); text-decoration: none; border-bottom: 1px solid var(--border-gray); }
+            .mobile-menu__buttons { margin-top: 30px; display: flex; flex-direction: column; gap: 15px; }
+            .page-hero h1 { font-size: 32px; }
+            .page-hero__search { flex-direction: column; }
+            .hc-layout { grid-template-columns: 1fr; }
+            .hc-sidebar { position: static; }
+            .hc-articles { grid-template-columns: 1fr; }
+            .footer__grid { grid-template-columns: 1fr 1fr; gap: var(--space-three); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="mobile-menu" id="mobileMenu">
+    <a href="index.html" class="mobile-menu__item">Home</a>
+    <a href="features.html" class="mobile-menu__item">Features</a>
+    <a href="solutions.html" class="mobile-menu__item">Solutions</a>
+    <a href="pricing.html" class="mobile-menu__item">Pricing</a>
+    <a href="resources.html" class="mobile-menu__item">Resources</a>
+    <div class="mobile-menu__buttons">
+        <a href="sign-in.html"><button class="btn btn--secondary">Sign In</button></a>
+        <a href="register.html"><button class="btn btn--primary">Get Started</button></a>
+    </div>
+</div>
+
+<header class="header">
+    <div class="container header__container">
+        <div class="logo" onclick="window.location.href='index.html'" aria-label="myPilotPost Logo"></div>
+        <nav class="nav-menu" aria-label="Main Navigation">
+            <a href="features.html" class="nav-menu__item">Features</a>
+            <a href="solutions.html" class="nav-menu__item">Solutions</a>
+            <a href="pricing.html" class="nav-menu__item">Pricing</a>
+            <a href="resources.html" class="nav-menu__item">Resources</a>
+        </nav>
+        <div class="header__buttons">
+            <button class="btn btn--secondary" onclick="window.location.href='sign-in.html'">Sign In <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4.17 10H15.83" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 4.17L15.83 10L10 15.83" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <button class="btn btn--primary" onclick="window.location.href='register.html'">Get Started</button>
+        </div>
+        <div class="mobile-toggle" onclick="toggleMobileMenu()" aria-label="Toggle mobile menu"><span></span><span></span><span></span></div>
+    </div>
+</header>
+
+<section class="page-hero">
+    <div class="container">
+        <div class="page-hero__icon"><i class="fa-solid fa-book-open" aria-hidden="true"></i></div>
+        <h1>Help Center</h1>
+        <p>Guides and answers for every part of the myPilotPost platform. More articles are added regularly.</p>
+        <div class="page-hero__search">
+            <input type="text" class="page-hero__search-input" placeholder="Search for an answer…" id="hc-search" oninput="filterSections()" aria-label="Search help articles">
+            <button class="page-hero__search-btn" onclick="filterSections()"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Search</button>
+        </div>
+    </div>
+</section>
+
+<section class="hc-page">
+    <div class="container">
+        <div class="hc-layout">
+
+            <!-- Sidebar -->
+            <aside class="hc-sidebar" aria-label="Help Center navigation">
+                <div class="hc-sidebar__label">Topics</div>
+                <a href="#getting-started" class="hc-sidebar__link active" onclick="setActive(this)">
+                    <i class="fa-solid fa-rocket" aria-hidden="true"></i> Getting Started
+                </a>
+                <a href="#integrations" class="hc-sidebar__link" onclick="setActive(this)">
+                    <i class="fa-solid fa-plug" aria-hidden="true"></i> Integrations
+                </a>
+                <a href="#scheduling" class="hc-sidebar__link" onclick="setActive(this)">
+                    <i class="fa-solid fa-calendar-check" aria-hidden="true"></i> Scheduling &amp; Publishing
+                </a>
+                <a href="#analytics" class="hc-sidebar__link" onclick="setActive(this)">
+                    <i class="fa-solid fa-chart-line" aria-hidden="true"></i> Analytics &amp; Reporting
+                </a>
+                <a href="#billing" class="hc-sidebar__link" onclick="setActive(this)">
+                    <i class="fa-solid fa-credit-card" aria-hidden="true"></i> Billing &amp; Subscription
+                </a>
+                <a href="#account" class="hc-sidebar__link" onclick="setActive(this)">
+                    <i class="fa-solid fa-user-gear" aria-hidden="true"></i> Account &amp; Brand
+                </a>
+                <div class="hc-sidebar__divider"></div>
+                <div class="hc-sidebar__cta">
+                    <div class="hc-sidebar__cta-text">Can't find what you're looking for?</div>
+                    <a href="support.html" class="hc-sidebar__cta-link"><i class="fa-solid fa-headset" aria-hidden="true"></i> Contact Support</a>
+                </div>
+            </aside>
+
+            <!-- Content -->
+            <main class="hc-content" id="hc-content">
+
+                <!-- Getting Started -->
+                <section class="hc-section" id="getting-started" data-topic="getting started account setup brand creation onboarding">
+                    <div class="hc-section__header">
+                        <div class="hc-section__icon"><i class="fa-solid fa-rocket" aria-hidden="true"></i></div>
+                        <div>
+                            <h2 class="hc-section__title">Getting Started</h2>
+                            <p class="hc-section__desc">Account setup, brand creation, and onboarding — everything you need to go from sign-up to your first scheduled post.</p>
+                            <span class="hc-section__badge">6 articles coming soon</span>
+                        </div>
+                    </div>
+
+                    <div class="hc-articles">
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-file-circle-plus" aria-hidden="true"></i> Creating your myPilotPost account</div>
+                            <div class="hc-article__desc">How to sign up, verify your email, and get into the platform for the first time.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-building" aria-hidden="true"></i> Setting up your first brand</div>
+                            <div class="hc-article__desc">How to create a brand workspace, configure your brand voice, and set your platform targets.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-list-check" aria-hidden="true"></i> Completing the onboarding flow</div>
+                            <div class="hc-article__desc">A walkthrough of the guided setup — brand audit, AI recommendations, and first connection.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-sliders" aria-hidden="true"></i> Understanding the Control Tower</div>
+                            <div class="hc-article__desc">Overview of the main dashboard — Mission Launch Pad, Integration Hub, and Mission Analytics.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-users" aria-hidden="true"></i> Inviting team members</div>
+                            <div class="hc-article__desc">How to add collaborators to your brand workspace and manage access.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> What is a Mission?</div>
+                            <div class="hc-article__desc">Understanding the Mission framework — how campaigns, briefs, and content relate in myPilotPost.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                    </div>
+
+                    <div class="hc-faq">
+                        <div class="hc-faq__title">Frequently asked</div>
+                        <div class="faq-item">
+                            <div class="faq-question" onclick="toggleFAQ(this)">
+                                <span>What do I need to get started?</span>
+                                <i class="fa-solid fa-plus faq-toggle" aria-hidden="true"></i>
+                            </div>
+                            <div class="faq-answer">
+                                You need an email address and a plan subscription to get started. A free trial is available — no credit card required during the trial period. Once you're in, the onboarding flow will guide you through brand setup and your first social platform connection.
+                            </div>
+                        </div>
+                        <div class="faq-item">
+                            <div class="faq-question" onclick="toggleFAQ(this)">
+                                <span>Can I manage multiple brands from one account?</span>
+                                <i class="fa-solid fa-plus faq-toggle" aria-hidden="true"></i>
+                            </div>
+                            <div class="faq-answer">
+                                Yes. myPilotPost supports multiple brand workspaces under a single account. Each brand is fully isolated — content, analytics, connected accounts, and team members are separate per brand. The number of brands available depends on your plan.
+                            </div>
+                        </div>
+                        <div class="faq-item">
+                            <div class="faq-question" onclick="toggleFAQ(this)">
+                                <span>Do I need to be 18 to use myPilotPost?</span>
+                                <i class="fa-solid fa-plus faq-toggle" aria-hidden="true"></i>
+                            </div>
+                            <div class="faq-answer">
+                                Yes. myPilotPost is an 18+ platform. Users must be at least 18 years old and legally capable of entering binding contracts. This is required under our Terms and Conditions and applicable South African law.
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Integrations -->
+                <section class="hc-section" id="integrations" data-topic="integrations connected platforms oauth social accounts connecting disconnection error">
+                    <div class="hc-section__header">
+                        <div class="hc-section__icon"><i class="fa-solid fa-plug" aria-hidden="true"></i></div>
+                        <div>
+                            <h2 class="hc-section__title">Integrations &amp; Connected Platforms</h2>
+                            <p class="hc-section__desc">Connecting social accounts, resolving OAuth errors, understanding permissions, and managing connected platform access.</p>
+                            <span class="hc-section__badge">8 articles coming soon</span>
+                        </div>
+                    </div>
+
+                    <div class="hc-articles">
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-brands fa-facebook" aria-hidden="true"></i> Connecting Facebook Pages</div>
+                            <div class="hc-article__desc">How to connect a Facebook Page using the Meta OAuth flow and required Business Manager access.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-brands fa-instagram" aria-hidden="true"></i> Connecting Instagram</div>
+                            <div class="hc-article__desc">Instagram Business and Creator account requirements, connection steps, and what to do if your account type isn't supported.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-brands fa-linkedin" aria-hidden="true"></i> Connecting LinkedIn</div>
+                            <div class="hc-article__desc">Personal profile and Company Page connection — scopes, token behaviour, and re-connection after expiry.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-brands fa-tiktok" aria-hidden="true"></i> Connecting TikTok</div>
+                            <div class="hc-article__desc">Creator and Business account requirements, Content Posting API access, and how video upload works.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-brands fa-x-twitter" aria-hidden="true"></i> Connecting X (Twitter)</div>
+                            <div class="hc-article__desc">OAuth 2.0 PKCE flow, token lifecycle, and what to do if your X connection shows as expired.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Troubleshooting OAuth errors</div>
+                            <div class="hc-article__desc">Common OAuth connection errors — what they mean and how to resolve them without losing your scheduled content.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-link-slash" aria-hidden="true"></i> Disconnecting a platform</div>
+                            <div class="hc-article__desc">How to disconnect a connected account from within myPilotPost and what happens to your token and scheduled content.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-key" aria-hidden="true"></i> What permissions does myPilotPost request?</div>
+                            <div class="hc-article__desc">A plain-language summary — full details are on the OAuth &amp; Permissions page.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                    </div>
+
+                    <div class="hc-faq">
+                        <div class="hc-faq__title">Frequently asked</div>
+                        <div class="faq-item">
+                            <div class="faq-question" onclick="toggleFAQ(this)">
+                                <span>Why does myPilotPost need access to my Facebook Page?</span>
+                                <i class="fa-solid fa-plus faq-toggle" aria-hidden="true"></i>
+                            </div>
+                            <div class="faq-answer">
+                                Publishing to a Facebook Page requires Page admin access via the Meta Graph API. myPilotPost requests the minimum set of permissions needed: to see your Pages, to publish posts, and to retrieve engagement metrics. We do not access your personal profile, inbox, or ad account. Full scope details: <a href="oauth-permissions.html">OAuth &amp; Permissions</a>.
+                            </div>
+                        </div>
+                        <div class="faq-item">
+                            <div class="faq-question" onclick="toggleFAQ(this)">
+                                <span>My connection shows as expired — what do I do?</span>
+                                <i class="fa-solid fa-plus faq-toggle" aria-hidden="true"></i>
+                            </div>
+                            <div class="faq-answer">
+                                Navigate to <strong>Control Tower → Integration Hub</strong>, locate the expired connection, and click <strong>Reconnect</strong>. You'll be taken through the OAuth flow again. Most connections expire when: the platform revokes the token (e.g. you changed your password), the token's validity period lapses without a refresh, or you revoked access from within the connected platform's settings.
+                            </div>
+                        </div>
+                        <div class="faq-item">
+                            <div class="faq-question" onclick="toggleFAQ(this)">
+                                <span>Can I connect the same platform account to multiple brands?</span>
+                                <i class="fa-solid fa-plus faq-toggle" aria-hidden="true"></i>
+                            </div>
+                            <div class="faq-answer">
+                                Each brand workspace has its own isolated set of connected platform accounts. You can connect the same social account to multiple brand workspaces, but the connections and tokens are stored separately per brand. This ensures brand data isolation across all workspaces.
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Scheduling -->
+                <section class="hc-section" id="scheduling" data-topic="scheduling publishing launch pad failed delivery timezone post schedule">
+                    <div class="hc-section__header">
+                        <div class="hc-section__icon"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i></div>
+                        <div>
+                            <h2 class="hc-section__title">Scheduling &amp; Publishing</h2>
+                            <p class="hc-section__desc">Using the Launch Pad, understanding delivery states, handling failed posts, and managing timezones correctly.</p>
+                            <span class="hc-section__badge">6 articles coming soon</span>
+                        </div>
+                    </div>
+
+                    <div class="hc-articles">
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Scheduling your first post</div>
+                            <div class="hc-article__desc">Step-by-step guide to creating content, selecting a platform target, and confirming a scheduled post via the Launch Pad.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-clock" aria-hidden="true"></i> Understanding timezones</div>
+                            <div class="hc-article__desc">How myPilotPost handles timezones — all scheduled times are stored in UTC, displayed in your local timezone.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> My post failed to publish</div>
+                            <div class="hc-article__desc">What failed delivery means, where to see the error reason, and how to reschedule or retry.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-calendar-xmark" aria-hidden="true"></i> Cancelling a scheduled post</div>
+                            <div class="hc-article__desc">How to cancel a scheduled post — cancellations are permanent and logged for audit purposes.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-circle-nodes" aria-hidden="true"></i> Publishing to multiple platforms</div>
+                            <div class="hc-article__desc">How to schedule the same content to multiple connected platforms and what differences to expect per platform.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-shield-check" aria-hidden="true"></i> Understanding delivery states</div>
+                            <div class="hc-article__desc">What <code>scheduled</code>, <code>published</code>, <code>failed</code>, and <code>cancelled</code> mean — and why every state is visible.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                    </div>
+
+                    <div class="hc-faq">
+                        <div class="hc-faq__title">Frequently asked</div>
+                        <div class="faq-item">
+                            <div class="faq-question" onclick="toggleFAQ(this)">
+                                <span>Why did my scheduled post fail?</span>
+                                <i class="fa-solid fa-plus faq-toggle" aria-hidden="true"></i>
+                            </div>
+                            <div class="faq-answer">
+                                Failed deliveries are always logged and surfaced in your Launch Pad delivery history — they are never silently dropped. The most common causes are an expired or revoked OAuth token on the connected platform, an API-level rejection from the target platform (e.g. content policy violation), or a platform-wide outage. Check the <a href="status.html">Status Page</a> first, then contact <a href="mailto:support@mypilotpost.com">support@mypilotpost.com</a> with the post details if the issue persists.
+                            </div>
+                        </div>
+                        <div class="faq-item">
+                            <div class="faq-question" onclick="toggleFAQ(this)">
+                                <span>Can myPilotPost AI publish content automatically without my approval?</span>
+                                <i class="fa-solid fa-plus faq-toggle" aria-hidden="true"></i>
+                            </div>
+                            <div class="faq-answer">
+                                No. myPilotPost AI never publishes content autonomously. All publishing requires explicit user scheduling and confirmation via the Launch Pad. AI is advisory — it helps draft and recommend content, but cannot trigger publishing on your behalf. See our <a href="ai-principles.html">AI Principles</a> for full details.
+                            </div>
+                        </div>
+                        <div class="faq-item">
+                            <div class="faq-question" onclick="toggleFAQ(this)">
+                                <span>What is the 15-minute conflict window?</span>
+                                <i class="fa-solid fa-plus faq-toggle" aria-hidden="true"></i>
+                            </div>
+                            <div class="faq-answer">
+                                The scheduling engine enforces a 15-minute protection window between posts targeting the same platform and account. This prevents accidental double-posting or conflicting schedules. If you attempt to schedule two posts to the same account within 15 minutes, the conflict will be flagged before the schedule is confirmed.
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Analytics -->
+                <section class="hc-section" id="analytics" data-topic="analytics reporting mission analytics connected platform data metrics engagement">
+                    <div class="hc-section__header">
+                        <div class="hc-section__icon"><i class="fa-solid fa-chart-line" aria-hidden="true"></i></div>
+                        <div>
+                            <h2 class="hc-section__title">Analytics &amp; Reporting</h2>
+                            <p class="hc-section__desc">Mission Analytics, connected platform data, performance metrics, and understanding what the numbers mean.</p>
+                            <span class="hc-section__badge">5 articles coming soon</span>
+                        </div>
+                    </div>
+
+                    <div class="hc-articles">
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i> Mission Analytics overview</div>
+                            <div class="hc-article__desc">How Mission Analytics works — what data is displayed, where it comes from, and how to read it.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-rotate" aria-hidden="true"></i> How analytics data syncs</div>
+                            <div class="hc-article__desc">When data updates from connected platforms, what metrics are retrieved, and what is not available via API.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-brands fa-google" aria-hidden="true"></i> Google Analytics integration</div>
+                            <div class="hc-article__desc">Connecting your GA4 property and what traffic and audience data is pulled into Mission Analytics.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-chart-bar" aria-hidden="true"></i> Understanding engagement metrics</div>
+                            <div class="hc-article__desc">What likes, reach, impressions, and shares mean across platforms — and why the same metric can differ between Instagram and LinkedIn.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-file-export" aria-hidden="true"></i> Exporting your data</div>
+                            <div class="hc-article__desc">How to export your analytics, content history, and brand data from myPilotPost.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                    </div>
+
+                    <div class="hc-faq">
+                        <div class="hc-faq__title">Frequently asked</div>
+                        <div class="faq-item">
+                            <div class="faq-question" onclick="toggleFAQ(this)">
+                                <span>Why is my engagement data not showing?</span>
+                                <i class="fa-solid fa-plus faq-toggle" aria-hidden="true"></i>
+                            </div>
+                            <div class="faq-answer">
+                                Analytics data is retrieved from connected platforms via their APIs. Data will only appear if: (1) the relevant platform is connected, (2) the OAuth token is valid, and (3) the platform's API makes that data available. Some metrics require a Business or Creator account on the connected platform. If your token is expired, reconnect from the Integration Hub and the data will sync on the next retrieval cycle.
+                            </div>
+                        </div>
+                        <div class="faq-item">
+                            <div class="faq-question" onclick="toggleFAQ(this)">
+                                <span>Are the analytics numbers estimated or actual?</span>
+                                <i class="fa-solid fa-plus faq-toggle" aria-hidden="true"></i>
+                            </div>
+                            <div class="faq-answer">
+                                All metrics displayed in Mission Analytics are real data retrieved directly from connected platform APIs. myPilotPost does not generate estimated or modelled engagement figures. If a platform's API does not provide a specific metric, it is not displayed rather than substituted with an estimate.
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Billing -->
+                <section class="hc-section" id="billing" data-topic="billing subscription invoices plan changes refund yoco payment">
+                    <div class="hc-section__header">
+                        <div class="hc-section__icon"><i class="fa-solid fa-credit-card" aria-hidden="true"></i></div>
+                        <div>
+                            <h2 class="hc-section__title">Billing &amp; Subscription</h2>
+                            <p class="hc-section__desc">Invoices, plan changes, refund requests, YOCO payment processing, and subscription management.</p>
+                            <span class="hc-section__badge">5 articles coming soon</span>
+                        </div>
+                    </div>
+
+                    <div class="hc-articles">
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-receipt" aria-hidden="true"></i> Understanding your invoice</div>
+                            <div class="hc-article__desc">What your myPilotPost invoice includes, the billing period, and how to access past invoices.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Changing your plan</div>
+                            <div class="hc-article__desc">How to upgrade or downgrade your subscription — when changes take effect and how pro-rating works.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-money-bill-transfer" aria-hidden="true"></i> Requesting a refund</div>
+                            <div class="hc-article__desc">Refund eligibility, the cooling-off period, and how to submit a refund request under our Refund Policy.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-xmark-circle" aria-hidden="true"></i> Cancelling your subscription</div>
+                            <div class="hc-article__desc">How to cancel, what happens to your data, and what access you retain during the remainder of your billing period.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Payment security and YOCO</div>
+                            <div class="hc-article__desc">How payments are processed by YOCO, why myPilotPost never stores card details, and what YOCO is.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                    </div>
+
+                    <div class="hc-faq">
+                        <div class="hc-faq__title">Frequently asked</div>
+                        <div class="faq-item">
+                            <div class="faq-question" onclick="toggleFAQ(this)">
+                                <span>Can I get a refund?</span>
+                                <i class="fa-solid fa-plus faq-toggle" aria-hidden="true"></i>
+                            </div>
+                            <div class="faq-answer">
+                                Yes, within the periods defined in our <a href="refund-policy.html">Refund Policy</a>. Monthly subscriptions: full refund within 3 days; partial refund from day 4–14. Annual subscriptions: full refund within 14 days of initial payment; 50% within 14 days of renewal. Renewals outside these windows are non-refundable. Email <a href="mailto:support@mypilotpost.com">support@mypilotpost.com</a> with "Refund Request" in the subject line.
+                            </div>
+                        </div>
+                        <div class="faq-item">
+                            <div class="faq-question" onclick="toggleFAQ(this)">
+                                <span>Does myPilotPost store my payment card details?</span>
+                                <i class="fa-solid fa-plus faq-toggle" aria-hidden="true"></i>
+                            </div>
+                            <div class="faq-answer">
+                                No. Payments are processed entirely by YOCO, a South African licensed payment service provider. myPilotPost never stores, processes, or has access to your card number, CVV, or banking credentials. YOCO handles all card data within their PCI-DSS compliant environment.
+                            </div>
+                        </div>
+                        <div class="faq-item">
+                            <div class="faq-question" onclick="toggleFAQ(this)">
+                                <span>How will I know my annual plan is about to renew?</span>
+                                <i class="fa-solid fa-plus faq-toggle" aria-hidden="true"></i>
+                            </div>
+                            <div class="faq-answer">
+                                Annual subscription renewal reminders are sent 14 days and 7 days before your renewal date to the email address on your account. This gives you time to review your plan, make changes, or cancel before the renewal processes.
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Account & Brand -->
+                <section class="hc-section" id="account" data-topic="account brand management profile settings configuration data exports">
+                    <div class="hc-section__header">
+                        <div class="hc-section__icon"><i class="fa-solid fa-user-gear" aria-hidden="true"></i></div>
+                        <div>
+                            <h2 class="hc-section__title">Account &amp; Brand Management</h2>
+                            <p class="hc-section__desc">Profile settings, brand configuration, data exports, privacy requests, and keeping your account secure.</p>
+                            <span class="hc-section__badge">5 articles coming soon</span>
+                        </div>
+                    </div>
+
+                    <div class="hc-articles">
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> Updating your profile</div>
+                            <div class="hc-article__desc">How to update your name, email address, and account details within myPilotPost.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-building-circle-arrow-right" aria-hidden="true"></i> Configuring your brand</div>
+                            <div class="hc-article__desc">Brand voice settings, strategic content goals, and how brand memory influences AI suggestions.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-download" aria-hidden="true"></i> Exporting your data</div>
+                            <div class="hc-article__desc">How to request a portable export of your content, analytics, and brand configuration under your data rights.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-trash-can" aria-hidden="true"></i> Deleting your account</div>
+                            <div class="hc-article__desc">What happens when you delete your account — data removal timeline, token deletion, and what is retained for legal compliance.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                        <div class="hc-article">
+                            <div class="hc-article__title"><i class="fa-solid fa-lock" aria-hidden="true"></i> Keeping your account secure</div>
+                            <div class="hc-article__desc">Password best practices, OAuth security, and what to do if you suspect unauthorised access.</div>
+                            <span class="hc-article__tag">Coming soon</span>
+                        </div>
+                    </div>
+
+                    <div class="hc-faq">
+                        <div class="hc-faq__title">Frequently asked</div>
+                        <div class="faq-item">
+                            <div class="faq-question" onclick="toggleFAQ(this)">
+                                <span>How do I request a copy of my personal data?</span>
+                                <i class="fa-solid fa-plus faq-toggle" aria-hidden="true"></i>
+                            </div>
+                            <div class="faq-answer">
+                                Email <a href="mailto:privacy@mypilotpost.com">privacy@mypilotpost.com</a> with your account email address and the request type (access, correction, deletion, or portability). We acknowledge within 5 business days and respond fully within 30 days, as required by POPIA and GDPR.
+                            </div>
+                        </div>
+                        <div class="faq-item">
+                            <div class="faq-question" onclick="toggleFAQ(this)">
+                                <span>What happens to my data when I delete my account?</span>
+                                <i class="fa-solid fa-plus faq-toggle" aria-hidden="true"></i>
+                            </div>
+                            <div class="faq-answer">
+                                Personal data is removed within 30 days of a confirmed deletion request. OAuth tokens are deleted immediately. Payment transaction references are retained for 5 years for accounting obligations under South African law. Anonymised, aggregated data (from which you cannot be identified) may be retained beyond that period. Full details in <a href="data-handling.html">Data Handling</a>.
+                            </div>
+                        </div>
+                        <div class="faq-item">
+                            <div class="faq-question" onclick="toggleFAQ(this)">
+                                <span>Can I transfer a brand to another user?</span>
+                                <i class="fa-solid fa-plus faq-toggle" aria-hidden="true"></i>
+                            </div>
+                            <div class="faq-answer">
+                                Brand ownership transfers are not currently self-service. Contact <a href="mailto:support@mypilotpost.com">support@mypilotpost.com</a> if you need to transfer ownership of a brand workspace to a different account.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="hc-coming-soon">
+                        <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+                        <span>More articles are being added to each section. Can't find your answer? <a href="support.html" style="color:var(--primary-blue);text-decoration:none;font-weight:600;">Contact support</a> — we'll respond within 1 business day.</span>
+                    </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+</section>
+
+<footer class="footer">
+    <div class="container">
+        <div class="footer__grid">
+            <div>
+                <div class="footer__logo" onclick="window.location.href='index.html'" aria-label="myPilotPost Logo"></div>
+                <p class="footer__tagline">Land the right message every time.</p>
+                <p class="footer__desc">Social media management and content operations platform for founders, small businesses, modern brands, agencies, and marketing teams.</p>
+                <div class="social-links">
+                    <a href="https://www.facebook.com/profile.php?id=61587795843300" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M18 2H15C13.67 2 12.4 2.53 11.46 3.46C10.53 4.4 10 5.67 10 7V10H7V14H10V22H14V14H17L18 10H14V7C14 6.73 14.11 6.48 14.29 6.29C14.48 6.11 14.73 6 15 6H18V2Z"/></svg></a>
+                    <a href="https://www.instagram.com/mypilotpost_/" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="5" stroke="white" stroke-width="1.5"/><circle cx="18" cy="6" r="1.5" fill="white"/><circle cx="12" cy="12" r="4" stroke="white" stroke-width="1.5"/></svg></a>
+                    <a href="https://www.linkedin.com/company/mypilotpost" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M16 8C17.59 8 19.12 8.63 20.24 9.76C21.37 10.88 22 12.41 22 14V21H18V14C18 13.47 17.79 12.96 17.41 12.59C17.04 12.21 16.53 12 16 12C15.47 12 14.96 12.21 14.59 12.59C14.21 12.96 14 13.47 14 14V21H10V14C10 12.41 10.63 10.88 11.76 9.76C12.88 8.63 14.41 8 16 8Z"/><path d="M6 9H2V21H6V9Z"/><circle cx="4" cy="4" r="2" fill="white"/></svg></a>
+                    <a href="https://x.com/mypilotpost" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="X / Twitter"><svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.74l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+                </div>
+            </div>
+            <div>
+                <h6 class="footer__column-title">Product</h6>
+                <a href="features.html" class="footer__link">Features</a>
+                <a href="solutions.html" class="footer__link">Solutions</a>
+                <a href="pricing.html" class="footer__link">Pricing</a>
+                <a href="resources.html" class="footer__link">Integrations</a>
+            </div>
+            <div>
+                <h6 class="footer__column-title">Resources</h6>
+                <a href="resources.html" class="footer__link">Blog</a>
+                <a href="resources.html" class="footer__link">News &amp; Updates</a>
+                <a href="help-center.html" class="footer__link">Help Center</a>
+                <a href="mailto:support@mypilotpost.com" class="footer__link">Request a Feature</a>
+            </div>
+            <div>
+                <h6 class="footer__column-title">Trust</h6>
+                <a href="trust.html" class="footer__link">Trust Center</a>
+                <a href="security.html" class="footer__link">Security</a>
+                <a href="ai-principles.html" class="footer__link">AI Principles</a>
+                <a href="oauth-permissions.html" class="footer__link">OAuth Permissions</a>
+                <a href="status.html" class="footer__link">Status</a>
+            </div>
+            <div>
+                <h6 class="footer__column-title">Legal</h6>
+                <a href="compliance.html" class="footer__link">Compliance</a>
+                <a href="privacy.html" class="footer__link">Privacy Policy</a>
+                <a href="terms.html" class="footer__link">Terms of Service</a>
+                <a href="refund-policy.html" class="footer__link">Refund Policy</a>
+                <a href="images/PAIA_Manual.pdf" class="footer__link">PAIA Manual</a>
+                <a href="support.html" class="footer__link">Support</a>
+            </div>
+        </div>
+        <div class="footer__divider"></div>
+        <p class="footer__copyright">&copy; 2026 myPilotPost. All rights reserved.</p>
+    </div>
+</footer>
+
+<script>
+    function toggleMobileMenu() {
+        const menu = document.getElementById('mobileMenu');
+        menu.classList.toggle('active');
+        document.body.style.overflow = menu.classList.contains('active') ? 'hidden' : 'auto';
+    }
+    document.addEventListener('click', function(e) {
+        const menu = document.getElementById('mobileMenu');
+        const toggle = document.querySelector('.mobile-toggle');
+        if (!menu.contains(e.target) && !toggle.contains(e.target) && menu.classList.contains('active')) {
+            menu.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+    });
+
+    function toggleFAQ(el) {
+        const answer = el.nextElementSibling;
+        const icon = el.querySelector('.faq-toggle');
+        const isOpen = answer.classList.contains('active');
+        answer.classList.toggle('active', !isOpen);
+        icon.className = 'faq-toggle ' + (!isOpen ? 'fa-solid fa-minus' : 'fa-solid fa-plus');
+    }
+
+    function setActive(link) {
+        document.querySelectorAll('.hc-sidebar__link').forEach(l => l.classList.remove('active'));
+        link.classList.add('active');
+    }
+
+    function filterSections() {
+        const q = document.getElementById('hc-search').value.toLowerCase().trim();
+        const sections = document.querySelectorAll('.hc-section');
+        if (!q) {
+            sections.forEach(s => s.style.display = '');
+            return;
+        }
+        sections.forEach(s => {
+            const topic = (s.dataset.topic || '').toLowerCase();
+            const text  = s.textContent.toLowerCase();
+            s.style.display = (topic.includes(q) || text.includes(q)) ? '' : 'none';
+        });
+    }
+
+    // Highlight active sidebar link on scroll
+    const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const id = entry.target.id;
+                document.querySelectorAll('.hc-sidebar__link').forEach(l => {
+                    l.classList.toggle('active', l.getAttribute('href') === '#' + id);
+                });
+            }
+        });
+    }, { rootMargin: '-30% 0px -60% 0px' });
+
+    document.querySelectorAll('.hc-section[id]').forEach(s => observer.observe(s));
+</script>
+</body>
+</html>

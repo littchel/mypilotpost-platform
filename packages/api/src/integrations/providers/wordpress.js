@@ -14,8 +14,8 @@ export async function normalize(tokenData, env) {
 
   return {
     account_id: profile.ID.toString(),
-    account_name: profile.display_name || profile.username,
-    metadata: {
+    platform_username: profile.display_name || profile.username,
+    meta: {
       email: profile.email,
       primary_blog: profile.primary_blog
     }

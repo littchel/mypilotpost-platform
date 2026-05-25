@@ -11,6 +11,7 @@ import { generateVisualIntelligence, fetchFreepikSuggestions } from "../lib/free
 
 export default function CreatePost({
   selectedCampaignId: propCampaignId,
+  campaigns = [],
 }) {
 
   // ── Core Content State ──
@@ -139,7 +140,9 @@ export default function CreatePost({
                   onChange={(e) => setLocalCampaignId(e.target.value)}
                 >
                   <option value="">No Campaign</option>
-                  <option value="camp1">Q3 Growth Push</option>
+                  {campaigns.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
                 </select>
               </div>
             </div>

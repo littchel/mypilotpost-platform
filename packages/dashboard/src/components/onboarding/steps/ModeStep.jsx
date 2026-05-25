@@ -19,7 +19,8 @@ const ModeStep = ({ isWizard, onSelect }) => {
 
     const handleContinue = () => {
         if (!isWizard && !mode) return;
-        if (!isWizard) updateStep(mode === 'smart' ? 3 : 4);
+        // Both paths start at step 3; App.jsx renders the correct step component based on mode
+        if (!isWizard) updateStep(3);
     };
 
     return (

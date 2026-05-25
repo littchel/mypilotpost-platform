@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useOnboarding } from '../../../contexts/OnboardingContext';
 import { useBrand } from '../../../contexts/BrandContext';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
+import { apiRequest } from '../../../lib/api/client';
 
 const ActivationStep = ({ isWizard, onFinish }) => {
     const onboarding = useOnboarding();
@@ -14,16 +15,31 @@ const ActivationStep = ({ isWizard, onFinish }) => {
 
     const handleGenerate = async () => {
         setIsGenerating(true);
-        
-        // 🚀 "Faking" the AI process as requested
-        setTimeout(() => {
-            setMockPost({
-                content: `🚀 Exciting news from ${data.brandName || 'our brand'}! We are officially operational in the ${data.industry || 'aviation'} space. Stay tuned for updates!`,
-                platform: data.platforms?.[0] || 'LinkedIn',
-                hashtags: '#aviation #startups #innovation'
+        try {
+            const brandId = data.brandId || brands?.[0]?.id;
+            const res = await apiRequest("/api/customer/ai/generate/social", {
+                method: "POST",
+                body: JSON.stringify({
+                    prompt: `Write an engaging social media post announcing that ${data.brandName || 'our brand'} is now live in the ${data.industry || 'industry'} space. Keep it exciting and professional.`,
+                    brand_id: brandId,
+                    platforms: data.platforms?.length ? data.platforms : ['linkedin']
+                })
             });
+            setMockPost({
+                content: res.baseCaption || `🚀 Exciting news from ${data.brandName || 'our brand'}! We are now operational in the ${data.industry || 'industry'} space.`,
+                platform: data.platforms?.[0] || 'LinkedIn',
+                hashtags: res.hashtags || '#launch #brand #growth'
+            });
+        } catch {
+            // Graceful fallback — show a template so user still experiences the AHA moment
+            setMockPost({
+                content: `🚀 Exciting news from ${data.brandName || 'our brand'}! We are now operational in the ${data.industry || 'industry'} space. Stay tuned for updates!`,
+                platform: data.platforms?.[0] || 'LinkedIn',
+                hashtags: '#launch #brand #growth'
+            });
+        } finally {
             setIsGenerating(false);
-        }, 2000);
+        }
     };
 
     const handleFinish = async () => {
@@ -48,7 +64,7 @@ const ActivationStep = ({ isWizard, onFinish }) => {
                 onFinish();
             } else {
                 await completeOnboarding();
-                window.location.href = '/';
+                // isComplete now true in context — App.jsx gate opens without reload
             }
         }, 2500);
     };

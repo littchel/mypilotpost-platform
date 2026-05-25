@@ -79,7 +79,7 @@ const HeatmapCell = ({ val }) => {
 
 // ── Main Page Component ──────────────────────────────────────────────────────
 
-const Analytics = ({ activeBrand }) => {
+const Analytics = ({ activeBrand, campaigns = [] }) => {
   const [range, setRange] = useState('7d');
   const [platform, setPlatform] = useState('all');
   const [campaign, setCampaign] = useState('all');
@@ -138,7 +138,8 @@ const Analytics = ({ activeBrand }) => {
   };
 
   // Filter logic for content table (local search)
-  const filteredContent = (content.data || []).filter(item => 
+  const safeContentData = Array.isArray(content.data) ? content.data : [];
+  const filteredContent = safeContentData.filter(item => 
     item.title?.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -188,9 +189,9 @@ const Analytics = ({ activeBrand }) => {
             <TargetIcon size={14} className="text-muted" />
             <select className="form-select form-select-sm border-0 bg-transparent fw-bold text-main" value={campaign} onChange={e => setCampaign(e.target.value)}>
               <option value="all">All Campaigns</option>
-              {/* These should eventually be fetched from campaign list API */}
-              <option value="spring-promo">Spring Promo</option>
-              <option value="product-launch">Product Launch</option>
+              {campaigns.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
             </select>
           </div>
 

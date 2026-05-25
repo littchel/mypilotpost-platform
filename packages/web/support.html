@@ -3,890 +3,616 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Support - myPilotPost Help Center</title>
-    
-    <!-- Meta Tags for SEO -->
-    <meta name="description" content="Get help with myPilotPost - Browse FAQs, contact support, and find resources to help you succeed with content marketing.">
-    <meta name="keywords" content="customer support, help center, FAQ, contact support, myPilotPost help">
+    <title>Support — myPilotPost Help Centre</title>
+    <meta name="description" content="Contact myPilotPost support. Get help with platform setup, integrations, billing, and technical issues. Operated by Thuthu (Pty) Ltd.">
     <meta name="author" content="myPilotPost">
-
-    <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-7GC6L0L70Y"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'G-7GC6L0L70Y');
-    </script>
-
-    <script src="https://cdn.amplitude.com/script/f7401bdea912bc72ef6a607bdf8aba75.js"></script><script>window.amplitude.add(window.sessionReplay.plugin({sampleRate: 1}));window.amplitude.init('f7401bdea912bc72ef6a607bdf8aba75', {"fetchRemoteConfig":true,"autocapture":{"attribution":true,"fileDownloads":true,"formInteractions":true,"pageViews":true,"sessions":true,"elementInteractions":true,"networkTracking":true,"webVitals":true,"frustrationInteractions":{"thrashedCursor":true,"errorClicks":true,"deadClicks":true,"rageClicks":true}}});</script>
-    
-    <!-- Open Graph / Social Media Meta Tags -->
-    <meta property="og:title" content="Support - myPilotPost Help Center">
-    <meta property="og:description" content="Get help with myPilotPost - Browse FAQs, contact support, and find resources.">
+    <meta property="og:title" content="Support — myPilotPost Help Centre">
+    <meta property="og:description" content="Get help with myPilotPost — support channels, response expectations, and escalation paths.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://mypilotpost.com/support">
-    
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Support - myPilotPost">
-    <meta name="twitter:description" content="Get help with myPilotPost - Browse FAQs, contact support, and find resources.">
-    
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" href="images/favicon-32x32.png"><link rel="icon" type="image/x-icon" href="favicon.ico">
-    
-    <!-- Fonts -->
+    <link rel="icon" type="image/png" href="images/favicon-32x32.png">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="config.js"></script>
     <style>
-        /* ===== CSS RESET ===== */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        html {
-            line-height: 1.15;
-            -webkit-text-size-adjust: 100%;
-            scroll-behavior: smooth;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            font-weight: 300;
-            color: #1a1a1a;
-            background: #ffffff;
-            overflow-x: hidden;
-        }
-
-        /* ===== CSS VARIABLES ===== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { line-height: 1.15; -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+        body { font-family: 'Inter', sans-serif; font-weight: 300; color: #1a1a1a; background: #ffffff; overflow-x: hidden; }
         :root {
-            /* Colors */
-            --primary-blue: #2563EB;
-            --dark-blue: #1D4ED8;
-            --text-dark: #000000;
-            --text-gray: #646565;
-            --light-gray: #EEF0F1;
-            --border-gray: #CECECE;
-            --white: #FFFFFF;
-            --success-green: #35C961;
-            
-            /* Spacing */
-            --space-unit: 16px;
-            --space-half: 8px;
-            --space-onehalf: 24px;
-            --space-two: 32px;
-            --space-three: 48px;
-            --space-four: 64px;
-            
-            /* Border Radius */
-            --radius-small: 4px;
-            --radius-medium: 8px;
-            --radius-large: 14px;
-            --radius-xl: 24px;
-            
-            /* Container */
-            --container-width: 1280px;
-            --container-padding: 20px;
+            --primary-blue: #2563EB; --dark-blue: #1D4ED8;
+            --text-dark: #000000; --text-gray: #646565;
+            --light-gray: #EEF0F1; --border-gray: #CECECE;
+            --white: #FFFFFF; --footer-bg: #002F86; --hover-bg: #E6EEFF;
+            --space-unit: 16px; --space-half: 8px; --space-onehalf: 24px;
+            --space-two: 32px; --space-three: 48px; --space-four: 64px;
+            --space-five: 80px; --space-six: 96px;
+            --radius-small: 4px; --radius-medium: 8px; --radius-large: 14px; --radius-xl: 24px;
+            --container-width: 1280px; --container-padding: 20px;
         }
-
-        /* ===== UTILITY CLASSES ===== */
-        .container {
-            max-width: var(--container-width);
-            margin: 0 auto;
-            padding: 0 var(--container-padding);
-            width: 100%;
-        }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 12px 24px;
-            border-radius: var(--radius-medium);
-            font-weight: 500;
-            font-size: 16px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: none;
-            text-decoration: none;
-        }
-
-        .btn--primary {
-            background: var(--primary-blue);
-            color: var(--white);
-        }
-
-        .btn--primary:hover {
-            background: var(--dark-blue);
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.3);
-        }
-
-        .btn--secondary {
-            background: transparent;
-            border: 1px solid var(--border-gray);
-            color: var(--text-gray);
-        }
-
-        .btn--secondary:hover {
-            background: var(--light-gray);
-        }
+        .container { max-width: var(--container-width); margin: 0 auto; padding: 0 var(--container-padding); width: 100%; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: var(--radius-medium); font-weight: 500; font-size: 18px; cursor: pointer; transition: all 0.3s ease; border: none; text-decoration: none; }
+        .btn--primary { background: var(--primary-blue); color: var(--white); }
+        .btn--primary:hover { background: var(--dark-blue); transform: translateY(-2px); box-shadow: 0 10px 25px rgba(37,99,235,0.3); }
+        .btn--secondary { background: transparent; border: 1px solid var(--border-gray); color: var(--text-gray); }
+        .btn--secondary:hover { background: var(--light-gray); transform: translateY(-2px); }
 
         /* Header */
-        .header {
-            background: var(--white);
-            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.05);
-            padding: 20px 0;
-        }
+        .header { position: sticky; top: 0; background: var(--white); box-shadow: 0 2px 20px rgba(0,0,0,0.05); z-index: 1000; padding: 20px 0; }
+        .header__container { display: flex; align-items: center; justify-content: space-between; }
+        .logo { width: 272px; height: 54px; background-image: url('images/myPilotPost-Logo.png'); background-size: contain; background-repeat: no-repeat; background-position: center; cursor: pointer; }
+        .nav-menu { display: flex; gap: 28px; align-items: center; }
+        .nav-menu__item { font-size: 18px; color: var(--text-gray); cursor: pointer; transition: color 0.3s; text-decoration: none; }
+        .nav-menu__item:hover { color: var(--primary-blue); }
+        .header__buttons { display: flex; gap: 20px; }
+        .mobile-toggle { display: none; flex-direction: column; cursor: pointer; padding: 10px; }
+        .mobile-toggle span { width: 25px; height: 3px; background: var(--text-dark); margin: 3px 0; transition: 0.3s; }
+        .mobile-menu { display: none; }
 
-        .header__container {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
+        /* Page Hero */
+        .page-hero { background: var(--footer-bg); color: var(--white); padding: var(--space-five) 0; -webkit-font-smoothing: antialiased; }
+        .page-hero__icon { width: 56px; height: 56px; background: rgba(255,255,255,0.12); border-radius: var(--radius-medium); display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-onehalf); font-size: 24px; color: rgba(255,255,255,0.9); }
+        .page-hero h1 { font-size: 42px; font-weight: 800; line-height: 1.15; margin-bottom: var(--space-unit); }
+        .page-hero p { font-size: 18px; color: rgba(255,255,255,0.75); max-width: 640px; line-height: 1.7; }
+        .page-hero__meta { margin-top: var(--space-onehalf); font-size: 13px; color: rgba(255,255,255,0.5); }
 
-        .logo {
-            width: 272px;
-            height: 54px;
-            background-image: url('images/myPilotPost-Logo.png');
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-position: center;
-            cursor: pointer;
-        }
+        /* Main content */
+        .support-page { padding: var(--space-five) 0 var(--space-six); }
 
-        .nav-menu {
-            display: flex;
-            gap: 28px;
-            align-items: center;
-        }
+        /* Support channels grid */
+        .channels-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-onehalf); margin: var(--space-two) 0 var(--space-three); }
+        .channel-card { border: 1px solid var(--border-gray); border-radius: var(--radius-medium); padding: var(--space-two); background: var(--white); transition: all 0.3s ease; }
+        .channel-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); border-color: var(--primary-blue); }
+        .channel-card__icon { width: 44px; height: 44px; background: var(--light-gray); border-radius: var(--radius-medium); display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-unit); color: var(--primary-blue); font-size: 18px; }
+        .channel-card__title { font-size: 17px; font-weight: 700; color: var(--text-dark); margin-bottom: 6px; }
+        .channel-card__desc { font-size: 14px; color: var(--text-gray); line-height: 1.6; margin-bottom: var(--space-unit); }
+        .channel-card__link { font-size: 14px; font-weight: 600; color: var(--primary-blue); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+        .channel-card__link:hover { text-decoration: underline; }
 
-        .nav-menu__item {
-            font-size: 18px;
-            color: var(--text-gray);
-            cursor: pointer;
-            transition: color 0.3s;
-            text-decoration: none;
-        }
+        /* Two-column layout */
+        .support-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-four); align-items: start; margin-top: var(--space-three); }
 
-        .nav-menu__item:hover,
-        .nav-menu__item--active {
-            color: var(--primary-blue);
-        }
+        /* Response table */
+        .section-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--primary-blue); margin-bottom: var(--space-unit); }
+        .section-heading { font-size: 28px; font-weight: 700; color: var(--text-dark); margin-bottom: var(--space-onehalf); padding-top: var(--space-three); border-top: 1px solid var(--light-gray); margin-top: var(--space-three); }
+        .section-heading:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+        .sub-heading { font-size: 20px; font-weight: 700; color: var(--text-dark); margin-bottom: var(--space-unit); margin-top: var(--space-two); }
+        .body-text { font-size: 16px; line-height: 1.75; color: var(--text-gray); margin-bottom: var(--space-unit); }
+        .body-text strong { color: var(--text-dark); font-weight: 600; }
+        .body-text a { color: var(--primary-blue); text-decoration: none; }
+        .body-text a:hover { text-decoration: underline; }
+        .data-table { width: 100%; border-collapse: collapse; margin: var(--space-unit) 0 var(--space-two); font-size: 15px; }
+        .data-table th { background: var(--light-gray); text-align: left; padding: 12px 16px; font-weight: 700; color: var(--text-dark); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 2px solid var(--border-gray); }
+        .data-table td { padding: 12px 16px; border-bottom: 1px solid var(--light-gray); color: var(--text-gray); vertical-align: top; }
+        .data-table td:first-child { font-weight: 600; color: var(--text-dark); width: 30%; }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tr:hover td { background: rgba(37,99,235,0.03); }
+        .callout { padding: 18px 24px; border-radius: var(--radius-medium); margin: var(--space-onehalf) 0; border-left: 4px solid var(--primary-blue); background: var(--hover-bg); font-size: 15px; line-height: 1.7; color: var(--text-dark); }
+        .callout--note { border-left-color: #16a34a; background: #f0fdf4; color: #166534; }
+        .check-list { list-style: none; padding: 0; margin: var(--space-unit) 0 var(--space-onehalf); }
+        .check-list li { display: flex; align-items: flex-start; gap: 12px; padding: 8px 0; font-size: 15px; color: var(--text-gray); border-bottom: 1px solid var(--light-gray); line-height: 1.6; }
+        .check-list li:last-child { border-bottom: none; }
+        .check-list li i { color: var(--primary-blue); margin-top: 3px; flex-shrink: 0; }
+        .check-list li strong { color: var(--text-dark); }
 
-        .header__buttons {
-            display: flex;
-            gap: 20px;
-        }
+        /* Contact form */
+        .form-panel { background: var(--white); border: 1px solid var(--border-gray); border-radius: var(--radius-large); padding: var(--space-three); box-shadow: 0 4px 24px rgba(0,0,0,0.06); }
+        .form-panel__title { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 6px; }
+        .form-panel__sub { font-size: 14px; color: var(--text-gray); margin-bottom: var(--space-two); }
+        .form-group { margin-bottom: var(--space-unit); }
+        .form-label { display: block; font-weight: 500; margin-bottom: var(--space-half); color: var(--text-dark); font-size: 14px; }
+        .form-input, .form-select, .form-textarea { width: 100%; padding: 12px 16px; border: 1px solid var(--border-gray); border-radius: var(--radius-medium); font-size: 15px; font-family: 'Inter', sans-serif; transition: border-color 0.3s; color: var(--text-dark); }
+        .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--primary-blue); }
+        .form-textarea { min-height: 120px; resize: vertical; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-unit); }
 
-        .mobile-toggle {
-            display: none;
-            flex-direction: column;
-            cursor: pointer;
-            padding: 10px;
-        }
+        /* FAQ */
+        .faq-panel { background: var(--light-gray); border-radius: var(--radius-large); padding: var(--space-three); }
+        .faq-panel__title { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: var(--space-two); }
+        .faq-item { background: var(--white); border: 1px solid var(--border-gray); border-radius: var(--radius-medium); margin-bottom: var(--space-unit); overflow: hidden; }
+        .faq-question { display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: var(--space-unit) var(--space-onehalf); font-weight: 500; font-size: 15px; color: var(--text-dark); gap: var(--space-unit); }
+        .faq-question:hover { color: var(--primary-blue); }
+        .faq-toggle { color: var(--primary-blue); font-size: 16px; flex-shrink: 0; }
+        .faq-answer { padding: 0 var(--space-onehalf) var(--space-unit); color: var(--text-gray); font-size: 14px; line-height: 1.7; display: none; }
+        .faq-answer.active { display: block; }
 
-        .mobile-toggle span {
-            width: 25px;
-            height: 3px;
-            background: var(--text-dark);
-            margin: 3px 0;
-            transition: 0.3s;
-        }
+        /* Topic list */
+        .topic-list { list-style: none; }
+        .topic-list li { margin-bottom: var(--space-unit); }
+        .topic-link { display: flex; align-items: center; gap: var(--space-unit); padding: var(--space-unit) var(--space-onehalf); background: var(--white); border-radius: var(--radius-medium); border: 1px solid var(--border-gray); text-decoration: none; color: var(--text-dark); transition: all 0.3s ease; }
+        .topic-link:hover { transform: translateX(4px); border-color: var(--primary-blue); box-shadow: 0 4px 16px rgba(37,99,235,0.1); }
+        .topic-icon { width: 40px; height: 40px; background: var(--light-gray); border-radius: var(--radius-medium); display: flex; align-items: center; justify-content: center; color: var(--primary-blue); font-size: 16px; flex-shrink: 0; }
+        .topic-content { flex: 1; }
+        .topic-title { font-weight: 600; font-size: 15px; margin-bottom: 3px; }
+        .topic-desc { font-size: 13px; color: var(--text-gray); }
+        .topic-arrow { color: var(--primary-blue); font-size: 14px; flex-shrink: 0; }
 
-        .mobile-menu {
-            display: none;
-        }
+        /* Enterprise panel */
+        .enterprise-panel { background: var(--footer-bg); color: var(--white); border-radius: var(--radius-large); padding: var(--space-three); margin-top: var(--space-three); -webkit-font-smoothing: antialiased; }
+        .enterprise-panel__label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.6); margin-bottom: var(--space-unit); }
+        .enterprise-panel__title { font-size: 24px; font-weight: 800; margin-bottom: var(--space-unit); }
+        .enterprise-panel__desc { font-size: 15px; color: rgba(255,255,255,0.8); line-height: 1.7; margin-bottom: var(--space-two); }
+        .enterprise-panel__link { display: inline-flex; align-items: center; gap: 8px; color: var(--white); font-weight: 600; font-size: 15px; text-decoration: none; border: 1px solid rgba(255,255,255,0.4); border-radius: var(--radius-medium); padding: 10px 20px; transition: all 0.3s; }
+        .enterprise-panel__link:hover { background: rgba(255,255,255,0.1); }
 
-        /* Support Page */
-        .support-page {
-            min-height: calc(100vh - 200px);
-            padding: var(--space-four) 0;
-        }
-
-        .support-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--space-four);
-            align-items: start;
-        }
-
-        /* Left Side - Help Topics & Stats */
-        .help-container {
-            background: var(--light-gray);
-            border-radius: var(--radius-xl);
-            padding: var(--space-four);
-        }
-
-        .help-title {
-            font-size: 32px;
-            font-weight: 700;
-            margin-bottom: var(--space-half);
-        }
-
-        .help-subtitle {
-            color: var(--text-gray);
-            margin-bottom: var(--space-two);
-            font-size: 18px;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--space-unit);
-            margin-bottom: var(--space-two);
-        }
-
-        .stat-card {
-            background: var(--white);
-            border-radius: var(--radius-medium);
-            padding: var(--space-unit);
-            border: 1px solid var(--border-gray);
-        }
-
-        .stat-card__value {
-            font-size: 28px;
-            font-weight: 700;
-            color: var(--primary-blue);
-            margin-bottom: 4px;
-        }
-
-        .stat-card__label {
-            color: var(--text-gray);
-            font-size: 14px;
-        }
-
-        .topic-list {
-            list-style: none;
-            margin: var(--space-two) 0;
-        }
-
-        .topic-list li {
-            margin-bottom: var(--space-unit);
-        }
-
-        .topic-link {
-            display: flex;
-            align-items: center;
-            gap: var(--space-unit);
-            padding: var(--space-unit);
-            background: var(--white);
-            border-radius: var(--radius-medium);
-            border: 1px solid var(--border-gray);
-            text-decoration: none;
-            color: var(--text-dark);
-            transition: all 0.3s ease;
-        }
-
-        .topic-link:hover {
-            transform: translateX(5px);
-            border-color: var(--primary-blue);
-            box-shadow: 0 5px 15px rgba(37, 99, 235, 0.1);
-        }
-
-        .topic-icon {
-            width: 40px;
-            height: 40px;
-            background: var(--light-gray);
-            border-radius: var(--radius-medium);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--primary-blue);
-            font-size: 20px;
-        }
-
-        .topic-content {
-            flex: 1;
-        }
-
-        .topic-title {
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .topic-desc {
-            font-size: 14px;
-            color: var(--text-gray);
-        }
-
-        .quick-help {
-            margin-top: var(--space-two);
-            padding: var(--space-unit);
-            background: var(--white);
-            border-radius: var(--radius-medium);
-            border-left: 4px solid var(--primary-blue);
-        }
-
-        .quick-help__title {
-            font-weight: 600;
-            margin-bottom: var(--space-half);
-        }
-
-        .quick-help__links {
-            display: flex;
-            gap: var(--space-unit);
-            flex-wrap: wrap;
-        }
-
-        .quick-help__link {
-            color: var(--primary-blue);
-            text-decoration: none;
-            font-size: 14px;
-        }
-
-        .quick-help__link:hover {
-            text-decoration: underline;
-        }
-
-        /* Right Side - Contact Form & FAQ Preview */
-        .contact-container {
-            background: var(--white);
-            border-radius: var(--radius-xl);
-            padding: var(--space-four);
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-        }
-
-        .contact-title {
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: var(--space-half);
-        }
-
-        .contact-subtitle {
-            color: var(--text-gray);
-            margin-bottom: var(--space-two);
-        }
-
-        .contact-methods {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--space-unit);
-            margin-bottom: var(--space-two);
-        }
-
-        .contact-method {
-            text-align: center;
-            padding: var(--space-unit);
-            border: 1px solid var(--border-gray);
-            border-radius: var(--radius-medium);
-            transition: all 0.3s ease;
-        }
-
-        .contact-method:hover {
-            border-color: var(--primary-blue);
-            transform: translateY(-2px);
-        }
-
-        .contact-method__icon {
-            font-size: 24px;
-            color: var(--primary-blue);
-            margin-bottom: var(--space-half);
-        }
-
-        .contact-method__title {
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .contact-method__detail {
-            font-size: 14px;
-            color: var(--text-gray);
-        }
-
-        .contact-method__link {
-            color: var(--primary-blue);
-            text-decoration: none;
-            font-size: 14px;
-        }
-
-        .faq-preview {
-            margin-top: var(--space-two);
-        }
-
-        .faq-preview__title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: var(--space-unit);
-        }
-
-        .faq-item {
-            border-bottom: 1px solid var(--border-gray);
-            padding: var(--space-unit) 0;
-        }
-
-        .faq-question {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            font-weight: 500;
-        }
-
-        .faq-question:hover {
-            color: var(--primary-blue);
-        }
-
-        .faq-answer {
-            padding-top: var(--space-half);
-            color: var(--text-gray);
-            font-size: 14px;
-            line-height: 1.6;
-            display: none;
-        }
-
-        .faq-answer.active {
-            display: block;
-        }
-
-        .faq-toggle {
-            font-size: 20px;
-            color: var(--primary-blue);
-        }
-
-        .view-all-faq {
-            display: block;
-            text-align: center;
-            margin-top: var(--space-unit);
-            color: var(--primary-blue);
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .view-all-faq:hover {
-            text-decoration: underline;
-        }
-
-        /* Form Styles */
-        .form-group {
-            margin-bottom: var(--space-unit);
-        }
-
-        .form-label {
-            display: block;
-            font-weight: 500;
-            margin-bottom: var(--space-half);
-            color: var(--text-dark);
-        }
-
-        .form-input,
-        .form-select,
-        .form-textarea {
-            width: 100%;
-            padding: 12px 16px;
-            border: 1px solid var(--border-gray);
-            border-radius: var(--radius-medium);
-            font-size: 16px;
-            font-family: 'Inter', sans-serif;
-            transition: border-color 0.3s;
-        }
-
-        .form-input:focus,
-        .form-select:focus,
-        .form-textarea:focus {
-            outline: none;
-            border-color: var(--primary-blue);
-        }
-
-        .form-textarea {
-            min-height: 120px;
-            resize: vertical;
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--space-unit);
-        }
+        /* Status strip */
+        .status-strip { background: var(--light-gray); border-radius: var(--radius-medium); padding: var(--space-unit) var(--space-onehalf); display: flex; align-items: center; justify-content: space-between; gap: var(--space-unit); margin-top: var(--space-two); flex-wrap: wrap; }
+        .status-dot { width: 10px; height: 10px; background: #16a34a; border-radius: 50%; flex-shrink: 0; }
+        .status-strip__text { font-size: 14px; color: var(--text-gray); flex: 1; }
+        .status-strip__text strong { color: var(--text-dark); }
+        .status-strip__link { font-size: 14px; font-weight: 600; color: var(--primary-blue); text-decoration: none; white-space: nowrap; }
+        .status-strip__link:hover { text-decoration: underline; }
 
         /* Footer */
-        .footer {
-            background: #002F86;
-            color: var(--white);
-            padding: var(--space-four) 0 var(--space-three);
-            margin-top: var(--space-four);
-        }
+        .footer { background: var(--footer-bg); color: var(--white); padding: var(--space-five) 0 var(--space-three); -webkit-font-smoothing: antialiased; }
+        .footer__grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: var(--space-four); margin-bottom: var(--space-four); }
+        .footer__logo { width: 302px; height: 49px; background-image: url('images/myPilotPost-Logo.png'); background-size: contain; background-repeat: no-repeat; background-position: left; margin-bottom: var(--space-unit); cursor: pointer; }
+        .footer__tagline { color: rgba(255,255,255,0.9); margin-bottom: var(--space-unit); font-size: 16px; font-weight: 600;}
+        .footer__desc { color: rgba(255,255,255,0.75); font-size: 15px; font-weight: 400; line-height: 1.6; margin-bottom: 30px; }
+        .social-links { display: flex; gap: 18px; }
+        .social-link { cursor: pointer; transition: transform 0.3s, filter 0.3s; }
+        .social-link:hover { transform: translateY(-2px); filter: brightness(1.2); }
+        .footer__column-title { font-size: 14px; font-weight: 700; color: rgba(255,255,255,0.85); margin-bottom: var(--space-onehalf); text-transform: uppercase; letter-spacing: 0.06em; }
+        .footer__link { display: block; color: rgba(255,255,255,0.75); text-decoration: none; margin-bottom: var(--space-half); transition: all 0.3s ease; font-size: 15px; }
+        .footer__link:hover { color: #ffffff; padding-left: 4px; }
+        .footer__divider { width: 100%; height: 1px; background: rgba(255,255,255,0.15); margin: var(--space-three) 0 var(--space-two); }
+        .footer__copyright { text-align: center; color: rgba(255,255,255,0.6); font-size: 15px; }
 
-        .footer__copyright {
-            text-align: center;
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 14px;
-        }
+        /* Response popup */
+        .response-popup { position: fixed; bottom: var(--space-two); right: var(--space-two); background: var(--footer-bg); color: var(--white); padding: 16px 20px 16px 18px; border-radius: var(--radius-medium); display: flex; align-items: flex-start; gap: 14px; box-shadow: 0 8px 32px rgba(0,0,0,0.25); z-index: 2000; max-width: 380px; transform: translateY(120px); opacity: 0; transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1), opacity 0.35s ease; pointer-events: none; -webkit-font-smoothing: antialiased; }
+        .response-popup.active { transform: translateY(0); opacity: 1; pointer-events: auto; }
+        .response-popup__icon { font-size: 20px; color: rgba(255,255,255,0.85); flex-shrink: 0; padding-top: 2px; }
+        .response-popup__body { flex: 1; }
+        .response-popup__title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+        .response-popup__text { font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.6; }
+        .response-popup__close { background: none; border: none; color: rgba(255,255,255,0.55); cursor: pointer; font-size: 16px; padding: 2px; flex-shrink: 0; transition: color 0.2s; }
+        .response-popup__close:hover { color: var(--white); }
 
         /* Responsive */
+        @media (max-width: 1024px) {
+            .channels-grid { grid-template-columns: repeat(2, 1fr); }
+            .footer__grid { grid-template-columns: repeat(3, 1fr); gap: var(--space-three); }
+        }
         @media (max-width: 768px) {
-            .nav-menu, .header__buttons {
-                display: none;
-            }
-
-            .mobile-toggle {
-                display: flex;
-            }
-
-            .mobile-menu {
-                display: block;
-                position: fixed;
-                top: 0;
-                right: -100%;
-                width: 80%;
-                max-width: 400px;
-                height: 100vh;
-                background: var(--white);
-                box-shadow: -2px 0 20px rgba(0, 0, 0, 0.1);
-                z-index: 1001;
-                padding: 80px 30px;
-                transition: right 0.3s ease;
-            }
-
-            .mobile-menu.active {
-                right: 0;
-            }
-
-            .mobile-menu__item {
-                display: block;
-                padding: 15px 0;
-                font-size: 18px;
-                color: var(--text-dark);
-                text-decoration: none;
-                border-bottom: 1px solid var(--border-gray);
-            }
-
-            .mobile-menu__buttons {
-                margin-top: 30px;
-                display: flex;
-                flex-direction: column;
-                gap: 15px;
-            }
-
-            .support-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-
-            .contact-methods {
-                grid-template-columns: 1fr;
-            }
+            .nav-menu, .header__buttons { display: none; }
+            .mobile-toggle { display: flex; }
+            .mobile-menu { display: block; position: fixed; top: 0; right: -100%; width: 80%; max-width: 400px; height: 100vh; background: var(--white); box-shadow: -2px 0 20px rgba(0,0,0,0.1); z-index: 1001; padding: 80px 30px; transition: right 0.3s ease; }
+            .mobile-menu.active { right: 0; }
+            .mobile-menu__item { display: block; padding: 15px 0; font-size: 18px; color: var(--text-dark); text-decoration: none; border-bottom: 1px solid var(--border-gray); }
+            .mobile-menu__buttons { margin-top: 30px; display: flex; flex-direction: column; gap: 15px; }
+            .page-hero h1 { font-size: 32px; }
+            .channels-grid { grid-template-columns: 1fr; }
+            .support-grid { grid-template-columns: 1fr; }
+            .form-row { grid-template-columns: 1fr; }
+            .footer__grid { grid-template-columns: 1fr 1fr; gap: var(--space-three); }
         }
     </style>
 </head>
 <body>
-    <!-- Mobile Menu -->
-    <div class="mobile-menu" id="mobileMenu">
-        <a href="index.html" class="mobile-menu__item">Home</a>
-        <a href="features.html" class="mobile-menu__item">Features</a>
-        <a href="solutions.html" class="mobile-menu__item">Solutions</a>
-		<a href="pricing.html" class="nav-menu__item">Pricing</a>
-        <a href="resources.html" class="mobile-menu__item">Resources</a>
-        <div class="mobile-menu__buttons">
-            <a href="sign-in.html"><button class="btn btn--secondary">Sign In →</button></a>
-            <a href="register.html"><button class="btn btn--primary">Get Started</button></a>
-        </div>
+
+<div class="mobile-menu" id="mobileMenu">
+    <a href="index.html" class="mobile-menu__item">Home</a>
+    <a href="features.html" class="mobile-menu__item">Features</a>
+    <a href="solutions.html" class="mobile-menu__item">Solutions</a>
+    <a href="pricing.html" class="mobile-menu__item">Pricing</a>
+    <a href="resources.html" class="mobile-menu__item">Resources</a>
+    <div class="mobile-menu__buttons">
+        <a href="sign-in.html"><button class="btn btn--secondary">Sign In</button></a>
+        <a href="register.html"><button class="btn btn--primary">Get Started</button></a>
     </div>
+</div>
 
-    <!-- Header -->
-    <header class="header">
-        <div class="container header__container">
-            <div class="logo" onclick="window.location.href='index.html'" aria-label="myPilotPost Logo"></div>
-            
-            <nav class="nav-menu" aria-label="Main Navigation">
-                <a href="index.html" class="nav-menu__item">Home</a>
-                <a href="features.html" class="nav-menu__item">Features</a>
-                <a href="solutions.html" class="nav-menu__item">Solutions</a>
-				<a href="pricing.html" class="nav-menu__item">Pricing</a>
-                <a href="resources.html" class="nav-menu__item">Resources</a>
-            </nav>
+<header class="header">
+    <div class="container header__container">
+        <div class="logo" onclick="window.location.href='index.html'" aria-label="myPilotPost Logo"></div>
+        <nav class="nav-menu" aria-label="Main Navigation">
+            <a href="features.html" class="nav-menu__item">Features</a>
+            <a href="solutions.html" class="nav-menu__item">Solutions</a>
+            <a href="pricing.html" class="nav-menu__item">Pricing</a>
+            <a href="resources.html" class="nav-menu__item">Resources</a>
+        </nav>
+        <div class="header__buttons">
+            <button class="btn btn--secondary" onclick="window.location.href='sign-in.html'">Sign In <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4.17 10H15.83" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 4.17L15.83 10L10 15.83" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <button class="btn btn--primary" onclick="window.location.href='register.html'">Get Started</button>
+        </div>
+        <div class="mobile-toggle" onclick="toggleMobileMenu()" aria-label="Toggle mobile menu"><span></span><span></span><span></span></div>
+    </div>
+</header>
 
-            <div class="header__buttons">
-                <button class="btn btn--secondary" onclick="window.location.href='sign-in.html'">
-                    Sign In
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M4.1665 10H15.8332" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M10 4.16667L15.8333 10L10 15.8333" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </button>
-                <button class="btn btn--primary" onclick="window.location.href='register.html'">
-                    Get Started
-                </button>
+<section class="page-hero">
+    <div class="container">
+        <div class="page-hero__icon"><i class="fa-solid fa-headset" aria-hidden="true"></i></div>
+        <h1>Help &amp; Support</h1>
+        <p>Get help with myPilotPost. Find answers, contact the team, and understand what to expect when you reach out.</p>
+        <p class="page-hero__meta">Operated by Thuthu (Pty) Ltd t/a myPilotPost &nbsp;&middot;&nbsp; support@mypilotpost.com</p>
+    </div>
+</section>
+
+<section class="support-page">
+    <div class="container">
+
+        <!-- Support Channels -->
+        <div class="section-label">Support Channels</div>
+        <h2 class="section-heading" style="border-top:none; padding-top:0; margin-top:0;">How to reach us</h2>
+        <p class="body-text">myPilotPost support is delivered by email. All support requests are tracked, acknowledged, and responded to within the response windows below. We do not offer phone support at this time.</p>
+
+        <div class="channels-grid">
+            <div class="channel-card">
+                <div class="channel-card__icon"><i class="fa-solid fa-envelope" aria-hidden="true"></i></div>
+                <div class="channel-card__title">General Support</div>
+                <div class="channel-card__desc">Platform questions, feature guidance, account assistance, and technical issues.</div>
+                <a href="mailto:support@mypilotpost.com" class="channel-card__link">support@mypilotpost.com <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
             </div>
-
-            <div class="mobile-toggle" onclick="toggleMobileMenu()" aria-label="Toggle mobile menu">
-                <span></span>
-                <span></span>
-                <span></span>
+            <div class="channel-card">
+                <div class="channel-card__icon"><i class="fa-solid fa-lock" aria-hidden="true"></i></div>
+                <div class="channel-card__title">Security &amp; Vulnerability Reports</div>
+                <div class="channel-card__desc">Responsible disclosure of security vulnerabilities or privacy concerns. Acknowledged within 48 hours.</div>
+                <a href="mailto:security@mypilotpost.com" class="channel-card__link">security@mypilotpost.com <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+            </div>
+            <div class="channel-card">
+                <div class="channel-card__icon"><i class="fa-solid fa-scale-balanced" aria-hidden="true"></i></div>
+                <div class="channel-card__title">Legal, Privacy &amp; Compliance</div>
+                <div class="channel-card__desc">Data access requests (POPIA / GDPR), PAIA record requests, legal notices, and compliance enquiries.</div>
+                <a href="mailto:legal@mypilotpost.com" class="channel-card__link">legal@mypilotpost.com <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
             </div>
         </div>
-    </header>
 
-    <!-- Support Page -->
-    <div class="support-page">
-        <div class="container">
-            <div class="support-grid">
-                <!-- Left Side - Help Topics & Stats -->
-                <div class="help-container">
-                    <h2 class="help-title">How can we help?</h2>
-                    <p class="help-subtitle">Browse topics or search for answers</p>
-                    
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-card__value">24/7</div>
-                            <div class="stat-card__label">Support Available</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-card__value">98%</div>
-                            <div class="stat-card__label">Satisfaction Rate</div>
-                        </div>
-                    </div>
+        <!-- Status strip -->
+        <div class="status-strip">
+            <div class="status-dot"></div>
+            <div class="status-strip__text"><strong>Platform status</strong> — check real-time availability, active incidents, and scheduled maintenance before contacting support.</div>
+            <a href="status.html" class="status-strip__link"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> View Status Page</a>
+        </div>
 
-                    <ul class="topic-list">
-                        <li>
-                            <a href="#" class="topic-link">
-                                <div class="topic-icon">📚</div>
-                                <div class="topic-content">
-                                    <div class="topic-title">Getting Started</div>
-                                    <div class="topic-desc">New to myPilotPost? Start here</div>
-                                </div>
-                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M7.5 15L12.5 10L7.5 5" stroke="#2563EB" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="#" class="topic-link">
-                                <div class="topic-icon">📝</div>
-                                <div class="topic-content">
-                                    <div class="topic-title">Content Creation</div>
-                                    <div class="topic-desc">Create and manage your content</div>
-                                </div>
-                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M7.5 15L12.5 10L7.5 5" stroke="#2563EB" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="#" class="topic-link">
-                                <div class="topic-icon">📊</div>
-                                <div class="topic-content">
-                                    <div class="topic-title">Analytics & Reporting</div>
-                                    <div class="topic-desc">Track your performance</div>
-                                </div>
-                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M7.5 15L12.5 10L7.5 5" stroke="#2563EB" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="#" class="topic-link">
-                                <div class="topic-icon">👥</div>
-                                <div class="topic-content">
-                                    <div class="topic-title">Team Collaboration</div>
-                                    <div class="topic-desc">Work better together</div>
-                                </div>
-                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M7.5 15L12.5 10L7.5 5" stroke="#2563EB" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="#" class="topic-link">
-                                <div class="topic-icon">🔌</div>
-                                <div class="topic-content">
-                                    <div class="topic-title">Integrations</div>
-                                    <div class="topic-desc">Connect with your tools</div>
-                                </div>
-                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M7.5 15L12.5 10L7.5 5" stroke="#2563EB" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="#" class="topic-link">
-                                <div class="topic-icon">⚙️</div>
-                                <div class="topic-content">
-                                    <div class="topic-title">Account & Billing</div>
-                                    <div class="topic-desc">Manage your subscription</div>
-                                </div>
-                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M7.5 15L12.5 10L7.5 5" stroke="#2563EB" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                            </a>
-                        </li>
-                    </ul>
+        <!-- Two-column: topics + form -->
+        <div class="support-grid" style="margin-top: var(--space-four);">
 
-                    <div class="quick-help">
-                        <div class="quick-help__title">Quick Links</div>
-                        <div class="quick-help__links">
-                            <a href="#" class="quick-help__link">API Documentation</a>
-                            <a href="#" class="quick-help__link">Video Tutorials</a>
-                            <a href="#" class="quick-help__link">Release Notes</a>
-                            <a href="#" class="quick-help__link">System Status</a>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Right Side - Contact Form & FAQ -->
-                <div class="contact-container">
-                    <h2 class="contact-title">Contact Support</h2>
-                    <p class="contact-subtitle">We're here to help. Choose how you'd like to reach us.</p>
-
-                    <div class="contact-methods">
-                        <div class="contact-method">
-                            <div class="contact-method__icon">📧</div>
-                            <div class="contact-method__title">Email</div>
-                            <div class="contact-method__detail">support@mypilotpost.com</div>
-                            <a href="mailto:support@mypilotpost.com" class="contact-method__link">Send email →</a>
-                        </div>
-                        <div class="contact-method">
-                            <div class="contact-method__icon">💬</div>
-                            <div class="contact-method__title">Live Chat</div>
-                            <div class="contact-method__detail">Mon-Fri, 9am-6pm</div>
-                            <a href="#" class="contact-method__link">Start chat →</a>
-                        </div>
-                    </div>
-
-                    <form onsubmit="event.preventDefault(); alert('Support ticket would be submitted here');">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label class="form-label">First name</label>
-                                <input type="text" class="form-input" placeholder="John" required>
+            <!-- Left: Help Topics -->
+            <div>
+                <h3 class="sub-heading" style="margin-top:0;">Common help topics</h3>
+                <ul class="topic-list">
+                    <li>
+                        <a href="mailto:support@mypilotpost.com?subject=Getting Started" class="topic-link">
+                            <div class="topic-icon"><i class="fa-solid fa-rocket" aria-hidden="true"></i></div>
+                            <div class="topic-content">
+                                <div class="topic-title">Getting Started</div>
+                                <div class="topic-desc">Account setup, brand creation, and onboarding</div>
                             </div>
-                            <div class="form-group">
-                                <label class="form-label">Last name</label>
-                                <input type="text" class="form-input" placeholder="Doe" required>
+                            <i class="fa-solid fa-chevron-right topic-arrow" aria-hidden="true"></i>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="mailto:support@mypilotpost.com?subject=Integrations and OAuth" class="topic-link">
+                            <div class="topic-icon"><i class="fa-solid fa-plug" aria-hidden="true"></i></div>
+                            <div class="topic-content">
+                                <div class="topic-title">Integrations &amp; Connected Platforms</div>
+                                <div class="topic-desc">Connecting social accounts, OAuth errors, disconnection</div>
                             </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Email address</label>
-                            <input type="email" class="form-input" placeholder="john@company.com" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Subject</label>
-                            <select class="form-select" required>
-                                <option value="">Select a topic</option>
-                                <option value="technical">Technical Issue</option>
-                                <option value="billing">Billing Question</option>
-                                <option value="account">Account Management</option>
-                                <option value="feature">Feature Request</option>
-                                <option value="other">Other</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Message</label>
-                            <textarea class="form-textarea" placeholder="How can we help you?" required></textarea>
-                        </div>
-
-                        <button type="submit" class="btn btn--primary" style="width: 100%; margin-bottom: var(--space-unit);">
-                            Submit Request
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M4.1665 10H15.8332" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                <path d="M10 4.16667L15.8333 10L10 15.8333" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                        </button>
-                    </form>
-
-                    <div class="faq-preview">
-                        <h3 class="faq-preview__title">Frequently Asked Questions</h3>
-                        
-                        <div class="faq-item">
-                            <div class="faq-question" onclick="toggleFAQ(this)">
-                                <span>How do I get started with myPilotPost?</span>
-                                <span class="faq-toggle">+</span>
+                            <i class="fa-solid fa-chevron-right topic-arrow" aria-hidden="true"></i>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="mailto:support@mypilotpost.com?subject=Content Scheduling" class="topic-link">
+                            <div class="topic-icon"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i></div>
+                            <div class="topic-content">
+                                <div class="topic-title">Scheduling &amp; Publishing</div>
+                                <div class="topic-desc">Launch Pad, failed deliveries, timezone issues</div>
                             </div>
-                            <div class="faq-answer">
-                                Sign up for a free 14-day trial. No credit card required. You'll have access to all features to explore the platform.
+                            <i class="fa-solid fa-chevron-right topic-arrow" aria-hidden="true"></i>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="mailto:support@mypilotpost.com?subject=Analytics" class="topic-link">
+                            <div class="topic-icon"><i class="fa-solid fa-chart-line" aria-hidden="true"></i></div>
+                            <div class="topic-content">
+                                <div class="topic-title">Analytics &amp; Reporting</div>
+                                <div class="topic-desc">Mission Analytics, connected platform data, metrics</div>
                             </div>
-                        </div>
+                            <i class="fa-solid fa-chevron-right topic-arrow" aria-hidden="true"></i>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="mailto:support@mypilotpost.com?subject=Billing" class="topic-link">
+                            <div class="topic-icon"><i class="fa-solid fa-credit-card" aria-hidden="true"></i></div>
+                            <div class="topic-content">
+                                <div class="topic-title">Billing &amp; Subscription</div>
+                                <div class="topic-desc">Invoices, plan changes, refund requests, YOCO payments</div>
+                            </div>
+                            <i class="fa-solid fa-chevron-right topic-arrow" aria-hidden="true"></i>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="mailto:support@mypilotpost.com?subject=Account Management" class="topic-link">
+                            <div class="topic-icon"><i class="fa-solid fa-user-gear" aria-hidden="true"></i></div>
+                            <div class="topic-content">
+                                <div class="topic-title">Account &amp; Brand Management</div>
+                                <div class="topic-desc">Profile settings, brand configuration, data exports</div>
+                            </div>
+                            <i class="fa-solid fa-chevron-right topic-arrow" aria-hidden="true"></i>
+                        </a>
+                    </li>
+                </ul>
 
-                        <div class="faq-item">
-                            <div class="faq-question" onclick="toggleFAQ(this)">
-                                <span>Can I cancel my subscription anytime?</span>
-                                <span class="faq-toggle">+</span>
-                            </div>
-                            <div class="faq-answer">
-                                Yes, you can cancel your subscription at any time from your account settings. No questions asked.
-                            </div>
-                        </div>
-
-                        <div class="faq-item">
-                            <div class="faq-question" onclick="toggleFAQ(this)">
-                                <span>Do you offer discounts for annual plans?</span>
-                                <span class="faq-toggle">+</span>
-                            </div>
-                            <div class="faq-answer">
-                                Yes, annual plans come with a 20% discount compared to monthly billing. Contact sales for enterprise pricing.
-                            </div>
-                        </div>
-
-                        <a href="#" class="view-all-faq">View all FAQs →</a>
-                    </div>
+                <!-- Useful links -->
+                <div class="callout" style="margin-top: var(--space-two);">
+                    <strong>Quick references</strong><br>
+                    <a href="oauth-permissions.html" style="color: var(--primary-blue); text-decoration: none;">OAuth &amp; Permissions</a> &nbsp;&middot;&nbsp;
+                    <a href="privacy-policy.html" style="color: var(--primary-blue); text-decoration: none;">Privacy Policy</a> &nbsp;&middot;&nbsp;
+                    <a href="refund-policy.html" style="color: var(--primary-blue); text-decoration: none;">Refund Policy</a> &nbsp;&middot;&nbsp;
+                    <a href="trust.html" style="color: var(--primary-blue); text-decoration: none;">Trust Center</a> &nbsp;&middot;&nbsp;
+                    <a href="status.html" style="color: var(--primary-blue); text-decoration: none;">Status Page</a>
                 </div>
             </div>
+
+            <!-- Right: Contact form -->
+            <div class="form-panel">
+                <div class="form-panel__title">Submit a support request</div>
+                <div class="form-panel__sub">All requests are acknowledged within 1 business day. Include as much detail as possible to help us respond faster.</div>
+                <form id="support-form" onsubmit="handleSupportSubmit(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">First name</label>
+                            <input type="text" class="form-input" placeholder="First name" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Last name</label>
+                            <input type="text" class="form-input" placeholder="Last name" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Account email address</label>
+                        <input type="email" class="form-input" placeholder="email@yourdomain.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Topic</label>
+                        <select class="form-select" required>
+                            <option value="">Select a topic</option>
+                            <option value="getting-started">Getting Started / Onboarding</option>
+                            <option value="integrations">Integrations &amp; Connected Platforms</option>
+                            <option value="scheduling">Scheduling &amp; Publishing</option>
+                            <option value="analytics">Analytics &amp; Reporting</option>
+                            <option value="billing">Billing &amp; Subscription</option>
+                            <option value="account">Account &amp; Brand Management</option>
+                            <option value="ai">AI Features</option>
+                            <option value="technical">Technical Issue / Bug</option>
+                            <option value="feature">Feature Request</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Message</label>
+                        <textarea class="form-textarea" placeholder="Describe your issue or question in as much detail as possible. Include any error messages, affected platforms, and steps to reproduce." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn--primary" style="width: 100%;">
+                        <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Send Request
+                    </button>
+                </form>
+            </div>
         </div>
+
+        <!-- Enterprise panel -->
+        <div class="enterprise-panel">
+            <div class="enterprise-panel__label">Enterprise Support</div>
+            <div class="enterprise-panel__title">Need a dedicated support arrangement?</div>
+            <div class="enterprise-panel__desc">Enterprise customers can request a Data Processing Agreement (DPA), custom SLA terms, and dedicated support arrangements. Contact us to discuss your requirements.</div>
+            <a href="mailto:trust@mypilotpost.com" class="enterprise-panel__link"><i class="fa-solid fa-building" aria-hidden="true"></i> trust@mypilotpost.com</a>
+        </div>
+
+        <!-- FAQs -->
+        <h2 class="section-heading">Frequently asked questions</h2>
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFAQ(this)">
+                <span>How do I connect a social media platform?</span>
+                <i class="fa-solid fa-plus faq-toggle" aria-hidden="true"></i>
+            </div>
+            <div class="faq-answer">
+                Navigate to <strong>Control Tower → Integration Hub</strong> and select the platform you wish to connect. You will be redirected to that platform's official OAuth screen — your password is never shared with myPilotPost. See our <a href="oauth-permissions.html">OAuth &amp; Permissions page</a> for the exact scopes requested per platform.
+            </div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFAQ(this)">
+                <span>Can I cancel or change my subscription?</span>
+                <i class="fa-solid fa-plus faq-toggle" aria-hidden="true"></i>
+            </div>
+            <div class="faq-answer">
+                Yes — you can cancel your subscription at any time from your account settings. See our <a href="refund-policy.html">Refund Policy</a> for the full terms, including cooling-off periods and pro-rated refund conditions. Payments are processed by YOCO.
+            </div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFAQ(this)">
+                <span>What happens to my data if I delete my account?</span>
+                <i class="fa-solid fa-plus faq-toggle" aria-hidden="true"></i>
+            </div>
+            <div class="faq-answer">
+                Your personal data is removed within 30 days of a confirmed deletion request as required by POPIA and GDPR. OAuth tokens are deleted immediately upon disconnection or account deletion. Payment transaction references are retained for 5 years for tax and accounting obligations. See our <a href="data-handling.html">Data Handling page</a> for the full retention schedule.
+            </div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFAQ(this)">
+                <span>Why did my scheduled post fail to publish?</span>
+                <i class="fa-solid fa-plus faq-toggle" aria-hidden="true"></i>
+            </div>
+            <div class="faq-answer">
+                Delivery failures surface immediately in your Mission Analytics dashboard and Launch Pad delivery history — they are never silently dropped. The most common causes are: an expired or revoked OAuth token on the connected platform, an API-side error from the target platform, or a network interruption at the Cloudflare edge. Check the <a href="status.html">Status Page</a> to see if there is an active platform incident, then email <a href="mailto:support@mypilotpost.com">support@mypilotpost.com</a> with the post ID and delivery log details if the issue persists.
+            </div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFAQ(this)">
+                <span>How do I request access to my personal data?</span>
+                <i class="fa-solid fa-plus faq-toggle" aria-hidden="true"></i>
+            </div>
+            <div class="faq-answer">
+                Email <a href="mailto:privacy@mypilotpost.com">privacy@mypilotpost.com</a> with your account email address and the nature of your request (access, correction, deletion, or portability). We will acknowledge within 5 business days and respond fully within 30 days as required by POPIA and GDPR.
+            </div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFAQ(this)">
+                <span>Where are myPilotPost's legal documents?</span>
+                <i class="fa-solid fa-plus faq-toggle" aria-hidden="true"></i>
+            </div>
+            <div class="faq-answer">
+                All legal documents are available from the footer: <a href="privacy-policy.html">Privacy Policy</a>, <a href="terms-and-conditions.html">Terms and Conditions</a>, <a href="refund-policy.html">Refund Policy</a>, <a href="gdpr-compliance.html">GDPR Compliance Statement</a>, and the <a href="images/PAIA_Manual.pdf">PAIA Manual</a>. The full <a href="trust.html">Trust Center</a> covers security, AI principles, data handling, infrastructure, compliance, and OAuth permissions.
+            </div>
+        </div>
+
     </div>
+</section>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer__copyright">© 2026 myPilotPost. All rights reserved.</div>
+<footer class="footer">
+    <div class="container">
+        <div class="footer__grid">
+            <div>
+                <div class="footer__logo" onclick="window.location.href='index.html'" aria-label="myPilotPost Logo"></div>
+                <p class="footer__tagline">Land the right message every time.</p>
+                <p class="footer__desc">Social media management and content operations platform for founders, small businesses, modern brands, agencies, and marketing teams.</p>
+                <div class="social-links">
+                    <a href="https://www.facebook.com/profile.php?id=61587795843300" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M18 2H15C13.67 2 12.4 2.53 11.46 3.46C10.53 4.4 10 5.67 10 7V10H7V14H10V22H14V14H17L18 10H14V7C14 6.73 14.11 6.48 14.29 6.29C14.48 6.11 14.73 6 15 6H18V2Z"/></svg></a>
+                    <a href="https://www.instagram.com/mypilotpost_/" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="5" stroke="white" stroke-width="1.5"/><circle cx="18" cy="6" r="1.5" fill="white"/><circle cx="12" cy="12" r="4" stroke="white" stroke-width="1.5"/></svg></a>
+                    <a href="https://www.linkedin.com/company/mypilotpost" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M16 8C17.59 8 19.12 8.63 20.24 9.76C21.37 10.88 22 12.41 22 14V21H18V14C18 13.47 17.79 12.96 17.41 12.59C17.04 12.21 16.53 12 16 12C15.47 12 14.96 12.21 14.59 12.59C14.21 12.96 14 13.47 14 14V21H10V14C10 12.41 10.63 10.88 11.76 9.76C12.88 8.63 14.41 8 16 8Z"/><path d="M6 9H2V21H6V9Z"/><circle cx="4" cy="4" r="2" fill="white"/></svg></a>
+                    <a href="https://x.com/mypilotpost" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="X / Twitter"><svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.74l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+                </div>
+            </div>
+            <div>
+                <h6 class="footer__column-title">Product</h6>
+                <a href="features.html" class="footer__link">Features</a>
+                <a href="solutions.html" class="footer__link">Solutions</a>
+                <a href="pricing.html" class="footer__link">Pricing</a>
+                <a href="resources.html" class="footer__link">Integrations</a>
+            </div>
+            <div>
+                <h6 class="footer__column-title">Resources</h6>
+                <a href="resources.html" class="footer__link">Blog</a>
+                <a href="resources.html" class="footer__link">News &amp; Updates</a>
+                <a href="help-center.html" class="footer__link">Help Center</a>
+                <a href="mailto:support@mypilotpost.com" class="footer__link">Request a Feature</a>
+            </div>
+            <div>
+                <h6 class="footer__column-title">Trust</h6>
+                <a href="trust.html" class="footer__link">Trust Center</a>
+                <a href="security.html" class="footer__link">Security</a>
+                <a href="ai-principles.html" class="footer__link">AI Principles</a>
+                <a href="oauth-permissions.html" class="footer__link">OAuth Permissions</a>
+                <a href="status.html" class="footer__link">Status</a>
+            </div>
+            <div>
+                <h6 class="footer__column-title">Legal</h6>
+                <a href="compliance.html" class="footer__link">Compliance</a>
+                <a href="privacy.html" class="footer__link">Privacy Policy</a>
+                <a href="terms.html" class="footer__link">Terms of Service</a>
+                <a href="refund-policy.html" class="footer__link">Refund Policy</a>
+                <a href="images/PAIA_Manual.pdf" class="footer__link">PAIA Manual</a>
+                <a href="support.html" class="footer__link">Support</a>
+            </div>
         </div>
-    </footer>
+        <div class="footer__divider"></div>
+        <p class="footer__copyright">&copy; 2026 myPilotPost. All rights reserved.</p>
+    </div>
+</footer>
 
-    <!-- JavaScript -->
-    <script>
-        function toggleMobileMenu() {
-            const menu = document.getElementById('mobileMenu');
-            menu.classList.toggle('active');
-            document.body.style.overflow = menu.classList.contains('active') ? 'hidden' : 'auto';
-        }
+<!-- Response time popup -->
+<div id="response-popup" class="response-popup" role="status" aria-live="polite">
+    <div class="response-popup__icon"><i class="fa-solid fa-clock" aria-hidden="true"></i></div>
+    <div class="response-popup__body">
+        <div class="response-popup__title">What to expect</div>
+        <div class="response-popup__text">General support: within 1 business day<br>Billing &amp; account: within 1 business day<br>We'll reply to the email address you provided.</div>
+    </div>
+    <button onclick="closePopup()" class="response-popup__close" aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+</div>
 
-        function closeMobileMenu() {
-            const menu = document.getElementById('mobileMenu');
+<script>
+    function toggleMobileMenu() {
+        const menu = document.getElementById('mobileMenu');
+        menu.classList.toggle('active');
+        document.body.style.overflow = menu.classList.contains('active') ? 'hidden' : 'auto';
+    }
+    document.addEventListener('click', function(e) {
+        const menu = document.getElementById('mobileMenu');
+        const toggle = document.querySelector('.mobile-toggle');
+        if (!menu.contains(e.target) && !toggle.contains(e.target) && menu.classList.contains('active')) {
             menu.classList.remove('active');
             document.body.style.overflow = 'auto';
         }
+    });
 
-        document.addEventListener('click', function(event) {
-            const menu = document.getElementById('mobileMenu');
-            const toggle = document.querySelector('.mobile-toggle');
-            
-            if (!menu.contains(event.target) && !toggle.contains(event.target) && menu.classList.contains('active')) {
-                closeMobileMenu();
-            }
-        });
+    function toggleFAQ(el) {
+        const answer = el.nextElementSibling;
+        const icon = el.querySelector('.faq-toggle');
+        answer.classList.toggle('active');
+        icon.className = 'faq-toggle ' + (answer.classList.contains('active') ? 'fa-solid fa-minus' : 'fa-solid fa-plus');
+    }
 
-        document.querySelectorAll('.mobile-menu__item, .mobile-menu__buttons .btn').forEach(link => {
-            link.addEventListener('click', closeMobileMenu);
-        });
+    function showResponsePopup() {
+        const popup = document.getElementById('response-popup');
+        if (!popup) return;
+        popup.classList.add('active');
+        setTimeout(closePopup, 8000);
+    }
 
-        // FAQ Toggle
-        function toggleFAQ(element) {
-            const answer = element.nextElementSibling;
-            const toggle = element.querySelector('.faq-toggle');
-            
-            answer.classList.toggle('active');
-            toggle.textContent = answer.classList.contains('active') ? '−' : '+';
+    function closePopup() {
+        const popup = document.getElementById('response-popup');
+        if (popup) popup.classList.remove('active');
+    }
+
+    function showFormSuccess(panel) {
+        panel.innerHTML = `
+            <div style="text-align:center;padding:var(--space-four) var(--space-two);">
+                <div style="width:60px;height:60px;background:#f0fdf4;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto var(--space-onehalf);">
+                    <i class="fa-solid fa-circle-check" style="color:#16a34a;font-size:26px;" aria-hidden="true"></i>
+                </div>
+                <h3 style="font-size:22px;font-weight:700;color:var(--text-dark);margin-bottom:10px;">Request sent</h3>
+                <p style="color:var(--text-gray);font-size:15px;line-height:1.7;max-width:340px;margin:0 auto 24px;">
+                    Thank you — we've received your message and will get back to you at the email address you provided.
+                </p>
+                <a href="mailto:support@mypilotpost.com" style="font-size:14px;color:var(--primary-blue);text-decoration:none;">
+                    <i class="fa-solid fa-envelope" aria-hidden="true"></i> support@mypilotpost.com
+                </a>
+            </div>`;
+    }
+
+    async function handleSupportSubmit(e) {
+        e.preventDefault();
+        const form = e.target;
+        const btn = form.querySelector('button[type=submit]');
+        const panel = form.closest('.form-panel');
+        const originalBtn = btn.innerHTML;
+
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i> Sending…';
+        btn.disabled = true;
+
+        const firstName = form.querySelector('[placeholder="First name"]')?.value || '';
+        const lastName  = form.querySelector('[placeholder="Last name"]')?.value || '';
+        const email     = form.querySelector('[type=email]')?.value || '';
+        const topic     = form.querySelector('select')?.value || '';
+        const message   = form.querySelector('textarea')?.value || '';
+
+        const formData = new FormData();
+        formData.append('name', `${firstName} ${lastName}`.trim());
+        formData.append('email', email);
+        formData.append('topic', topic);
+        formData.append('message', message);
+        formData.append('_subject', `Support Request: ${topic || 'General'}`);
+        formData.append('_captcha', 'false');
+
+        let sent = false;
+        try {
+            const res = await fetch('https://formsubmit.co/ajax/support@mypilotpost.com', {
+                method: 'POST',
+                headers: { 'Accept': 'application/json' },
+                body: formData
+            });
+            if (res.ok) sent = true;
+        } catch (_) {}
+
+        if (!sent) {
+            const body = `Name: ${firstName} ${lastName}\nEmail: ${email}\nTopic: ${topic}\n\n${message}`;
+            window.open(`mailto:support@mypilotpost.com?subject=${encodeURIComponent('Support Request: ' + (topic||'General'))}&body=${encodeURIComponent(body)}`, '_blank');
         }
 
-        // Smooth scroll for anchor links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({ behavior: 'smooth' });
-                }
-            });
-        });
-    </script>
+        showFormSuccess(panel);
+        showResponsePopup();
+    }
+</script>
 </body>
 </html>

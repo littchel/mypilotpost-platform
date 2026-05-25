@@ -15,8 +15,8 @@ export async function normalize(tokenData, env) {
 
   return {
     account_id: profile.id,
-    account_name: `${profile.localizedFirstName} ${profile.localizedLastName}`.trim(),
-    metadata: {
+    platform_username: `${profile.localizedFirstName} ${profile.localizedLastName}`.trim(),
+    meta: {
       profile_picture: profile.profilePicture || null,
       vanity_name: profile.vanityName || null
     }

@@ -7,6 +7,7 @@ import { EMAIL_RULES } from "./email-rules.js";
 import { TEMPLATE_REGISTRY } from "../email/templates/index.js";
 
 const APP_URL = "https://app.mypilotpost.com";
+const API_URL = "https://api.mypilotpost.com";
 
 /**
  * Primary entry point. Call from anywhere in the API to trigger a lifecycle email.
@@ -78,7 +79,7 @@ export async function triggerLifecycleEmail(env, { userId, brandId = null, type,
     first_name:    payload.first_name || user.first_name || null,
     brand_name:    payload.brand_name || null,
     app_url:       APP_URL,
-    unsubscribe_url: `https://app.mypilotpost.com/api/unsubscribe?token=${unsubToken}`,
+    unsubscribe_url: `${API_URL}/api/unsubscribe?token=${unsubToken}`,
     ...payload,
   };
 

@@ -3,8 +3,8 @@ import { useOnboarding } from '../../../contexts/OnboardingContext';
 import { useBrand } from '../../../contexts/BrandContext';
 
 const BrandStep = ({ isReview = false }) => {
-  const { data, updateStep } = useOnboarding();
-  const { createBrand } = useBrand();
+  const { data, nextStep } = useOnboarding();
+  const { createBrand, brands } = useBrand();
   
   const [formData, setFormData] = useState({
     name: data.name || data.brandName || "",
@@ -30,22 +30,25 @@ const BrandStep = ({ isReview = false }) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
-    if (isReview) {
-      setLoading(true);
-      try {
-        const res = await createBrand(formData);
-        if (res.success) {
-          await updateStep(5, { ...formData, brandId: res.brand_id });
-        } else {
-          setError(res.error || "Failed to create brand");
-        }
-      } catch {
-          setError("Network error. Please try again.");
-      } finally {
-          setLoading(false);
+    setLoading(true);
+    try {
+      // Skip create if brand already exists — avoids token refresh race condition
+      if (brands && brands.length > 0) {
+        await nextStep({ ...formData, brandName: formData.name, brandId: brands[0].id });
+        return;
       }
-    } else {
-      await updateStep(4, { ...formData, brandName: formData.name });
+
+      const res = await createBrand(formData);
+      if (res.success) {
+        // nextStep() advances by 1 from current step — correct for both smart (4→5) and manual (3→4)
+        await nextStep({ ...formData, brandName: formData.name, brandId: res.brand_id });
+      } else {
+        setError(res.error || "Failed to create brand. Please try again.");
+      }
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -183,7 +186,7 @@ const BrandStep = ({ isReview = false }) => {
           {loading ? (
             <span className="spinner-border spinner-border-sm" role="status"></span>
           ) : (
-            <>{isReview ? "Finalize Strategy & Dashboard" : "Continue"} <i className="fas fa-arrow-right"></i></>
+            <>Continue <i className="fas fa-arrow-right"></i></>
           )}
         </button>
       </form>

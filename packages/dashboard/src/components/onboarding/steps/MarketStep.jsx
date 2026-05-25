@@ -3,7 +3,7 @@ import { useOnboarding } from '../../../contexts/OnboardingContext';
 
 const MarketStep = ({ isWizard, onNext }) => {
   const onboarding = useOnboarding();
-  const updateStep = isWizard ? null : onboarding.updateStep;
+  const nextStep = isWizard ? null : onboarding.nextStep;
   const data = isWizard ? {} : onboarding.data;
   
   const [country, setCountry] = useState(data.country || "ZW");
@@ -17,7 +17,7 @@ const MarketStep = ({ isWizard, onNext }) => {
       if (isWizard) {
         onNext({ country, language });
       } else {
-        await updateStep(5, { country, language });
+        await nextStep({ country, language });
       }
     } catch (err) {
       console.error("Market context update failed", err);

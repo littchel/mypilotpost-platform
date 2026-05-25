@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy — myPilotPost</title>
+    <meta name="description" content="myPilotPost Privacy Policy — how we collect, use, and protect your personal information in compliance with GDPR and POPIA.">
+    <meta name="author" content="myPilotPost">
+    <meta property="og:title" content="Privacy Policy — myPilotPost">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://mypilotpost.com/privacy">
+    <link rel="canonical" href="https://mypilotpost.com/privacy">
+    <link rel="icon" type="image/png" href="images/favicon-32x32.png">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="config.js"></script>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html { line-height: 1.15; scroll-behavior: smooth; }
+        body { font-family: 'Inter', sans-serif; color: #111827; background: #fff; overflow-x: hidden; }
+        :root { --primary: #2563EB; --primary-dark: #1D4ED8; --text: #111827; --text-gray: #6b7280; --text-light: #9ca3af; --bg-light: #f9fafb; --bg-blue: #eff6ff; --border: #e5e7eb; --border-light: #f3f4f6; --container: 1200px; }
+        a { color: var(--primary); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .header { position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,0.95); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
+        .header__inner { max-width: var(--container); margin: 0 auto; padding: 0 24px; height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+        .logo { display: inline-block; width: 140px; height: 32px; background: url('images/logo.png') no-repeat left center / contain; }
+        .nav { display: flex; gap: 4px; }
+        .nav a { font-size: 0.875rem; font-weight: 500; color: var(--text-gray); padding: 6px 12px; border-radius: 6px; }
+        .nav a:hover, .nav a.active { color: var(--text); background: var(--bg-light); text-decoration: none; }
+        .header-btns { display: flex; gap: 8px; }
+        .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 0.875rem; font-weight: 600; cursor: pointer; border: none; text-decoration: none; transition: all 0.15s; }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-gray); }
+        .btn-outline:hover { background: var(--bg-light); color: var(--text); text-decoration: none; }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { background: var(--primary-dark); text-decoration: none; }
+        .page-wrap { max-width: var(--container); margin: 0 auto; padding: 48px 24px 80px; display: grid; grid-template-columns: 240px 1fr; gap: 48px; }
+        .sidebar { position: sticky; top: 88px; height: fit-content; }
+        .sidebar-section { margin-bottom: 8px; }
+        .sidebar-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-light); padding: 8px 12px 4px; }
+        .sidebar-link { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; font-size: 0.875rem; color: var(--text-gray); font-weight: 500; transition: all 0.15s; }
+        .sidebar-link:hover { background: var(--bg-light); color: var(--text); text-decoration: none; }
+        .sidebar-link.active { background: var(--bg-blue); color: var(--primary); }
+        .page-hero { margin-bottom: 40px; padding-bottom: 32px; border-bottom: 1px solid var(--border); }
+        .breadcrumb { font-size: 0.8rem; color: var(--text-light); margin-bottom: 16px; }
+        .breadcrumb a { color: var(--text-light); }
+        .page-hero h1 { font-size: 2rem; font-weight: 800; color: var(--text); margin-bottom: 12px; }
+        .page-hero p { font-size: 1rem; color: var(--text-gray); line-height: 1.7; max-width: 640px; }
+        .last-updated { margin-top: 16px; font-size: 0.8rem; color: var(--text-light); }
+        .content h2 { font-size: 1.25rem; font-weight: 700; color: var(--text); margin: 36px 0 14px; padding-top: 8px; border-top: 1px solid var(--border); }
+        .content h2:first-of-type { border-top: none; margin-top: 0; }
+        .content h3 { font-size: 1rem; font-weight: 700; color: var(--text); margin: 20px 0 8px; }
+        .content p { font-size: 0.9375rem; color: var(--text-gray); line-height: 1.8; margin-bottom: 14px; }
+        .content ul, .content ol { padding-left: 20px; margin-bottom: 14px; }
+        .content li { font-size: 0.9375rem; color: var(--text-gray); line-height: 1.8; margin-bottom: 4px; }
+        .content strong { font-weight: 700; color: var(--text); }
+        .toc { background: var(--bg-light); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-bottom: 32px; }
+        .toc h3 { font-size: 0.875rem; font-weight: 700; color: var(--text-gray); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
+        .toc ol { padding-left: 16px; }
+        .toc li { font-size: 0.875rem; margin-bottom: 6px; }
+        .callout { padding: 16px 20px; border-radius: 10px; margin: 20px 0; font-size: 0.875rem; line-height: 1.6; }
+        .callout--blue { background: var(--bg-blue); border-left: 3px solid var(--primary); color: #1e40af; }
+        .footer { background: #111827; color: #9ca3af; padding: 56px 24px 32px; margin-top: 80px; }
+        .footer__desc { color: rgba(255,255,255,0.75); font-size: 15px; font-weight: 400; line-height: 1.6; margin-bottom: 30px; }
+        .footer__inner { max-width: var(--container); margin: 0 auto; }
+        .footer__grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 40px; }
+        .footer-logo { width: 130px; height: 30px; background: url('images/logo.png') no-repeat left center / contain; filter: brightness(0) invert(1); margin-bottom: 12px; }
+        .footer-tagline { font-size: 0.8125rem; color: #6b7280; }
+        .footer-col-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; margin-bottom: 12px; }
+        .footer-link { display: block; font-size: 0.8125rem; color: #9ca3af; margin-bottom: 8px; }
+        .footer-link:hover { color: #fff; text-decoration: none; }
+        .footer-divider { border: none; border-top: 1px solid #1f2937; margin-bottom: 24px; }
+        .footer-copy { font-size: 0.8rem; color: #4b5563; }
+        @media (max-width: 768px) { .nav, .header-btns { display: none; } .page-wrap { grid-template-columns: 1fr; } .sidebar { display: none; } .page-hero h1 { font-size: 1.5rem; } .footer__grid { grid-template-columns: 1fr 1fr; } }
+    </style>
+</head>
+<body>
+
+<header class="header">
+    <div class="header__inner">
+        <a href="index.html" class="logo" aria-label="myPilotPost"></a>
+        <nav class="nav">
+            <a href="index.html">Home</a>
+            <a href="features.html">Features</a>
+            <a href="solutions.html">Solutions</a>
+            <a href="pricing.html">Pricing</a>
+            <a href="trust.html">Trust</a>
+        </nav>
+        <div class="header-btns">
+            <a href="sign-in.html" class="btn btn-outline">Sign In</a>
+            <a href="register.html" class="btn btn-primary">Get Started</a>
+        </div>
+    </div>
+</header>
+
+<div class="page-wrap">
+    <aside class="sidebar">
+        <div class="sidebar-section">
+            <div class="sidebar-label">Trust Center</div>
+            <a href="trust.html" class="sidebar-link">Overview</a>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Platform</div>
+            <a href="security.html" class="sidebar-link">Security</a>
+            <a href="infrastructure.html" class="sidebar-link">Infrastructure</a>
+            <a href="ai-principles.html" class="sidebar-link">AI Principles</a>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Data</div>
+            <a href="data-handling.html" class="sidebar-link">Data Handling</a>
+            <a href="oauth-permissions.html" class="sidebar-link">OAuth &amp; Permissions</a>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Legal</div>
+            <a href="compliance.html" class="sidebar-link">Compliance</a>
+            <a href="privacy.html" class="sidebar-link active">Privacy Policy</a>
+            <a href="terms.html" class="sidebar-link">Terms of Service</a>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Status</div>
+            <a href="https://status.mypilotpost.com" class="sidebar-link" target="_blank">System Status ↗</a>
+        </div>
+    </aside>
+
+    <main>
+        <div class="page-hero">
+            <div class="breadcrumb"><a href="trust.html">Trust Center</a> / Privacy Policy</div>
+            <h1>Privacy Policy</h1>
+            <p>This Privacy Policy explains how myPilotPost (Pty) Ltd collects, uses, stores, and protects your personal information. We are committed to handling your data with transparency and in compliance with applicable data protection laws, including GDPR and POPIA.</p>
+            <div class="last-updated">Effective date: 1 January 2025 · Last updated: May 2026</div>
+        </div>
+
+        <div class="content">
+            <div class="toc">
+                <h3>Contents</h3>
+                <ol>
+                    <li><a href="#controller">Data Controller</a></li>
+                    <li><a href="#data-collected">Data We Collect</a></li>
+                    <li><a href="#how-used">How We Use Your Data</a></li>
+                    <li><a href="#lawful-basis">Lawful Basis for Processing</a></li>
+                    <li><a href="#oauth">OAuth &amp; Third-Party Platforms</a></li>
+                    <li><a href="#retention">Retention Policy</a></li>
+                    <li><a href="#subprocessors">Subprocessors</a></li>
+                    <li><a href="#cookies">Cookies &amp; Analytics</a></li>
+                    <li><a href="#transfers">International Transfers</a></li>
+                    <li><a href="#rights">Your Rights</a></li>
+                    <li><a href="#security">Security Measures</a></li>
+                    <li><a href="#children">Children's Privacy</a></li>
+                    <li><a href="#changes">Changes to This Policy</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                </ol>
+            </div>
+
+            <h2 id="controller">1. Data Controller</h2>
+            <p>myPilotPost (Pty) Ltd is the data controller for personal information processed through this platform. Our POPIA Information Officer can be reached at <a href="mailto:privacy@mypilotpost.com">privacy@mypilotpost.com</a>.</p>
+
+            <h2 id="data-collected">2. Data We Collect</h2>
+            <h3>Account Information</h3>
+            <ul>
+                <li>Name and email address</li>
+                <li>Password (stored as a cryptographic hash — never in plaintext)</li>
+                <li>Account creation date and last login timestamp</li>
+                <li>Subscription status and plan tier</li>
+            </ul>
+            <h3>Brand &amp; Content Data</h3>
+            <ul>
+                <li>Brand name, description, voice settings, and goals you configure</li>
+                <li>Social media posts, drafts, and scheduling records</li>
+                <li>Campaign briefs and content history (within your brand only)</li>
+            </ul>
+            <h3>Usage &amp; Technical Data</h3>
+            <ul>
+                <li>IP addresses and device information (for security and rate limiting)</li>
+                <li>API request logs (retained 90 days for debugging and security)</li>
+                <li>Delivery records and scheduling logs</li>
+            </ul>
+            <h3>OAuth Integration Data</h3>
+            <ul>
+                <li>Connected account identifiers and platform usernames</li>
+                <li>OAuth access tokens (encrypted, scoped per brand)</li>
+                <li>Permission scopes granted at connection time</li>
+            </ul>
+            <h3>Analytics Data</h3>
+            <ul>
+                <li>Engagement metrics from connected platform APIs (post reach, likes, etc.)</li>
+                <li>Delivery success and failure events</li>
+            </ul>
+
+            <h2 id="how-used">3. How We Use Your Data</h2>
+            <ul>
+                <li>To provide and operate the platform (scheduling, delivery, analytics)</li>
+                <li>To authenticate your account and maintain session security</li>
+                <li>To provide AI-assisted content features within your brand context</li>
+                <li>To send transactional communications (delivery alerts, billing notifications)</li>
+                <li>To send marketing communications where you have given consent</li>
+                <li>To detect and prevent fraud, abuse, and security incidents</li>
+                <li>To comply with legal obligations</li>
+            </ul>
+            <p>We do not sell your personal data. We do not use your data to train AI models for other customers or for third-party advertising.</p>
+
+            <h2 id="lawful-basis">4. Lawful Basis for Processing</h2>
+            <ul>
+                <li><strong>Contract:</strong> Account management, scheduling, delivery, and core platform features</li>
+                <li><strong>Legitimate interest:</strong> Security monitoring, error logging, analytics for service improvement</li>
+                <li><strong>Consent:</strong> Marketing emails, analytics cookies</li>
+                <li><strong>Legal obligation:</strong> Retention of billing records, responding to lawful requests</li>
+            </ul>
+
+            <h2 id="oauth">5. OAuth &amp; Third-Party Platforms</h2>
+            <p>When you connect a social media or productivity platform, we receive OAuth tokens — not your password. These tokens are:</p>
+            <ul>
+                <li>Encrypted before storage</li>
+                <li>Scoped to the permissions you approved</li>
+                <li>Never shared with third parties</li>
+                <li>Immediately deleted when you disconnect the integration</li>
+            </ul>
+            <p>See our full <a href="oauth-permissions.html">OAuth &amp; Permissions</a> page for per-platform details.</p>
+
+            <h2 id="retention">6. Retention Policy</h2>
+            <ul>
+                <li>Account data: retained while your account is active</li>
+                <li>Delivery logs: 90 days</li>
+                <li>API request logs: 90 days</li>
+                <li>Analytics data: duration of subscription</li>
+                <li>Upon account deletion: personal data removed within 30 days; billing records retained in anonymised form as required by law</li>
+            </ul>
+
+            <h2 id="subprocessors">7. Subprocessors</h2>
+            <p>We use the following third-party processors to deliver the platform:</p>
+            <ul>
+                <li><strong>Cloudflare Inc.</strong> — hosting, edge compute, database, media storage</li>
+                <li><strong>Resend</strong> — transactional email delivery</li>
+                <li><strong>Yoco</strong> — payment processing (we do not store card details)</li>
+                <li><strong>Groq / AI providers</strong> — AI content generation (prompts are not shared across customers)</li>
+                <li><strong>Google Analytics (GA4)</strong> — usage analytics (consent required; IP anonymization enabled)</li>
+            </ul>
+
+            <h2 id="cookies">8. Cookies &amp; Analytics</h2>
+            <ul>
+                <li><strong>Strictly necessary cookies:</strong> Required for authentication and platform function</li>
+                <li><strong>Analytics cookies (GA4):</strong> Only activated after explicit consent</li>
+                <li><strong>IP anonymization:</strong> Enabled for all analytics tracking</li>
+            </ul>
+            <p>You can manage your cookie preferences via the consent banner or <strong>Settings → Privacy &amp; Data</strong> in your dashboard.</p>
+
+            <h2 id="transfers">9. International Transfers</h2>
+            <p>myPilotPost operates on Cloudflare's global edge network. Your data may be processed in data centers outside South Africa, including in the United States and European Union. We rely on Cloudflare's standard contractual clauses and adequacy mechanisms for international transfers in compliance with GDPR and POPIA.</p>
+
+            <h2 id="rights">10. Your Rights</h2>
+            <p>You have the following rights regarding your personal data:</p>
+            <ul>
+                <li><strong>Access</strong> — request a copy of your data (available via Settings → Privacy &amp; Data)</li>
+                <li><strong>Rectification</strong> — correct inaccurate data</li>
+                <li><strong>Erasure</strong> — request deletion of your account (available via Settings → Privacy &amp; Data)</li>
+                <li><strong>Portability</strong> — export your data in JSON format</li>
+                <li><strong>Restriction</strong> — limit processing in specific circumstances</li>
+                <li><strong>Objection</strong> — object to processing based on legitimate interest</li>
+                <li><strong>Withdraw consent</strong> — for consent-based processing (marketing, analytics)</li>
+            </ul>
+            <p>To exercise any right, email <a href="mailto:privacy@mypilotpost.com">privacy@mypilotpost.com</a>. We respond within 30 days.</p>
+            <p>If you are dissatisfied with our response, you may lodge a complaint with the Information Regulator (South Africa): <a href="https://www.inforeg.org.za" target="_blank">inforeg.org.za</a></p>
+
+            <h2 id="security">11. Security Measures</h2>
+            <p>We protect your data using:</p>
+            <ul>
+                <li>TLS/HTTPS encryption for all data in transit</li>
+                <li>Encryption at rest via Cloudflare's storage layer</li>
+                <li>Brand-scoped data isolation enforced at the API layer</li>
+                <li>JWT-based session management with server-side validation</li>
+                <li>Rate limiting, DDoS protection, and security headers on all endpoints</li>
+            </ul>
+            <p>See our <a href="security.html">Security page</a> for full details.</p>
+
+            <h2 id="children">12. Children's Privacy</h2>
+            <p>myPilotPost is not directed at children under the age of 18. We do not knowingly collect personal information from minors. If you believe we have inadvertently collected data from a minor, contact <a href="mailto:privacy@mypilotpost.com">privacy@mypilotpost.com</a> and we will delete it promptly.</p>
+
+            <h2 id="changes">13. Changes to This Policy</h2>
+            <p>We may update this Privacy Policy from time to time. Material changes will be communicated via email or a notice in the platform. The updated policy will always be available at this URL. Continued use of the platform after changes constitutes acceptance of the updated policy.</p>
+
+            <h2 id="contact">14. Contact</h2>
+            <p>For privacy enquiries, data requests, or to exercise your rights:</p>
+            <ul>
+                <li>Email: <a href="mailto:privacy@mypilotpost.com">privacy@mypilotpost.com</a></li>
+                <li>Subject line: <em>Privacy Request — [type of request]</em></li>
+            </ul>
+            <p>We acknowledge all requests within 5 business days.</p>
+        </div>
+    </main>
+</div>
+
+<footer class="footer">
+    <div class="container">
+        <div class="footer__grid">
+            <div>
+                <div class="footer__logo" onclick="window.location.href='index.html'" aria-label="myPilotPost Logo"></div>
+                <p class="footer__tagline">Land the right message every time.</p>
+                <p class="footer__desc">Social media management and content operations platform for founders, small businesses, modern brands, agencies, and marketing teams.</p>
+                <div class="social-links">
+                    <a href="https://www.facebook.com/profile.php?id=61587795843300" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M18 2H15C13.67 2 12.4 2.53 11.46 3.46C10.53 4.4 10 5.67 10 7V10H7V14H10V22H14V14H17L18 10H14V7C14 6.73 14.11 6.48 14.29 6.29C14.48 6.11 14.73 6 15 6H18V2Z"/></svg></a>
+                    <a href="https://www.instagram.com/mypilotpost_/" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="5" stroke="white" stroke-width="1.5"/><circle cx="18" cy="6" r="1.5" fill="white"/><circle cx="12" cy="12" r="4" stroke="white" stroke-width="1.5"/></svg></a>
+                    <a href="https://www.linkedin.com/company/mypilotpost" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M16 8C17.59 8 19.12 8.63 20.24 9.76C21.37 10.88 22 12.41 22 14V21H18V14C18 13.47 17.79 12.96 17.41 12.59C17.04 12.21 16.53 12 16 12C15.47 12 14.96 12.21 14.59 12.59C14.21 12.96 14 13.47 14 14V21H10V14C10 12.41 10.63 10.88 11.76 9.76C12.88 8.63 14.41 8 16 8Z"/><path d="M6 9H2V21H6V9Z"/><circle cx="4" cy="4" r="2" fill="white"/></svg></a>
+                    <a href="https://x.com/mypilotpost" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="X / Twitter"><svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.74l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+                </div>
+            </div>
+            <div>
+                <h6 class="footer__column-title">Product</h6>
+                <a href="features.html" class="footer__link">Features</a>
+                <a href="solutions.html" class="footer__link">Solutions</a>
+                <a href="pricing.html" class="footer__link">Pricing</a>
+                <a href="resources.html" class="footer__link">Integrations</a>
+            </div>
+            <div>
+                <h6 class="footer__column-title">Resources</h6>
+                <a href="resources.html" class="footer__link">Blog</a>
+                <a href="resources.html" class="footer__link">News &amp; Updates</a>
+                <a href="help-center.html" class="footer__link">Help Center</a>
+                <a href="mailto:support@mypilotpost.com" class="footer__link">Request a Feature</a>
+            </div>
+            <div>
+                <h6 class="footer__column-title">Trust</h6>
+                <a href="trust.html" class="footer__link">Trust Center</a>
+                <a href="security.html" class="footer__link">Security</a>
+                <a href="ai-principles.html" class="footer__link">AI Principles</a>
+                <a href="oauth-permissions.html" class="footer__link">OAuth Permissions</a>
+                <a href="status.html" class="footer__link">Status</a>
+            </div>
+            <div>
+                <h6 class="footer__column-title">Legal</h6>
+                <a href="compliance.html" class="footer__link">Compliance</a>
+                <a href="privacy.html" class="footer__link">Privacy Policy</a>
+                <a href="terms.html" class="footer__link">Terms of Service</a>
+                <a href="refund-policy.html" class="footer__link">Refund Policy</a>
+                <a href="images/PAIA_Manual.pdf" class="footer__link">PAIA Manual</a>
+                <a href="support.html" class="footer__link">Support</a>
+            </div>
+        </div>
+        <div class="footer__divider"></div>
+        <p class="footer__copyright">&copy; 2026 myPilotPost. All rights reserved.</p>
+    </div>
+</footer>
+
+</body>
+</html>

@@ -77,8 +77,9 @@ export async function exchangeCode(providerKey, code, env) {
   const redirect_uri = `${env.BASE_URL}/api/customer/oauth/${providerKey}/callback`;
   
   // These should be in env or vault
-  const client_id = env[`${providerKey.toUpperCase()}_CLIENT_ID`];
-  const client_secret = env[`${providerKey.toUpperCase()}_CLIENT_SECRET`];
+  const credKey = (provider.credential_key || providerKey).toUpperCase();
+  const client_id = env[`${credKey}_CLIENT_ID`];
+  const client_secret = env[`${credKey}_CLIENT_SECRET`];
 
   if (!client_id || !client_secret) {
     throw new Error(`Missing credentials for provider: ${providerKey}`);

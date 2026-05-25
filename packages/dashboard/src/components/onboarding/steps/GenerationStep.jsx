@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { useOnboarding } from '../../../contexts/OnboardingContext';
+import { useBrand } from '../../../contexts/BrandContext';
 import { apiRequest } from '../../../lib/api/client';
 
 const GenerationStep = () => {
-  const { data, updateStep } = useOnboarding();
+  const { data, step, updateStep, trackOnboardingEvent } = useOnboarding();
+  const { activeBrand } = useBrand();
+  const resolvedBrandId = data.brandId || activeBrand?.id;
   const [prompt, setPrompt] = useState(`Write a social media post about our new ${data.industry || 'brand'} launch focusing on ${data.goals?.[0] || 'market growth'}.`);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedResult, setGeneratedResult] = useState(null);
@@ -16,15 +19,16 @@ const GenerationStep = () => {
       const res = await apiRequest("/api/customer/ai/generate/social", {
         method: "POST",
         body: JSON.stringify({
-          prompt,
-          brand_id: data.brandId,
-          platforms: data.platforms
+          intention: prompt,
+          platforms: data.platforms?.length ? data.platforms : ["linkedin"],
+          count: 1
         })
       });
-      if (res.content_id) {
-        setGeneratedResult(res);
+      if (res.posts?.length > 0) {
+        setGeneratedResult({ ...res, baseCaption: res.posts[0].content });
+        trackOnboardingEvent("first_post_generated", { brand_id: resolvedBrandId, platform: data.platforms?.[0] });
       } else {
-        setError("Failed to generate content. Please try again.");
+        setError(res.error || "Failed to generate content. Please try again.");
       }
     } catch {
       setError("AI Generation failed. Network error.");
@@ -52,7 +56,7 @@ const GenerationStep = () => {
 
         <div className="d-flex gap-2">
           <button className="btn btn-grey w-50" onClick={() => setGeneratedResult(null)}>Regenerate</button>
-          <button className="btn btn-pilot-ob w-50" onClick={() => updateStep(7, { generatedContent: generatedResult })}>
+          <button className="btn btn-pilot-ob w-50" onClick={() => updateStep(step + 1, { generatedContent: generatedResult })}>
             Next: Schedule →
           </button>
         </div>
@@ -78,7 +82,7 @@ const GenerationStep = () => {
 
       {error && <div className="alert alert-danger py-2 small mb-3">{error}</div>}
 
-      <button 
+      <button
         className="btn btn-pilot-ob w-100 d-flex align-items-center justify-content-center gap-2"
         onClick={handleGenerate}
         disabled={isGenerating || !prompt.trim()}
@@ -88,6 +92,14 @@ const GenerationStep = () => {
         ) : (
           <><i className="fas fa-magic"></i> Generate Content →</>
         )}
+      </button>
+
+      <button
+        className="btn btn-link text-muted w-100 mt-2 small"
+        onClick={() => updateStep(step + 1, {})}
+        disabled={isGenerating}
+      >
+        Skip for now
       </button>
 
       <style dangerouslySetInnerHTML={{ __html: `

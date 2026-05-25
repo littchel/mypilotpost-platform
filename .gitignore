@@ -84,6 +84,14 @@ coverage/
 lib/db.sqlite
 
 # -------------------------------------------------
+# Credential / key files (plaintext secrets must never be committed)
+# -------------------------------------------------
+*.keys.txt
+*keys*.txt
+*secret*.txt
+*credentials*.txt
+
+# -------------------------------------------------
 # Scratch / Debug artifacts
 # -------------------------------------------------
 scratch/
