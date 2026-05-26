@@ -184,15 +184,12 @@ async function runOnboardingReminderEmails(env) {
   let sent = 0;
   for (const row of results || []) {
     try {
-      // Use churn_risk rule (most appropriate available) with days_inactive=1
-      // until a dedicated onboarding_reminder rule is added
       const result = await triggerLifecycleEmail(env, {
         userId: row.user_id,
         brandId: null,
-        type: "churn_risk",
+        type: "onboarding_reminder",
         payload: {
           first_name: row.first_name,
-          days_inactive: 1,
         }
       });
       if (result) sent++;

@@ -328,9 +328,15 @@ export default function ContentOpportunities({ activeBrand, switchTab }) {
         <h1 style={{ fontSize: 28, fontWeight: 800, color: "#0f172a", marginBottom: 10 }}>
           Content Opportunities
         </h1>
-        <p style={{ fontSize: 15, color: "#64748b", maxWidth: 640, lineHeight: 1.6 }}>
-          AI-detected business growth opportunities for <strong style={{ color: "#0f172a" }}>{activeBrand?.name || "your brand"}</strong> — translated into executable content actions, ranked by strategic impact.
+        <p style={{ fontSize: 15, color: "#64748b", maxWidth: 640, lineHeight: 1.6, marginBottom: 12 }}>
+          Strategic growth opportunities for <strong style={{ color: "#0f172a" }}>{activeBrand?.name || "your brand"}</strong> — ranked by strategic impact and translated into executable content actions.
         </p>
+        <div style={{ background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "flex-start", gap: 10 }}>
+          <i className="fas fa-info-circle" style={{ color: "#0369a1", marginTop: 2, flexShrink: 0 }} />
+          <div style={{ fontSize: 13, color: "#0c4a6e" }}>
+            <strong>Framework Recommendations</strong> — These opportunities are based on industry benchmarks and strategic frameworks. Each card shows its confidence level (Benchmarked, Estimated, Inferred, or Simulated). Connect your social accounts and run your Brand Audit to unlock recommendations based on your actual performance data.
+          </div>
+        </div>
       </div>
 
       {/* Sub-tab nav */}

@@ -321,7 +321,7 @@ import {
   publicListMarketingPosts,
   publicGetMarketingPost
 } from "./core/marketing/blog.js";
-import { getAuditReport, getAuditReportPDF } from "./core/reports/audit_report.js";
+import { getAuditReport, getAuditReportPDF, getPublicAuditReport } from "./core/reports/audit_report.js";
 import { handleAdminPricing, handleAdminPricingById, togglePlanStatus, createAdminPricing, getPublicPricing } from "./api/admin/pricing.js";
 import { getSystemEvents } from "./api/admin/observability-api.js";
 
@@ -722,6 +722,10 @@ export default {
       /* ================= PUBLIC BRAND AUDIT (CONVERSION) ================= */
       if (method === "POST" && path === "/api/public/brand-audit") {
         return withCors(request, runPublicAudit(request, env));
+      }
+
+      if (method === "GET" && path.startsWith("/api/public/brand-audit/") && path.endsWith("/report")) {
+        return withCors(request, getPublicAuditReport(request, env));
       }
 
       if (method === "GET" && path.startsWith("/api/public/brand-audit/")) {

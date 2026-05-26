@@ -97,10 +97,10 @@ const Reporting = ({ activeBrand }) => {
   });
   
   const [narrative, setNarrative] = useState({
-    summary: "<h3>Executive Diagnosis</h3><p>Your brand has established strong momentum over the last 30 days. We are seeing early leading indicators of authority positioning...</p>",
-    insights: "<ul><li>Visual content is currently outperforming text formats by 3:1.</li><li>LinkedIn algorithmic resonance improved 18% week-over-week.</li></ul>",
-    recommendations: "<ul><li>Shift 20% of weekly capacity toward short-form visual content.</li><li>Execute the proposed authority framework next Tuesday.</li></ul>",
-    roadmap: "<h3>Next 30 Days</h3><p>We will focus heavily on engagement recovery and deploying the new case study sequences...</p>"
+    summary: "",
+    insights: "",
+    recommendations: "",
+    roadmap: ""
   });
 
   const [analytics, setAnalytics] = useState({
@@ -146,7 +146,7 @@ const Reporting = ({ activeBrand }) => {
   }, [fetchReports]);
 
   const handleExportPDF = () => {
-    window.print(); // [Estimated] Browser print API acting as PDF generation placeholder
+    window.print();
   };
 
   if (reportsState.status === 'loading') {

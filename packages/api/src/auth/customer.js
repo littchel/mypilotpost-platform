@@ -9,7 +9,7 @@ import { issueJWT } from "./jwt.js";
 import { getRegion } from "../lib/geo.js";
 import { generateReferralCode, registerReferral } from "../core/promotions/promotions.js";
 import { emitEvent } from "../lib/bus.js";
-import { isDisposableEmail } from "../core/trust/verification.js";
+import { isDisposableEmail, queueOTPEmail } from "../core/trust/verification.js";
 import { triggerLifecycleEmail } from "../core/lifecycle/engine.js";
 
 /* ================================
@@ -188,14 +188,6 @@ export async function register(request, env) {
       await registerReferral(db, referral_code, userId, metadata);
     }
 
-    await db.prepare(
-      `INSERT INTO email_verifications
-       (id, user_id, token, expires_at)
-       VALUES (?, ?, ?, datetime('now','+1 day'))`
-    )
-    .bind(crypto.randomUUID(), userId, newToken())
-    .run();
-
     // Issue JWT for direct (non-audit) registrations — audit path already issued one above
     if (!token) {
       token = await issueJWT({ user_id: userId, email, role: "user" }, env);
@@ -212,6 +204,9 @@ export async function register(request, env) {
     } catch (e) {
       console.warn("[LIFECYCLE] user_registered fire failed:", e.message);
     }
+
+    // Auto-send verification OTP — non-fatal, queueOTPEmail swallows errors
+    await queueOTPEmail(userId, env);
 
     return json({ ok: true, token, brand_id: brandId });
   } catch (err) {
@@ -457,6 +452,16 @@ export async function resetPassword(request, env) {
         .bind(token),
     ]);
 
+    try {
+      await triggerLifecycleEmail(env, {
+        userId: row.user_id,
+        type: "password_changed",
+        payload: {}
+      });
+    } catch (e) {
+      console.warn("[LIFECYCLE] password_changed fire failed:", e.message);
+    }
+
     return json({ ok: true });
   } catch (err) {
     console.error("[AUTH:RESET_PASSWORD:FAILED]", err);
@@ -503,6 +508,16 @@ export async function changePassword(request, env) {
     await db.prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?")
       .bind(`${bytesToHex(newSalt)}:${newHash}`, userId)
       .run();
+
+    try {
+      await triggerLifecycleEmail(env, {
+        userId,
+        type: "password_changed",
+        payload: {}
+      });
+    } catch (e) {
+      console.warn("[LIFECYCLE] password_changed fire failed:", e.message);
+    }
 
     return json({ ok: true, message: "Password updated successfully" });
   } catch (err) {

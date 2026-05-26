@@ -4,6 +4,9 @@
 import { getDB } from "../../lib/db.js";
 import { json, error } from "../../lib/json.js";
 import { rateLimit } from "../../lib/rate-limit.js";
+import { triggerLifecycleEmail } from "../../core/lifecycle/engine.js";
+import { sendEmail } from "../../core/email/send-email.js";
+import { accountDeletionRequestedEmail, accountDeletedEmail } from "../../core/email/templates/index.js";
 
 async function logComplianceEvent(db, { userId, eventType, resourceType, resourceId, details, ipAddress }) {
   const id = crypto.randomUUID();
@@ -49,6 +52,20 @@ export async function handleDeleteRequest(request, env, auth) {
     details: { request_id: id, scheduled_for: scheduledFor },
     ipAddress: ip,
   });
+
+  try {
+    const FRONTEND_URL = env.FRONTEND_URL || "https://app.mypilotpost.com";
+    await triggerLifecycleEmail(env, {
+      userId: auth.user_id,
+      type: "account_deletion_requested",
+      payload: {
+        scheduled_for: scheduledFor,
+        cancel_url: `${FRONTEND_URL}?tab=settings&action=cancel-deletion`,
+      }
+    });
+  } catch (e) {
+    console.warn("[COMPLIANCE] account_deletion_requested email failed:", e.message);
+  }
 
   return json({
     success: true,
@@ -312,16 +329,33 @@ export async function processPendingDeletions(env) {
 
   for (const req of due) {
     try {
-      await performAccountDeletion(db, req.user_id, req.id);
+      await performAccountDeletion(db, req.user_id, req.id, env);
     } catch (e) {
       console.error(`[DELETION-CRON] Failed for user ${req.user_id}:`, e);
     }
   }
 }
 
-async function performAccountDeletion(db, userId, requestId) {
+async function performAccountDeletion(db, userId, requestId, env) {
   // Mark as processing
   await db.prepare(`UPDATE deletion_requests SET status = 'processing' WHERE id = ?`).bind(requestId).run();
+
+  // Send deletion confirmation email before anonymizing the address
+  try {
+    const user = await db.prepare(`SELECT email, first_name FROM users WHERE id = ?`).bind(userId).first();
+    if (user?.email && !user.email.includes('@deleted.')) {
+      const emailContent = accountDeletedEmail({ first_name: user.first_name });
+      await sendEmail({
+        to: user.email,
+        subject: emailContent.subject,
+        html: emailContent.html,
+        text: emailContent.text,
+        env,
+      });
+    }
+  } catch (e) {
+    console.warn("[DELETION-CRON] account_deleted email failed:", e.message);
+  }
 
   // Revoke all OAuth tokens
   await db.prepare(`DELETE FROM oauth_connections WHERE brand_id IN (SELECT id FROM brands WHERE id IN (SELECT brand_id FROM brand_users WHERE user_id = ?))`).bind(userId).run().catch(() => {});

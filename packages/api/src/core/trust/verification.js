@@ -186,6 +186,45 @@ export async function verifyOTP(request, env, auth) {
 }
 
 /**
+ * Internal utility — queue an OTP email for a newly registered user.
+ * Called from register() without an HTTP request context.
+ * Non-fatal: swallows all errors so registration never fails due to email.
+ */
+export async function queueOTPEmail(userId, env) {
+  try {
+    const db = getDB(env);
+    const user = await db.prepare(
+      `SELECT email, verified_at FROM users WHERE id = ?`
+    ).bind(userId).first();
+
+    if (!user || user.verified_at) return;
+
+    const otp = generateOTP();
+    const otp_hash = await hashOTP(otp);
+    const id = crypto.randomUUID();
+    const token = crypto.randomUUID();
+
+    await db.prepare(
+      `INSERT INTO email_verifications (id, user_id, token, expires_at, otp_hash, otp_expires_at, attempts)
+       VALUES (?, ?, ?, datetime('now','+1 day'), ?, datetime('now','+${OTP_TTL_MINUTES} minutes'), 0)`
+    ).bind(id, userId, token, otp_hash).run();
+
+    await db.prepare(
+      `INSERT INTO email_outbox (id, customer_id, template, to_email, subject, payload, status)
+       VALUES (?, ?, 'otp_verification', ?, ?, ?, 'pending')`
+    ).bind(
+      crypto.randomUUID(),
+      userId,
+      user.email,
+      `${otp} — Your myPilotPost verification code`,
+      JSON.stringify({ otp, user_id: userId, expires_minutes: OTP_TTL_MINUTES })
+    ).run();
+  } catch (err) {
+    console.warn("[TRUST:OTP:AUTO-SEND]", err.message);
+  }
+}
+
+/**
  * GET /api/customer/trust/status
  */
 export async function getVerificationStatus(request, env, auth) {

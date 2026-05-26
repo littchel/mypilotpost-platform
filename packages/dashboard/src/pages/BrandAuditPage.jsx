@@ -228,6 +228,11 @@ const BrandAuditPage = () => {
     setLeadLoading(false);
   };
 
+  const handleDownloadReport = () => {
+    if (!auditResult?.audit_id) return;
+    window.open(`/api/public/brand-audit/${auditResult.audit_id}/report`, '_blank');
+  };
+
   // ─── STAGE 1: Brand Identity ─────────────────────────────────────────────
   const renderStage1 = () => (
     <div className="audit-card">
@@ -518,11 +523,19 @@ const BrandAuditPage = () => {
             </p>
           </div>
 
-          {/* Report CTA — Lead Capture */}
+          {/* Download Report */}
+          <div className="audit-download-section">
+            <button className="audit-btn-download" onClick={handleDownloadReport}>
+              <i className="fas fa-download me-2"></i>
+              Download Report
+            </button>
+          </div>
+
+          {/* Lead Capture — saves audit results & notifies user */}
           {!leadCaptured ? (
             <div className="audit-lead-capture">
-              <h5 className="fw-bold mb-1">Get the full report</h5>
-              <p className="small text-muted mb-3">Enter your email to download your free PDF report.</p>
+              <h5 className="fw-bold mb-1">Save your audit results</h5>
+              <p className="small text-muted mb-3">Enter your email and we'll keep your audit on file so you can access it later.</p>
               <form onSubmit={handleCaptureLead} className="d-flex gap-2">
                 <input
                   type="email"
@@ -533,14 +546,14 @@ const BrandAuditPage = () => {
                   required
                 />
                 <button type="submit" className="audit-btn-secondary" disabled={leadLoading}>
-                  {leadLoading ? <span className="spinner-border spinner-border-sm"></span> : 'Send'}
+                  {leadLoading ? <span className="spinner-border spinner-border-sm"></span> : 'Save'}
                 </button>
               </form>
             </div>
           ) : (
             <div className="alert alert-success py-3 small mb-4">
               <i className="fas fa-check-circle me-2"></i>
-              Your full report is on its way to <strong>{leadEmail}</strong>.
+              Audit saved. Register below to access your full dashboard intelligence.
             </div>
           )}
 
@@ -930,6 +943,23 @@ const BrandAuditPage = () => {
           border: 1px solid #e2e8f0;
           margin-bottom: 20px;
         }
+        .audit-download-section { margin-bottom: 16px; }
+        .audit-btn-download {
+          width: 100%;
+          padding: 13px 24px;
+          background: #fff;
+          color: #1e293b;
+          border: 1.5px solid #e2e8f0;
+          border-radius: 12px;
+          font-weight: 700;
+          font-size: 0.9rem;
+          cursor: pointer;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .audit-btn-download:hover { background: #f8fafc; border-color: #94a3b8; }
         .audit-primary-cta { margin-top: 4px; }
       `}} />
     </div>

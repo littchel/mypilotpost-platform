@@ -86,4 +86,25 @@ export const EMAIL_RULES = {
     cooldown_hours: 0,    // always send (token is already unique)
     category:       "transactional",
   },
+
+  password_changed: {
+    template:       "password_changed",
+    subject:        "Your myPilotPost password was changed",
+    cooldown_hours: 0,    // always send — security notification
+    category:       "transactional",
+  },
+
+  onboarding_reminder: {
+    template:       "onboarding_reminder",
+    subject:        "Complete your brand setup — it takes 2 minutes",
+    cooldown_hours: 24,
+    category:       "lifecycle",
+  },
+
+  account_deletion_requested: {
+    template:       "account_deletion_requested",
+    subject:        "Account deletion scheduled — you have 7 days to cancel",
+    cooldown_hours: 0,
+    category:       "transactional",
+  },
 };

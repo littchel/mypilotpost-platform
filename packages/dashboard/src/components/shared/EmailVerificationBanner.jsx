@@ -98,7 +98,16 @@ export default function EmailVerificationBanner({ onVerified }) {
         setCode("");
       }
     } catch (err) {
-      setVerifyMsg({ type: "error", text: err?.message || "Verification failed." });
+      const code = err?.code || err?.error;
+      let text = err?.message || "Verification failed.";
+      if (code === "OTP_EXPIRED") {
+        text = "Code expired — request a new one below.";
+        setStatus(s => ({ ...s, otp_pending: false }));
+      } else if (code === "OTP_LOCKED") {
+        text = "Too many attempts — request a new code.";
+        setStatus(s => ({ ...s, otp_pending: false }));
+      }
+      setVerifyMsg({ type: "error", text });
       setCode("");
     } finally {
       setVerifying(false);
@@ -110,7 +119,9 @@ export default function EmailVerificationBanner({ onVerified }) {
       <div className="email-verify-banner" role="alert" aria-live="polite">
         <i className="fas fa-shield-alt" aria-hidden="true"></i>
         <span className="email-verify-banner__text">
-          Verify your email to unlock publishing, billing, and integrations.
+          {status.otp_pending
+            ? <>A verification code was sent to <strong>{status.email}</strong> — check your inbox.</>
+            : "Verify your email to unlock publishing, billing, and integrations."}
         </span>
         {sendMsg && (
           <span className={`email-verify-banner__msg email-verify-banner__msg--${sendMsg.type}`}>

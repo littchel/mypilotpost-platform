@@ -169,15 +169,28 @@ const BrandAuditModal = ({ auditData, onClose, onRefresh, onFix }) => {
                   <span className="audit-date">Generated {new Date(auditData.generated_at).toLocaleDateString()}</span>
                </div>
                <div className="footer-actions">
-                  <PilotButton 
-                    type="outline" 
-                    onClick={() => {
+                  <PilotButton
+                    type="outline"
+                    onClick={async () => {
                       const token = localStorage.getItem("mpp_token");
-                      const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:8788";
-                      window.open(`${baseUrl}/api/v1/audit/report/${auditData.id}/pdf?token=${token}`, '_blank');
+                      try {
+                        const res = await fetch(`/api/customer/audit/report/${auditData.id}`, {
+                          headers: token ? { Authorization: `Bearer ${token}` } : {}
+                        });
+                        if (!res.ok) return alert("Report download failed. Please try again.");
+                        const blob = await res.blob();
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `brand-audit-report.html`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      } catch {
+                        alert("Report download failed. Please try again.");
+                      }
                     }}
                   >
-                    Download PDF
+                    Download Report
                   </PilotButton>
                   <PilotButton type="outline" icon={Share2} onClick={() => {
                     navigator.clipboard.writeText(`My brand scored ${auditData.score}/100 on MyPilotPost Brand Intelligence!`);

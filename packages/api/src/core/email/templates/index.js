@@ -292,6 +292,73 @@ export function passwordResetEmail({ first_name, reset_url, unsubscribe_url = DE
   };
 }
 
+export function passwordChangedEmail({ first_name, unsubscribe_url = DEFAULT_UNSUB }) {
+  return {
+    subject: "Your myPilotPost password was changed",
+    html: baseLayout(
+      h1("Your password was changed") +
+      p(`Hi ${first_name || "there"}, your myPilotPost account password was successfully updated.`) +
+      highlight("If you made this change, no action is needed.") +
+      p(`If you did <strong>not</strong> make this change, your account may be compromised. Contact us immediately at <a href="mailto:security@mypilotpost.com" style="color:#6C63FF;">security@mypilotpost.com</a>.`) +
+      primaryButton("Secure My Account →", `${BRAND.app_url}?tab=security`),
+      "Your password was just changed.",
+      unsubscribe_url
+    ),
+    text: `Your myPilotPost password was changed. If you didn't do this, contact security@mypilotpost.com immediately.`
+  };
+}
+
+export function onboardingReminderEmail({ first_name, app_url = BRAND.app_url, unsubscribe_url = DEFAULT_UNSUB }) {
+  return {
+    subject: "Complete your brand setup — it takes 2 minutes",
+    html: baseLayout(
+      h1(`Your brand dashboard is waiting, ${first_name || "there"}`) +
+      p(`You're one step away from unlocking your brand intelligence. Finish setting up your brand workspace to get personalized content recommendations.`) +
+      highlight("Complete setup in 2 minutes to unlock your Brand DNA profile, growth engine, and content strategy.") +
+      primaryButton("Complete My Setup →", `${app_url}/onboarding`),
+      "Your brand setup is incomplete.",
+      unsubscribe_url
+    ),
+    text: `Complete your brand setup on ${BRAND.name}: ${app_url}/onboarding`
+  };
+}
+
+export function accountDeletionRequestedEmail({ first_name, scheduled_for, cancel_url, unsubscribe_url = DEFAULT_UNSUB }) {
+  const date = scheduled_for
+    ? new Date(scheduled_for).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
+    : "in 7 days";
+  return {
+    subject: "Account deletion scheduled — you have 7 days to cancel",
+    html: baseLayout(
+      h1("Account deletion scheduled") +
+      p(`Hi ${first_name || "there"}, we've received your request to permanently delete your myPilotPost account.`) +
+      highlight(`Your account and all associated data will be permanently deleted on <strong>${date}</strong>.`) +
+      p("If you change your mind, you can cancel this request before then. After that date, this action cannot be undone.") +
+      (cancel_url ? primaryButton("Cancel Deletion →", cancel_url) : "") +
+      p(`<small style="color:#9090A0;">If you have questions, email <a href="mailto:privacy@mypilotpost.com" style="color:#6C63FF;">privacy@mypilotpost.com</a></small>`),
+      "Account deletion scheduled.",
+      unsubscribe_url
+    ),
+    text: `Your myPilotPost account deletion is scheduled for ${date}. To cancel: ${cancel_url || BRAND.app_url}`
+  };
+}
+
+export function accountDeletedEmail({ first_name }) {
+  return {
+    subject: "Your myPilotPost account has been deleted",
+    html: baseLayout(
+      h1("Your account has been deleted") +
+      p(`Hi ${first_name || "there"}, your myPilotPost account and all associated data have been permanently deleted as requested.`) +
+      p("This action is final and cannot be undone. Your subscription (if any) has been cancelled.") +
+      p(`If you'd like to start fresh in the future, you're welcome to create a new account at <a href="${BRAND.site_url}" style="color:#6C63FF;">${BRAND.site_url}</a>.`) +
+      p(`<small style="color:#9090A0;">Questions? Email <a href="mailto:privacy@mypilotpost.com" style="color:#6C63FF;">privacy@mypilotpost.com</a></small>`),
+      "Your account has been permanently deleted.",
+      DEFAULT_UNSUB
+    ),
+    text: `Your myPilotPost account has been permanently deleted. Questions? Email privacy@mypilotpost.com`
+  };
+}
+
 export function otpVerificationEmail({ first_name, otp, expires_minutes = 15, unsubscribe_url = DEFAULT_UNSUB }) {
   return {
     subject: `${otp} — Your myPilotPost verification code`,
@@ -330,6 +397,9 @@ export const TEMPLATE_REGISTRY = {
   team_invite:      teamInviteEmail,
   churn_prevention:     churnPreventionEmail,
   weekly_digest:        weeklyDigestEmail,
-  password_reset:       passwordResetEmail,
-  otp_verification:     otpVerificationEmail,
+  password_reset:             passwordResetEmail,
+  password_changed:           passwordChangedEmail,
+  onboarding_reminder:        onboardingReminderEmail,
+  account_deletion_requested: accountDeletionRequestedEmail,
+  otp_verification:           otpVerificationEmail,
 };

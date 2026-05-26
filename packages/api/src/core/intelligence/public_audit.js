@@ -42,39 +42,158 @@ export async function getPublicAuditById(request, env, auditId) {
   }
 }
 
+/**
+ * Derives diagnostic snapshot from real user inputs.
+ * No values are hardcoded — all reflect what the user submitted.
+ */
+function buildDiagnostic(metrics, website_url, platforms, goals) {
+  const platformCount = metrics.platform_count;
+
+  const platformConsistency =
+    platformCount === 0 ? 'NOT ESTABLISHED'
+    : platformCount === 1 ? 'SINGLE PLATFORM'
+    : platformCount === 2 ? 'LIMITED PRESENCE'
+    : platformCount >= 4 ? 'MULTI-PLATFORM'
+    : 'DEVELOPING';
+
+  const bioSeo = website_url ? 'OPTIMIZABLE' : 'NOT CONNECTED';
+  const linkEcosystem = website_url ? 'HEALTHY' : 'MISSING';
+  const ctaEffectiveness = metrics.has_cta ? 'CONVERSION-READY' : 'FRICTION-HEAVY';
+
+  return { bio_seo: bioSeo, link_ecosystem: linkEcosystem, cta_effectiveness: ctaEffectiveness, platform_consistency: platformConsistency };
+}
+
+/**
+ * Derives content genome from goals the user selected.
+ */
+function buildGenome(goals) {
+  const GOAL_PILLAR_MAP = {
+    brand_awareness:    ['Educational', 'Inspirational'],
+    lead_gen:           ['Conversion', 'Informational'],
+    engagement:         ['Community', 'Conversational'],
+    sales:              ['Direct Sales', 'Proof-Based'],
+    thought_leadership: ['Expert Analysis', 'Long-form Authority'],
+  };
+
+  const patterns = [];
+  (goals || []).forEach(g => {
+    const mapped = GOAL_PILLAR_MAP[g];
+    if (mapped) patterns.push(...mapped);
+  });
+
+  const uniquePatterns = [...new Set(patterns)].slice(0, 3);
+  const topPatterns = uniquePatterns.length > 0 ? uniquePatterns : ['Awareness', 'Engagement'];
+  const pillarBalance = (goals || []).length >= 3 ? 'MULTI-GOAL' : (goals || []).length === 0 ? 'UNDEFINED' : 'FOCUSED';
+
+  return { pillar_balance: pillarBalance, top_patterns: topPatterns, resonance_score: null };
+}
+
+/**
+ * Derives competitive moat assessment from industry + platform gaps.
+ */
+function buildMoat(industry, platforms, metrics) {
+  const INDUSTRY_WHITESPACE = {
+    'SaaS / Software':       'Long-form technical authority content and LinkedIn thought leadership',
+    'Fintech':               'Educational content demystifying financial concepts for your audience',
+    'AI & Machine Learning': 'Accessible explainer content on AI trends for non-technical audiences',
+    'E-commerce':            'Short-form video product demonstrations and UGC-style social proof',
+    'Real Estate':           'Local market insights and behind-the-scenes property content',
+    'Consulting / B2B':      'Client results case studies and frameworks published as long-form content',
+    'Healthcare':            'Trusted, evidence-based educational content for patient audiences',
+    'Education':             'Micro-learning formats and student success stories across social platforms',
+    'Retail / Fashion':      'Short-form video and Reels-first content strategy with strong visual identity',
+    'Food & Beverage':       'Behind-the-scenes production content and community-driven recipe sharing',
+    'Travel & Hospitality':  'Aspirational video content and authentic destination storytelling',
+    'Fitness & Wellness':    'Transformation content and expert-led educational series',
+  };
+
+  const whitespace = INDUSTRY_WHITESPACE[industry] || 'Expert-driven content establishing category authority in your niche';
+
+  const hasVideo = platforms && (platforms.includes('tiktok') || platforms.includes('instagram') || platforms.includes('youtube'));
+  const differentiation = hasVideo
+    ? 'Leverage your video platform presence for authority positioning via educational series'
+    : 'Establish a content series format (weekly insight, case study, or framework) to build audience expectation';
+
+  return { whitespace, differentiation };
+}
+
+/**
+ * Derives quick wins from identified weaknesses and user inputs.
+ */
+function buildQuickWins(weaknesses, platforms, website_url) {
+  const wins = [];
+
+  if (weaknesses.includes('low_consistency')) {
+    wins.push('Commit to a fixed publishing schedule — even 2 posts per week creates compounding momentum');
+  }
+  if (weaknesses.includes('low_engagement')) {
+    wins.push('Add a direct question to your next 5 posts to trigger comment activity and algorithm signals');
+  }
+  if (weaknesses.includes('platform_gap')) {
+    wins.push('Activate one additional platform this week — repurpose existing content to reduce effort');
+  }
+  if (!website_url) {
+    wins.push('Add your website URL to improve brand discoverability and CTA continuity');
+  }
+  if (platforms && platforms.includes('linkedin')) {
+    wins.push('Optimise your LinkedIn headline with your primary value proposition and target audience');
+  }
+  if (platforms && platforms.includes('instagram')) {
+    wins.push('Add 3–5 targeted hashtags to your next Instagram post to improve discoverability');
+  }
+  if (wins.length < 2) {
+    wins.push('Schedule 3 recurring post slots per week using myPilotPost to eliminate publishing friction');
+  }
+
+  return wins.slice(0, 3);
+}
+
 export async function runPublicAudit(request, env) {
   const body = await request.json();
   const { brand_name, website_url, social_handles, industry, goals, platforms } = body;
 
   const db = getDB(env);
 
-  // 1. Diagnostic Data Collection (Simulated/Estimated for public audit)
+  // 1. Diagnostic Data Collection
+  // post_frequency, engagement_rate, search_visibility, follower_count are estimated industry
+  // benchmarks since we have no OAuth access at this stage. Confidence indicators reflect this.
+  const socialCount = Array.isArray(social_handles)
+    ? social_handles.filter(h => h && String(h).trim()).length
+    : 0;
+  const platformCount = (platforms?.length || 0) || socialCount + (website_url ? 1 : 0);
+
   const metrics = {
-    platform_count: (social_handles?.length || 0) + (website_url ? 1 : 0),
-    post_frequency: 2.5, // Estimated
-    engagement_rate: 0.012, // Estimated
-    search_visibility: 450, // Estimated
-    follower_count: 1200, // Estimated
-    has_cta: website_url ? true : false,
-    sentiment_score: 0.72
+    platform_count: platformCount,
+    post_frequency: 2.5,       // Estimated — no OAuth access at public audit stage
+    engagement_rate: 0.012,    // Estimated industry baseline
+    search_visibility: website_url ? 450 : 100, // Higher if website provided
+    follower_count: 1200,      // Estimated baseline
+    has_cta: !!website_url,
+    sentiment_score: 0.72      // Estimated baseline
   };
 
   // 2. Strategic Scoring (Brand DNA Score™)
   const dnaScore = calculateDNAScore(metrics, industry || 'General');
 
-  // 3. Strategic Analysis (Upgraded Schema)
+  // 3. Identify weaknesses from real inputs
   const weaknesses = [];
   if (metrics.post_frequency < 4) weaknesses.push('low_consistency');
   if (metrics.engagement_rate < 0.02) weaknesses.push('low_engagement');
-  if (metrics.platform_count < 3) weaknesses.push('platform_gap');
+  if (platformCount < 3) weaknesses.push('platform_gap');
 
   const strategicAnalysis = generateStrategicAnalysis(weaknesses, industry);
   const nextSteps = generateNextSteps(dnaScore.breakdown);
 
-  // NARRATIVE DIAGNOSIS ENGINE
+  // 4. Narrative Diagnosis
   const narrative = generateNarrativeDiagnosis(dnaScore.breakdown, weaknesses, industry || 'General');
 
-  // 4. Build Comprehensive Audit Result
+  // 5. Derived (not hardcoded) diagnostic/genome/moat from actual user inputs
+  const diagnostic = buildDiagnostic(metrics, website_url, platforms, goals);
+  const genome = buildGenome(goals);
+  const moat = buildMoat(industry, platforms, metrics);
+  const quickWins = buildQuickWins(weaknesses, platforms, website_url);
+
+  // 6. Build Comprehensive Audit Result
   const audit_id = crypto.randomUUID();
   const auditResult = {
     audit_id,
@@ -83,40 +202,19 @@ export async function runPublicAudit(request, env) {
     score_breakdown: dnaScore.breakdown,
     methodology: dnaScore.methodology,
     confidence: dnaScore.confidence_indicators,
-
-    // Core Narrative Intelligence
-    narrative: narrative,
-
-    // Diagnostic Snapshot
-    diagnostic: {
-      bio_seo: "OPTIMIZABLE",
-      link_ecosystem: website_url ? "HEALTHY" : "MISSING",
-      cta_effectiveness: metrics.has_cta ? "CONVERSION-READY" : "FRICTION-HEAVY",
-      platform_consistency: "IRREGULAR"
-    },
-
-    // Content Genome
-    genome: {
-      pillar_balance: "SKEWED",
-      top_patterns: ["Educational", "Direct Sales"],
-      resonance_score: 65
-    },
-
-    // Competitive Moat
-    moat: {
-      whitespace: "High-authority video content in your niche",
-      differentiation: "Leverage proprietary business intelligence data"
-    },
-
+    narrative,
+    diagnostic,
+    genome,
+    moat,
     strategic_analysis: strategicAnalysis,
     roadmap: {
-      duration: "12-Weeks",
+      duration: '12-Weeks',
       priorities: nextSteps,
-      quick_wins: ["Optimize LinkedIn Header", "Schedule 3 recurring posts"]
+      quick_wins: quickWins
     }
   };
 
-  // 5. Persist for conversion hydration (includes intake form fields)
+  // 7. Persist for conversion hydration (preview_mode = 1 until linked to a brand)
   await db.prepare(`
     INSERT INTO brand_audit_results_v2 (
       id, brand_name, website_url, social_handles,
@@ -124,7 +222,7 @@ export async function runPublicAudit(request, env) {
       next_steps_json, industry, goals_json, platforms_json, preview_mode
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
   `).bind(
-    audit_id, brand_name, website_url, JSON.stringify(social_handles || []),
+    audit_id, brand_name, website_url || null, JSON.stringify(social_handles || []),
     dnaScore.overall_score, JSON.stringify(dnaScore.breakdown),
     JSON.stringify(strategicAnalysis), JSON.stringify(nextSteps),
     industry || null, JSON.stringify(goals || []), JSON.stringify(platforms || [])
@@ -150,12 +248,12 @@ export async function captureAuditLead(request, env) {
     WHERE id = ?
   `).bind(name, email, business_name, audit_id).run();
 
-  // Also upsert a lead record for conversion tracking
+  // Upsert lead record for conversion tracking
   await db.prepare(`
     INSERT INTO public_audit_leads (id, email, brand_name, website_url, audit_id, created_at)
     VALUES (?, ?, ?, ?, ?, datetime('now'))
     ON CONFLICT DO NOTHING
   `).bind(crypto.randomUUID(), email, business_name, audit?.website_url, audit_id).run();
 
-  return json({ success: true, message: 'Report delivery queued' });
+  return json({ success: true });
 }
