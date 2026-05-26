@@ -45,7 +45,7 @@ export const PROVIDERS = {
     type: "publishing",
     capabilities: ["publish_social", "sync_analytics"],
     auth: "oauth2",
-    scopes: "r_liteprofile r_emailaddress w_member_social",
+    scopes: "openid profile email w_member_social",
     endpoints: {
       auth: "https://www.linkedin.com/oauth/v2/authorization",
       token: "https://www.linkedin.com/oauth/v2/accessToken"
