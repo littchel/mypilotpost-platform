@@ -1,0 +1,170 @@
+/* ================================================================
+   myPilotPost — Canonical Footer
+   Single source of truth. Loaded last in <head> on every page.
+   Uses .footer__container (not .container) to avoid page conflicts.
+================================================================ */
+
+.footer {
+  background: #002F86;
+  color: #fff;
+  padding: 80px 0 48px;
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  /* Reset any page-level overrides */
+  margin-top: 0;
+}
+
+.footer__container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 20px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ── GRID: always 5 columns on desktop ── */
+.footer__grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+  gap: 64px;
+  margin-bottom: 64px;
+}
+
+/* ── BRAND COLUMN ── */
+.footer__logo {
+  display: block;
+  width: 220px;
+  height: 44px;
+  background-image: url('/images/myPilotPost-Logo.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: left center;
+  margin-bottom: 16px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.footer__tagline {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+
+.footer__desc {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.6;
+  margin-bottom: 28px;
+}
+
+/* ── SOCIAL ICONS (FontAwesome) ── */
+.footer__social {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.footer__social-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 18px;
+  text-decoration: none;
+  transition: color 0.2s ease, transform 0.2s ease;
+  border-radius: 50%;
+}
+
+.footer__social-link:hover {
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+/* ── LINK COLUMNS ── */
+.footer__column-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1;
+}
+
+.footer__link {
+  display: block;
+  color: rgba(255, 255, 255, 0.75);
+  text-decoration: none;
+  margin-bottom: 10px;
+  font-size: 15px;
+  line-height: 1.4;
+  transition: color 0.15s ease, padding-left 0.15s ease;
+}
+
+.footer__link:hover {
+  color: #fff;
+  padding-left: 4px;
+  text-decoration: none;
+}
+
+/* ── BOTTOM BAR ── */
+.footer__divider {
+  width: 100%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 0 0 32px;
+  border: none;
+}
+
+.footer__copyright {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+/* ================================================================
+   RESPONSIVE
+================================================================ */
+
+/* Tighten gap slightly below container max-width */
+@media (max-width: 1340px) {
+  .footer__grid {
+    gap: 40px;
+  }
+}
+
+/* Tablet: collapse to 3 columns — Brand + 2 per row */
+@media (max-width: 1024px) {
+  .footer__grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 40px;
+  }
+
+  .footer__logo {
+    width: 180px;
+  }
+}
+
+/* Mobile: single column */
+@media (max-width: 640px) {
+  .footer {
+    padding: 60px 0 36px;
+  }
+
+  .footer__grid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+    margin-bottom: 40px;
+  }
+
+  .footer__logo {
+    width: 160px;
+    height: 36px;
+  }
+}
