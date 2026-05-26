@@ -166,6 +166,35 @@ export async function listSocialConnections(request, env, auth) {
 }
 
 /**
+ * GET /api/customer/social-connections/:id
+ * Returns a single connection by ID, scoped to the authenticated brand.
+ */
+export async function getSocialConnectionById(request, env, auth) {
+  const id = request.params?.id;
+  if (!id || !isValidUUID(id)) return error("Invalid connection ID", "INVALID_ID", null, 400);
+
+  const db = getDB(env);
+  const row = await db.prepare(`
+    SELECT id, platform, platform_username, account_id, status,
+           expires_at, last_refreshed_at, scopes, meta, created_at
+    FROM social_connections
+    WHERE id = ? AND brand_id = ? AND status != 'disconnected'
+  `).bind(id, auth.brand_id).first();
+
+  if (!row) return error("Connection not found", "NOT_FOUND", null, 404);
+
+  return json({
+    id: row.id,
+    platform: row.platform,
+    platform_username: row.platform_username || row.account_id,
+    status: row.status,
+    expires_at: row.expires_at,
+    last_refreshed_at: row.last_refreshed_at,
+    meta: row.meta ? JSON.parse(row.meta) : {}
+  });
+}
+
+/**
  * DELETE /api/customer/social-connections/:id
  * Soft disconnect from social_connections — nullifies tokens, marks disconnected.
  */

@@ -16,6 +16,7 @@ import {
   listIntegrations,
   disconnectIntegration,
   listSocialConnections,
+  getSocialConnectionById,
   disconnectSocialConnection,
   refreshConnectionOnDemand
 } from "./integrations/handlers.js";
@@ -654,7 +655,14 @@ export default {
 
       /* ================= SUPPORT (SSE & MESSAGES) ================= */
       if (path.startsWith("/api/v1/support")) {
-        return supportRoutes.fetch(request, env);
+        const supportRes = await supportRoutes.fetch(request, env);
+        // Hono doesn't add CORS headers — inject them here
+        const corsH = getCorsHeaders(request);
+        const newHeaders = new Headers(supportRes.headers);
+        Object.entries({ ...securityHeaders, ...corsH }).forEach(([k, v]) => {
+          if (!newHeaders.has(k)) newHeaders.set(k, v);
+        });
+        return new Response(supportRes.body, { status: supportRes.status, headers: newHeaders });
       }
 
       /* ================= INTERNAL PERFORMANCE INGESTION ================= */
@@ -1082,17 +1090,23 @@ export default {
         }
 
         if (method === "GET" && path === "/api/customer/integrations")
-          return listIntegrations(request, env, auth);
+          return withCors(request, listIntegrations(request, env, auth));
 
         if (method === "DELETE" && path.startsWith("/api/customer/integrations/")) {
           const id = path.split("/")[4];
           request.params = { id };
-          return disconnectIntegration(request, env, auth);
+          return withCors(request, disconnectIntegration(request, env, auth));
         }
 
         /* ---------- SOCIAL CONNECTIONS (unified table) ---------- */
         if (method === "GET" && path === "/api/customer/social-connections")
           return withCors(request, listSocialConnections(request, env, auth));
+
+        if (method === "GET" && path.startsWith("/api/customer/social-connections/")) {
+          const id = path.split("/")[4];
+          request.params = { id };
+          return withCors(request, getSocialConnectionById(request, env, auth));
+        }
 
         if (method === "DELETE" && path.startsWith("/api/customer/social-connections/")) {
           const id = path.split("/")[4];
