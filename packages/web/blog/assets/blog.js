@@ -23,7 +23,7 @@
   });
 
   async function loadData() {
-    const res = await fetch("/api/blog");
+    const res = await fetch(window.MPP_CONFIG.API_URL + "/api/blog");
     const data = await res.json();
     ALL_POSTS = (data.posts || [])
       .filter(p => p.status === "published")
@@ -147,7 +147,7 @@
     // If not in data.json (which might be cached or partial), try direct API
     if (!post) {
       try {
-        const res = await fetch(`/api/blog/${slug}`);
+        const res = await fetch(window.MPP_CONFIG.API_URL + `/api/blog/${slug}`);
         const data = await res.json();
         if (data.post) {
            renderSinglePost(data.post);

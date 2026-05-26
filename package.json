@@ -6,7 +6,8 @@
   ],
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "deploy:admin": "wrangler pages deploy packages/api/admin-portal --project-name=mypilotpost-admin"
   },
   "dependencies": {
     "puppeteer": "^24.42.0"

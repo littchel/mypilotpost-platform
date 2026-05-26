@@ -133,7 +133,7 @@ export async function deleteMarketingPost(request, env, auth, id) {
 
 export async function publicListMarketingPosts(request, env) {
   const { results } = await env.mypilotpost.prepare(`
-    SELECT id, slug, title, excerpt, featured_image, author, published_at
+    SELECT id, slug, title, excerpt, content_html, featured_image, category, author, published_at
     FROM marketing_blog_posts
     WHERE status = 'published'
     ORDER BY published_at DESC

@@ -331,21 +331,28 @@ pre{font-size:.72rem;background:#f8fafc;border:1px solid var(--border);padding:.
     <h5 style="font-size:.85rem;font-weight:700;margin-bottom:1rem" id="blogFormTitle">New Post</h5>
     <input type="hidden" id="bf_id">
     <div class="two-col">
-      <div class="form-group"><label>Title</label><input type="text" id="bf_title" placeholder="Your post title"></div>
-      <div class="form-group"><label>Slug (URL)</label><input type="text" id="bf_slug" placeholder="your-post-title"></div>
+      <div class="form-group"><label>Title</label><input type="text" id="bf_title" placeholder="Your post title" oninput="autoSlug()"></div>
+      <div class="form-group"><label>Slug (URL)</label><input type="text" id="bf_slug" placeholder="your-post-title" oninput="this.dataset.touched='1'"></div>
     </div>
     <div class="form-group"><label>Excerpt</label><input type="text" id="bf_excerpt" placeholder="Short summary…"></div>
+    <div class="form-group"><label>Featured Image URL</label><input type="url" id="bf_featured_image" placeholder="https://…/image.jpg"></div>
     <div class="two-col">
       <div class="form-group"><label>Category</label><input type="text" id="bf_category" placeholder="Marketing"></div>
       <div class="form-group">
         <label>Status</label>
-        <select id="bf_status">
+        <select id="bf_status" onchange="togglePublishedAt()">
           <option value="draft">Draft</option>
           <option value="published">Published</option>
         </select>
       </div>
     </div>
-    <div class="form-group"><label>Author</label><input type="text" id="bf_author" placeholder="myPilotPost Team"></div>
+    <div class="two-col">
+      <div class="form-group"><label>Author</label><input type="text" id="bf_author" placeholder="myPilotPost Team"></div>
+      <div class="form-group" id="bf_published_at_group" style="display:none">
+        <label>Publish Date (optional override)</label>
+        <input type="datetime-local" id="bf_published_at">
+      </div>
+    </div>
     <div class="form-group"><label>Content (HTML)</label><textarea id="bf_content" rows="8" placeholder="<p>Your content here…</p>"></textarea></div>
     <div style="display:flex;gap:.75rem">
       <button class="btn btn-primary" onclick="saveBlogPost()">Save Post</button>
@@ -803,16 +810,31 @@ async function loadBlog() {
   `).join("");
 }
 
+function autoSlug() {
+  const titleEl = document.getElementById("bf_title");
+  const slugEl = document.getElementById("bf_slug");
+  if (!slugEl.dataset.touched) {
+    slugEl.value = titleEl.value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  }
+}
+
+function togglePublishedAt() {
+  const status = document.getElementById("bf_status").value;
+  document.getElementById("bf_published_at_group").style.display = status === "published" ? "block" : "none";
+}
+
 function showBlogForm(post) {
   document.getElementById("blogFormTitle").textContent = post ? "Edit Post" : "New Post";
   document.getElementById("blogForm").style.display = "block";
   document.getElementById("blogFormError").style.display = "none";
   if (!post) {
-    ["bf_id","bf_title","bf_slug","bf_excerpt","bf_category","bf_content","bf_author"].forEach(f => {
+    ["bf_id","bf_title","bf_slug","bf_excerpt","bf_category","bf_content","bf_author","bf_featured_image","bf_published_at"].forEach(f => {
       const el = document.getElementById(f);
       if (el) el.value = "";
     });
+    document.getElementById("bf_slug").dataset.touched = "";
     document.getElementById("bf_status").value = "draft";
+    document.getElementById("bf_published_at_group").style.display = "none";
   }
 }
 function hideBlogForm() { document.getElementById("blogForm").style.display = "none"; }
@@ -822,27 +844,37 @@ function editBlogPost(jsonStr) {
   showBlogForm(p);
   document.getElementById("bf_id").value = p.id || "";
   document.getElementById("bf_title").value = p.title || "";
-  document.getElementById("bf_slug").value = p.slug || "";
+  const slugEl = document.getElementById("bf_slug");
+  slugEl.value = p.slug || "";
+  slugEl.dataset.touched = "1";
   document.getElementById("bf_excerpt").value = p.excerpt || "";
+  document.getElementById("bf_featured_image").value = p.featured_image || "";
   document.getElementById("bf_category").value = p.category || "";
   document.getElementById("bf_status").value = p.status || "draft";
   document.getElementById("bf_author").value = p.author || "";
   document.getElementById("bf_content").value = p.content_html || "";
+  if (p.published_at) document.getElementById("bf_published_at").value = p.published_at.slice(0, 16);
+  togglePublishedAt();
 }
 
 async function saveBlogPost() {
   const errEl = document.getElementById("blogFormError");
   errEl.style.display = "none";
   const id = document.getElementById("bf_id").value;
+  const status = document.getElementById("bf_status").value;
+  const publishedAtOverride = document.getElementById("bf_published_at").value;
   const body = {
     title: document.getElementById("bf_title").value,
     slug: document.getElementById("bf_slug").value,
     excerpt: document.getElementById("bf_excerpt").value,
+    featured_image: document.getElementById("bf_featured_image").value || null,
     category: document.getElementById("bf_category").value,
-    status: document.getElementById("bf_status").value,
+    status,
     author: document.getElementById("bf_author").value || "myPilotPost Team",
     content_html: document.getElementById("bf_content").value,
-    published_at: document.getElementById("bf_status").value === "published" ? new Date().toISOString() : null
+    published_at: status === "published"
+      ? (publishedAtOverride ? new Date(publishedAtOverride).toISOString() : new Date().toISOString())
+      : null
   };
   const url = id ? `/v1/admin/blog/${id}` : "/v1/admin/blog";
   const method = id ? "PATCH" : "POST";

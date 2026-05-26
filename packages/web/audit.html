@@ -196,22 +196,36 @@
         .btn--white { background: white; color: var(--primary-blue); font-weight: 700; }
         .btn--white:hover { background: #f0f9ff; transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
 
-        /* ===== HOMEPAGE FOOTER (from index.html – public scope only) ===== */
+        /* ===== FOOTER ===== */
         .footer { background: #002F86; color: #fff; padding: 80px 0 48px; -webkit-font-smoothing: antialiased; }
-        .footer__grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 64px; margin-bottom: 64px; }
+        .footer__grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 64px; margin-bottom: 64px; }
         .footer__logo { width: 302px; height: 49px; background: url('images/myPilotPost-Logo.png') no-repeat left/contain; margin-bottom: 16px; cursor: pointer; }
-        .footer__tagline { color: rgba(255,255,255,0.9); margin-bottom: 16px; font-size: 15px; line-height: 1.6; }
+        .footer__tagline { color: rgba(255,255,255,0.9); margin-bottom: 8px; font-size: 16px; font-weight: 600; }
+        .footer__desc { color: rgba(255,255,255,0.75); font-size: 15px; line-height: 1.6; margin-bottom: 30px; }
         .social-links { display: flex; gap: 18px; }
         .social-link { cursor: pointer; transition: transform 0.3s, filter 0.3s; }
         .social-link:hover { transform: translateY(-2px); filter: brightness(1.2); }
-        .footer__column-title { font-size: 16px; font-weight: 700; color: rgba(255,255,255,0.85); margin-bottom: 24px; text-transform: uppercase; letter-spacing: 1px; }
-        .footer__link { display: block; color: rgba(255,255,255,0.7); text-decoration: none; margin-bottom: 10px; font-size: 15px; transition: all 0.3s ease; }
+        .footer__column-title { font-size: 14px; font-weight: 700; color: rgba(255,255,255,0.85); margin-bottom: 24px; text-transform: uppercase; letter-spacing: 0.06em; }
+        .footer__link { display: block; color: rgba(255,255,255,0.75); text-decoration: none; margin-bottom: 10px; font-size: 15px; transition: all 0.3s ease; }
         .footer__link:hover { color: #fff; padding-left: 4px; }
-        .footer__divider { width: 100%; height: 1px; background: rgba(255,255,255,0.12); margin: 48px 0 32px; }
-        .footer__copyright { text-align: center; color: rgba(255,255,255,0.55); font-size: 15px; }
+        .footer__divider { width: 100%; height: 1px; background: rgba(255,255,255,0.15); margin: 48px 0 32px; }
+        .footer__copyright { text-align: center; color: rgba(255,255,255,0.6); font-size: 15px; }
+
+        /* Mobile toggle */
+        .mobile-toggle { display: none; flex-direction: column; cursor: pointer; padding: 10px; }
+        .mobile-toggle span { width: 25px; height: 3px; background: var(--text-dark); margin: 3px 0; transition: 0.3s; }
+
+        /* Mobile menu */
+        .mobile-menu { display: none; position: fixed; top: 0; right: -100%; width: 80%; max-width: 400px; height: 100vh; background: var(--white); box-shadow: -2px 0 20px rgba(0,0,0,0.1); z-index: 1001; padding: 80px 30px; transition: right 0.3s ease; }
+        .mobile-menu.active { right: 0; }
+        .mobile-menu__item { display: block; padding: 15px 0; font-size: 18px; color: var(--text-dark); text-decoration: none; border-bottom: 1px solid var(--border-gray); }
+        .mobile-menu__buttons { margin-top: 30px; display: flex; flex-direction: column; gap: 15px; }
 
         /* Mobile */
         @media (max-width: 768px) {
+            .nav-menu, .header__buttons { display: none; }
+            .mobile-toggle { display: flex; }
+            .mobile-menu { display: block; }
             .hero-headline { font-size: 40px; }
             .floating-cards, .uncovers-grid { grid-template-columns: 1fr; }
             .form-card { padding: 40px 20px; }
@@ -222,6 +236,19 @@
     </style>
 </head>
 <body>
+    <!-- Mobile Menu -->
+    <div class="mobile-menu" id="mobileMenu">
+        <a href="index.html" class="mobile-menu__item">Home</a>
+        <a href="features.html" class="mobile-menu__item">Features</a>
+        <a href="solutions.html" class="mobile-menu__item">Solutions</a>
+        <a href="pricing.html" class="mobile-menu__item">Pricing</a>
+        <a href="resources.html" class="mobile-menu__item">Resources</a>
+        <div class="mobile-menu__buttons">
+            <button class="btn btn--secondary" onclick="redirectToApp('/login')">Sign In</button>
+            <button class="btn btn--primary" onclick="redirectToApp('/register')">Get Started</button>
+        </div>
+    </div>
+
     <!-- Header -->
     <header class="header">
         <div class="container header__container">
@@ -483,23 +510,19 @@
         </div>
     </div>
 
-    <!-- Homepage Footer (public AHA funnel — matches index.html exactly) -->
+    <!-- Footer -->
     <footer class="footer">
         <div class="container">
             <div class="footer__grid">
                 <div>
                     <div class="footer__logo" onclick="window.location.href='index.html'" aria-label="myPilotPost Logo"></div>
-                    <p class="footer__tagline">myPilotPost helps modern brands transform social media into a measurable growth system.</p>
+                    <p class="footer__tagline">Land the right message every time.</p>
+                    <p class="footer__desc">Social media management and content operations platform for founders, small businesses, modern brands, agencies, and marketing teams.</p>
                     <div class="social-links">
-                        <a href="#" class="social-link" target="_blank">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg"><path d="M18 2H15C13.6739 2 12.4021 2.52678 11.4645 3.46447C10.5268 4.40215 10 5.67392 10 7V10H7V14H10V22H14V14H17L18 10H14V7C14 6.73478 14.1054 6.48043 14.2929 6.29289C14.4804 6.10536 14.7348 6 15 6H18V2Z"/></svg>
-                        </a>
-                        <a href="#" class="social-link" target="_blank">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="20" height="20" rx="5" stroke="white" stroke-width="1.5"/><circle cx="18" cy="6" r="1.5" fill="white"/><circle cx="12" cy="12" r="4" stroke="white" stroke-width="1.5"/></svg>
-                        </a>
-                        <a href="https://www.linkedin.com/company/mypilotpost" class="social-link" target="_blank">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg"><path d="M16 8C17.5913 8 19.1174 8.63214 20.2426 9.75736C21.3679 10.8826 22 12.4087 22 14V21H18V14C18 13.4696 17.7893 12.9609 17.4142 12.5858C17.0391 12.2107 16.5304 12 16 12C15.4696 12 14.9609 12.2107 14.5858 12.5858C14.2107 12.9609 14 13.4696 14 14V21H10V14C10 12.4087 10.6321 10.8826 11.7574 9.75736C12.8826 8.63214 14.4087 8 16 8Z"/><path d="M6 9H2V21H6V9Z"/><circle cx="4" cy="4" r="2" fill="white"/></svg>
-                        </a>
+                        <a href="https://www.facebook.com/profile.php?id=61587795843300" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M18 2H15C13.67 2 12.4 2.53 11.46 3.46C10.53 4.4 10 5.67 10 7V10H7V14H10V22H14V14H17L18 10H14V7C14 6.73 14.11 6.48 14.29 6.29C14.48 6.11 14.73 6 15 6H18V2Z"/></svg></a>
+                        <a href="https://www.instagram.com/mypilotpost_/" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="5" stroke="white" stroke-width="1.5"/><circle cx="18" cy="6" r="1.5" fill="white"/><circle cx="12" cy="12" r="4" stroke="white" stroke-width="1.5"/></svg></a>
+                        <a href="https://www.linkedin.com/company/mypilotpost" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M16 8C17.59 8 19.12 8.63 20.24 9.76C21.37 10.88 22 12.41 22 14V21H18V14C18 13.47 17.79 12.96 17.41 12.59C17.04 12.21 16.53 12 16 12C15.47 12 14.96 12.21 14.59 12.59C14.21 12.96 14 13.47 14 14V21H10V14C10 12.41 10.63 10.88 11.76 9.76C12.88 8.63 14.41 8 16 8Z"/><path d="M6 9H2V21H6V9Z"/><circle cx="4" cy="4" r="2" fill="white"/></svg></a>
+                        <a href="https://x.com/mypilotpost" class="social-link" target="_blank" rel="noopener noreferrer" aria-label="X / Twitter"><svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.74l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
                     </div>
                 </div>
                 <div>
@@ -507,32 +530,55 @@
                     <a href="features.html" class="footer__link">Features</a>
                     <a href="solutions.html" class="footer__link">Solutions</a>
                     <a href="pricing.html" class="footer__link">Pricing</a>
-                    <a href="audit.html" class="footer__link">Free Brand Audit</a>
+                    <a href="resources.html" class="footer__link">Integrations</a>
                 </div>
                 <div>
                     <h6 class="footer__column-title">Resources</h6>
                     <a href="resources.html" class="footer__link">Blog</a>
                     <a href="resources.html" class="footer__link">News &amp; Updates</a>
-                    <a href="resources.html" class="footer__link">Training</a>
+                    <a href="help-center.html" class="footer__link">Help Center</a>
                     <a href="mailto:support@mypilotpost.com" class="footer__link">Request a Feature</a>
                 </div>
                 <div>
-                    <h6 class="footer__column-title">Company</h6>
-                    <a href="#" class="footer__link">About Us</a>
-                    <a href="mailto:support@mypilotpost.com" class="footer__link">Support</a>
-                    <a href="privacy-policy.html" class="footer__link">Privacy Policy</a>
+                    <h6 class="footer__column-title">Trust</h6>
+                    <a href="trust.html" class="footer__link">Trust Center</a>
+                    <a href="security.html" class="footer__link">Security</a>
+                    <a href="ai-principles.html" class="footer__link">AI Principles</a>
+                    <a href="oauth-permissions.html" class="footer__link">OAuth Permissions</a>
+                    <a href="status.html" class="footer__link">Status</a>
+                </div>
+                <div>
+                    <h6 class="footer__column-title">Legal</h6>
+                    <a href="compliance.html" class="footer__link">Compliance</a>
+                    <a href="privacy.html" class="footer__link">Privacy Policy</a>
+                    <a href="terms.html" class="footer__link">Terms of Service</a>
                     <a href="refund-policy.html" class="footer__link">Refund Policy</a>
-                    <a href="terms-and-conditions.html" class="footer__link">Terms of Service</a>
+                    <a href="images/PAIA_Manual.pdf" class="footer__link">PAIA Manual</a>
+                    <a href="support.html" class="footer__link">Support</a>
                 </div>
             </div>
             <div class="footer__divider"></div>
-            <p class="footer__copyright">© 2026 myPilotPost. All rights reserved.</p>
+            <p class="footer__copyright">&copy; 2026 myPilotPost. All rights reserved.</p>
         </div>
     </footer>
 
     <!-- JS Logic -->
     <script>
-        const API_BASE = window.MPP_CONFIG ? window.MPP_CONFIG.API_URL : "https://mypilotpost-api.littchel.workers.dev";
+        const API_BASE = window.MPP_CONFIG ? window.MPP_CONFIG.API_URL : "https://api.mypilotpost.com";
+
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            menu.classList.toggle('active');
+            document.body.style.overflow = menu.classList.contains('active') ? 'hidden' : 'auto';
+        }
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('mobileMenu');
+            const toggle = document.querySelector('.mobile-toggle');
+            if (menu && toggle && !menu.contains(e.target) && !toggle.contains(e.target) && menu.classList.contains('active')) {
+                menu.classList.remove('active');
+                document.body.style.overflow = 'auto';
+            }
+        });
         let currentAuditId = null;
         let currentBrandName = "";
 
