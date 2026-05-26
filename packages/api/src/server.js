@@ -660,7 +660,7 @@ export default {
         const corsH = getCorsHeaders(request);
         const newHeaders = new Headers(supportRes.headers);
         Object.entries({ ...securityHeaders, ...corsH }).forEach(([k, v]) => {
-          if (!newHeaders.has(k)) newHeaders.set(k, v);
+          newHeaders.set(k, v);
         });
         return new Response(supportRes.body, { status: supportRes.status, headers: newHeaders });
       }

@@ -549,8 +549,8 @@ function App() {
     recommendedActions: _intelRaw.recommendedActions || []
   };
 
-  const { data: connectionsData } = useApi(brandId ? "/api/customer/integrations" : null, [brandId, listVersion]);
-  const connectedPlatforms = (connectionsData?.integrations || []).map(i => i.platform);
+  const { data: connectionsData } = useApi(brandId ? "/api/customer/social-connections" : null, [brandId, listVersion]);
+  const connectedPlatforms = (connectionsData?.connections || []).map(i => i.platform);
 
   const { data: draftListData, loading: _draftsLoading } = useApi(brandId ? "/api/customer/content/social" : null, [brandId, listVersion]);
   const _socialDrafts = draftListData?.data || [];

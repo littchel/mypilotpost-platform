@@ -10,11 +10,9 @@ export default function CanvaTab() {
   const [connecting, setConnecting] = useState(false);
 
   useEffect(() => {
-    // Check if Canva is connected
-    apiRequest("/api/customer/integrations")
+    apiRequest("/api/customer/social-connections")
       .then(res => {
-        const integrations = res?.integrations || res?.connections || [];
-        const canvaConn = integrations.find(i => i.platform === 'canva');
+        const canvaConn = (res?.connections || []).find(i => i.platform === 'canva');
         setConnected(!!(canvaConn && canvaConn.status === 'active'));
       })
       .catch(() => setConnected(false))
@@ -37,10 +35,10 @@ export default function CanvaTab() {
   const handleDisconnect = async () => {
     if (!window.confirm("Disconnect Canva? You can reconnect at any time.")) return;
     try {
-      const res = await apiRequest("/api/customer/integrations");
-      const canvaConn = (res?.integrations || res?.connections || []).find(i => i.platform === 'canva');
+      const res = await apiRequest("/api/customer/social-connections");
+      const canvaConn = (res?.connections || []).find(i => i.platform === 'canva');
       if (canvaConn) {
-        await apiRequest(`/api/customer/integrations/${canvaConn.id}`, { method: "DELETE" });
+        await apiRequest(`/api/customer/social-connections/${canvaConn.id}`, { method: "DELETE" });
         setConnected(false);
       }
     } catch {
