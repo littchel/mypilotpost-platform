@@ -208,7 +208,7 @@ export async function disconnectSocialConnection(request, env, auth) {
     UPDATE social_connections
     SET
       status = 'disconnected',
-      access_token = NULL,
+      access_token = '',
       refresh_token = NULL,
       updated_at = CURRENT_TIMESTAMP
     WHERE id = ? AND brand_id = ?
