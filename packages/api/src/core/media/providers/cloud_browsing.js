@@ -4,22 +4,20 @@ import { decrypt } from "../../../lib/crypto.js";
 
 async function getDecryptedToken(db, brand_id, provider, env) {
   const account = await db.prepare(`
-    SELECT access_token_encrypted, token_expires_at
-    FROM connected_accounts
-    WHERE brand_id = ? AND provider = ? AND status = 'active'
+    SELECT access_token, expires_at
+    FROM social_connections
+    WHERE brand_id = ? AND platform = ? AND status = 'active'
   `).bind(brand_id, provider).first();
 
-  if (!account || !account.access_token_encrypted) {
+  if (!account || !account.access_token) {
     throw new Error("RECONNECT_REQUIRED");
   }
 
-  // Check expiry if possible
-  if (account.token_expires_at && new Date(account.token_expires_at) < new Date()) {
-     // We should attempt refresh here, but if not possible:
-     throw new Error("RECONNECT_REQUIRED");
+  if (account.expires_at && new Date(account.expires_at) < new Date()) {
+    throw new Error("RECONNECT_REQUIRED");
   }
 
-  return await decrypt(account.access_token_encrypted, env.ENCRYPTION_SECRET);
+  return await decrypt(account.access_token, env.ENCRYPTION_SECRET);
 }
 
 /**
