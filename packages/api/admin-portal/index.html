@@ -472,24 +472,40 @@ pre{font-size:.72rem;background:#f8fafc;border:1px solid var(--border);padding:.
 /* ── CONFIG ── */
 function resolveApi() {
   const h = location.hostname;
-  if (h === "localhost" || h === "127.0.0.1") return "http://localhost:8787/api";
+  if (h === "localhost" || h === "127.0.0.1") return "http://localhost:8788/api";
   return "https://api.mypilotpost.com/api";
 }
 const API = resolveApi();
+console.log("[ADMIN] API base:", API);
 
 /* ── AUTH ── */
 let token = localStorage.getItem("adminToken");
 let currentAdmin = null;
+
+const ADMIN_ROLES = ["admin", "super_admin", "operations", "support"];
+
+function decodeJwt(t) {
+  try {
+    const b64 = t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(b64));
+  } catch { return null; }
+}
 
 function authHeaders(extra = {}) {
   return { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, ...extra };
 }
 
 async function apiFetch(path, opts = {}) {
-  const res = await fetch(API + path, { headers: authHeaders(), ...opts });
-  if (res.status === 401 || res.status === 403) { logout(); return null; }
-  const txt = await res.text();
-  try { return JSON.parse(txt); } catch { return null; }
+  console.log("[ADMIN] fetch", opts.method || "GET", path);
+  try {
+    const res = await fetch(API + path, { headers: authHeaders(), ...opts });
+    if (res.status === 401 || res.status === 403) { console.warn("[ADMIN] auth rejected", res.status, path); logout(); return null; }
+    const txt = await res.text();
+    try { return JSON.parse(txt); } catch { return null; }
+  } catch (e) {
+    console.error("[ADMIN] fetch error", path, e.message);
+    return null;
+  }
 }
 
 /* ── LOGIN ── */
@@ -500,7 +516,8 @@ document.getElementById("loginForm").onsubmit = async (e) => {
   const email = document.getElementById("loginEmail").value;
   const pass = document.getElementById("loginPass").value;
 
-  const res = await fetch(API + "/admin/login", {
+  console.log("[ADMIN] login attempt:", email);
+  const res = await fetch(API + "/v1/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password: pass })
@@ -510,12 +527,22 @@ document.getElementById("loginForm").onsubmit = async (e) => {
   if (!res.ok) {
     errEl.textContent = data.error || "Login failed";
     errEl.style.display = "block";
+    console.warn("[ADMIN] login failed:", data.error);
+    return;
+  }
+
+  const payload = decodeJwt(data.token);
+  if (!payload || !ADMIN_ROLES.includes(payload.role)) {
+    errEl.textContent = "Access denied — this account does not have admin privileges.";
+    errEl.style.display = "block";
+    console.warn("[ADMIN] role rejected:", payload?.role);
     return;
   }
 
   token = data.token;
   localStorage.setItem("adminToken", token);
-  currentAdmin = { email: data.email, role: data.role };
+  currentAdmin = { email: payload.email, role: payload.role };
+  console.log("[ADMIN] login success:", currentAdmin.email, currentAdmin.role);
   applySession();
   hideLogin();
   loadSection("overview");
@@ -567,7 +594,8 @@ function loadSection(id) {
 /* ── UTIL ── */
 function fmt(n) { return n?.toLocaleString() ?? "—"; }
 function fmtDate(s) { return s ? new Date(s).toLocaleDateString() : "—"; }
-function fmtMoney(n) { return n != null ? `R${Number(n).toLocaleString()}` : "—"; }
+// price_monthly is stored in cents (49900 = R499). Divide by 100 for display.
+function fmtMoney(cents) { return cents != null ? `R${Math.round(Number(cents) / 100).toLocaleString()}` : "—"; }
 
 function debounce(fn, delay) {
   let t;
@@ -638,7 +666,8 @@ async function loadAnalytics() {
   document.getElementById("anTotalJobs").textContent = fmt(d.total_jobs);
   document.getElementById("anDelivered").textContent = fmt(d.delivered);
   document.getElementById("anFailed").textContent = fmt(d.failed);
-  const rate = (d.success_rate * 100).toFixed(1);
+  // success_rate is already a percentage integer (e.g. 95, not 0.95)
+  const rate = Number(d.success_rate ?? 100).toFixed(1);
   const rateEl = document.getElementById("anRate");
   rateEl.innerHTML = `<span class="badge ${rate >= 90 ? 'ok' : rate >= 70 ? 'warn' : 'bad'}">${rate}%</span>`;
   const out = document.getElementById("analyticsOut");
@@ -1007,12 +1036,32 @@ async function loadSystem() {
 
 /* ── INIT ── */
 async function init() {
-  if (!token) { showLogin(); return; }
+  console.log("[ADMIN] init: checking stored session");
+  if (!token) {
+    console.log("[ADMIN] no stored token → showing login");
+    showLogin();
+    return;
+  }
 
-  const d = await apiFetch("/admin/session");
-  if (!d) { showLogin(); return; }
+  const payload = decodeJwt(token);
+  if (!payload) {
+    console.warn("[ADMIN] stored token is malformed → clearing");
+    logout();
+    return;
+  }
+  if (payload.exp && payload.exp * 1000 < Date.now()) {
+    console.warn("[ADMIN] stored token expired → clearing");
+    logout();
+    return;
+  }
+  if (!ADMIN_ROLES.includes(payload.role)) {
+    console.warn("[ADMIN] role not permitted:", payload.role, "→ clearing");
+    logout();
+    return;
+  }
 
-  currentAdmin = { email: d.email, role: d.role };
+  currentAdmin = { email: payload.email, role: payload.role };
+  console.log("[ADMIN] session restored:", currentAdmin.email, currentAdmin.role);
   applySession();
   hideLogin();
   loadSection("overview");
