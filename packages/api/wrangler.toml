@@ -28,7 +28,7 @@ REWARD_MULTIPLIER = "1"
 #   https://api.mypilotpost.com/api/oauth/google_business/callback
 #   https://api.mypilotpost.com/api/oauth/youtube/callback
 #   https://api.mypilotpost.com/api/oauth/google_search_console/callback
-GOOGLE_CLIENT_ID = "626126586204-kpm1sra6t8488t47an9m4ta030615c8s.apps.googleusercontent.com"
+GOOGLE_CLIENT_ID = "626126586204-shjghkjbji3u2omdef2u7ckmidktisqt.apps.googleusercontent.com"
 DROPBOX_CLIENT_ID = "yt1hvspft36igsa"
 LINKEDIN_CLIENT_ID = "771mxvzllsxgrp"
 
