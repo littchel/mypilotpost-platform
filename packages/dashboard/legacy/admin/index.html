@@ -308,7 +308,6 @@
 ================================ */
 const TOKEN = localStorage.getItem("token");
 if (!TOKEN) {
-  // Redirect to login if no token
   window.location.href = "/sign-in.html?redirect=" + encodeURIComponent(location.pathname);
 }
 
@@ -326,22 +325,19 @@ function parseJwt(token) {
 }
 
 const user = parseJwt(TOKEN);
-if (!user || (user.role !== 'admin' && user.role !== 'operations' && user.role !== 'support')) {
+if (!user || !['admin', 'operations', 'support', 'super_admin'].includes(user.role)) {
   alert("Unauthorized access. Admin role required.");
   window.location.href = "/";
 }
 
-// Display Role Badge
 document.addEventListener("DOMContentLoaded", () => {
   const badge = document.getElementById("env-badge");
   const roleDisplay = document.createElement("span");
   roleDisplay.className = "badge bg-primary ms-2 text-capitalize";
   roleDisplay.innerText = user.role;
   badge.parentNode.appendChild(roleDisplay);
-  
-  // Role-based visibility
+
   if (user.role === 'support') {
-    // Support can't see MRR or Billing
     const mrrCard = document.getElementById("mrr")?.closest(".col-md-3");
     if (mrrCard) mrrCard.style.display = "none";
     const mrrChart = document.getElementById("mrrChart")?.closest(".chart-container");
@@ -351,8 +347,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function resolveApiBase() {
   const h = location.hostname;
-  if (h.includes("localhost")) return "http://localhost:8787/api";
-  return "https://mypilotpost-api.littchel.workers.dev/api";
+  if (h.includes("localhost")) return "http://localhost:8788/api";
+  return "https://api.mypilotpost.com/api";
 }
 
 const API_BASE = resolveApiBase();
@@ -361,38 +357,52 @@ const HEADERS = {
   "Authorization": "Bearer " + TOKEN
 };
 
+console.log("[ADMIN] API_BASE =", API_BASE);
+
 /* ===============================
    HELPERS
 ================================ */
 async function get(path) {
+  console.log("[ADMIN] GET", path);
   try {
     const r = await fetch(API_BASE + path, { headers: HEADERS });
     if (r.status === 401 || r.status === 403) {
-       alert("Session expired or access denied.");
-       window.location.href = "/sign-in.html";
-       return null;
+      alert("Session expired or access denied.");
+      window.location.href = "/sign-in.html";
+      return null;
     }
-    if (!r.ok) throw new Error(await r.text());
-    return r.json();
+    if (!r.ok) {
+      const text = await r.text();
+      console.error("[ADMIN] Error", r.status, path, text);
+      throw new Error(text);
+    }
+    const json = await r.json();
+    console.log("[ADMIN] Response", path, json);
+    return json;
   } catch (e) {
-    console.error("API error:", path, e);
+    console.error("[ADMIN] API error:", path, e);
     return null;
   }
 }
 
 /* ===============================
-   CHARTS (unchanged)
+   CHARTS
 ================================ */
 function drawLine(canvas, values) {
   const ctx = canvas.getContext("2d");
   const w = canvas.width = canvas.offsetWidth;
   const h = canvas.height = canvas.offsetHeight;
   ctx.clearRect(0, 0, w, h);
-  if (!values || !values.length) return;
+  if (!values || values.length < 2) {
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "13px Inter, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("No trend data yet", w / 2, h / 2);
+    return;
+  }
 
-  const max = Math.max(...values);
+  const max = Math.max(...values) || 1;
   const stepX = w / (values.length - 1);
-
   const grad = ctx.createLinearGradient(0, 0, 0, h);
   grad.addColorStop(0, "rgba(37, 99, 235, 0.2)");
   grad.addColorStop(1, "rgba(37, 99, 235, 0)");
@@ -424,36 +434,46 @@ async function loadAdmin() {
     document.getElementById("env").innerHTML =
       `<span class="text-success fw-bold">Operational</span>`;
     document.getElementById("env-badge").innerText = "Production";
+  } else {
+    document.getElementById("env").innerHTML =
+      `<span class="text-danger fw-bold">Unreachable</span>`;
   }
 
-  // Load stats if allowed
-    if (user.role !== 'support') {
-      const billing = await get("/admin/billing/overview");
-      if (billing) {
-        document.getElementById("mrr").innerText = `R${billing.mrr.toLocaleString()}`;
-        if (document.getElementById("conversion")) {
-          document.getElementById("conversion").innerText = billing.conversion_rate || "0%";
-        }
-      }
-      
-      const mrrHistory = await get("/admin/billing/mrr-history");
-    if (mrrHistory && mrrHistory.history) {
-       drawLine(document.getElementById("mrrChart"), mrrHistory.history.map(h => h.mrr));
+  if (user.role !== 'support') {
+    const billing = await get("/v1/admin/billing/overview");
+    if (billing) {
+      // price_monthly is stored in cents (49900 = R499)
+      const mrrRands = Math.round((billing.mrr || 0) / 100);
+      document.getElementById("mrr").innerText = `R${mrrRands.toLocaleString()}`;
+      const conv = document.getElementById("conversion");
+      if (conv) conv.innerText = billing.conversion_rate || "0%";
+    }
+
+    const mrrHistory = await get("/v1/admin/billing/mrr-history");
+    if (mrrHistory?.history?.length) {
+      drawLine(document.getElementById("mrrChart"), mrrHistory.history.map(h => h.mrr));
+    } else {
+      drawLine(document.getElementById("mrrChart"), []);
     }
   }
 
-  const delivery = await get("/admin/analytics/delivery");
+  const delivery = await get("/v1/admin/analytics/delivery");
   if (delivery) {
-     const total = delivery.total_jobs;
-     const failed = delivery.failed;
-     const rate = total > 0 ? failed / total : 0;
-     const risk = rate > 0.3 ? "High" : rate > 0.15 ? "Medium" : "Low";
-     
-     const el = document.getElementById("churn-risk");
-     if (el) {
-       el.innerText = risk;
-       el.className = "metric-value badge-risk risk-" + risk.toLowerCase();
-     }
+    const deliveryEl = document.getElementById("deliveryChart");
+    if (deliveryEl) {
+      const ctx = deliveryEl.getContext("2d");
+      const w = deliveryEl.width = deliveryEl.offsetWidth || 300;
+      const h = deliveryEl.height = deliveryEl.offsetHeight || 300;
+      ctx.clearRect(0, 0, w, h);
+      ctx.font = "bold 36px Inter, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillStyle = delivery.failure_rate > 20 ? "#dc2626" : "#16a34a";
+      ctx.fillText(delivery.success_rate + "%", w / 2, h / 2 - 10);
+      ctx.font = "13px Inter, sans-serif";
+      ctx.fillStyle = "#64748b";
+      ctx.fillText("success rate", w / 2, h / 2 + 20);
+      ctx.fillText(`${delivery.delivered} delivered / ${delivery.failed} failed`, w / 2, h / 2 + 45);
+    }
   }
 }
 
@@ -461,65 +481,90 @@ async function loadAdmin() {
    LOAD CUSTOMERS
 ================================ */
 async function loadCustomers() {
-  const data = await get("/admin/customers");
+  const data = await get("/v1/admin/customers");
   if (!data) return;
+
+  const users = data.data || [];
+  console.log("[ADMIN] customers loaded:", users.length);
+
+  document.getElementById("brands").innerText = data.total ?? users.length;
 
   const tbody = document.getElementById("customerTable");
 
-  tbody.innerHTML = data.customers.map(c => {
-    const riskClass =
-      c.failed_delivery_rate > 0.3 ? "risk-high" :
-      c.failed_delivery_rate > 0.15 ? "risk-medium" :
-      "risk-low";
+  if (!users.length) {
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-muted">No customers yet.</td></tr>`;
+    return;
+  }
 
-    const riskLabel =
-      c.failed_delivery_rate > 0.3 ? "Critical" :
-      c.failed_delivery_rate > 0.15 ? "Warning" :
-      "Healthy";
+  tbody.innerHTML = users.map(c => {
+    const statusClass =
+      c.subscription_status === 'active' ? "risk-low" :
+      c.subscription_status === 'trial' ? "risk-medium" :
+      "risk-high";
+    const statusLabel =
+      c.subscription_status === 'active' ? "Active" :
+      c.subscription_status === 'trial' ? "Trial" :
+      (c.subscription_status || "Unknown");
+    const emailInitial = (c.email || "?")[0].toUpperCase();
+    const mrrRands = Math.round((c.price_monthly || 0) / 100);
 
     return `
-      <tr onclick="openCustomer('${c.brand_id}')">
+      <tr onclick="openCustomer('${c.id}')">
         <td>
-          <div class="fw-bold text-dark">${c.name}</div>
-          <div class="small text-muted">ID: ${c.brand_id.slice(0,8)}</div>
-        </td>
-        <td><span class="badge border text-dark bg-light">${c.industry}</span></td>
-        <td class="fw-bold">$${c.imps || 0} imps</td>
-        <td>
-          <div class="progress" style="height:6px;width:80px">
-            <div class="progress-bar" style="width:${Math.round((c.delivered/c.total_jobs)*100 || 0)}%"></div>
+          <div class="d-flex align-items-center gap-2">
+            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold flex-shrink-0"
+                 style="width:32px;height:32px;font-size:0.85rem">${emailInitial}</div>
+            <div>
+              <div class="fw-bold text-dark">${c.email}</div>
+              <div class="small text-muted">ID: ${c.id.slice(0, 8)}</div>
+            </div>
           </div>
-          <div class="small mt-1">${c.delivered}/${c.total_jobs} jobs</div>
         </td>
-        <td><span class="badge-risk ${riskClass}">${riskLabel}</span></td>
+        <td><span class="badge border text-dark bg-light">${c.plan_name || 'Starter'}</span></td>
+        <td class="fw-bold">${mrrRands > 0 ? 'R' + mrrRands.toLocaleString() + '/mo' : 'Free'}</td>
+        <td>
+          <div class="fw-semibold">${c.brand_count || 0} brand${c.brand_count !== 1 ? 's' : ''}</div>
+        </td>
+        <td><span class="badge-risk ${statusClass}">${statusLabel}</span></td>
       </tr>
     `;
   }).join("");
-
-  document.getElementById("brands").innerText = data.customers.length;
 }
 
 /* ===============================
    DRAWER
 ================================ */
 async function openCustomer(id) {
-  const d = await get(`/admin/customers/${id}`);
+  const d = await get(`/v1/admin/customers/${id}`);
   if (!d) return;
 
-  document.getElementById("cd-name").innerText = d.name;
-  document.getElementById("cd-avatar").innerText = d.name[0];
+  const emailInitial = (d.email || "?")[0].toUpperCase();
+  document.getElementById("cd-name").innerText = d.email;
+  document.getElementById("cd-avatar").innerText = emailInitial;
   document.getElementById("cd-meta").innerText =
-    `${d.industry} • Platform Active`;
+    `${d.plan_name || 'Starter'} • ${d.subscription_status || 'trial'}`;
+
+  const joinDate = d.created_at ? new Date(d.created_at).toLocaleDateString() : "Unknown";
+  const trialEnd = d.trial_ends_at ? new Date(d.trial_ends_at).toLocaleDateString() : null;
 
   document.getElementById("cd-usage").innerHTML = `
-    <li><strong>Delivered:</strong> ${d.delivered}</li>
-    <li><strong>Total Jobs:</strong> ${d.total_jobs}</li>
-    <li><strong>Success Rate:</strong> ${Math.round((d.delivered/d.total_jobs)*100 || 0)}%</li>
+    <li><strong>Joined:</strong> ${joinDate}</li>
+    <li><strong>Brands:</strong> ${(d.brands || []).length}</li>
+    ${trialEnd ? `<li><strong>Trial ends:</strong> ${trialEnd}</li>` : ''}
+    <li><strong>Verified:</strong> ${d.verified_at ? 'Yes' : 'No'}</li>
   `;
 
+  const mrrRands = Math.round((d.price_monthly || 0) / 100);
   document.getElementById("cd-billing").innerHTML = `
-    <li><strong>Status:</strong> <span class="text-success">Active</span></li>
+    <li><strong>Plan:</strong> ${d.plan_name || 'Starter'}</li>
+    <li><strong>MRR:</strong> ${mrrRands > 0 ? 'R' + mrrRands.toLocaleString() : 'Free'}</li>
+    <li><strong>Status:</strong> <span class="${d.subscription_status === 'active' ? 'text-success' : 'text-warning'} fw-bold">${d.subscription_status || 'trial'}</span></li>
   `;
+
+  const brands = d.brands || [];
+  document.getElementById("cd-missions").innerHTML = brands.length
+    ? brands.map(b => `<li><strong>${b.name || 'Unnamed'}</strong>${b.industry ? ' — ' + b.industry : ''}</li>`).join("")
+    : `<li class="text-muted">No brands created yet</li>`;
 
   document.getElementById("customerDrawer").style.right = "0";
   document.getElementById("drawerOverlay").style.display = "block";
@@ -536,7 +581,7 @@ function closeCustomer() {
 function showTab(id) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.admin-nav-item').forEach(t => t.classList.remove('active'));
-  
+
   document.getElementById(id).classList.add('active');
   const items = document.querySelectorAll('.admin-nav-item');
   if (id === 'portfolio') items[0].classList.add('active');
@@ -545,41 +590,67 @@ function showTab(id) {
 }
 
 async function loadPricing() {
-  const data = await get("/admin/pricing");
+  const data = await get("/v1/admin/pricing");
   if (!data) return;
-  
+
   const tbody = document.getElementById("pricingTable");
-  tbody.innerHTML = data.plans.map(p => `
-    <tr>
-      <td><div class="fw-bold">${p.name}</div><div class="small text-muted">${p.id}</div></td>
-      <td>R${(p.price_monthly/100).toLocaleString()} <small>/mo</small></td>
-      <td>${p.posts_per_month_limit} / ${p.ai_generations_limit} / ${p.social_accounts_limit}</td>
-      <td><span class="badge ${p.is_active ? 'bg-success' : 'bg-secondary'}">${p.is_active ? 'Active' : 'Inactive'}</span></td>
-      <td>
-        <button class="btn btn-sm btn-light border" onclick="editPlan('${p.id}')">Edit</button>
-        <button class="btn btn-sm btn-outline-primary" onclick="togglePlan('${p.id}')">${p.is_active ? 'Disable' : 'Enable'}</button>
-      </td>
-    </tr>
-  `).join("");
+  if (!data.plans?.length) {
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-muted">No plans found.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = data.plans.map(p => {
+    // price_monthly stored in cents
+    const mrrRands = Math.round((p.price_monthly || 0) / 100);
+    return `
+      <tr>
+        <td><div class="fw-bold">${p.name}</div><div class="small text-muted">${p.id}</div></td>
+        <td>${mrrRands > 0 ? 'R' + mrrRands.toLocaleString() : 'Free'} <small>/mo</small></td>
+        <td>${p.posts_per_month_limit ?? '—'} / ${p.ai_generations_limit ?? '—'} / ${p.social_accounts_limit ?? '—'}</td>
+        <td><span class="badge ${p.is_active ? 'bg-success' : 'bg-secondary'}">${p.is_active ? 'Active' : 'Inactive'}</span></td>
+        <td>
+          <button class="btn btn-sm btn-light border" onclick="editPlan('${p.id}')">Edit</button>
+          <button class="btn btn-sm btn-outline-primary" onclick="togglePlan('${p.id}')">${p.is_active ? 'Disable' : 'Enable'}</button>
+        </td>
+      </tr>
+    `;
+  }).join("");
 }
 
 async function loadAudits() {
-  // Mock/Future: need an endpoint for all audits, for now just show a message or fetch recent brands
   const tbody = document.getElementById("auditsTable");
-  tbody.innerHTML = `<tr><td colspan="5" class="text-center p-5 text-muted">Audit overview loading from strategic engine...</td></tr>`;
+  // Reuse customer list to show recent sign-ups as "leads"
+  const data = await get("/v1/admin/customers");
+  if (!data?.data?.length) {
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center p-5 text-muted">No customers yet — audits will appear here once users sign up.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = data.data.slice(0, 20).map(c => {
+    const date = c.created_at ? new Date(c.created_at).toLocaleDateString() : "—";
+    return `
+      <tr onclick="openCustomer('${c.id}')">
+        <td>${date}</td>
+        <td>${c.email}</td>
+        <td><span class="badge border text-dark bg-light">${c.plan_name || 'Starter'}</span></td>
+        <td>${c.brand_count || 0} brand${c.brand_count !== 1 ? 's' : ''}</td>
+        <td><button class="btn btn-sm btn-light border">View</button></td>
+      </tr>
+    `;
+  }).join("");
 }
 
 async function togglePlan(id) {
-  const res = await fetch(API_BASE + `/admin/pricing/${id}/toggle`, {
+  const res = await fetch(API_BASE + `/v1/admin/pricing/${id}/toggle`, {
     method: 'PATCH',
     headers: HEADERS
   });
   if (res.ok) loadPricing();
-  else alert((await res.json()).error);
+  else alert((await res.json()).error || "Toggle failed");
 }
 
 function editPlan(id) {
-  alert("Plan editor coming soon in Phase 4.5!");
+  alert("Plan editor coming soon!");
 }
 
 /* ===============================
