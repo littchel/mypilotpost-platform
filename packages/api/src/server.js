@@ -878,6 +878,7 @@ export default {
 
       /* ================= ADMIN (all routes require admin JWT with is_admin:true) ================= */
       if (path.startsWith("/api/v1/admin")) {
+        return withCors(request, (async () => {
         if (path === "/api/v1/admin/overview") {
           await requireAdminAuth(request, env);
           return billingOverview(env);
@@ -1060,6 +1061,7 @@ export default {
           return withCors(request, Promise.resolve(json({ status: "ok", models: [] })));
         if (path === "/api/v1/admin/experiments")
           return withCors(request, Promise.resolve(json({ experiments: [] })));
+      })());
       }
 
       /* ================= PUBLIC WEBHOOKS (NO AUTH) ================= */
