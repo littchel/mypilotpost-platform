@@ -18,6 +18,16 @@ MEDIA_BUCKET_NAME = "mypilotpost-media"
 # Promotions multiplier
 REWARD_MULTIPLIER = "1"
 # OAuth client IDs (non-secret, public)
+# GOOGLE_CLIENT_ID is shared across ALL Google providers:
+#   google, google_drive, google_analytics, google_business, youtube, google_search_console
+# Required secret (wrangler secret put): GOOGLE_CLIENT_SECRET
+# Authorized redirect URIs that must be registered in Google Cloud Console:
+#   https://api.mypilotpost.com/api/oauth/google/callback
+#   https://api.mypilotpost.com/api/oauth/google_drive/callback
+#   https://api.mypilotpost.com/api/oauth/google_analytics/callback
+#   https://api.mypilotpost.com/api/oauth/google_business/callback
+#   https://api.mypilotpost.com/api/oauth/youtube/callback
+#   https://api.mypilotpost.com/api/oauth/google_search_console/callback
 GOOGLE_CLIENT_ID = "626126586204-kpm1sra6t8488t47an9m4ta030615c8s.apps.googleusercontent.com"
 DROPBOX_CLIENT_ID = "yt1hvspft36igsa"
 LINKEDIN_CLIENT_ID = "771mxvzllsxgrp"

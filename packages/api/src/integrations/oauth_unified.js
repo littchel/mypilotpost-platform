@@ -63,9 +63,32 @@ export async function startUnifiedOAuth(request, env, userContext) {
   await env.OAUTH_STATE.put(`state:${state}`, JSON.stringify(stateData), { expirationTtl: 600 });
 
   const credKey = provider.credential_key || platform.toUpperCase();
+  const client_id = env[`${credKey}_CLIENT_ID`];
+  const client_secret = env[`${credKey}_CLIENT_SECRET`];
+
+  // Defensive: catch missing credentials before Google sees an undefined client_id
+  // (undefined client_id produces 401: deleted_client or invalid_client from Google)
+  if (!client_id) {
+    console.error(`[OAUTH_MISSING_CREDENTIAL] ${platform}: ${credKey}_CLIENT_ID is not set in Worker environment`);
+    return new Response(JSON.stringify({
+      error: `OAuth credentials not configured for ${platform}. Please contact support.`,
+      debug: `Missing env var: ${credKey}_CLIENT_ID`
+    }), { status: 400, headers: { "Content-Type": "application/json" } });
+  }
+  if (!client_secret) {
+    console.error(`[OAUTH_MISSING_CREDENTIAL] ${platform}: ${credKey}_CLIENT_SECRET is not set in Worker environment`);
+    return new Response(JSON.stringify({
+      error: `OAuth credentials not configured for ${platform}. Please contact support.`,
+      debug: `Missing env var: ${credKey}_CLIENT_SECRET`
+    }), { status: 400, headers: { "Content-Type": "application/json" } });
+  }
+
+  const redirectUri = `${env.BASE_URL}/api/oauth/${platform}/callback`;
+  console.log(`[OAUTH_START] platform=${platform} credKey=${credKey} redirect_uri=${redirectUri}`);
+
   const authUrl = new URL(provider.endpoints.auth);
-  authUrl.searchParams.set("client_id", env[`${credKey}_CLIENT_ID`]);
-  authUrl.searchParams.set("redirect_uri", `${env.BASE_URL}/api/oauth/${platform}/callback`);
+  authUrl.searchParams.set("client_id", client_id);
+  authUrl.searchParams.set("redirect_uri", redirectUri);
   authUrl.searchParams.set("response_type", "code");
   authUrl.searchParams.set("state", state);
 
@@ -85,8 +108,9 @@ export async function startUnifiedOAuth(request, env, userContext) {
     authUrl.searchParams.set("code_challenge_method", "S256");
   }
 
-  // Google providers require offline access to get a refresh_token
-  if (platform === 'google' || platform === 'google_drive' || platform === 'google_business') {
+  // All Google providers require offline access to get a refresh_token
+  const GOOGLE_PLATFORMS = ['google', 'google_drive', 'google_business', 'google_analytics', 'youtube', 'google_search_console'];
+  if (GOOGLE_PLATFORMS.includes(platform)) {
     authUrl.searchParams.set("access_type", "offline");
     authUrl.searchParams.set("prompt", "consent");
   }
@@ -128,6 +152,14 @@ export async function handleUnifiedCallback(request, env) {
   const client_id = env[`${credKey}_CLIENT_ID`];
   const client_secret = env[`${credKey}_CLIENT_SECRET`];
 
+  if (!client_id || !client_secret) {
+    console.error(`[OAUTH_CALLBACK_MISSING_CRED] ${platform}: ${credKey}_CLIENT_ID=${!!client_id} ${credKey}_CLIENT_SECRET=${!!client_secret}`);
+    throw new Error(`OAuth credentials not configured for ${platform} (${credKey}_CLIENT_ID or _SECRET missing)`);
+  }
+
+  const redirectUri = `${env.BASE_URL}/api/oauth/${platform}/callback`;
+  console.log(`[OAUTH_CALLBACK] platform=${platform} credKey=${credKey} redirect_uri=${redirectUri}`);
+
   // Token Exchange
   // X (Twitter) and Pinterest require HTTP Basic auth; credentials must NOT appear in body
   const useBasicAuth = platform === 'x' || platform === 'pinterest';
@@ -135,7 +167,7 @@ export async function handleUnifiedCallback(request, env) {
   const tokenParams = new URLSearchParams({
     grant_type: "authorization_code",
     code,
-    redirect_uri: `${env.BASE_URL}/api/oauth/${platform}/callback`,
+    redirect_uri: redirectUri,
     ...(useBasicAuth ? {} : { client_id, client_secret })
   });
 
@@ -158,7 +190,11 @@ export async function handleUnifiedCallback(request, env) {
   });
 
   const tokenData = await tokenRes.json();
-  if (!tokenRes.ok) throw new Error(tokenData.error_description || tokenData.error || "Token exchange failed");
+  if (!tokenRes.ok) {
+    const errMsg = tokenData.error_description || tokenData.error || "Token exchange failed";
+    console.error(`[OAUTH_TOKEN_EXCHANGE_FAILED] platform=${platform} status=${tokenRes.status} error=${tokenData.error} desc=${tokenData.error_description} redirect_uri=${redirectUri}`);
+    throw new Error(errMsg);
+  }
 
   // Adapter Normalization (Meta Page Token Exchange, X Username, etc.)
   const adapter = getAdapter(platform);

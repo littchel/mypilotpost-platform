@@ -279,6 +279,11 @@ import {
 } from "./core/analytics/analytics.js";
 import { getExecutiveAnalytics } from "./core/analytics/executive.js";
 import { analyzeContentSEO } from "./core/seo/seo.js";
+import {
+  syncSearchConsoleData,
+  getSearchConsoleProperties,
+  getSearchConsoleOverview
+} from "./integrations/search_console.js";
 
 import {
   getAgencyBranding,
@@ -1728,7 +1733,12 @@ export default {
           case "/api/customer/analytics/content": return withCors(request, getContentAnalytics(request, env, auth));
           case "/api/customer/analytics/seo/overview": return withCors(request, getSEOOverview(request, env, auth));
           case "/api/customer/analytics/report/generate": return withCors(request, generateReport(request, env, auth));
+          case "/api/customer/analytics/search-console/overview": return withCors(request, getSearchConsoleOverview(request, env, auth));
+          case "/api/customer/analytics/search-console/properties": return withCors(request, getSearchConsoleProperties(request, env, auth));
         }
+
+        if (method === "POST" && path === "/api/customer/analytics/search-console/sync")
+          return withCors(request, syncSearchConsoleData(request, env, auth));
 
         if (method === "PATCH" && path === "/api/customer/analytics/report/update")
           return withCors(request, updateReport(request, env, auth));

@@ -20,14 +20,15 @@ export const ADAPTERS = {
   facebook: meta,           // alias — routes through unified Meta adapter
   instagram: meta,          // alias — routes through unified Meta adapter
   google,
-  youtube: google,          // alias — routes through Google OAuth adapter
-  google_analytics: google, // alias — routes through Google OAuth adapter
-  google_business: google,  // alias — routes through Google OAuth adapter
+  youtube: google,                  // alias — routes through Google OAuth adapter
+  google_analytics: google,         // alias — routes through Google OAuth adapter
+  google_business: google,          // alias — routes through Google OAuth adapter
+  google_search_console: google,    // alias — routes through Google OAuth adapter
+  google_drive,
   x,
   tiktok,
   pinterest,
   wordpress,
-  google_drive,
   dropbox,
   canva,
   threads,

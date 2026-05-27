@@ -17,9 +17,12 @@ export const PROVIDERS = {
     }
   },
   google_drive: {
+    name: "Google Drive",
     type: "media",
     capabilities: ["import_media"],
     auth: "oauth2",
+    credential_key: "GOOGLE",
+    scopes: "openid email profile https://www.googleapis.com/auth/drive.readonly",
     endpoints: {
       auth: "https://accounts.google.com/o/oauth2/v2/auth",
       token: "https://oauth2.googleapis.com/token"
@@ -149,13 +152,13 @@ export const PROVIDERS = {
     }
   },
 
-  // --- YOUTUBE (separate OAuth app — uses YOUTUBE_CLIENT_ID / YOUTUBE_CLIENT_SECRET secrets) ---
+  // --- YOUTUBE (shares GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET) ---
   youtube: {
     name: "YouTube",
     type: "publishing",
     capabilities: ["publish_social", "sync_analytics"],
     auth: "oauth2",
-    credential_key: "YOUTUBE",
+    credential_key: "GOOGLE",
     scopes: "openid email profile https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly",
     endpoints: {
       auth: "https://accounts.google.com/o/oauth2/v2/auth",
@@ -163,13 +166,13 @@ export const PROVIDERS = {
     }
   },
 
-  // --- GOOGLE ANALYTICS (separate OAuth app — uses GA_CLIENT_ID / GA_CLIENT_SECRET secrets) ---
+  // --- GOOGLE ANALYTICS (shares GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET) ---
   google_analytics: {
     name: "Google Analytics",
     type: "analytics",
     capabilities: ["sync_analytics"],
     auth: "oauth2",
-    credential_key: "GA",
+    credential_key: "GOOGLE",
     scopes: "openid email profile https://www.googleapis.com/auth/analytics.readonly",
     endpoints: {
       auth: "https://accounts.google.com/o/oauth2/v2/auth",
@@ -177,13 +180,28 @@ export const PROVIDERS = {
     }
   },
 
-  // --- GOOGLE BUSINESS PROFILE ---
+  // --- GOOGLE BUSINESS PROFILE (shares GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET) ---
   google_business: {
     name: "Google Business Profile",
     type: "publishing",
     capabilities: ["publish_social", "sync_analytics"],
     auth: "oauth2",
+    credential_key: "GOOGLE",
     scopes: "openid email profile https://www.googleapis.com/auth/business.manage",
+    endpoints: {
+      auth: "https://accounts.google.com/o/oauth2/v2/auth",
+      token: "https://oauth2.googleapis.com/token"
+    }
+  },
+
+  // --- GOOGLE SEARCH CONSOLE (shares GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET) ---
+  google_search_console: {
+    name: "Google Search Console",
+    type: "analytics",
+    capabilities: ["sync_analytics"],
+    auth: "oauth2",
+    credential_key: "GOOGLE",
+    scopes: "openid email profile https://www.googleapis.com/auth/webmasters.readonly",
     endpoints: {
       auth: "https://accounts.google.com/o/oauth2/v2/auth",
       token: "https://oauth2.googleapis.com/token"
