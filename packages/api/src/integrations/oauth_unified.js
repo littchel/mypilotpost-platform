@@ -1,6 +1,6 @@
 /**
  * Unified Social Integration Engine — Production Build
- * Handles state management, PKCE (X/Twitter), and standardized token lifecycle.
+ * Handles state management, PKCE (Canva + X/Twitter), and standardized token lifecycle.
  */
 
 import { getDB } from "../lib/db.js";
@@ -51,12 +51,15 @@ export async function startUnifiedOAuth(request, env, userContext) {
     timestamp: Date.now()
   };
 
-  // PKCE Handling for X (Twitter) — stored in state, never mutates shared provider object
+  // PKCE Handling — Canva requires PKCE; X (Twitter) requires it too
+  // code_verifier stored in KV state; code_challenge appended to auth URL
+  const PKCE_PLATFORMS = ['x', 'canva'];
   let pkceChallenge = null;
-  if (platform === 'x') {
+  if (PKCE_PLATFORMS.includes(platform)) {
     const pkce = await generatePKCE();
     stateData.code_verifier = pkce.verifier;
     pkceChallenge = pkce.challenge;
+    console.log(`[OAUTH_PKCE] platform=${platform} challenge_generated=true`);
   }
 
   // Store state in KV with 10 minute TTL
@@ -84,7 +87,7 @@ export async function startUnifiedOAuth(request, env, userContext) {
   }
 
   const redirectUri = `${env.BASE_URL}/api/oauth/${platform}/callback`;
-  console.log(`[OAUTH_START] platform=${platform} credKey=${credKey} redirect_uri=${redirectUri}`);
+  console.log(`[OAUTH_START] platform=${platform} credKey=${credKey} redirect_uri=${redirectUri} pkce=${!!pkceChallenge} scopes="${provider.scopes}"`);
 
   const authUrl = new URL(provider.endpoints.auth);
   authUrl.searchParams.set("client_id", client_id);
@@ -157,8 +160,16 @@ export async function handleUnifiedCallback(request, env) {
     throw new Error(`OAuth credentials not configured for ${platform} (${credKey}_CLIENT_ID or _SECRET missing)`);
   }
 
+  // Canva and X require PKCE — a missing verifier means state was written without PKCE, which is a bug
+  const PKCE_PLATFORMS = ['x', 'canva'];
+  if (PKCE_PLATFORMS.includes(platform) && !code_verifier) {
+    console.error(`[OAUTH_PKCE_MISSING] platform=${platform} code_verifier absent from KV state — this request will fail token exchange`);
+    throw new Error(`PKCE code_verifier missing for ${platform}. Clear browser cookies and retry.`);
+  }
+
   const redirectUri = `${env.BASE_URL}/api/oauth/${platform}/callback`;
-  console.log(`[OAUTH_CALLBACK] platform=${platform} credKey=${credKey} redirect_uri=${redirectUri}`);
+  const hasPkce = !!code_verifier;
+  console.log(`[OAUTH_CALLBACK] platform=${platform} credKey=${credKey} redirect_uri=${redirectUri} has_code_verifier=${hasPkce}`);
 
   // Token Exchange
   // X (Twitter) and Pinterest require HTTP Basic auth; credentials must NOT appear in body

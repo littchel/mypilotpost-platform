@@ -10,7 +10,7 @@ export const PROVIDERS = {
     type: "media",
     capabilities: ["import_media"],
     auth: "oauth2",
-    scopes: "design:content:read asset:read profile:read",
+    scopes: "design:content:read design:content:write design:permission:read design:permission:write asset:read asset:write profile:read",
     endpoints: {
       auth: "https://www.canva.com/api/oauth/authorize",
       token: "https://api.canva.com/rest/v1/oauth/token"
