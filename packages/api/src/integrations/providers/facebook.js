@@ -1,28 +1,35 @@
 /**
  * Meta (Facebook/Instagram) Adaptive Integration
- * Requirement: Exchange user token for LONG-LIVED Page Token.
+ * Exchanges user token for a long-lived Page access token via /me/accounts.
  */
 export async function normalize(tokenData, env) {
   const userAccessToken = tokenData.access_token;
 
-  // 1. Get Long-Lived User Token (optional, but good for 60-day window)
-  // 2. Fetch User Pages
-  const pagesRes = await fetch(`https://graph.facebook.com/v19.0/me/accounts?access_token=${userAccessToken}`);
+  console.log(`[META_NORMALIZE] fetching pages with user token (token length=${userAccessToken?.length})`);
+
+  const pagesRes = await fetch(
+    `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,category,tasks,access_token&access_token=${userAccessToken}`
+  );
   const pagesData = await pagesRes.json();
-  
-  if (!pagesRes.ok) throw new Error("Failed to fetch Meta pages: " + (pagesData.error?.message || "Unknown error"));
-  if (!pagesData.data || pagesData.data.length === 0) {
-    throw new Error("No Facebook Pages found. A page is required for business posting.");
+
+  if (!pagesRes.ok) {
+    console.error(`[META_NORMALIZE_FAILED] status=${pagesRes.status} error=${pagesData.error?.message} code=${pagesData.error?.code}`);
+    throw new Error("Failed to fetch Meta pages: " + (pagesData.error?.message || "Unknown error"));
   }
 
-  // Pick the first page (UX logic can be expanded for multiple pages later)
+  console.log(`[META_NORMALIZE] pages_found=${pagesData.data?.length ?? 0}`);
+
+  if (!pagesData.data || pagesData.data.length === 0) {
+    throw new Error("No Facebook Pages found. A Facebook Page linked to a Business account is required.");
+  }
+
+  // Use the first page — multi-page selection can be added in a future UX pass
   const page = pagesData.data[0];
-  
-  // Requirement: Store PAGE access token only
-  // Modification to tokenData for the engine to persist
-  tokenData.access_token = page.access_token; // Swapping for persistence
-  tokenData.account_id = page.id;
-  tokenData.account_name = page.name;
+
+  console.log(`[META_NORMALIZE] selected page_id=${page.id} page_name="${page.name}"`);
+
+  // Swap user token for page token — only the page token is persisted
+  tokenData.access_token = page.access_token;
 
   return {
     account_id: page.id,

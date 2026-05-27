@@ -59,10 +59,11 @@ export const PROVIDERS = {
     type: "publishing",
     capabilities: ["publish_social", "sync_analytics"],
     auth: "oauth2",
-    scopes: "pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish",
+    credential_key: "META",
+    scopes: "public_profile,pages_show_list,pages_read_engagement,pages_manage_posts,pages_manage_metadata,business_management,instagram_basic,instagram_content_publish",
     endpoints: {
-      auth: "https://www.facebook.com/v19.0/dialog/oauth",
-      token: "https://graph.facebook.com/v19.0/oauth/access_token"
+      auth: "https://www.facebook.com/v21.0/dialog/oauth",
+      token: "https://graph.facebook.com/v21.0/oauth/access_token"
     }
   },
   // Aliases — both frontend IDs route through the unified Meta OAuth flow
@@ -72,10 +73,10 @@ export const PROVIDERS = {
     capabilities: ["publish_social", "sync_analytics"],
     auth: "oauth2",
     credential_key: "META",  // uses META_CLIENT_ID / META_CLIENT_SECRET
-    scopes: "pages_show_list,pages_read_engagement,pages_manage_posts,business_management",
+    scopes: "public_profile,pages_show_list,pages_read_engagement,pages_manage_posts,pages_manage_metadata,business_management,instagram_basic,instagram_content_publish",
     endpoints: {
-      auth: "https://www.facebook.com/v19.0/dialog/oauth",
-      token: "https://graph.facebook.com/v19.0/oauth/access_token"
+      auth: "https://www.facebook.com/v21.0/dialog/oauth",
+      token: "https://graph.facebook.com/v21.0/oauth/access_token"
     }
   },
   instagram: {
@@ -84,10 +85,10 @@ export const PROVIDERS = {
     capabilities: ["publish_social"],
     auth: "oauth2",
     credential_key: "META",  // uses META_CLIENT_ID / META_CLIENT_SECRET
-    scopes: "pages_show_list,pages_read_engagement,instagram_basic,instagram_content_publish",
+    scopes: "public_profile,pages_show_list,pages_read_engagement,pages_manage_posts,pages_manage_metadata,business_management,instagram_basic,instagram_content_publish",
     endpoints: {
-      auth: "https://www.facebook.com/v19.0/dialog/oauth",
-      token: "https://graph.facebook.com/v19.0/oauth/access_token"
+      auth: "https://www.facebook.com/v21.0/dialog/oauth",
+      token: "https://graph.facebook.com/v21.0/oauth/access_token"
     }
   },
   google: {
