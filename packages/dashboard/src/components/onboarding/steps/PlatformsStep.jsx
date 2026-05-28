@@ -14,8 +14,7 @@ const PlatformSVG = ({ id, size = 20, color }) => {
 };
 
 const PlatformsStep = () => {
-  const { data, nextStep, signupSource } = useOnboarding();
-  const isAuditPath = signupSource === 'brand_audit';
+  const { data, nextStep } = useOnboarding();
 
   const [selected, setSelected] = useState(data?.platforms || []);
   const [socialLinks, setSocialLinks] = useState({
@@ -26,9 +25,6 @@ const PlatformsStep = () => {
     x: data?.socialLinks?.x || ""
   });
   const [error, setError] = useState("");
-
-  // Platforms detected from audit intake form
-  const auditDetectedPlatforms = isAuditPath && data?.platforms?.length > 0 ? data.platforms : [];
 
   const platforms = [
     { id: 'linkedin', name: 'LinkedIn' },
@@ -48,7 +44,7 @@ const PlatformsStep = () => {
     const hasSocial = Object.values(socialLinks).some(link => link && link.trim());
     const hasWebsite = data.websiteURL && data.websiteURL.trim();
 
-    if (!hasWebsite && !hasSocial && !isAuditPath) {
+    if (!hasWebsite && !hasSocial) {
       setError("Please provide either a website URL or at least one social media link to continue.");
       return;
     }
@@ -58,44 +54,23 @@ const PlatformsStep = () => {
 
   return (
     <div className="onboarding-platforms">
-      <h2 className="fw-bold mb-2 mt-4">
-        {isAuditPath ? 'Confirm your platforms' : 'Social Presence'}
-      </h2>
-      <p className="text-muted mb-3">
-        {isAuditPath
-          ? 'We detected these from your audit. Add or remove any.'
-          : 'Tell us where your brand lives.'}
-      </p>
-
-      {isAuditPath && auditDetectedPlatforms.length > 0 && (
-        <div className="d-flex align-items-center gap-2 mb-3 px-3 py-2 rounded-3"
-          style={{ background: '#eff6ff', border: '1px solid #bfdbfe', fontSize: '0.78rem' }}>
-          <i className="fas fa-check-circle text-primary"></i>
-          <span className="fw-bold text-primary">Detected from your audit — edit as needed</span>
-        </div>
-      )}
+      <h2 className="fw-bold mb-2 mt-4">Social Presence</h2>
+      <p className="text-muted mb-3">Tell us where your brand lives.</p>
 
       <div className="row g-3 mb-4">
         {platforms.map(platform => {
           const isSelected = selected.includes(platform.id);
-          const isDetected = auditDetectedPlatforms.includes(platform.id);
           return (
             <div key={platform.id} className="col-12 col-md-4">
               <div
                 onClick={() => togglePlatform(platform.id)}
                 className={`platform-card p-3 rounded-4 d-flex align-items-center gap-3 cursor-pointer border ${isSelected ? 'border-primary bg-light' : 'border-light'}`}
-                style={{ cursor: 'pointer', position: 'relative' }}
+                style={{ cursor: 'pointer' }}
               >
                 <PlatformSVG id={platform.id} size={22} color={isSelected ? '#2563eb' : '#94a3b8'} />
                 <span className={`fw-bold small ${isSelected ? 'text-primary' : 'text-dark'}`}>
                   {platform.name}
                 </span>
-                {isAuditPath && isDetected && !isSelected && (
-                  <span className="badge rounded-pill position-absolute"
-                    style={{ top: -8, right: 8, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', fontSize: '0.6rem', fontWeight: 700 }}>
-                    Detected
-                  </span>
-                )}
               </div>
             </div>
           );

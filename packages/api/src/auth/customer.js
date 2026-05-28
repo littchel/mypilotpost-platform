@@ -122,58 +122,11 @@ export async function register(request, env) {
     .run();
 
     let brandId = null;
-    let token = null;
 
-    // Handle Audit-Source Registration: pre-populate onboarding, don't auto-create brand
-    // Brand is created during the guided onboarding confirmation flow
+    // Link audit lead record for conversion tracking only — no onboarding coupling
     if (audit_id) {
-      const audit = await db.prepare(`
-        SELECT brand_name, website_url, overall_score, score_breakdown_json,
-               strategic_actions_json, industry, goals_json, platforms_json, social_handles
-        FROM brand_audit_results_v2 WHERE id = ?
-      `).bind(audit_id).first();
-
-      if (audit) {
-        // Link any existing lead record to this new user
-        await db.prepare("UPDATE public_audit_leads SET converted_user_id = ? WHERE audit_id = ?")
-          .bind(userId, audit_id).run();
-
-        // Build snapshot for onboarding confirmation steps
-        const strategicActions = JSON.parse(audit.strategic_actions_json || '[]');
-        const onboardingPreload = {
-          brandName: audit.brand_name || company || "",
-          websiteURL: audit.website_url || "",
-          industry: audit.industry || "",
-          goals: JSON.parse(audit.goals_json || '[]'),
-          platforms: JSON.parse(audit.platforms_json || '[]'),
-          auditId: audit_id,
-          auditScore: audit.overall_score,
-          auditBreakdown: JSON.parse(audit.score_breakdown_json || '{}'),
-          audit: {
-            score: audit.overall_score,
-            snapshot: {
-              keyIssues: strategicActions.slice(0, 3).map(a => a.cause || a.recommendation || 'Gap identified'),
-              opportunities: strategicActions.slice(0, 3).map(a => ({
-                label: a.metric || 'Opportunity',
-                desc: a.recommendation || '',
-                impact: a.impact || '+'
-              }))
-            }
-          }
-        };
-
-        // Pre-populate onboarding progress so audit context is available immediately
-        await db.prepare(`
-          INSERT INTO onboarding_progress (user_id, current_step, data, updated_at)
-          VALUES (?, 1, ?, datetime('now'))
-          ON CONFLICT(user_id) DO UPDATE SET
-            current_step = 1, data = excluded.data, updated_at = datetime('now')
-        `).bind(userId, JSON.stringify(onboardingPreload)).run();
-
-        // Issue token WITHOUT brand_id — user goes to onboarding confirmation flow
-        token = await issueJWT({ user_id: userId, email, role: "user" }, env);
-        // brandId stays null: frontend routes to /onboarding
-      }
+      await db.prepare("UPDATE public_audit_leads SET converted_user_id = ? WHERE audit_id = ?")
+        .bind(userId, audit_id).run().catch(() => {});
     }
 
     // Generate own referral code
@@ -188,10 +141,7 @@ export async function register(request, env) {
       await registerReferral(db, referral_code, userId, metadata);
     }
 
-    // Issue JWT for direct (non-audit) registrations — audit path already issued one above
-    if (!token) {
-      token = await issueJWT({ user_id: userId, email, role: "user" }, env);
-    }
+    const token = await issueJWT({ user_id: userId, email, role: "user" }, env);
 
     // Fire welcome email — awaited but non-fatal
     try {

@@ -1,7 +1,6 @@
 // packages/api/src/core/onboarding/onboarding_v2.js
 import { json, error } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
-import { hydrateFromAudit } from "./hydration.js";
 
 /**
  * GET /api/customer/onboarding
@@ -114,38 +113,6 @@ export async function completeOnboarding(request, env, auth) {
       `)
       .bind(auth.user_id)
       .run();
-
-    // Audit-source users: hydrate Brand DNA from the original public audit now that brand exists
-    const [user, progress] = await Promise.all([
-      db.prepare("SELECT signup_source FROM users WHERE id = ?").bind(auth.user_id).first(),
-      db.prepare("SELECT data FROM onboarding_progress WHERE user_id = ?").bind(auth.user_id).first()
-    ]);
-
-    if (user?.signup_source === 'brand_audit' && progress?.data) {
-      try {
-        const onboardingData = JSON.parse(progress.data);
-        let brandId = onboardingData.brandId;
-
-        // brandId is not in the registration preload (brand doesn't exist yet at signup).
-        // Look it up from the brands table — the brand is created during onboarding steps.
-        if (!brandId) {
-          const brand = await db.prepare(
-            "SELECT id FROM brands WHERE user_id = ? ORDER BY created_at ASC LIMIT 1"
-          ).bind(auth.user_id).first();
-          brandId = brand?.id;
-          console.log(`[AUDIT_HYDRATION] brand_id resolved from brands table: ${brandId}`);
-        }
-
-        if (onboardingData.auditId && brandId) {
-          console.log(`[AUDIT_HYDRATION] hydrating brand=${brandId} from audit=${onboardingData.auditId}`);
-          await hydrateFromAudit(db, brandId, onboardingData.auditId);
-        } else {
-          console.warn(`[AUDIT_HYDRATION] skipped — auditId=${onboardingData.auditId} brandId=${brandId}`);
-        }
-      } catch (e) {
-        console.warn("[ONBOARDING:HYDRATION]", e.message);
-      }
-    }
 
     return json({ success: true });
   } catch (err) {

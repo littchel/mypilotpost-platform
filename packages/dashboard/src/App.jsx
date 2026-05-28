@@ -18,7 +18,6 @@ import CompletionStep from "./components/onboarding/steps/CompletionStep";
 import ModeStep from "./components/onboarding/steps/ModeStep";
 import ImportStep from "./components/onboarding/steps/ImportStep";
 import ActivationStep from "./components/onboarding/steps/ActivationStep";
-import AuditPreloadStep from "./components/onboarding/steps/AuditPreloadStep";
 import BrandAuditPage from "./pages/BrandAuditPage";
 import CalendarSchedule from "./pages/CalendarSchedule";
 import ArticleComposer from "./pages/ArticleComposer";
@@ -1254,49 +1253,31 @@ function App() {
     const obMode = onboardingData?.onboardingMode;
     const isSmart = obMode === 'smart';
     const isManual = obMode === 'manual';
-    const isAuditPath = signupSource === 'brand_audit';
 
     return (
       <OnboardingLayout>
-        {/* ── AUDIT PATH (7 steps) ─────────────────────────────────────────
-            Step 1: Workspace preload confirmation
-            Step 2: Brand details (pre-filled from audit, creates brand)
-            Step 3: Goals (pre-selected from audit)
-            Step 4: Platforms (pre-selected from audit)
-            Step 5: Generate first post (AHA moment)
-            Step 6: Schedule
-            Step 7: Completion
-        ─────────────────────────────────────────────────────────────────── */}
-        {isAuditPath && step === 1 && <AuditPreloadStep />}
-        {isAuditPath && step === 2 && <BrandStep isReview />}
-        {isAuditPath && step === 3 && <GoalsStep />}
-        {isAuditPath && step === 4 && <PlatformsStep />}
-        {isAuditPath && step === 5 && <GenerationStep />}
-        {isAuditPath && step === 6 && <ScheduleStep />}
-        {isAuditPath && step === 7 && <CompletionStep />}
-
-        {/* ── DIRECT PATH (9 steps) ───────────────────────────────────────
+        {/* ── STANDARD ONBOARDING (9 steps) ───────────────────────────────
             Smart:  Welcome → Mode → Import → Brand → Goals → Platforms → Generate → Schedule → Complete
             Manual: Welcome → Mode → Brand → Market → Goals → Platforms → Generate → Schedule → Complete
         ─────────────────────────────────────────────────────────────────── */}
-        {!isAuditPath && step === 1 && <WelcomeStep />}
-        {!isAuditPath && step === 2 && <ModeStep />}
-        {!isAuditPath && step === 3 && isSmart && <ImportStep />}
-        {!isAuditPath && step === 4 && isSmart && <BrandStep isReview />}
-        {!isAuditPath && step === 5 && isSmart && <GoalsStep />}
-        {!isAuditPath && step === 6 && isSmart && <PlatformsStep />}
-        {!isAuditPath && step === 7 && isSmart && <GenerationStep />}
-        {!isAuditPath && step === 8 && isSmart && <ScheduleStep />}
-        {!isAuditPath && step === 9 && isSmart && <CompletionStep />}
-        {!isAuditPath && step === 3 && isManual && <BrandStep />}
-        {!isAuditPath && step === 4 && isManual && <MarketStep />}
-        {!isAuditPath && step === 5 && isManual && <GoalsStep />}
-        {!isAuditPath && step === 6 && isManual && <PlatformsStep />}
-        {!isAuditPath && step === 7 && isManual && <GenerationStep />}
-        {!isAuditPath && step === 8 && isManual && <ScheduleStep />}
-        {!isAuditPath && step === 9 && isManual && <CompletionStep />}
+        {step === 1 && <WelcomeStep />}
+        {step === 2 && <ModeStep />}
+        {step === 3 && isSmart && <ImportStep />}
+        {step === 4 && isSmart && <BrandStep isReview />}
+        {step === 5 && isSmart && <GoalsStep />}
+        {step === 6 && isSmart && <PlatformsStep />}
+        {step === 7 && isSmart && <GenerationStep />}
+        {step === 8 && isSmart && <ScheduleStep />}
+        {step === 9 && isSmart && <CompletionStep />}
+        {step === 3 && isManual && <BrandStep />}
+        {step === 4 && isManual && <MarketStep />}
+        {step === 5 && isManual && <GoalsStep />}
+        {step === 6 && isManual && <PlatformsStep />}
+        {step === 7 && isManual && <GenerationStep />}
+        {step === 8 && isManual && <ScheduleStep />}
+        {step === 9 && isManual && <CompletionStep />}
         {/* Fallback: mode not yet chosen */}
-        {!isAuditPath && step >= 3 && !obMode && <ModeStep />}
+        {step >= 3 && !obMode && <ModeStep />}
       </OnboardingLayout>
     );
   }

@@ -5,12 +5,10 @@ import { AnimatePresence, motion } from 'framer-motion';
 
 const OnboardingLayout = ({ children }) => {
   const { logout } = useAuth();
-  const { step, prevStep, data, signupSource } = useOnboarding();
+  const { step, prevStep, data } = useOnboarding();
   const onboardingMode = data?.onboardingMode;
-  const isAuditPath = signupSource === 'brand_audit';
 
-  // Audit path: 7 steps. Direct path: 9 steps.
-  const totalSteps = isAuditPath ? 7 : 9;
+  const totalSteps = 9;
   const progress = Math.round(((step - 1) / totalSteps) * 100);
 
   const illustration = useMemo(() => {
@@ -24,15 +22,6 @@ const OnboardingLayout = ({ children }) => {
       activation: "/ob_activation.png",
       success: "/onboarding_success_illustration.png"
     };
-
-    if (isAuditPath) {
-      if (step === 1) return assets.activation; // "workspace ready" moment
-      if (step === 2) return assets.brand;
-      if (step === 3) return assets.platforms; // Goals
-      if (step === 4) return assets.platforms; // Platforms
-      if (step >= 5) return assets.activation;
-      return assets.activation;
-    }
 
     if (step === 1) return assets.welcome;
     if (step === 2) return assets.mode;
@@ -49,7 +38,7 @@ const OnboardingLayout = ({ children }) => {
       if (step >= 7) return assets.activation;
     }
     return assets.welcome;
-  }, [step, onboardingMode, isAuditPath]);
+  }, [step, onboardingMode]);
 
   return (
     <div className="onboarding-split-layout min-vh-100 w-100 d-flex">
@@ -75,12 +64,6 @@ const OnboardingLayout = ({ children }) => {
         <header className="onboarding-header px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
           <div className="d-flex align-items-center gap-3">
             <img src="/logo.png" alt="myPilotPost" height="28" />
-            {isAuditPath && (
-              <span className="badge rounded-pill px-3 py-1"
-                style={{ background: '#fef9c3', color: '#854d0e', fontSize: '0.7rem', fontWeight: 700, border: '1px solid #fde68a' }}>
-                Audit Fast-Track
-              </span>
-            )}
           </div>
           <button
             className="btn btn-link text-muted text-decoration-none small"
