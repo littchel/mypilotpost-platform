@@ -141,6 +141,7 @@ pre{font-size:.72rem;background:#f8fafc;border:1px solid var(--border);padding:.
 <header>
   <div class="brand">✈ myPilotPost Admin</div>
   <div class="header-right">
+    <span style="font-size:.6rem;color:var(--muted);font-family:monospace" id="buildBadge">—</span>
     <span class="admin-badge" id="adminRoleBadge">—</span>
     <span style="font-size:.82rem;font-weight:600;color:var(--muted)" id="adminEmail">—</span>
     <button class="logout-btn" onclick="logout()">Logout</button>
@@ -469,6 +470,11 @@ pre{font-size:.72rem;background:#f8fafc;border:1px solid var(--border);padding:.
 </div>
 
 <script>
+/* ── BUILD INFO ── */
+const BUILD_VERSION = "v2.1.0";
+const BUILD_TIMESTAMP = "2026-05-28T13:00:00Z";
+const ENVIRONMENT = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "development" : "production";
+
 /* ── CONFIG ── */
 function resolveApi() {
   const h = location.hostname;
@@ -476,7 +482,16 @@ function resolveApi() {
   return "https://api.mypilotpost.com/api";
 }
 const API = resolveApi();
-console.log("[ADMIN] API base:", API);
+
+console.log("[ADMIN] BUILD VERSION:", BUILD_VERSION);
+console.log("[ADMIN] BUILD TIMESTAMP:", BUILD_TIMESTAMP);
+console.log("[ADMIN] API BASE:", API);
+console.log("[ADMIN] ENVIRONMENT:", ENVIRONMENT);
+
+document.addEventListener("DOMContentLoaded", () => {
+  const el = document.getElementById("buildBadge");
+  if (el) el.textContent = `${BUILD_VERSION} · ${ENVIRONMENT}`;
+});
 
 /* ── AUTH ── */
 let token = localStorage.getItem("adminToken");

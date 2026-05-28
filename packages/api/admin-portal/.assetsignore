@@ -1,0 +1,4 @@
+wrangler-admin.toml
+worker.js
+.wrangler/
+*.map
