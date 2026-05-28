@@ -402,11 +402,11 @@ export default function DashboardInsights({ activeBrand }) {
         if (!cancelled) {
           setAuditData({
             ...fullRes,
-            score_breakdown: fullRes.score_breakdown || JSON.parse(fullRes.score_breakdown_json || '{}'),
-            strategic_analysis: fullRes.strategic_actions || JSON.parse(fullRes.strategic_actions_json || '[]'),
-            next_steps: fullRes.next_steps || JSON.parse(fullRes.next_steps_json || '[]'),
-            goals: fullRes.goals || JSON.parse(fullRes.goals_json || '[]'),
-            platforms: fullRes.platforms || JSON.parse(fullRes.platforms_json || '[]'),
+            score_breakdown: fullRes.score_breakdown || {},
+            strategic_analysis: fullRes.strategic_analysis || [],
+            next_steps: fullRes.next_steps || [],
+            goals: fullRes.goals || [],
+            platforms: fullRes.platforms || [],
           });
         }
       } catch {

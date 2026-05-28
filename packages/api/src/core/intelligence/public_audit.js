@@ -151,6 +151,7 @@ function buildQuickWins(weaknesses, platforms, website_url) {
 export async function runPublicAudit(request, env) {
   const body = await request.json();
   const { brand_name, website_url, social_handles, industry, goals, platforms } = body;
+  console.log(`[AUDIT_SUBMIT] brand="${brand_name}" industry="${industry}" platforms=${JSON.stringify(platforms)} goals=${JSON.stringify(goals)}`);
 
   const db = getDB(env);
 
@@ -214,6 +215,7 @@ export async function runPublicAudit(request, env) {
     }
   };
 
+  console.log(`[AUDIT_DB_SAVE] audit_id=${audit_id} overall_score=${dnaScore.overall_score} strategic_actions=${strategicAnalysis.length}`);
   // 7. Persist for conversion hydration (preview_mode = 1 until linked to a brand)
   await db.prepare(`
     INSERT INTO brand_audit_results_v2 (
@@ -228,6 +230,7 @@ export async function runPublicAudit(request, env) {
     industry || null, JSON.stringify(goals || []), JSON.stringify(platforms || [])
   ).run();
 
+  console.log(`[AUDIT_RESPONSE] audit_id=${audit_id} score=${dnaScore.overall_score} weaknesses=${weaknesses.join(',')}`);
   return json(auditResult);
 }
 

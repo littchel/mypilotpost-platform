@@ -24,23 +24,31 @@ export async function hydrateFromAudit(db, brandId, auditId) {
       WHERE id = ?
     `).bind(brandId, auditId).run();
 
-    // 3. Create initial diagnostic insights
+    // 3. Create initial diagnostic insights from audit strategic actions
     const audit = await db.prepare("SELECT strategic_actions_json FROM brand_audit_results_v2 WHERE id = ?").bind(auditId).first();
-    const insights = JSON.parse(audit.strategic_actions_json || '[]');
+    const insights = JSON.parse(audit?.strategic_actions_json || '[]');
+
+    const urgencyToPriority = { HIGH: 'high', CRITICAL: 'critical', MEDIUM: 'medium', LOW: 'low' };
 
     for (const insight of insights) {
+      const title = insight.metric || 'Strategic Gap';
+      const message = [insight.cause, insight.recommendation].filter(Boolean).join('. Recommendation: ');
+      const priority = urgencyToPriority[(insight.urgency || '').toUpperCase()] || 'medium';
+      const signature = `${brandId}:strategic:${title}`;
+
       await db.prepare(`
-        INSERT INTO brand_intelligence_insights (id, brand_id, type, metric, message, priority)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO brand_insights (id, brand_id, type, title, message, priority, signature)
+        VALUES (?, ?, 'advisory', ?, ?, ?, ?)
       `).bind(
-        crypto.randomUUID(), 
-        brandId, 
-        'STRATEGIC_GAP', 
-        insight.metric, 
-        `${insight.cause}. Recommendation: ${insight.recommendation}`,
-        insight.urgency || 'MEDIUM'
+        crypto.randomUUID(),
+        brandId,
+        title,
+        message,
+        priority,
+        signature
       ).run();
     }
+    console.log(`[AUDIT_HYDRATION] inserted ${insights.length} insights for brand=${brandId}`);
 
   } catch (e) {
     console.error(`[HYDRATION FAILED]`, e.message);

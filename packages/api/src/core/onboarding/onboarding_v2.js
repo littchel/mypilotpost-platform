@@ -124,8 +124,23 @@ export async function completeOnboarding(request, env, auth) {
     if (user?.signup_source === 'brand_audit' && progress?.data) {
       try {
         const onboardingData = JSON.parse(progress.data);
-        if (onboardingData.auditId && onboardingData.brandId) {
-          await hydrateFromAudit(db, onboardingData.brandId, onboardingData.auditId);
+        let brandId = onboardingData.brandId;
+
+        // brandId is not in the registration preload (brand doesn't exist yet at signup).
+        // Look it up from the brands table — the brand is created during onboarding steps.
+        if (!brandId) {
+          const brand = await db.prepare(
+            "SELECT id FROM brands WHERE user_id = ? ORDER BY created_at ASC LIMIT 1"
+          ).bind(auth.user_id).first();
+          brandId = brand?.id;
+          console.log(`[AUDIT_HYDRATION] brand_id resolved from brands table: ${brandId}`);
+        }
+
+        if (onboardingData.auditId && brandId) {
+          console.log(`[AUDIT_HYDRATION] hydrating brand=${brandId} from audit=${onboardingData.auditId}`);
+          await hydrateFromAudit(db, brandId, onboardingData.auditId);
+        } else {
+          console.warn(`[AUDIT_HYDRATION] skipped — auditId=${onboardingData.auditId} brandId=${brandId}`);
         }
       } catch (e) {
         console.warn("[ONBOARDING:HYDRATION]", e.message);

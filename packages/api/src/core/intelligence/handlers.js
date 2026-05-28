@@ -57,17 +57,51 @@ export async function resolveInsight(request, env, auth) {
  * GET /api/customer/intelligence/audits
  */
 export async function listAudits(request, env, auth) {
-  const { brand_id } = auth;
+  const { brand_id, user_id } = auth;
   const db = getDB(env);
 
-  const { results } = await db.prepare(`
-    SELECT id, brand_name, overall_score, created_at, preview_mode 
+  // Primary: audits already linked to this brand
+  const { results: linked } = await db.prepare(`
+    SELECT id, brand_name, overall_score, created_at, preview_mode
     FROM brand_audit_results_v2
     WHERE brand_id = ?
     ORDER BY created_at DESC
   `).bind(brand_id).all();
 
-  return json({ data: results });
+  if (linked.length > 0) return json({ data: linked });
+
+  // Fallback: unlinked public audit for this user via lead capture or onboarding progress
+  // Handles users who completed onboarding before the hydration fix was deployed
+  const lead = await db.prepare(`
+    SELECT audit_id FROM public_audit_leads WHERE converted_user_id = ? ORDER BY created_at DESC LIMIT 1
+  `).bind(user_id).first();
+
+  if (lead?.audit_id) {
+    const audit = await db.prepare(`
+      SELECT id, brand_name, overall_score, created_at, preview_mode
+      FROM brand_audit_results_v2 WHERE id = ?
+    `).bind(lead.audit_id).first();
+    if (audit) return json({ data: [audit] });
+  }
+
+  // Last resort: check onboarding progress for an embedded auditId
+  const progress = await db.prepare(
+    "SELECT data FROM onboarding_progress WHERE user_id = ?"
+  ).bind(user_id).first();
+  if (progress?.data) {
+    try {
+      const { auditId } = JSON.parse(progress.data);
+      if (auditId) {
+        const audit = await db.prepare(`
+          SELECT id, brand_name, overall_score, created_at, preview_mode
+          FROM brand_audit_results_v2 WHERE id = ?
+        `).bind(auditId).first();
+        if (audit) return json({ data: [audit] });
+      }
+    } catch {}
+  }
+
+  return json({ data: [] });
 }
 
 // Industry benchmark lookup (mirrors benchmark_engine.js)
