@@ -60,20 +60,21 @@ export const PROVIDERS = {
     capabilities: ["publish_social", "sync_analytics"],
     auth: "oauth2",
     credential_key: "META",
-    scopes: "public_profile,pages_show_list,pages_read_engagement,pages_manage_posts,pages_manage_metadata,business_management,instagram_basic,instagram_content_publish",
+    // meta alias uses Facebook Pages scopes only — Instagram connects separately via /instagram/connect
+    scopes: "public_profile,pages_show_list,pages_read_engagement,pages_manage_posts,pages_manage_metadata,business_management",
     endpoints: {
       auth: "https://www.facebook.com/v21.0/dialog/oauth",
       token: "https://graph.facebook.com/v21.0/oauth/access_token"
     }
   },
-  // Aliases — both frontend IDs route through the unified Meta OAuth flow
   facebook: {
     name: "Facebook",
     type: "publishing",
     capabilities: ["publish_social", "sync_analytics"],
     auth: "oauth2",
-    credential_key: "META",  // uses META_CLIENT_ID / META_CLIENT_SECRET
-    scopes: "public_profile,pages_show_list,pages_read_engagement,pages_manage_posts,pages_manage_metadata,business_management,instagram_basic,instagram_content_publish",
+    credential_key: "META",
+    // Facebook Pages scopes ONLY — instagram_* scopes MUST NOT be included here
+    scopes: "public_profile,pages_show_list,pages_read_engagement,pages_manage_posts,pages_manage_metadata,business_management",
     endpoints: {
       auth: "https://www.facebook.com/v21.0/dialog/oauth",
       token: "https://graph.facebook.com/v21.0/oauth/access_token"
@@ -84,8 +85,9 @@ export const PROVIDERS = {
     type: "publishing",
     capabilities: ["publish_social"],
     auth: "oauth2",
-    credential_key: "META",  // uses META_CLIENT_ID / META_CLIENT_SECRET
-    scopes: "public_profile,pages_show_list,pages_read_engagement,pages_manage_posts,pages_manage_metadata,business_management,instagram_basic,instagram_content_publish",
+    credential_key: "META",
+    // Instagram Business scopes ONLY — no Facebook Pages-only scopes mixed in
+    scopes: "instagram_basic,instagram_content_publish,pages_show_list,business_management",
     endpoints: {
       auth: "https://www.facebook.com/v21.0/dialog/oauth",
       token: "https://graph.facebook.com/v21.0/oauth/access_token"

@@ -3,7 +3,8 @@
  */
 
 import * as linkedin from "./linkedin.js";
-import * as meta from "./facebook.js"; // Map Meta to the hardened facebook.js adapter
+import * as meta from "./facebook.js";
+import * as instagram from "./instagram.js";
 import * as google from "./google.js";
 import * as x from "./x.js";
 import * as tiktok from "./tiktok.js";
@@ -16,9 +17,9 @@ import * as threads from "./threads.js";
 
 export const ADAPTERS = {
   linkedin,
-  meta,
-  facebook: meta,           // alias — routes through unified Meta adapter
-  instagram: meta,          // alias — routes through unified Meta adapter
+  meta,                     // Facebook Pages adapter (backward compat)
+  facebook: meta,           // Facebook Pages — Page token + /me/accounts
+  instagram,                // Instagram Business — IG account discovery via connected Page
   google,
   youtube: google,                  // alias — routes through Google OAuth adapter
   google_analytics: google,         // alias — routes through Google OAuth adapter

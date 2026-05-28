@@ -89,6 +89,22 @@ export async function startUnifiedOAuth(request, env, userContext) {
   const redirectUri = `${env.BASE_URL}/api/oauth/${platform}/callback`;
   console.log(`[OAUTH_START] platform=${platform} credKey=${credKey} redirect_uri=${redirectUri} pkce=${!!pkceChallenge} scopes="${provider.scopes}"`);
 
+  // Meta-specific scope audit logs — verify separation before URL is built
+  if (platform === 'facebook' || platform === 'meta') {
+    console.log(`[META_FACEBOOK_SCOPES] platform=${platform} scopes="${provider.scopes}"`);
+    const hasInstagramScope = provider.scopes.includes('instagram_');
+    if (hasInstagramScope) {
+      console.error(`[META_FACEBOOK_SCOPES] SCOPE_CONTAMINATION DETECTED — instagram_* scopes found in facebook flow: "${provider.scopes}"`);
+    }
+  }
+  if (platform === 'instagram') {
+    console.log(`[META_INSTAGRAM_SCOPES] platform=${platform} scopes="${provider.scopes}"`);
+    const hasFacebookOnlyScope = /pages_manage_posts|pages_manage_metadata|pages_read_engagement/.test(provider.scopes);
+    if (hasFacebookOnlyScope) {
+      console.warn(`[META_INSTAGRAM_SCOPES] WARNING — facebook-only scopes detected in instagram flow: "${provider.scopes}"`);
+    }
+  }
+
   const authUrl = new URL(provider.endpoints.auth);
   authUrl.searchParams.set("client_id", client_id);
   authUrl.searchParams.set("redirect_uri", redirectUri);
@@ -116,6 +132,11 @@ export async function startUnifiedOAuth(request, env, userContext) {
   if (GOOGLE_PLATFORMS.includes(platform)) {
     authUrl.searchParams.set("access_type", "offline");
     authUrl.searchParams.set("prompt", "consent");
+  }
+
+  // Meta OAuth URL audit log — printed after full URL construction
+  if (platform === 'facebook' || platform === 'instagram' || platform === 'meta') {
+    console.log(`[META_OAUTH_URL] platform=${platform} url="${authUrl.toString()}"`);
   }
 
   // Return JSON so SPA can fetch with Authorization header then navigate
