@@ -553,6 +553,7 @@
             const val = input.value.trim();
             if (!val) return alert("Please enter a website or social profile.");
 
+            console.log(`[AUDIT_SUBMIT] brand="${val}"`);
             formView.style.display  = 'none';
             loadingView.style.display = 'block';
 
@@ -580,12 +581,14 @@
             }, elapsed);
 
             try {
+                console.log(`[AUDIT_REQUEST] POST ${API_BASE}/api/public/brand-audit`);
                 const res  = await fetch(`${API_BASE}/api/public/brand-audit`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ brand_name: val, website_url: val })
                 });
                 const data = await res.json();
+                console.log(`[AUDIT_RESPONSE] audit_id=${data.audit_id} score=${data.overall_score} ok=${res.ok}`);
                 if (data.audit_id) {
                     currentAuditId   = data.audit_id;
                     currentBrandName = data.brand_name || val;
@@ -597,6 +600,7 @@
                     loadingView.style.display = 'none';
                 }
             } catch (err) {
+                console.error('[AUDIT_ERROR]', err);
                 alert("Connection error. Please try again.");
                 formView.style.display    = 'block';
                 loadingView.style.display = 'none';
@@ -605,9 +609,18 @@
 
         /* ── 8-Section renderResults ── */
         function renderResults(data) {
+            console.log('[AUDIT_RESULTS_LOAD] Rendering results', { audit_id: data.audit_id, score: data.overall_score });
+
+            // Hide the marketing content sections — NOT the parent container
+            // (#results-view is inside #audit-flow, so hiding #audit-flow would also hide results)
             loadingView.style.display = 'none';
+            const heroEl = document.querySelector('.audit-hero');
+            const uncoversEl = document.querySelector('.uncovers-section');
+            const formEl = document.querySelector('.form-section');
+            if (heroEl) heroEl.style.display = 'none';
+            if (uncoversEl) uncoversEl.style.display = 'none';
+            if (formEl) formEl.style.display = 'none';
             resultsView.style.display = 'block';
-            document.getElementById('audit-flow').style.display = 'none';
             window.scrollTo({ top: 0, behavior: 'smooth' });
 
             const narrative = data.narrative || {};
@@ -624,9 +637,15 @@
                 <h3>${currentBrandName} — Strategic Diagnosis</h3>
                 <p>${narrative.executive_diagnosis || 'Your brand shows meaningful momentum but several structural gaps are actively limiting your visibility, authority, and conversion potential. The strategic analysis below outlines the specific patterns identified and the highest-leverage actions to address them.'}</p>`;
 
-            /* §2 Strategic Priorities */
-            const priorities = narrative.priorities && narrative.priorities.length
-                ? narrative.priorities
+            /* §2 Strategic Priorities — API field: narrative.strategic_priority_stack */
+            const rawPriorities = narrative.strategic_priority_stack || [];
+            const priorities = rawPriorities.length
+                ? rawPriorities.map(p => ({
+                    title: p.title,
+                    description: p.expected_outcome || '',
+                    urgency: (p.urgency === 'HIGH' || p.urgency === 'CRITICAL') ? 'Immediate' : (p.urgency || 'High'),
+                    impact: 'High'
+                  }))
                 : [
                     { title: "Establish Publishing Consistency", description: "Irregular cadence is suppressing algorithmic reach. A locked 4×/week schedule is the single highest-leverage fix.", urgency: "Immediate", impact: "High" },
                     { title: "Build Cross-Platform Presence",   description: "Single-platform dependency creates fragility. Expanding to 2–3 platforms compounds reach without proportional effort.", urgency: "High",      impact: "High" },
@@ -640,13 +659,20 @@
                     <span class="priority-impact-badge">${p.urgency || 'High'} Priority · ${p.impact || 'High'} Impact</span>
                 </div>`).join('');
 
-            /* §3 Business Consequences */
+            /* §3 Business Consequences — API field: narrative.expected_business_impact (string array) */
             const defaultConsequences = [
                 { icon: "📉", title: "Visibility Decay", text: "Without cadence correction, platform algorithms will progressively reduce organic reach — a compounding disadvantage that becomes harder to reverse over time." },
                 { icon: "🏴", title: "Authority Loss",   text: "Inconsistent presence signals low credibility to both audiences and algorithms. Competitors publishing consistently are capturing the authority position in your vertical." },
                 { icon: "🔓", title: "Conversion Leakage", text: "Every week without a conversion architecture in your content stack is revenue left uncaptured from an audience that is already warm and interested." }
             ];
-            const consequences = narrative.consequence_cards || defaultConsequences;
+            const impactStrings = narrative.expected_business_impact || [];
+            const consequences = impactStrings.length
+                ? [
+                    { icon: "📉", title: "Visibility Risk",      text: impactStrings[0] || defaultConsequences[0].text },
+                    { icon: "🏴", title: "Authority Gap",        text: impactStrings[1] || defaultConsequences[1].text },
+                    { icon: "🔓", title: "Conversion Leakage",   text: impactStrings[2] || defaultConsequences[2].text }
+                  ]
+                : defaultConsequences;
             document.getElementById('s3-consequences').innerHTML = consequences.map(c => `
                 <div class="consequence-v2">
                     <div class="icon">${c.icon || '⚠️'}</div>
@@ -654,33 +680,44 @@
                     <p>${c.text}</p>
                 </div>`).join('');
 
-            /* §4 Why We Detected This (Evidence) */
+            /* §4 Why We Detected This — API field: strategic_analysis (items have metric, evidence) */
             document.getElementById('s4-evidence').innerHTML = (gaps.length ? gaps : [
-                { title: "Publishing Cadence Fragmentation",   evidence: "Platform resonance scanning identified irregular posting windows — a pattern correlated with algorithmic demotion across Instagram, LinkedIn, and Facebook." },
-                { title: "Single-Channel Authority Stacking",  evidence: "Cross-platform footprint analysis shows concentrated presence on one platform, creating vulnerability to algorithm shifts and limiting total addressable reach." },
-                { title: "Conversion Layer Absence",           evidence: "Content genome analysis across your recent posts identified a predominance of awareness-layer content with minimal conversion-architecture posts (testimonials, case studies, direct CTAs)." }
+                { metric: "Publishing Cadence Fragmentation",   evidence: "Platform resonance scanning identified irregular posting windows — a pattern correlated with algorithmic demotion across Instagram, LinkedIn, and Facebook." },
+                { metric: "Single-Channel Authority Stacking",  evidence: "Cross-platform footprint analysis shows concentrated presence on one platform, creating vulnerability to algorithm shifts and limiting total addressable reach." },
+                { metric: "Conversion Layer Absence",           evidence: "Content genome analysis across your recent posts identified a predominance of awareness-layer content with minimal conversion-architecture posts (testimonials, case studies, direct CTAs)." }
             ]).map(gap => `
                 <div class="evidence-v2">
                     <div class="ev-header">
                         <span class="ev-label">Strategic Pattern Detected</span>
                     </div>
-                    <h4>${gap.title}</h4>
+                    <h4>${gap.metric || gap.title || 'Strategic Gap Identified'}</h4>
                     <p>${gap.evidence || gap.description || 'Strategic pattern identified via platform resonance scanning.'}</p>
                 </div>`).join('');
 
-            /* §5 What High-Performing Brands Do Differently */
-            const aspirations = narrative.aspirations || [
+            /* §5 What High-Performing Brands Do — API field: narrative.high_performing_comparatives */
+            const comparatives = narrative.high_performing_comparatives;
+            const defaultAspirations = [
                 { label: "Strategic Cadence",        headline: "They publish on a locked, non-negotiable schedule.", body: "Top-performing brands treat publishing frequency like payroll — non-negotiable. 4–6 posts per week across 2–3 platforms is the baseline for algorithmic momentum in competitive verticals." },
                 { label: "Authority Positioning",    headline: "They own a niche before expanding.", body: "High-performing brands dominate 2–3 specific topics before broadening their content scope. Topic concentration accelerates category authority faster than generalist posting." },
                 { label: "Content Genome Diversity", headline: "They mix awareness, authority, and conversion content.", body: "The 5-3-2 rule: for every 10 posts — 5 are educational, 3 are original authority pieces, 2 are conversion-focused. This balance maximises reach, builds trust, and drives action." },
                 { label: "Multi-Platform Resilience",headline: "They distribute risk across platforms.", body: "No single-platform dependency. Leaders maintain active presence across 3+ channels, treating each as a distinct audience relationship with tailored content rhythm." }
             ];
+            const aspLabels = ["Best Practice", "Strategic Habit", "Content System", "Growth Lever"];
+            const aspirations = (comparatives && comparatives.bullet_points && comparatives.bullet_points.length)
+                ? comparatives.bullet_points.map((bp, i) => ({
+                    label: aspLabels[i] || 'Best Practice',
+                    headline: bp,
+                    body: ''
+                  }))
+                : defaultAspirations;
             document.getElementById('s5-aspiration').innerHTML = aspirations.map(a => `
                 <div class="aspiration-v2">
                     <div class="asp-label">${a.label}</div>
                     <h4>${a.headline}</h4>
                     <p>${a.body}</p>
                 </div>`).join('');
+
+            console.log('[AUDIT_RENDER] Results rendered successfully', { sections: 8, score });
 
             /* §6 Opportunities & Content Genome */
             document.getElementById('s6-opportunities').innerHTML = [
@@ -738,8 +775,9 @@
             const btn = document.getElementById('send-report-btn');
             btn.disabled = true;
             btn.innerText = 'Sending...';
+            console.log(`[AUDIT_DOWNLOAD] Lead capture submit audit_id=${currentAuditId} email=${email}`);
             try {
-                await fetch(`${API_BASE}/api/public/brand-audit/lead`, {
+                await fetch(`${API_BASE}/api/public/audit-lead`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ audit_id: currentAuditId, name, email, business_name: currentBrandName })
@@ -748,6 +786,7 @@
                 btn.style.background = '#059669';
                 setTimeout(() => hideLeadCapture(), 2000);
             } catch (err) {
+                console.error('[AUDIT_DOWNLOAD_ERROR]', err);
                 btn.innerText = 'Email My Report';
                 btn.disabled  = false;
                 alert('Failed to send. Please try again.');
