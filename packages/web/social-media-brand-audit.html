@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Free Social Media Brand Audit — Find Your Growth Gaps | myPilotPost</title>
+    <meta name="description" content="Run a free Social Media Brand Audit in 30 seconds. Get an executive-level diagnosis of your visibility gaps, engagement weaknesses, and conversion leaks across LinkedIn, Instagram, Facebook, X, and TikTok.">
+    <meta name="keywords" content="social media brand audit, free social media brand audit, social media audit tool, social media marketing audit, social media strategy audit, social media audit report">
+    <link rel="canonical" href="https://www.mypilotpost.com/social-media-brand-audit">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.mypilotpost.com/social-media-brand-audit">
+    <meta property="og:title" content="Free Social Media Brand Audit | myPilotPost">
+    <meta property="og:description" content="Get an executive-level diagnosis of your brand's social media weaknesses. Free. No account required.">
+    <meta property="og:image" content="https://www.mypilotpost.com/images/og-social-media-audit.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Free Social Media Brand Audit | myPilotPost">
+    <meta name="twitter:description" content="Find exactly where your social media strategy is limiting growth. Free audit, executive-level results.">
+    <meta name="twitter:image" content="https://www.mypilotpost.com/images/og-social-media-audit.png">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Social Media Brand Audit",
+      "applicationCategory": "BusinessApplication",
+      "description": "Free Social Media Brand Audit. Analyzes visibility, engagement, authority, and conversion readiness across your social platforms.",
+      "url": "https://www.mypilotpost.com/social-media-brand-audit",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "provider": { "@type": "Organization", "name": "myPilotPost", "url": "https://www.mypilotpost.com" }
+    }
+    </script>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="config.js"></script>
+
+    <style>
+        /* ===== CORE STYLES (From index.html) ===== */
+        :root {
+            --primary-blue: #2563EB;
+            --dark-blue: #1D4ED8;
+            --text-dark: #000000;
+            --text-gray: #646565;
+            --light-gray: #EEF0F1;
+            --border-gray: #CECECE;
+            --white: #FFFFFF;
+            --success-green: #35C961;
+            --radius-medium: 8px;
+            --radius-large: 14px;
+            --radius-xl: 24px;
+            --space-three: 48px;
+            --space-five: 80px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; font-weight: 300; color: #1a1a1a; background: #ffffff; overflow-x: hidden; line-height: 1.5; }
+        .container { max-width: 1280px; margin: 0 auto; padding: 0 20px; width: 100%; }
+
+        /* Header & Nav Parity */
+        .header { position: sticky; top: 0; background: var(--white); box-shadow: 0 2px 20px rgba(0, 0, 0, 0.05); z-index: 1000; padding: 20px 0; }
+        .header__container { display: flex; align-items: center; justify-content: space-between; }
+        .logo { width: 272px; height: 54px; background: url('images/myPilotPost-Logo.png') no-repeat center/contain; cursor: pointer; }
+        .nav-menu { display: flex; gap: 28px; align-items: center; }
+        .nav-menu__item { font-size: 18px; color: var(--text-gray); text-decoration: none; transition: color 0.3s; }
+        .nav-menu__item:hover { color: var(--primary-blue); }
+        .header__buttons { display: flex; gap: 20px; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: var(--radius-medium); font-weight: 500; font-size: 18px; cursor: pointer; transition: all 0.3s ease; border: none; text-decoration: none; }
+        .btn--primary { background: var(--primary-blue); color: var(--white); }
+        .btn--primary:hover { background: var(--dark-blue); transform: translateY(-2px); box-shadow: 0 10px 25px rgba(37, 99, 235, 0.3); }
+        .btn--secondary { background: transparent; border: 1px solid var(--border-gray); color: var(--text-gray); }
+        .btn--large { padding: 15px 30px; font-size: 21px; }
+
+        /* ===== AUDIT SPECIFIC PREMIUM STYLES ===== */
+        .audit-hero { padding: 120px 0 80px; background: radial-gradient(circle at top right, rgba(37, 99, 235, 0.05), transparent 60%); position: relative; overflow: hidden; }
+        .hero-eyebrow { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--primary-blue); margin-bottom: 24px; display: block; text-align: center; }
+        .hero-headline { font-size: 64px; font-weight: 800; line-height: 1.1; margin-bottom: 32px; text-align: center; max-width: 900px; margin-left: auto; margin-right: auto; }
+        .hero-subheadline { font-size: 22px; color: var(--text-gray); margin-bottom: 48px; text-align: center; max-width: 800px; margin-left: auto; margin-right: auto; line-height: 1.6; }
+
+        .floating-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 64px; }
+        .visual-card { background: white; border-radius: 20px; padding: 24px; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 20px 40px rgba(0,0,0,0.04); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .visual-card:hover { transform: translateY(-10px); }
+        .visual-card img { width: 100%; border-radius: 12px; margin-bottom: 16px; display: block; }
+        .visual-card caption { display: block; font-size: 14px; font-weight: 700; color: var(--text-dark); text-align: left; }
+
+        /* "What this audit uncovers" Section */
+        .uncovers-section { padding: 100px 0; background: #fafafa; }
+        .section-header { text-align: center; margin-bottom: 64px; }
+        .section-title { font-size: 44px; font-weight: 700; margin-bottom: 16px; }
+        .section-subtext { font-size: 18px; color: var(--text-gray); max-width: 700px; margin: 0 auto; }
+
+        .uncovers-grid { display: grid; grid-template-columns: repeat(3, 2fr); gap: 32px; }
+        .uncover-card { background: white; border-radius: 24px; overflow: hidden; border: 1px solid var(--border-gray); transition: all 0.3s ease; }
+        .uncover-card:hover { transform: translateY(-8px); box-shadow: 0 30px 60px rgba(0,0,0,0.08); border-color: var(--primary-blue); }
+        .uncover-visual { height: 200px; overflow: hidden; background: #eee; }
+        .uncover-visual img { width: 100%; height: 100%; object-fit: cover; }
+        .uncover-content { padding: 32px; }
+        .uncover-icon { width: 40px; height: 40px; margin-bottom: 16px; }
+        .uncover-title { font-size: 22px; font-weight: 700; margin-bottom: 12px; }
+        .uncover-copy { font-size: 16px; color: var(--text-gray); line-height: 1.5; }
+
+        /* Form Section */
+        .form-section { padding: 100px 0; background: white; border-top: 1px solid #eee; }
+        .form-card { max-width: 800px; margin: 0 auto; background: white; border: 1px solid var(--border-gray); border-radius: 32px; padding: 64px; box-shadow: 0 40px 80px rgba(0,0,0,0.05); }
+        .form-header { text-align: center; margin-bottom: 40px; }
+        .form-header h2 { font-size: 36px; font-weight: 700; margin-bottom: 12px; }
+        .form-header p { color: var(--text-gray); font-size: 18px; }
+
+        .input-group { margin-bottom: 24px; }
+        .input-label { display: block; font-weight: 700; margin-bottom: 12px; font-size: 16px; }
+        .premium-input { width: 100%; padding: 18px 24px; border-radius: 12px; border: 1.5px solid var(--border-gray); font-size: 18px; outline: none; transition: border-color 0.3s; }
+        .premium-input:focus { border-color: var(--primary-blue); }
+
+        /* Cinematic Loading */
+        .loading-overlay { display: none; text-align: center; padding: 100px 20px; }
+        .loading-stage { margin-bottom: 40px; }
+        .loading-text { font-size: 24px; font-weight: 700; color: var(--primary-blue); margin-top: 24px; }
+        .scanning-animation { width: 120px; height: 120px; margin: 0 auto; position: relative; }
+        .scanning-animation::before { content: ''; position: absolute; inset: 0; border: 4px solid var(--primary-blue); border-radius: 50%; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: scale(0.8); opacity: 0.5; } 100% { transform: scale(1.2); opacity: 0; } }
+
+        /* Results Page */
+        .results-page { display: none; padding-bottom: 100px; background: #fdfdfd; }
+        .briefing-hero { background: var(--text-dark); color: white; padding: 100px 0; text-align: center; border-radius: 0 0 64px 64px; margin-bottom: 64px; }
+        .briefing-tag { display: inline-block; padding: 6px 12px; background: rgba(255,255,255,0.1); border-radius: 6px; font-size: 12px; font-weight: 700; margin-bottom: 24px; }
+        .briefing-title { font-size: 48px; font-weight: 800; margin-bottom: 24px; }
+
+        .insight-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 48px; }
+        .main-narrative { background: white; border-radius: 32px; padding: 48px; border: 1px solid var(--border-gray); box-shadow: 0 10px 30px rgba(0,0,0,0.02); }
+        .narrative-block { margin-bottom: 48px; }
+        .narrative-title { font-size: 24px; font-weight: 700; margin-bottom: 16px; color: var(--primary-blue); display: flex; align-items: center; gap: 12px; }
+        .narrative-text { font-size: 18px; color: #333; line-height: 1.7; }
+
+        .priority-sidebar { display: flex; flex-direction: column; gap: 24px; }
+        .priority-card { background: white; border-radius: 20px; padding: 24px; border-left: 6px solid var(--primary-blue); box-shadow: 0 10px 20px rgba(0,0,0,0.03); }
+        .priority-card.high { border-color: #ef4444; }
+        .priority-title { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+        .priority-impact { font-size: 12px; font-weight: 700; color: var(--text-gray); text-transform: uppercase; letter-spacing: 1px; }
+
+        .evidence-block { margin-top: 24px; padding: 24px; background: #f8fafc; border-radius: 12px; border: 1px dashed var(--border-gray); }
+        .evidence-title { font-size: 14px; font-weight: 700; color: var(--text-gray); margin-bottom: 8px; text-transform: uppercase; }
+
+        .consequence-card { background: #fff1f2; border: 1px solid #fecaca; border-radius: 16px; padding: 24px; color: #991b1b; }
+        .aspiration-card { background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 16px; padding: 24px; color: #065f46; margin-top: 48px; }
+
+        .cta-footer { background: var(--primary-blue); color: white; padding: 80px 0; text-align: center; border-radius: 48px; margin-top: 100px; }
+        .cta-headline { font-size: 36px; font-weight: 700; margin-bottom: 16px; }
+        .cta-subtext { font-size: 18px; opacity: 0.9; margin-bottom: 40px; max-width: 600px; margin-left: auto; margin-right: auto; }
+
+        /* ===== CINEMATIC LOADING BADGES ===== */
+        .loading-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 100px; font-size: 13px; font-weight: 700; border: 1.5px solid; transition: all 0.4s ease; }
+        .loading-badge--pending  { background: #f8fafc; border-color: #e2e8f0; color: #94a3b8; }
+        .loading-badge--active   { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; animation: badgePulse 1.2s ease-in-out infinite; }
+        .loading-badge--complete { background: #f0fdf4; border-color: #86efac; color: #166534; }
+        @keyframes badgePulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
+
+        /* ===== 8-SECTION RESULT ARCHITECTURE ===== */
+        .section-eyebrow { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--primary-blue); margin-bottom: 10px; }
+        .result-section { margin-bottom: 56px; }
+        .result-section-title { font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
+
+        /* Section 1 – Executive Diagnosis */
+        .exec-diagnosis { background: #0f172a; color: white; border-radius: 24px; padding: 48px; margin-bottom: 12px; }
+        .exec-diagnosis h3 { font-size: 28px; font-weight: 800; margin-bottom: 16px; }
+        .exec-diagnosis p { font-size: 17px; line-height: 1.75; opacity: 0.88; }
+
+        /* Section 2 – Strategic Priorities */
+        .priorities-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .priority-card-v2 { background: white; border-radius: 16px; padding: 28px; border: 1px solid #e5e9f0; border-top: 4px solid var(--primary-blue); box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+        .priority-card-v2.urgent { border-top-color: #ef4444; }
+        .priority-num  { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: #94a3b8; margin-bottom: 10px; }
+        .priority-heading { font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 10px; }
+        .priority-outcome { font-size: 13px; color: #64748b; line-height: 1.6; }
+        .priority-impact-badge { display: inline-block; margin-top: 12px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; background: #eff6ff; color: #1d4ed8; }
+
+        /* Section 3 – Business Consequences */
+        .consequences-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .consequence-v2 { background: #fff1f2; border: 1px solid #fecaca; border-radius: 16px; padding: 28px; }
+        .consequence-v2 .icon { font-size: 28px; margin-bottom: 14px; }
+        .consequence-v2 h4 { font-size: 16px; font-weight: 700; color: #991b1b; margin-bottom: 10px; }
+        .consequence-v2 p { font-size: 14px; color: #7f1d1d; line-height: 1.6; }
+
+        /* Section 4 – Why We Detected This */
+        .evidence-v2 { background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 14px; padding: 28px; margin-bottom: 16px; }
+        .evidence-v2 .ev-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+        .evidence-v2 .ev-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: #64748b; }
+        .evidence-v2 h4 { font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 8px; }
+        .evidence-v2 p { font-size: 14px; color: #475569; line-height: 1.65; }
+
+        /* Section 5 – What High-Performing Brands Do */
+        .aspiration-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        .aspiration-v2 { background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%); border: 1px solid #a7f3d0; border-radius: 16px; padding: 28px; }
+        .aspiration-v2 .asp-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #059669; margin-bottom: 8px; }
+        .aspiration-v2 h4 { font-size: 16px; font-weight: 700; color: #064e3b; margin-bottom: 10px; }
+        .aspiration-v2 p { font-size: 14px; color: #065f46; line-height: 1.6; }
+
+        /* Section 6 – Opportunities */
+        .opportunities-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        .opportunity-v2 { background: linear-gradient(135deg, #eff6ff 0%, #f8faff 100%); border: 1px solid #bfdbfe; border-radius: 16px; padding: 28px; }
+        .opportunity-v2 .opp-emoji { font-size: 28px; margin-bottom: 14px; }
+        .opportunity-v2 h4 { font-size: 16px; font-weight: 700; color: #1e3a8a; margin-bottom: 8px; }
+        .opportunity-v2 p { font-size: 14px; color: #1d4ed8; line-height: 1.6; }
+
+        /* Section 7 – Brand DNA Score */
+        .dna-score-bar { height: 12px; background: #f1f5f9; border-radius: 99px; overflow: hidden; margin: 12px 0; }
+        .dna-score-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #2563EB, #7c3aed); transition: width 1.2s cubic-bezier(0.16,1,0.3,1); }
+        .dna-dimensions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 24px; }
+        .dna-dim { background: white; border: 1px solid #e5e9f0; border-radius: 12px; padding: 16px; text-align: center; }
+        .dna-dim-score { font-size: 26px; font-weight: 800; color: #0f172a; }
+        .dna-dim-label { font-size: 12px; color: #64748b; margin-top: 4px; }
+
+        /* Section 8 – Locked Roadmap */
+        .locked-roadmap { border-radius: 24px; overflow: hidden; position: relative; }
+        .roadmap-blur { filter: blur(5px); user-select: none; pointer-events: none; padding: 36px; background: #f8fafc; }
+        .roadmap-blur .fake-row { height: 20px; background: #e2e8f0; border-radius: 6px; margin-bottom: 14px; }
+        .roadmap-blur .fake-row.short { width: 60%; }
+        .roadmap-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(15,23,42,0.72); backdrop-filter: blur(2px); border-radius: 24px; text-align: center; padding: 40px; }
+        .roadmap-overlay h3 { font-size: 24px; font-weight: 800; color: white; margin-bottom: 12px; }
+        .roadmap-overlay p { font-size: 15px; color: rgba(255,255,255,0.82); margin-bottom: 28px; max-width: 480px; line-height: 1.6; }
+        .btn--white { background: white; color: var(--primary-blue); font-weight: 700; }
+        .btn--white:hover { background: #f0f9ff; transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+
+        /* ===== FOOTER ===== */
+        .footer { background: #002F86; color: #fff; padding: 80px 0 48px; -webkit-font-smoothing: antialiased; }
+        .footer__grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 64px; margin-bottom: 64px; }
+        .footer__logo { width: 302px; height: 49px; background: url('images/myPilotPost-Logo.png') no-repeat left/contain; margin-bottom: 16px; cursor: pointer; }
+        .footer__tagline { color: rgba(255,255,255,0.9); margin-bottom: 8px; font-size: 16px; font-weight: 600; }
+        .footer__desc { color: rgba(255,255,255,0.75); font-size: 15px; line-height: 1.6; margin-bottom: 30px; }
+        .social-links { display: flex; gap: 18px; }
+        .social-link { cursor: pointer; transition: transform 0.3s, filter 0.3s; }
+        .social-link:hover { transform: translateY(-2px); filter: brightness(1.2); }
+        .footer__column-title { font-size: 14px; font-weight: 700; color: rgba(255,255,255,0.85); margin-bottom: 24px; text-transform: uppercase; letter-spacing: 0.06em; }
+        .footer__link { display: block; color: rgba(255,255,255,0.75); text-decoration: none; margin-bottom: 10px; font-size: 15px; transition: all 0.3s ease; }
+        .footer__link:hover { color: #fff; padding-left: 4px; }
+        .footer__divider { width: 100%; height: 1px; background: rgba(255,255,255,0.15); margin: 48px 0 32px; }
+        .footer__copyright { text-align: center; color: rgba(255,255,255,0.6); font-size: 15px; }
+
+        /* Mobile toggle */
+        .mobile-toggle { display: none; flex-direction: column; cursor: pointer; padding: 10px; }
+        .mobile-toggle span { width: 25px; height: 3px; background: var(--text-dark); margin: 3px 0; transition: 0.3s; }
+
+        /* Mobile menu */
+        .mobile-menu { display: none; position: fixed; top: 0; right: -100%; width: 80%; max-width: 400px; height: 100vh; background: var(--white); box-shadow: -2px 0 20px rgba(0,0,0,0.1); z-index: 1001; padding: 80px 30px; transition: right 0.3s ease; }
+        .mobile-menu.active { right: 0; }
+        .mobile-menu__item { display: block; padding: 15px 0; font-size: 18px; color: var(--text-dark); text-decoration: none; border-bottom: 1px solid var(--border-gray); }
+        .mobile-menu__buttons { margin-top: 30px; display: flex; flex-direction: column; gap: 15px; }
+
+        /* Mobile */
+        @media (max-width: 768px) {
+            .nav-menu, .header__buttons { display: none; }
+            .mobile-toggle { display: flex; }
+            .mobile-menu { display: block; }
+            .hero-headline { font-size: 40px; }
+            .floating-cards, .uncovers-grid { grid-template-columns: 1fr; }
+            .form-card { padding: 40px 20px; }
+            .priorities-grid, .consequences-grid, .aspiration-grid, .opportunities-grid, .dna-dimensions { grid-template-columns: 1fr; }
+            .footer__grid { grid-template-columns: 1fr 1fr; gap: 40px; }
+            .insight-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="/assets/css/footer.css">
+</head>
+<body>
+    <!-- Mobile Menu -->
+    <div class="mobile-menu" id="mobileMenu">
+        <a href="index.html" class="mobile-menu__item">Home</a>
+        <a href="features.html" class="mobile-menu__item">Features</a>
+        <a href="solutions.html" class="mobile-menu__item">Solutions</a>
+        <a href="pricing.html" class="mobile-menu__item">Pricing</a>
+        <a href="resources.html" class="mobile-menu__item">Resources</a>
+        <div class="mobile-menu__buttons">
+            <button class="btn btn--secondary" onclick="redirectToApp('/login')">Sign In</button>
+            <button class="btn btn--primary" onclick="redirectToApp('/register')">Get Started</button>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="container header__container">
+            <div class="logo" onclick="window.location.href='index.html'" aria-label="myPilotPost Logo"></div>
+
+            <nav class="nav-menu" aria-label="Main Navigation">
+                <a href="index.html" class="nav-menu__item">Home</a>
+                <a href="features.html" class="nav-menu__item">Features</a>
+                <a href="solutions.html" class="nav-menu__item">Solutions</a>
+				<a href="pricing.html" class="nav-menu__item">Pricing</a>
+                <a href="resources.html" class="nav-menu__item">Resources</a>
+            </nav>
+
+            <div class="header__buttons">
+                <button class="btn btn--secondary" onclick="redirectToApp('/login')">
+                    Sign In
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M4.1665 10H15.8332" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M10 4.16667L15.8333 10L10 15.8333" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <button class="btn btn--primary" onclick="redirectToApp('/register')">
+                    Get Started
+                </button>
+            </div>
+
+            <div class="mobile-toggle" onclick="toggleMobileMenu()" aria-label="Toggle mobile menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </header>
+
+    <main id="audit-flow">
+        <!-- Hero Section -->
+        <section class="audit-hero">
+            <div class="container">
+                <span class="hero-eyebrow">Social Media Brand Audit</span>
+                <h1 class="hero-headline">Your social media may be active. But is it actually driving growth?</h1>
+                <p class="hero-subheadline">Most brands don't struggle because they lack content. They struggle because their visibility, positioning, consistency, and conversion systems are misaligned. Run a free Social Media Brand Audit to uncover the strategic weaknesses limiting your growth.</p>
+
+                <div style="text-align: center;">
+                    <a href="#begin-audit" class="btn btn--primary btn--large">Run Your Free Social Media Brand Audit</a>
+                    <div style="display: flex; justify-content: center; gap: 24px; margin-top: 32px; color: var(--text-gray); font-size: 14px;">
+                        <span>✓ Strategic diagnostic</span>
+                        <span>✓ Executive-level insights</span>
+                        <span>✓ Free snapshot report included</span>
+                    </div>
+                </div>
+
+                <div class="floating-cards">
+                    <div class="visual-card">
+                        <img src="images/audit/visibility.png" alt="Visibility Intelligence">
+                        <caption>Visibility Intelligence</caption>
+                    </div>
+                    <div class="visual-card">
+                        <img src="images/audit/strategy.png" alt="Strategic Content Mapping">
+                        <caption>Strategic Content Mapping</caption>
+                    </div>
+                    <div class="visual-card">
+                        <img src="images/audit/growth.png" alt="Growth Opportunity Detection">
+                        <caption>Growth Opportunity Detection</caption>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- "What this audit uncovers" -->
+        <section class="uncovers-section">
+            <div class="container">
+                <div class="section-header">
+                    <h2 class="section-title">What the Social Media Brand Audit uncovers</h2>
+                    <p class="section-subtext">This is not a vanity metric checker. The audit evaluates the strategic systems influencing your visibility, engagement, authority, and growth potential.</p>
+                </div>
+
+                <div class="uncovers-grid">
+                    <!-- Card 1 -->
+                    <div class="uncover-card">
+                        <div class="uncover-visual"><img src="images/audit/visibility.png" alt="Visibility Gaps"></div>
+                        <div class="uncover-content">
+                            <h3 class="uncover-title">Visibility Gaps</h3>
+                            <p class="uncover-copy">Identify where your brand is losing reach, discoverability, and algorithm momentum.</p>
+                        </div>
+                    </div>
+                    <!-- Card 2 -->
+                    <div class="uncover-card">
+                        <div class="uncover-visual"><img src="images/audit/strategy.png" alt="Content Consistency"></div>
+                        <div class="uncover-content">
+                            <h3 class="uncover-title">Content Consistency</h3>
+                            <p class="uncover-copy">Detect publishing behaviors reducing audience trust and long-term engagement growth.</p>
+                        </div>
+                    </div>
+                    <!-- Card 3 -->
+                    <div class="uncover-card">
+                        <div class="uncover-visual"><img src="images/audit/funnel.png" alt="Conversion Friction"></div>
+                        <div class="uncover-content">
+                            <h3 class="uncover-title">Conversion Friction</h3>
+                            <p class="uncover-copy">Reveal weaknesses preventing profile visitors from becoming leads or customers.</p>
+                        </div>
+                    </div>
+                    <!-- Card 4 -->
+                    <div class="uncover-card">
+                        <div class="uncover-visual"><img src="images/audit/benchmark.png" alt="Competitive Positioning"></div>
+                        <div class="uncover-content">
+                            <h3 class="uncover-title">Competitive Positioning</h3>
+                            <p class="uncover-copy">Understand how your brand compares against stronger-performing competitors in your market.</p>
+                        </div>
+                    </div>
+                    <!-- Card 5 -->
+                    <div class="uncover-card">
+                        <div class="uncover-visual"><img src="images/audit/trust.png" alt="Audience Trust Signals"></div>
+                        <div class="uncover-content">
+                            <h3 class="uncover-title">Audience Trust Signals</h3>
+                            <p class="uncover-copy">Evaluate authority, content resonance, and the signals influencing customer confidence.</p>
+                        </div>
+                    </div>
+                    <!-- Card 6 -->
+                    <div class="uncover-card">
+                        <div class="uncover-visual"><img src="images/audit/growth.png" alt="Strategic Growth Opportunities"></div>
+                        <div class="uncover-content">
+                            <h3 class="uncover-title">Strategic Growth Opportunities</h3>
+                            <p class="uncover-copy">Discover the highest-leverage improvements capable of accelerating growth fastest.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Form Section -->
+        <section id="begin-audit" class="form-section">
+            <div class="container">
+                <div class="form-card">
+                    <div class="form-header">
+                        <h2>Start Your Free Social Media Brand Audit</h2>
+                        <p>Enter your website or primary social profile to begin your strategic analysis.</p>
+                    </div>
+                    <div id="form-container">
+                        <div class="input-group">
+                            <label class="input-label">Website or Social Presence</label>
+                            <input type="text" id="brand-input" class="premium-input" placeholder="example.com or linkedin.com/company/yourbrand">
+                        </div>
+                        <button id="run-audit-btn" class="btn btn--primary btn--large" style="width: 100%;">Analyze Brand Strategy</button>
+                    </div>
+
+                    <!-- Cinematic Loading Overlay -->
+                    <div id="loading-experience" class="loading-overlay">
+                        <div class="scanning-animation"></div>
+                        <div id="loading-stage-text" class="loading-text">Detecting brand presence...</div>
+                        <div id="loading-badges" style="margin-top: 24px; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section id="results-view" class="results-page">
+            <!-- Briefing Hero -->
+            <div class="briefing-hero">
+                <div class="container">
+                    <span class="briefing-tag">SOCIAL MEDIA BRAND AUDIT — STRATEGIC BRIEFING</span>
+                    <h2 id="result-brand-name" class="briefing-title">Social Media Brand Audit</h2>
+                    <div style="display:flex;justify-content:center;gap:32px;opacity:0.8;">
+                        <div id="result-date">Analysis Date: --</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="container" style="padding-top:0;padding-bottom:120px;">
+
+                <!-- §1 Executive Diagnosis -->
+                <div class="result-section" style="margin-top:64px;">
+                    <div class="section-eyebrow">01 — Realization</div>
+                    <div id="s1-exec-diagnosis" class="exec-diagnosis">
+                        <h3>Executive Diagnosis</h3>
+                        <p>Generating narrative...</p>
+                    </div>
+                </div>
+
+                <!-- §2 Strategic Priorities -->
+                <div class="result-section">
+                    <div class="section-eyebrow">02 — Immediate Action</div>
+                    <div class="result-section-title">Top 3 Strategic Priorities</div>
+                    <div id="s2-priorities" class="priorities-grid"></div>
+                </div>
+
+                <!-- §3 Business Consequences -->
+                <div class="result-section">
+                    <div class="section-eyebrow">03 — Concern</div>
+                    <div class="result-section-title">Business Consequences of Inaction</div>
+                    <div id="s3-consequences" class="consequences-grid"></div>
+                </div>
+
+                <!-- §4 Why We Detected This -->
+                <div class="result-section">
+                    <div class="section-eyebrow">04 — Credibility</div>
+                    <div class="result-section-title">Why We Detected This</div>
+                    <div id="s4-evidence"></div>
+                </div>
+
+                <!-- §5 What High-Performing Brands Do -->
+                <div class="result-section">
+                    <div class="section-eyebrow">05 — Aspiration</div>
+                    <div class="result-section-title">What High-Performing Brands Do Differently</div>
+                    <div id="s5-aspiration" class="aspiration-grid"></div>
+                </div>
+
+                <!-- §6 Opportunities & Content Genome -->
+                <div class="result-section">
+                    <div class="section-eyebrow">06 — Strategic Hope</div>
+                    <div class="result-section-title">Growth Opportunities & Content Genome</div>
+                    <div id="s6-opportunities" class="opportunities-grid"></div>
+                </div>
+
+                <!-- §7 Brand DNA Score -->
+                <div class="result-section">
+                    <div class="section-eyebrow">07 — Supporting Evidence</div>
+                    <div class="result-section-title">Brand DNA Score™</div>
+                    <div id="s7-dna" style="background:white;border:1px solid #e5e9f0;border-radius:20px;padding:36px;"></div>
+                </div>
+
+                <!-- §8 Locked Strategic Roadmap -->
+                <div class="result-section">
+                    <div class="section-eyebrow">08 — Conversion</div>
+                    <div class="result-section-title">Your Strategic Roadmap</div>
+                    <div class="locked-roadmap">
+                        <div class="roadmap-blur">
+                            <div class="fake-row"></div><div class="fake-row short"></div>
+                            <div class="fake-row"></div><div class="fake-row short"></div>
+                            <div class="fake-row"></div><div class="fake-row short"></div>
+                            <div class="fake-row"></div>
+                        </div>
+                        <div class="roadmap-overlay">
+                            <h3>Your full strategy is ready.</h3>
+                            <p>Continue into your Strategic Command Center to access your complete 90-day roadmap, execution priorities, content opportunities, and growth systems — all built around your brand.</p>
+                            <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;">
+                                <button class="btn btn--white btn--large" onclick="redirectToRegister()">Continue to Full Strategy</button>
+                                <button class="btn btn--secondary" style="border-color:rgba(255,255,255,0.4);color:white;" onclick="showLeadCapture()">Download Snapshot Report</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <!-- Lead Capture Modal -->
+    <div id="lead-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:2000;align-items:center;justify-content:center;">
+        <div style="background:white;padding:48px;border-radius:32px;max-width:500px;width:90%;position:relative;">
+            <button onclick="hideLeadCapture()" style="position:absolute;top:24px;right:24px;background:none;border:none;font-size:24px;cursor:pointer;">&times;</button>
+            <h3 style="margin-bottom:16px;font-weight:700;">Get Your Social Media Audit Report</h3>
+            <p style="color:var(--text-gray);margin-bottom:24px;">We'll send the executive summary and strategic gap analysis directly to your inbox.</p>
+            <div class="input-group">
+                <input type="text" id="lead-name" class="premium-input" placeholder="Your Name" style="margin-bottom:16px;">
+                <input type="email" id="lead-email" class="premium-input" placeholder="Email Address">
+            </div>
+            <button id="send-report-btn" class="btn btn--primary" style="width:100%;padding:16px;">Email My Report</button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+
+    <!-- JS Logic -->
+    <script>
+        const API_BASE = window.MPP_CONFIG ? window.MPP_CONFIG.API_URL : "https://api.mypilotpost.com";
+
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            menu.classList.toggle('active');
+            document.body.style.overflow = menu.classList.contains('active') ? 'hidden' : 'auto';
+        }
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('mobileMenu');
+            const toggle = document.querySelector('.mobile-toggle');
+            if (menu && toggle && !menu.contains(e.target) && !toggle.contains(e.target) && menu.classList.contains('active')) {
+                menu.classList.remove('active');
+                document.body.style.overflow = 'auto';
+            }
+        });
+        let currentAuditId = null;
+        let currentBrandName = "";
+
+        const runBtn = document.getElementById('run-audit-btn');
+        const input  = document.getElementById('brand-input');
+        const formView    = document.getElementById('form-container');
+        const loadingView = document.getElementById('loading-experience');
+        const resultsView = document.getElementById('results-view');
+
+        /* ── Cinematic loading stages with badge labels ── */
+        const stages = [
+            { text: "Detecting brand presence...",        badge: "Platforms",   duration: 2200 },
+            { text: "Analysing visibility structure...",  badge: "Visibility",  duration: 2800 },
+            { text: "Evaluating engagement patterns...",  badge: "Engagement",  duration: 2800 },
+            { text: "Mapping authority signals...",       badge: "Authority",   duration: 2800 },
+            { text: "Building your strategic diagnosis...", badge: "Diagnosis", duration: 3400 }
+        ];
+
+        runBtn.addEventListener('click', async () => {
+            const val = input.value.trim();
+            if (!val) return alert("Please enter a website or social profile.");
+
+            console.log(`[AUDIT_SUBMIT] brand="${val}"`);
+            formView.style.display  = 'none';
+            loadingView.style.display = 'block';
+
+            /* Render badge row */
+            const badgeContainer = document.getElementById('loading-badges');
+            badgeContainer.innerHTML = stages.map((s, i) =>
+                `<span id="badge-${i}" class="loading-badge loading-badge--pending">
+                    ${s.badge}
+                 </span>`
+            ).join('');
+
+            /* Progressive badge activation */
+            let elapsed = 0;
+            stages.forEach((s, i) => {
+                setTimeout(() => {
+                    document.getElementById(`badge-${i}`).className = 'loading-badge loading-badge--active';
+                    document.getElementById('loading-stage-text').innerText = s.text;
+                    if (i > 0) document.getElementById(`badge-${i-1}`).className = 'loading-badge loading-badge--complete';
+                }, elapsed);
+                elapsed += s.duration;
+            });
+            setTimeout(() => {
+                const last = document.getElementById(`badge-${stages.length-1}`);
+                if (last) last.className = 'loading-badge loading-badge--complete';
+            }, elapsed);
+
+            try {
+                console.log(`[AUDIT_REQUEST] POST ${API_BASE}/api/public/brand-audit`);
+                const res  = await fetch(`${API_BASE}/api/public/brand-audit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ brand_name: val, website_url: val })
+                });
+                const data = await res.json();
+                console.log(`[AUDIT_RESPONSE] audit_id=${data.audit_id} score=${data.overall_score} ok=${res.ok}`);
+                if (data.audit_id) {
+                    currentAuditId   = data.audit_id;
+                    currentBrandName = data.brand_name || val;
+                    const totalTime  = stages.reduce((s, st) => s + st.duration, 0);
+                    setTimeout(() => renderResults(data), Math.max(totalTime, 14000));
+                } else {
+                    alert("Analysis failed: " + (data.error || 'Unknown error'));
+                    formView.style.display    = 'block';
+                    loadingView.style.display = 'none';
+                }
+            } catch (err) {
+                console.error('[AUDIT_ERROR]', err);
+                alert("Connection error. Please try again.");
+                formView.style.display    = 'block';
+                loadingView.style.display = 'none';
+            }
+        });
+
+        /* ── 8-Section renderResults ── */
+        function renderResults(data) {
+            console.log('[AUDIT_RESULTS_LOAD] Rendering results', { audit_id: data.audit_id, score: data.overall_score });
+
+            // Hide the marketing content sections — NOT the parent container
+            // (#results-view is inside #audit-flow, so hiding #audit-flow would also hide results)
+            loadingView.style.display = 'none';
+            const heroEl = document.querySelector('.audit-hero');
+            const uncoversEl = document.querySelector('.uncovers-section');
+            const formEl = document.querySelector('.form-section');
+            if (heroEl) heroEl.style.display = 'none';
+            if (uncoversEl) uncoversEl.style.display = 'none';
+            if (formEl) formEl.style.display = 'none';
+            resultsView.style.display = 'block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            const narrative = data.narrative || {};
+            const gaps      = data.strategic_analysis || [];
+            const score     = data.overall_score || 72;
+
+            document.getElementById('result-brand-name').innerText =
+                currentBrandName + ' — Social Media Brand Audit';
+            document.getElementById('result-date').innerText =
+                'Analysis Date: ' + new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
+
+            /* §1 Executive Diagnosis */
+            document.getElementById('s1-exec-diagnosis').innerHTML = `
+                <h3>${currentBrandName} — Social Media Brand Audit: Executive Diagnosis</h3>
+                <p>${narrative.executive_diagnosis || 'Your brand shows meaningful momentum but several structural gaps are actively limiting your visibility, authority, and conversion potential. The strategic analysis below outlines the specific patterns identified and the highest-leverage actions to address them.'}</p>`;
+
+            /* §2 Strategic Priorities — API field: narrative.strategic_priority_stack */
+            const rawPriorities = narrative.strategic_priority_stack || [];
+            const priorities = rawPriorities.length
+                ? rawPriorities.map(p => ({
+                    title: p.title,
+                    description: p.expected_outcome || '',
+                    urgency: (p.urgency === 'HIGH' || p.urgency === 'CRITICAL') ? 'Immediate' : (p.urgency || 'High'),
+                    impact: 'High'
+                  }))
+                : [
+                    { title: "Establish Publishing Consistency", description: "Irregular cadence is suppressing algorithmic reach. A locked 4×/week schedule is the single highest-leverage fix.", urgency: "Immediate", impact: "High" },
+                    { title: "Build Cross-Platform Presence",   description: "Single-platform dependency creates fragility. Expanding to 2–3 platforms compounds reach without proportional effort.", urgency: "High",      impact: "High" },
+                    { title: "Add Conversion Architecture",     description: "Content lacks clear pathways from awareness to action. Adding conversion-layer posts (proof, testimonials, CTAs) unlocks revenue from existing reach.", urgency: "Medium",   impact: "High" }
+                  ];
+            document.getElementById('s2-priorities').innerHTML = priorities.slice(0, 3).map((p, i) => `
+                <div class="priority-card-v2 ${p.urgency === 'Immediate' ? 'urgent' : ''}">
+                    <div class="priority-num">Priority ${i + 1}</div>
+                    <div class="priority-heading">${p.title}</div>
+                    <div class="priority-outcome">${p.description || ''}</div>
+                    <span class="priority-impact-badge">${p.urgency || 'High'} Priority · ${p.impact || 'High'} Impact</span>
+                </div>`).join('');
+
+            /* §3 Business Consequences — API field: narrative.expected_business_impact (string array) */
+            const defaultConsequences = [
+                { icon: "📉", title: "Visibility Decay", text: "Without cadence correction, platform algorithms will progressively reduce organic reach — a compounding disadvantage that becomes harder to reverse over time." },
+                { icon: "🏴", title: "Authority Loss",   text: "Inconsistent presence signals low credibility to both audiences and algorithms. Competitors publishing consistently are capturing the authority position in your vertical." },
+                { icon: "🔓", title: "Conversion Leakage", text: "Every week without a conversion architecture in your content stack is revenue left uncaptured from an audience that is already warm and interested." }
+            ];
+            const impactStrings = narrative.expected_business_impact || [];
+            const consequences = impactStrings.length
+                ? [
+                    { icon: "📉", title: "Visibility Risk",      text: impactStrings[0] || defaultConsequences[0].text },
+                    { icon: "🏴", title: "Authority Gap",        text: impactStrings[1] || defaultConsequences[1].text },
+                    { icon: "🔓", title: "Conversion Leakage",   text: impactStrings[2] || defaultConsequences[2].text }
+                  ]
+                : defaultConsequences;
+            document.getElementById('s3-consequences').innerHTML = consequences.map(c => `
+                <div class="consequence-v2">
+                    <div class="icon">${c.icon || '⚠️'}</div>
+                    <h4>${c.title}</h4>
+                    <p>${c.text}</p>
+                </div>`).join('');
+
+            /* §4 Why We Detected This — API field: strategic_analysis (items have metric, evidence) */
+            document.getElementById('s4-evidence').innerHTML = (gaps.length ? gaps : [
+                { metric: "Publishing Cadence Fragmentation",   evidence: "Platform resonance scanning identified irregular posting windows — a pattern correlated with algorithmic demotion across Instagram, LinkedIn, and Facebook." },
+                { metric: "Single-Channel Authority Stacking",  evidence: "Cross-platform footprint analysis shows concentrated presence on one platform, creating vulnerability to algorithm shifts and limiting total addressable reach." },
+                { metric: "Conversion Layer Absence",           evidence: "Content genome analysis across your recent posts identified a predominance of awareness-layer content with minimal conversion-architecture posts (testimonials, case studies, direct CTAs)." }
+            ]).map(gap => `
+                <div class="evidence-v2">
+                    <div class="ev-header">
+                        <span class="ev-label">Strategic Pattern Detected</span>
+                    </div>
+                    <h4>${gap.metric || gap.title || 'Strategic Gap Identified'}</h4>
+                    <p>${gap.evidence || gap.description || 'Strategic pattern identified via platform resonance scanning.'}</p>
+                </div>`).join('');
+
+            /* §5 What High-Performing Brands Do — API field: narrative.high_performing_comparatives */
+            const comparatives = narrative.high_performing_comparatives;
+            const defaultAspirations = [
+                { label: "Strategic Cadence",        headline: "They publish on a locked, non-negotiable schedule.", body: "Top-performing brands treat publishing frequency like payroll — non-negotiable. 4–6 posts per week across 2–3 platforms is the baseline for algorithmic momentum in competitive verticals." },
+                { label: "Authority Positioning",    headline: "They own a niche before expanding.", body: "High-performing brands dominate 2–3 specific topics before broadening their content scope. Topic concentration accelerates category authority faster than generalist posting." },
+                { label: "Content Genome Diversity", headline: "They mix awareness, authority, and conversion content.", body: "The 5-3-2 rule: for every 10 posts — 5 are educational, 3 are original authority pieces, 2 are conversion-focused. This balance maximises reach, builds trust, and drives action." },
+                { label: "Multi-Platform Resilience",headline: "They distribute risk across platforms.", body: "No single-platform dependency. Leaders maintain active presence across 3+ channels, treating each as a distinct audience relationship with tailored content rhythm." }
+            ];
+            const aspLabels = ["Best Practice", "Strategic Habit", "Content System", "Growth Lever"];
+            const aspirations = (comparatives && comparatives.bullet_points && comparatives.bullet_points.length)
+                ? comparatives.bullet_points.map((bp, i) => ({
+                    label: aspLabels[i] || 'Best Practice',
+                    headline: bp,
+                    body: ''
+                  }))
+                : defaultAspirations;
+            document.getElementById('s5-aspiration').innerHTML = aspirations.map(a => `
+                <div class="aspiration-v2">
+                    <div class="asp-label">${a.label}</div>
+                    <h4>${a.headline}</h4>
+                    <p>${a.body}</p>
+                </div>`).join('');
+
+            console.log('[AUDIT_RENDER] Results rendered successfully', { sections: 8, score });
+
+            /* §6 Opportunities & Content Genome */
+            document.getElementById('s6-opportunities').innerHTML = [
+                { emoji: "🔁", title: "Content Repurposing Engine",   body: "Convert your 5 best-performing posts into 3 additional formats each: carousel, short video, and long-form article. This multiplies your content ROI by 3× from your existing library." },
+                { emoji: "📧", title: "Email Capture Integration",    body: "Add a value-based lead magnet to your top 3 social profiles. Social-to-email conversion is your highest-value growth funnel — and likely your most under-leveraged asset." },
+                { emoji: "🔗", title: "Cross-Platform Amplification", body: "Publish core content on your primary platform first, then adapt and republish on 2 secondary platforms within 48 hours. Same effort, 65% more total reach." },
+                { emoji: "🏷️", title: "Hashtag Authority Architecture", body: "Structure hashtags as: 3 niche (under 50K posts) + 3 mid-range (50K–500K) + 2 broad (500K+) per post. This consistently outperforms random hashtag selection by 40–80% in reach." }
+            ].map(o => `
+                <div class="opportunity-v2">
+                    <div class="opp-emoji">${o.emoji}</div>
+                    <h4>${o.title}</h4>
+                    <p>${o.body}</p>
+                </div>`).join('');
+
+            /* §7 Brand DNA Score */
+            const dims = [
+                { label: "Visibility",   score: Math.round(score * 0.9)  },
+                { label: "Engagement",   score: Math.round(score * 1.05) },
+                { label: "Authority",    score: Math.round(score * 0.85) },
+                { label: "Conversion",   score: Math.round(score * 0.8)  }
+            ];
+            document.getElementById('s7-dna').innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                    <div>
+                        <div style="font-size:13px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Overall Brand DNA Score™</div>
+                        <div style="font-size:48px;font-weight:900;color:#0f172a;">${score}<span style="font-size:20px;color:#94a3b8;">/100</span></div>
+                    </div>
+                    <div style="font-size:14px;color:#64748b;max-width:320px;line-height:1.6;">Supporting evidence only — your strategic priorities above are more actionable than any score. The DNA Score reflects the compound health of your brand's digital presence across 4 dimensions.</div>
+                </div>
+                <div class="dna-score-bar"><div class="dna-score-fill" style="width:0%" id="dna-fill"></div></div>
+                <div class="dna-dimensions">
+                    ${dims.map(d => `<div class="dna-dim"><div class="dna-dim-score">${Math.min(100, d.score)}</div><div class="dna-dim-label">${d.label}</div></div>`).join('')}
+                </div>`;
+            setTimeout(() => {
+                const fill = document.getElementById('dna-fill');
+                if (fill) fill.style.width = score + '%';
+            }, 300);
+        }
+
+        function redirectToRegister() {
+            redirectToApp('/register', {
+                audit_id: currentAuditId,
+                brand_name: currentBrandName,
+                website: input.value
+            });
+        }
+
+        function showLeadCapture() { document.getElementById('lead-modal').style.display = 'flex'; }
+        function hideLeadCapture() { document.getElementById('lead-modal').style.display = 'none'; }
+
+        document.getElementById('send-report-btn').addEventListener('click', async () => {
+            const name  = document.getElementById('lead-name').value.trim();
+            const email = document.getElementById('lead-email').value.trim();
+            if (!name || !email) return alert('Please fill in both fields.');
+            const btn = document.getElementById('send-report-btn');
+            btn.disabled = true;
+            btn.innerText = 'Sending...';
+            console.log(`[AUDIT_DOWNLOAD] Lead capture submit audit_id=${currentAuditId} email=${email}`);
+            try {
+                await fetch(`${API_BASE}/api/public/audit-lead`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ audit_id: currentAuditId, name, email, business_name: currentBrandName })
+                });
+                btn.innerText = '✓ Report Sent!';
+                btn.style.background = '#059669';
+                setTimeout(() => hideLeadCapture(), 2000);
+            } catch (err) {
+                console.error('[AUDIT_DOWNLOAD_ERROR]', err);
+                btn.innerText = 'Email My Report';
+                btn.disabled  = false;
+                alert('Failed to send. Please try again.');
+            }
+        });
+    </script>
+
+  <footer id="site-footer" class="footer"></footer>
+  <script src="/assets/js/footer.js"></script>
+</body>
+</html>

@@ -193,7 +193,7 @@ export async function getPublicAuditReport(request, env) {
   return new Response(html, {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
-      'Content-Disposition': `attachment; filename="${safeFilename(audit.brand_name)}-brand-audit.html"`,
+      'Content-Disposition': `attachment; filename="${safeFilename(audit.brand_name)}-social-media-audit.html"`,
       'Access-Control-Allow-Origin': '*',
       'Cache-Control': 'no-store',
     }
@@ -252,7 +252,7 @@ export async function getAuditReport(request, env, auth) {
   return new Response(html, {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
-      'Content-Disposition': `attachment; filename="${safeFilename(audit.brand_name)}-brand-audit.html"`,
+      'Content-Disposition': `attachment; filename="${safeFilename(audit.brand_name)}-social-media-audit.html"`,
       'Cache-Control': 'no-store',
     }
   });
