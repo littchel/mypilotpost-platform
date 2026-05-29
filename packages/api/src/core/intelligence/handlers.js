@@ -5,6 +5,7 @@
 
 import { json, error } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
+import { generateBrandIntelligence } from "./brand_intelligence_engine.js";
 import { emitEvent } from "../../lib/bus.js";
 
 /**
@@ -89,6 +90,53 @@ function getBenchmarks(industry) {
 function safeJSON(str, fallback = null) {
   if (!str) return fallback;
   try { return JSON.parse(str); } catch { return fallback; }
+}
+
+/**
+ * GET /api/customer/intelligence/modules
+ * AI-powered 8-module intelligence report with 1-hour cache.
+ */
+export async function getBrandIntelligenceModules(request, env, auth) {
+  const { brand_id } = auth;
+  const db = getDB(env);
+  const forceRefresh = new URL(request.url).searchParams.get('refresh') === 'true';
+
+  if (!forceRefresh) {
+    const cached = await db.prepare(`
+      SELECT content, created_at FROM brand_ai_cache
+      WHERE brand_id = ? AND type = 'intelligence_modules'
+        AND expires_at > datetime('now')
+      ORDER BY created_at DESC LIMIT 1
+    `).bind(brand_id).first();
+
+    if (cached?.content) {
+      try {
+        return json({ data: JSON.parse(cached.content), cached: true, generated_at: cached.created_at });
+      } catch {}
+    }
+  }
+
+  let result;
+  try {
+    result = await generateBrandIntelligence(db, brand_id, env);
+  } catch (err) {
+    console.error(`[INTEL_MODULES_ERROR] brand=${brand_id} err=${err.message}`);
+    return error(`Intelligence generation failed: ${err.message}`, 'INTELLIGENCE_ERROR', null, 500);
+  }
+
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+  const cacheId   = crypto.randomUUID();
+
+  await db.prepare(`
+    DELETE FROM brand_ai_cache WHERE brand_id = ? AND type = 'intelligence_modules'
+  `).bind(brand_id).run();
+
+  await db.prepare(`
+    INSERT INTO brand_ai_cache (id, brand_id, type, context_id, content, expires_at, source, priority)
+    VALUES (?, ?, 'intelligence_modules', ?, ?, ?, 'groq', 'normal')
+  `).bind(cacheId, brand_id, brand_id, JSON.stringify(result), expiresAt).run();
+
+  return json({ data: result, cached: false, generated_at: new Date().toISOString() });
 }
 
 /**

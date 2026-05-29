@@ -92,7 +92,7 @@ import {
   processGrowthAction, 
   registerReferral as registerGrowthReferral 
 } from "./core/growth/handlers.js";
-import { listInsights, resolveInsight, listAudits, getFullAudit } from "./core/intelligence/handlers.js";
+import { listInsights, resolveInsight, listAudits, getFullAudit, getBrandIntelligenceModules } from "./core/intelligence/handlers.js";
 import { runPublicAudit, captureAuditLead, getPublicAuditById } from "./core/intelligence/public_audit.js";
 
 
@@ -1260,6 +1260,7 @@ export default {
          if (method === "POST" && path === "/api/customer/intelligence/resolve") return withCors(request, resolveInsight(request, env, auth));
          if (method === "GET" && path === "/api/customer/intelligence/audits") return withCors(request, listAudits(request, env, auth));
          if (method === "GET" && path.startsWith("/api/customer/intelligence/audits/")) return withCors(request, getFullAudit(request, env, auth));
+         if (method === "GET" && path === "/api/customer/intelligence/modules") return withCors(request, getBrandIntelligenceModules(request, env, auth));
 
           /* ---------- BRAND DNA (STRATEGIC LAYER) ---------- */
           if (method === "GET" && path === "/api/customer/brand-dna") return withCors(request, getBrandDNA(request, env, auth));
