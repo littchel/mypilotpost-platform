@@ -154,71 +154,189 @@
         .loading-badge--complete { background: #f0fdf4; border-color: #86efac; color: #166534; }
         @keyframes badgePulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
 
-        /* ===== 8-SECTION RESULT ARCHITECTURE ===== */
-        .section-eyebrow { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--primary-blue); margin-bottom: 10px; }
-        .result-section { margin-bottom: 56px; }
-        .result-section-title { font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
-
-        /* Section 1 – Executive Diagnosis */
-        .exec-diagnosis { background: #0f172a; color: white; border-radius: 24px; padding: 48px; margin-bottom: 12px; }
-        .exec-diagnosis h3 { font-size: 28px; font-weight: 800; margin-bottom: 16px; }
-        .exec-diagnosis p { font-size: 17px; line-height: 1.75; opacity: 0.88; }
-
-        /* Section 2 – Strategic Priorities */
-        .priorities-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-        .priority-card-v2 { background: white; border-radius: 16px; padding: 28px; border: 1px solid #e5e9f0; border-top: 4px solid var(--primary-blue); box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
-        .priority-card-v2.urgent { border-top-color: #ef4444; }
-        .priority-num  { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: #94a3b8; margin-bottom: 10px; }
-        .priority-heading { font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 10px; }
-        .priority-outcome { font-size: 13px; color: #64748b; line-height: 1.6; }
-        .priority-impact-badge { display: inline-block; margin-top: 12px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; background: #eff6ff; color: #1d4ed8; }
-
-        /* Section 3 – Business Consequences */
-        .consequences-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-        .consequence-v2 { background: #fff1f2; border: 1px solid #fecaca; border-radius: 16px; padding: 28px; }
-        .consequence-v2 .icon { font-size: 28px; margin-bottom: 14px; }
-        .consequence-v2 h4 { font-size: 16px; font-weight: 700; color: #991b1b; margin-bottom: 10px; }
-        .consequence-v2 p { font-size: 14px; color: #7f1d1d; line-height: 1.6; }
-
-        /* Section 4 – Why We Detected This */
-        .evidence-v2 { background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 14px; padding: 28px; margin-bottom: 16px; }
-        .evidence-v2 .ev-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-        .evidence-v2 .ev-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: #64748b; }
-        .evidence-v2 h4 { font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 8px; }
-        .evidence-v2 p { font-size: 14px; color: #475569; line-height: 1.65; }
-
-        /* Section 5 – What High-Performing Brands Do */
-        .aspiration-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
-        .aspiration-v2 { background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%); border: 1px solid #a7f3d0; border-radius: 16px; padding: 28px; }
-        .aspiration-v2 .asp-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #059669; margin-bottom: 8px; }
-        .aspiration-v2 h4 { font-size: 16px; font-weight: 700; color: #064e3b; margin-bottom: 10px; }
-        .aspiration-v2 p { font-size: 14px; color: #065f46; line-height: 1.6; }
-
-        /* Section 6 – Opportunities */
-        .opportunities-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
-        .opportunity-v2 { background: linear-gradient(135deg, #eff6ff 0%, #f8faff 100%); border: 1px solid #bfdbfe; border-radius: 16px; padding: 28px; }
-        .opportunity-v2 .opp-emoji { font-size: 28px; margin-bottom: 14px; }
-        .opportunity-v2 h4 { font-size: 16px; font-weight: 700; color: #1e3a8a; margin-bottom: 8px; }
-        .opportunity-v2 p { font-size: 14px; color: #1d4ed8; line-height: 1.6; }
-
-        /* Section 7 – Brand DNA Score */
-        .dna-score-bar { height: 12px; background: #f1f5f9; border-radius: 99px; overflow: hidden; margin: 12px 0; }
-        .dna-score-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #2563EB, #7c3aed); transition: width 1.2s cubic-bezier(0.16,1,0.3,1); }
-        .dna-dimensions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 24px; }
-        .dna-dim { background: white; border: 1px solid #e5e9f0; border-radius: 12px; padding: 16px; text-align: center; }
-        .dna-dim-score { font-size: 26px; font-weight: 800; color: #0f172a; }
-        .dna-dim-label { font-size: 12px; color: #64748b; margin-top: 4px; }
-
-        /* Section 8 – Locked Roadmap */
-        .locked-roadmap { border-radius: 24px; overflow: hidden; position: relative; }
-        .roadmap-blur { filter: blur(5px); user-select: none; pointer-events: none; padding: 36px; background: #f8fafc; }
-        .roadmap-blur .fake-row { height: 20px; background: #e2e8f0; border-radius: 6px; margin-bottom: 14px; }
-        .roadmap-blur .fake-row.short { width: 60%; }
-        .roadmap-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(15,23,42,0.72); backdrop-filter: blur(2px); border-radius: 24px; text-align: center; padding: 40px; }
-        .roadmap-overlay h3 { font-size: 24px; font-weight: 800; color: white; margin-bottom: 12px; }
-        .roadmap-overlay p { font-size: 15px; color: rgba(255,255,255,0.82); margin-bottom: 28px; max-width: 480px; line-height: 1.6; }
+        /* ===== PREMIUM AUDIT RESULT ARCHITECTURE ===== */
         .btn--white { background: white; color: var(--primary-blue); font-weight: 700; }
         .btn--white:hover { background: #f0f9ff; transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+
+        /* Wrapper */
+        .ar-results { font-family: 'Inter', sans-serif; }
+        .ar-body { max-width: 820px; margin: 0 auto; padding: 0 20px 80px; }
+
+        /* Hero */
+        .ar-hero { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); color: white; padding: 56px 40px 48px; }
+        .ar-hero-inner { max-width: 820px; margin: 0 auto; }
+        .ar-hero-top { display: flex; gap: 40px; align-items: center; margin-bottom: 40px; }
+        .ar-score-wrap { flex-shrink: 0; }
+        .ar-hero-info { flex: 1; }
+        .ar-hero-brand { font-size: 28px; font-weight: 800; margin-bottom: 6px; }
+        .ar-hero-industry { font-size: 13px; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 20px; }
+        .ar-hero-rationale { font-size: 15px; color: rgba(255,255,255,0.82); line-height: 1.7; }
+        .ar-dim-bar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+        .ar-dim-label { font-size: 12px; color: rgba(255,255,255,0.7); width: 130px; flex-shrink: 0; }
+        .ar-dim-track { flex: 1; height: 6px; background: rgba(255,255,255,0.15); border-radius: 99px; overflow: hidden; }
+        .ar-dim-fill { height: 100%; border-radius: 99px; transition: width 1.2s cubic-bezier(0.16,1,0.3,1); }
+        .ar-dim-score { font-size: 13px; font-weight: 700; color: white; width: 32px; text-align: right; }
+        .ar-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+        .ar-stat { background: rgba(255,255,255,0.08); border-radius: 12px; padding: 14px 12px; text-align: center; }
+        .ar-stat-val { font-size: 16px; font-weight: 800; color: white; }
+        .ar-stat-lbl { font-size: 10px; color: rgba(255,255,255,0.55); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+
+        /* Section */
+        .ar-section { margin-bottom: 56px; }
+        .ar-sh { margin-bottom: 24px; }
+        .ar-sh-num { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; color: #6366f1; margin-bottom: 6px; }
+        .ar-sh-title { font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 6px; }
+        .ar-sh-sub { font-size: 14px; color: #64748b; }
+
+        /* Executive Diagnosis */
+        .ar-exec-quote { background: #0f172a; color: white; border-radius: 20px; padding: 40px; margin-bottom: 16px; font-size: 16px; line-height: 1.75; }
+        .ar-exec-quote strong { display: block; font-size: 18px; font-weight: 800; margin-bottom: 12px; }
+        .ar-positioning { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 14px; padding: 24px; margin-bottom: 24px; font-size: 14px; color: #1e40af; line-height: 1.65; }
+        .ar-dx-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+        .ar-dx-card { border-radius: 14px; padding: 22px; }
+        .ar-dx-card h4 { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+        .ar-dx-card ul { padding-left: 18px; margin: 0; }
+        .ar-dx-card li { font-size: 13px; line-height: 1.6; margin-bottom: 6px; }
+        .ar-dx-s  { background: #f0fdf4; border: 1px solid #bbf7d0; } .ar-dx-s h4  { color: #15803d; }
+        .ar-dx-w  { background: #fef9f0; border: 1px solid #fde68a; } .ar-dx-w h4  { color: #92400e; }
+        .ar-dx-r  { background: #fff1f2; border: 1px solid #fecaca; } .ar-dx-r h4  { color: #be123c; }
+        .ar-dx-o  { background: #f0f9ff; border: 1px solid #bae6fd; } .ar-dx-o h4  { color: #0369a1; }
+
+        /* Priority Action Matrix */
+        .ar-action-card { background: white; border-radius: 16px; padding: 24px; border: 1px solid #e5e9f0; margin-bottom: 14px; display: flex; gap: 16px; align-items: flex-start; }
+        .ar-phase-badge { flex-shrink: 0; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+        .ph-qw { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
+        .ph-gp { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+        .ph-si { background: #f3e8ff; color: #7e22ce; border: 1px solid #d8b4fe; }
+        .ar-action-body { flex: 1; }
+        .ar-action-body h4 { font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 6px; }
+        .ar-action-body p { font-size: 13px; color: #475569; line-height: 1.6; }
+        .ar-action-meta { font-size: 11px; color: #94a3b8; margin-top: 8px; }
+
+        /* Risk Dashboard */
+        .ar-risk-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 24px; }
+        .ar-risk-card { background: #f8fafc; border: 1px solid #e5e9f0; border-radius: 16px; overflow: hidden; }
+        .ar-risk-top { height: 6px; }
+        .ar-risk-inner { padding: 20px; }
+        .ar-risk-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #64748b; margin-bottom: 8px; }
+        .ar-risk-pct { font-size: 36px; font-weight: 900; margin-bottom: 4px; }
+        .ar-risk-level { font-size: 12px; font-weight: 700; }
+        .ar-risk-sub { font-size: 12px; color: #64748b; margin-top: 6px; line-height: 1.5; }
+        .ar-gap-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        .ar-gap-card { background: white; border: 1px solid #e5e9f0; border-radius: 12px; padding: 18px; }
+        .ar-gap-card h5 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 8px; }
+        .ar-gap-card li { font-size: 13px; color: #334155; line-height: 1.55; margin-bottom: 5px; list-style: none; padding-left: 14px; position: relative; }
+        .ar-gap-card li::before { content: '—'; position: absolute; left: 0; color: #cbd5e1; }
+
+        /* Evidence Panel */
+        .ar-ev-legend { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+        .ar-ev-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 99px; font-size: 12px; font-weight: 700; }
+        .ar-ev-obs   { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+        .ar-ev-inf   { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+        .ar-ev-est   { background: #fefce8; color: #854d0e; border: 1px solid #fde68a; }
+        .ar-ev-item  { border-radius: 12px; padding: 16px 20px; margin-bottom: 10px; font-size: 13px; line-height: 1.65; display: flex; align-items: flex-start; gap: 12px; }
+        .ar-ev-obs-i { background: #f0fdf4; border: 1px solid #bbf7d0; color: #14532d; }
+        .ar-ev-inf-i { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a; }
+        .ar-ev-est-i { background: #fefce8; border: 1px solid #fde68a; color: #713f12; }
+        .ar-ev-icon { flex-shrink: 0; font-size: 16px; }
+
+        /* Competitive Moat */
+        .ar-moat-overview { background: #f8fafc; border: 1px solid #e5e9f0; border-radius: 14px; padding: 22px; margin-bottom: 20px; font-size: 14px; color: #334155; line-height: 1.65; }
+        .ar-moat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+        .ar-moat-card { border-radius: 14px; padding: 22px; }
+        .ar-moat-card h5 { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+        .ar-moat-card ul { margin: 0; padding-left: 18px; }
+        .ar-moat-card li { font-size: 13px; line-height: 1.6; margin-bottom: 6px; }
+        .ar-moat-po { background: #fff1f2; border: 1px solid #fecaca; } .ar-moat-po h5 { color: #be123c; }
+        .ar-moat-ag { background: #fef9f0; border: 1px solid #fde68a; } .ar-moat-ag h5 { color: #92400e; }
+        .ar-moat-cg { background: #eff6ff; border: 1px solid #bfdbfe; } .ar-moat-cg h5 { color: #1d4ed8; }
+        .ar-moat-ws { background: #f0fdf4; border: 1px solid #bbf7d0; } .ar-moat-ws h5 { color: #15803d; }
+
+        /* Content Genome */
+        .ar-cg-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+        .ar-cg-lbl { font-size: 13px; font-weight: 600; color: #334155; width: 140px; flex-shrink: 0; text-transform: capitalize; }
+        .ar-cg-track { flex: 1; height: 10px; background: #f1f5f9; border-radius: 99px; overflow: hidden; }
+        .ar-cg-fill { height: 100%; border-radius: 99px; transition: width 1s ease; }
+        .ar-cg-pct { font-size: 13px; font-weight: 700; color: #0f172a; width: 36px; text-align: right; }
+        .ar-cg-themes { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+        .ar-cg-pill { padding: 5px 14px; border-radius: 99px; font-size: 12px; font-weight: 600; }
+        .ar-cg-strong { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+        .ar-cg-miss   { background: #fff1f2; color: #be123c; border: 1px solid #fecaca; }
+
+        /* SWOT */
+        .ar-swot { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid #e5e9f0; border-radius: 20px; overflow: hidden; }
+        .ar-swot-q { padding: 28px; }
+        .ar-swot-q:nth-child(1) { background: #f0fdf4; border-right: 1px solid #e5e9f0; border-bottom: 1px solid #e5e9f0; }
+        .ar-swot-q:nth-child(2) { background: #fef9f0; border-bottom: 1px solid #e5e9f0; }
+        .ar-swot-q:nth-child(3) { background: #f0f9ff; border-right: 1px solid #e5e9f0; }
+        .ar-swot-q:nth-child(4) { background: #fff1f2; }
+        .ar-swot-q h4 { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 14px; }
+        .ar-swot-q:nth-child(1) h4 { color: #15803d; }
+        .ar-swot-q:nth-child(2) h4 { color: #92400e; }
+        .ar-swot-q:nth-child(3) h4 { color: #0369a1; }
+        .ar-swot-q:nth-child(4) h4 { color: #be123c; }
+        .ar-swot-q ol { padding-left: 18px; margin: 0; }
+        .ar-swot-q li { font-size: 13px; line-height: 1.6; margin-bottom: 6px; color: #334155; }
+
+        /* Roadmap */
+        .ar-phase-block { border-radius: 20px; overflow: hidden; margin-bottom: 20px; }
+        .ar-phase-head { padding: 20px 28px; display: flex; align-items: center; justify-content: space-between; }
+        .ar-phase-head h4 { font-size: 16px; font-weight: 800; }
+        .ar-phase-head span { font-size: 12px; opacity: 0.75; }
+        .ar-ph-qw  { background: #fef9c3; } .ar-ph-qw  h4 { color: #854d0e; }
+        .ar-ph-gp  { background: #eff6ff; } .ar-ph-gp  h4 { color: #1e40af; }
+        .ar-ph-si  { background: #f3e8ff; } .ar-ph-si  h4 { color: #7e22ce; }
+        .ar-rm-item { background: white; border-top: 1px solid #f1f5f9; padding: 18px 28px; }
+        .ar-rm-item h5 { font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+        .ar-rm-item p  { font-size: 13px; color: #475569; line-height: 1.6; }
+        .ar-rm-outcome { font-size: 12px; color: #94a3b8; margin-top: 6px; }
+
+        /* Business Impact */
+        .ar-impact-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+        .ar-impact-card { background: white; border: 1px solid #e5e9f0; border-radius: 16px; overflow: hidden; }
+        .ar-impact-top { height: 4px; }
+        .ar-impact-inner { padding: 20px; }
+        .ar-impact-dim { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 6px; }
+        .ar-impact-score { font-size: 32px; font-weight: 900; color: #0f172a; }
+        .ar-impact-score span { font-size: 14px; color: #94a3b8; font-weight: 400; }
+        .ar-impact-opps { margin-top: 12px; padding-top: 12px; border-top: 1px solid #f1f5f9; }
+        .ar-impact-opps li { font-size: 12px; color: #475569; line-height: 1.55; margin-bottom: 4px; list-style: none; padding-left: 14px; position: relative; }
+        .ar-impact-opps li::before { content: '→'; position: absolute; left: 0; color: #a5b4fc; }
+
+        /* Audit Confidence */
+        .ar-conf-qual { background: #f8fafc; border: 1px solid #e5e9f0; border-radius: 14px; padding: 22px; margin-bottom: 20px; font-size: 14px; color: #334155; line-height: 1.65; }
+        .ar-conf-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+        .ar-conf-card { border-radius: 14px; padding: 20px; text-align: center; }
+        .ar-conf-card-obs { background: #f0fdf4; border: 1px solid #bbf7d0; }
+        .ar-conf-card-inf { background: #eff6ff; border: 1px solid #bfdbfe; }
+        .ar-conf-card-est { background: #fefce8; border: 1px solid #fde68a; }
+        .ar-conf-count { font-size: 36px; font-weight: 900; }
+        .ar-conf-card-obs .ar-conf-count { color: #15803d; }
+        .ar-conf-card-inf .ar-conf-count { color: #1d4ed8; }
+        .ar-conf-card-est .ar-conf-count { color: #854d0e; }
+        .ar-conf-type  { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+        .ar-conf-limits { background: #fef9f0; border: 1px solid #fde68a; border-radius: 14px; padding: 20px; font-size: 13px; color: #713f12; line-height: 1.65; }
+
+        /* Unlock CTA */
+        .ar-unlock { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); color: white; border-radius: 24px; padding: 48px; margin-top: 56px; }
+        .ar-unlock h3 { font-size: 26px; font-weight: 800; margin-bottom: 12px; }
+        .ar-unlock-vp { font-size: 16px; color: rgba(255,255,255,0.8); line-height: 1.7; margin-bottom: 32px; }
+        .ar-unlock-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 32px; }
+        .ar-unlock-item { background: rgba(255,255,255,0.08); border-radius: 12px; padding: 18px; }
+        .ar-unlock-item h5 { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.9); margin-bottom: 6px; }
+        .ar-unlock-item p  { font-size: 12px; color: rgba(255,255,255,0.6); line-height: 1.55; }
+        .ar-unlock-btns { display: flex; gap: 16px; flex-wrap: wrap; }
+
+        @media (max-width: 640px) {
+            .ar-hero { padding: 36px 20px 32px; }
+            .ar-hero-top { flex-direction: column; align-items: flex-start; gap: 24px; }
+            .ar-stats { grid-template-columns: repeat(2, 1fr); }
+            .ar-risk-grid, .ar-dx-grid, .ar-moat-grid, .ar-impact-grid, .ar-conf-grid { grid-template-columns: 1fr; }
+            .ar-swot { grid-template-columns: 1fr; }
+            .ar-swot-q:nth-child(1), .ar-swot-q:nth-child(2), .ar-swot-q:nth-child(3) { border-right: none; }
+            .ar-gap-grid { grid-template-columns: 1fr; }
+            .ar-unlock-grid { grid-template-columns: 1fr; }
+        }
 
         /* ===== FOOTER ===== */
         .footer { background: #002F86; color: #fff; padding: 80px 0 48px; -webkit-font-smoothing: antialiased; }
@@ -430,96 +548,8 @@
             </div>
         </section>
 
-        <!-- Results Section -->
-        <section id="results-view" class="results-page">
-            <!-- Briefing Hero -->
-            <div class="briefing-hero">
-                <div class="container">
-                    <span class="briefing-tag">SOCIAL MEDIA BRAND AUDIT — STRATEGIC BRIEFING</span>
-                    <h2 id="result-brand-name" class="briefing-title">Social Media Brand Audit</h2>
-                    <div style="display:flex;justify-content:center;gap:32px;opacity:0.8;">
-                        <div id="result-date">Analysis Date: --</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="container" style="padding-top:0;padding-bottom:120px;">
-
-                <!-- §1 Executive Diagnosis -->
-                <div class="result-section" style="margin-top:64px;">
-                    <div class="section-eyebrow">01 — Realization</div>
-                    <div id="s1-exec-diagnosis" class="exec-diagnosis">
-                        <h3>Executive Diagnosis</h3>
-                        <p>Generating narrative...</p>
-                    </div>
-                </div>
-
-                <!-- §2 Strategic Priorities -->
-                <div class="result-section">
-                    <div class="section-eyebrow">02 — Immediate Action</div>
-                    <div class="result-section-title">Top 3 Strategic Priorities</div>
-                    <div id="s2-priorities" class="priorities-grid"></div>
-                </div>
-
-                <!-- §3 Business Consequences -->
-                <div class="result-section">
-                    <div class="section-eyebrow">03 — Concern</div>
-                    <div class="result-section-title">Business Consequences of Inaction</div>
-                    <div id="s3-consequences" class="consequences-grid"></div>
-                </div>
-
-                <!-- §4 Why We Detected This -->
-                <div class="result-section">
-                    <div class="section-eyebrow">04 — Credibility</div>
-                    <div class="result-section-title">Why We Detected This</div>
-                    <div id="s4-evidence"></div>
-                </div>
-
-                <!-- §5 What High-Performing Brands Do -->
-                <div class="result-section">
-                    <div class="section-eyebrow">05 — Aspiration</div>
-                    <div class="result-section-title">What High-Performing Brands Do Differently</div>
-                    <div id="s5-aspiration" class="aspiration-grid"></div>
-                </div>
-
-                <!-- §6 Opportunities & Content Genome -->
-                <div class="result-section">
-                    <div class="section-eyebrow">06 — Strategic Hope</div>
-                    <div class="result-section-title">Growth Opportunities & Content Genome</div>
-                    <div id="s6-opportunities" class="opportunities-grid"></div>
-                </div>
-
-                <!-- §7 Brand DNA Score -->
-                <div class="result-section">
-                    <div class="section-eyebrow">07 — Supporting Evidence</div>
-                    <div class="result-section-title">Brand DNA Score™</div>
-                    <div id="s7-dna" style="background:white;border:1px solid #e5e9f0;border-radius:20px;padding:36px;"></div>
-                </div>
-
-                <!-- §8 Locked Strategic Roadmap -->
-                <div class="result-section">
-                    <div class="section-eyebrow">08 — Conversion</div>
-                    <div class="result-section-title">Your Strategic Roadmap</div>
-                    <div class="locked-roadmap">
-                        <div class="roadmap-blur">
-                            <div class="fake-row"></div><div class="fake-row short"></div>
-                            <div class="fake-row"></div><div class="fake-row short"></div>
-                            <div class="fake-row"></div><div class="fake-row short"></div>
-                            <div class="fake-row"></div>
-                        </div>
-                        <div class="roadmap-overlay">
-                            <h3>Your full strategy is ready.</h3>
-                            <p>Continue into your Strategic Command Center to access your complete 90-day roadmap, execution priorities, content opportunities, and growth systems — all built around your brand.</p>
-                            <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;">
-                                <button class="btn btn--white btn--large" onclick="redirectToRegister()">Continue to Full Strategy</button>
-                                <button class="btn btn--secondary" style="border-color:rgba(255,255,255,0.4);color:white;" onclick="showLeadCapture()">Download Snapshot Report</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        </section>
+        <!-- Results Section — populated by renderResults() -->
+        <section id="results-view" class="results-page ar-results" style="display:none;"></section>
     </main>
 
     <!-- Lead Capture Modal -->
@@ -631,154 +661,279 @@
             }
         });
 
-        /* ── 8-Section renderResults ── */
-        function renderResults(data) {
-            console.log('[AUDIT_RESULTS_LOAD] Rendering results', { audit_id: data.audit_id, score: data.overall_score });
+        /* ── XSS escape helper ── */
+        function esc(s) {
+            return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+        function list(arr) {
+            return (arr || []).map(i => `<li>${esc(i)}</li>`).join('');
+        }
+        function scoreColor(v) {
+            return v >= 70 ? '#16a34a' : v >= 50 ? '#d97706' : '#dc2626';
+        }
+        function scoreLabel(v) {
+            return v >= 70 ? 'Strong' : v >= 50 ? 'Developing' : 'Needs Work';
+        }
 
-            // Hide the marketing content sections — NOT the parent container
-            // (#results-view is inside #audit-flow, so hiding #audit-flow would also hide results)
+        /* ── Premium 11-Section renderResults ── */
+        function renderResults(data) {
             loadingView.style.display = 'none';
-            const heroEl = document.querySelector('.audit-hero');
-            const uncoversEl = document.querySelector('.uncovers-section');
-            const formEl = document.querySelector('.form-section');
-            if (heroEl) heroEl.style.display = 'none';
-            if (uncoversEl) uncoversEl.style.display = 'none';
-            if (formEl) formEl.style.display = 'none';
+            document.querySelector('.audit-hero')?.style && (document.querySelector('.audit-hero').style.display = 'none');
+            document.querySelector('.uncovers-section')?.style && (document.querySelector('.uncovers-section').style.display = 'none');
+            document.querySelector('.form-section')?.style && (document.querySelector('.form-section').style.display = 'none');
             resultsView.style.display = 'block';
             window.scrollTo({ top: 0, behavior: 'smooth' });
 
-            const narrative = data.narrative || {};
-            const gaps      = data.strategic_analysis || [];
-            const score     = data.overall_score || 72;
+            const report = data.full_report || {};
+            const bs   = report.brand_score || {};
+            const bp   = report.business_profile || {};
+            const ds   = report.diagnostic_snapshot || {};
+            const cga  = report.content_genome_analysis || {};
+            const cmm  = report.competitive_moat_map || {};
+            const car  = report.conversion_architecture_review || {};
+            const swot = report.swot || {};
+            const sr   = report.strategic_roadmap || {};
+            const gf   = report.growth_forecast || {};
+            const ac   = report.audit_confidence || {};
+            const uvi  = report.unlock_verified_intelligence || {};
+            const dims = bs.dimensions || {};
+            const score = bs.overall || data.overall_score || 0;
+            const mix  = cga.estimated_content_mix || {};
 
-            document.getElementById('result-brand-name').innerText =
-                currentBrandName + ' — Social Media Brand Audit';
-            document.getElementById('result-date').innerText =
-                'Analysis Date: ' + new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
+            const visibilityRisk   = 100 - Math.round(((dims.web_presence||50) + (dims.social_presence||50)) / 2);
+            const authorityRisk    = 100 - Math.round(((dims.content_strategy||50) + (dims.brand_consistency||50)) / 2);
+            const conversionRisk   = 100 - (dims.conversion_readiness||50);
 
-            /* §1 Executive Diagnosis */
-            document.getElementById('s1-exec-diagnosis').innerHTML = `
-                <h3>${currentBrandName} — Social Media Brand Audit: Executive Diagnosis</h3>
-                <p>${narrative.executive_diagnosis || 'Your brand shows meaningful momentum but several structural gaps are actively limiting your visibility, authority, and conversion potential. The strategic analysis below outlines the specific patterns identified and the highest-leverage actions to address them.'}</p>`;
+            function riskLvl(v)   { return v >= 60 ? 'High Risk' : v >= 40 ? 'Moderate Risk' : 'Low Risk'; }
+            function riskClr(v)   { return v >= 60 ? '#dc2626'   : v >= 40 ? '#d97706'       : '#16a34a'; }
 
-            /* §2 Strategic Priorities — API field: narrative.strategic_priority_stack */
-            const rawPriorities = narrative.strategic_priority_stack || [];
-            const priorities = rawPriorities.length
-                ? rawPriorities.map(p => ({
-                    title: p.title,
-                    description: p.expected_outcome || '',
-                    urgency: (p.urgency === 'HIGH' || p.urgency === 'CRITICAL') ? 'Immediate' : (p.urgency || 'High'),
-                    impact: 'High'
-                  }))
-                : [
-                    { title: "Establish Publishing Consistency", description: "Irregular cadence is suppressing algorithmic reach. A locked 4×/week schedule is the single highest-leverage fix.", urgency: "Immediate", impact: "High" },
-                    { title: "Build Cross-Platform Presence",   description: "Single-platform dependency creates fragility. Expanding to 2–3 platforms compounds reach without proportional effort.", urgency: "High",      impact: "High" },
-                    { title: "Add Conversion Architecture",     description: "Content lacks clear pathways from awareness to action. Adding conversion-layer posts (proof, testimonials, CTAs) unlocks revenue from existing reach.", urgency: "Medium",   impact: "High" }
-                  ];
-            document.getElementById('s2-priorities').innerHTML = priorities.slice(0, 3).map((p, i) => `
-                <div class="priority-card-v2 ${p.urgency === 'Immediate' ? 'urgent' : ''}">
-                    <div class="priority-num">Priority ${i + 1}</div>
-                    <div class="priority-heading">${p.title}</div>
-                    <div class="priority-outcome">${p.description || ''}</div>
-                    <span class="priority-impact-badge">${p.urgency || 'High'} Priority · ${p.impact || 'High'} Impact</span>
-                </div>`).join('');
+            const circ = 408.41;
+            const ringDash = `${(score/100)*circ} ${circ}`;
 
-            /* §3 Business Consequences — API field: narrative.expected_business_impact (string array) */
-            const defaultConsequences = [
-                { icon: "📉", title: "Visibility Decay", text: "Without cadence correction, platform algorithms will progressively reduce organic reach — a compounding disadvantage that becomes harder to reverse over time." },
-                { icon: "🏴", title: "Authority Loss",   text: "Inconsistent presence signals low credibility to both audiences and algorithms. Competitors publishing consistently are capturing the authority position in your vertical." },
-                { icon: "🔓", title: "Conversion Leakage", text: "Every week without a conversion architecture in your content stack is revenue left uncaptured from an audience that is already warm and interested." }
+            const allActions = [
+                ...(sr.quick_wins || []).map(a => ({ ...a, phase: 'QW', label: '⚡ Quick Win' })),
+                ...(sr.growth_plays || []).map(a => ({ ...a, phase: 'GP', label: '📈 Growth Play' })),
+                ...(sr.strategic_investments || []).map(a => ({ ...a, phase: 'SI', label: '🎯 Strategic' })),
             ];
-            const impactStrings = narrative.expected_business_impact || [];
-            const consequences = impactStrings.length
-                ? [
-                    { icon: "📉", title: "Visibility Risk",      text: impactStrings[0] || defaultConsequences[0].text },
-                    { icon: "🏴", title: "Authority Gap",        text: impactStrings[1] || defaultConsequences[1].text },
-                    { icon: "🔓", title: "Conversion Leakage",   text: impactStrings[2] || defaultConsequences[2].text }
-                  ]
-                : defaultConsequences;
-            document.getElementById('s3-consequences').innerHTML = consequences.map(c => `
-                <div class="consequence-v2">
-                    <div class="icon">${c.icon || '⚠️'}</div>
-                    <h4>${c.title}</h4>
-                    <p>${c.text}</p>
-                </div>`).join('');
 
-            /* §4 Why We Detected This — API field: strategic_analysis (items have metric, evidence) */
-            document.getElementById('s4-evidence').innerHTML = (gaps.length ? gaps : [
-                { metric: "Publishing Cadence Fragmentation",   evidence: "Platform resonance scanning identified irregular posting windows — a pattern correlated with algorithmic demotion across Instagram, LinkedIn, and Facebook." },
-                { metric: "Single-Channel Authority Stacking",  evidence: "Cross-platform footprint analysis shows concentrated presence on one platform, creating vulnerability to algorithm shifts and limiting total addressable reach." },
-                { metric: "Conversion Layer Absence",           evidence: "Content genome analysis across your recent posts identified a predominance of awareness-layer content with minimal conversion-architecture posts (testimonials, case studies, direct CTAs)." }
-            ]).map(gap => `
-                <div class="evidence-v2">
-                    <div class="ev-header">
-                        <span class="ev-label">Strategic Pattern Detected</span>
-                    </div>
-                    <h4>${gap.metric || gap.title || 'Strategic Gap Identified'}</h4>
-                    <p>${gap.evidence || gap.description || 'Strategic pattern identified via platform resonance scanning.'}</p>
-                </div>`).join('');
+            const cgColors = {
+                educational: '#3b82f6', promotional: '#ec4899',
+                social_proof: '#10b981', community: '#f59e0b', thought_leadership: '#8b5cf6',
+            };
 
-            /* §5 What High-Performing Brands Do — API field: narrative.high_performing_comparatives */
-            const comparatives = narrative.high_performing_comparatives;
-            const defaultAspirations = [
-                { label: "Strategic Cadence",        headline: "They publish on a locked, non-negotiable schedule.", body: "Top-performing brands treat publishing frequency like payroll — non-negotiable. 4–6 posts per week across 2–3 platforms is the baseline for algorithmic momentum in competitive verticals." },
-                { label: "Authority Positioning",    headline: "They own a niche before expanding.", body: "High-performing brands dominate 2–3 specific topics before broadening their content scope. Topic concentration accelerates category authority faster than generalist posting." },
-                { label: "Content Genome Diversity", headline: "They mix awareness, authority, and conversion content.", body: "The 5-3-2 rule: for every 10 posts — 5 are educational, 3 are original authority pieces, 2 are conversion-focused. This balance maximises reach, builds trust, and drives action." },
-                { label: "Multi-Platform Resilience",headline: "They distribute risk across platforms.", body: "No single-platform dependency. Leaders maintain active presence across 3+ channels, treating each as a distinct audience relationship with tailored content rhythm." }
-            ];
-            const aspLabels = ["Best Practice", "Strategic Habit", "Content System", "Growth Lever"];
-            const aspirations = (comparatives && comparatives.bullet_points && comparatives.bullet_points.length)
-                ? comparatives.bullet_points.map((bp, i) => ({
-                    label: aspLabels[i] || 'Best Practice',
-                    headline: bp,
-                    body: ''
-                  }))
-                : defaultAspirations;
-            document.getElementById('s5-aspiration').innerHTML = aspirations.map(a => `
-                <div class="aspiration-v2">
-                    <div class="asp-label">${a.label}</div>
-                    <h4>${a.headline}</h4>
-                    <p>${a.body}</p>
-                </div>`).join('');
+            resultsView.innerHTML = `
+<!-- ─── HERO ─── -->
+<div class="ar-hero">
+  <div class="ar-hero-inner">
+    <div class="ar-hero-top">
+      <div class="ar-score-wrap">
+        <svg width="160" height="160" viewBox="0 0 160 160">
+          <defs><filter id="glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+          <circle cx="80" cy="80" r="65" fill="none" stroke="#1e293b" stroke-width="12"/>
+          <circle cx="80" cy="80" r="65" fill="none" stroke="${scoreColor(score)}" stroke-width="12"
+            stroke-dasharray="${ringDash}" stroke-dashoffset="102.1" stroke-linecap="round"
+            style="transition:stroke-dasharray 1.5s ease" filter="url(#glow)"/>
+          <text x="80" y="70" text-anchor="middle" fill="white" font-size="34" font-weight="900" font-family="Inter,sans-serif">${score}</text>
+          <text x="80" y="90" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="Inter,sans-serif">/100</text>
+          <text x="80" y="108" text-anchor="middle" fill="${scoreColor(score)}" font-size="11" font-weight="700" font-family="Inter,sans-serif">${scoreLabel(score)}</text>
+        </svg>
+      </div>
+      <div class="ar-hero-info">
+        <div class="ar-hero-brand">${esc(currentBrandName)} — Brand Audit</div>
+        <div class="ar-hero-industry">${esc(bp.industry || '')}${bp.geographic_market ? ' · ' + esc(bp.geographic_market) : ''}</div>
+        <div class="ar-hero-rationale">${esc(bs.rationale || '')}</div>
+      </div>
+    </div>
+    ${Object.entries(dims).map(([k, v]) => `
+    <div class="ar-dim-bar-row">
+      <span class="ar-dim-label">${esc(k.replace(/_/g,' '))}</span>
+      <div class="ar-dim-track"><div class="ar-dim-fill" id="df-${k}" style="width:0%;background:${scoreColor(v)}"></div></div>
+      <span class="ar-dim-score">${v}</span>
+    </div>`).join('')}
+    <div class="ar-stats" style="margin-top:28px;">
+      <div class="ar-stat"><div class="ar-stat-val">${esc(bp.business_model || '—')}</div><div class="ar-stat-lbl">Model</div></div>
+      <div class="ar-stat"><div class="ar-stat-val">${esc(bp.geographic_market || '—')}</div><div class="ar-stat-lbl">Market</div></div>
+      <div class="ar-stat"><div class="ar-stat-val">${(report.social_presence_review?.platforms_found || []).filter(p => p.status !== 'not_found').length || '—'}</div><div class="ar-stat-lbl">Platforms</div></div>
+      <div class="ar-stat"><div class="ar-stat-val">${esc(ac.data_quality?.split(' ').slice(0,1)[0] || '—')}</div><div class="ar-stat-lbl">Data Quality</div></div>
+      <div class="ar-stat"><div class="ar-stat-val">${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</div><div class="ar-stat-lbl">Audit Date</div></div>
+    </div>
+  </div>
+</div>
 
-            console.log('[AUDIT_RENDER] Results rendered successfully', { sections: 8, score });
+<!-- ─── BODY ─── -->
+<div class="ar-body">
 
-            /* §6 Opportunities & Content Genome */
-            document.getElementById('s6-opportunities').innerHTML = [
-                { emoji: "🔁", title: "Content Repurposing Engine",   body: "Convert your 5 best-performing posts into 3 additional formats each: carousel, short video, and long-form article. This multiplies your content ROI by 3× from your existing library." },
-                { emoji: "📧", title: "Email Capture Integration",    body: "Add a value-based lead magnet to your top 3 social profiles. Social-to-email conversion is your highest-value growth funnel — and likely your most under-leveraged asset." },
-                { emoji: "🔗", title: "Cross-Platform Amplification", body: "Publish core content on your primary platform first, then adapt and republish on 2 secondary platforms within 48 hours. Same effort, 65% more total reach." },
-                { emoji: "🏷️", title: "Hashtag Authority Architecture", body: "Structure hashtags as: 3 niche (under 50K posts) + 3 mid-range (50K–500K) + 2 broad (500K+) per post. This consistently outperforms random hashtag selection by 40–80% in reach." }
-            ].map(o => `
-                <div class="opportunity-v2">
-                    <div class="opp-emoji">${o.emoji}</div>
-                    <h4>${o.title}</h4>
-                    <p>${o.body}</p>
-                </div>`).join('');
+  <!-- §01 Executive Diagnosis -->
+  <div class="ar-section" style="margin-top:48px;">
+    <div class="ar-sh"><div class="ar-sh-num">01 — Executive Diagnosis</div><div class="ar-sh-title">Strategic Assessment</div></div>
+    <div class="ar-exec-quote"><strong>${esc(currentBrandName)}</strong>${esc(ds.executive_summary || '')}</div>
+    ${ds.brand_positioning_assessment ? `<div class="ar-positioning"><strong>Positioning Assessment:</strong> ${esc(ds.brand_positioning_assessment)}</div>` : ''}
+    <div class="ar-dx-grid">
+      <div class="ar-dx-card ar-dx-s"><h4>Strengths</h4><ul>${list(ds.strategic_strengths)}</ul></div>
+      <div class="ar-dx-card ar-dx-w"><h4>Weaknesses</h4><ul>${list(ds.strategic_weaknesses)}</ul></div>
+      <div class="ar-dx-card ar-dx-r"><h4>Risks</h4><ul>${list(ds.strategic_risks)}</ul></div>
+      <div class="ar-dx-card ar-dx-o"><h4>Opportunities</h4><ul>${list(ds.growth_opportunities)}</ul></div>
+    </div>
+  </div>
 
-            /* §7 Brand DNA Score */
-            const dims = [
-                { label: "Visibility",   score: Math.round(score * 0.9)  },
-                { label: "Engagement",   score: Math.round(score * 1.05) },
-                { label: "Authority",    score: Math.round(score * 0.85) },
-                { label: "Conversion",   score: Math.round(score * 0.8)  }
-            ];
-            document.getElementById('s7-dna').innerHTML = `
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-                    <div>
-                        <div style="font-size:13px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Overall Brand DNA Score™</div>
-                        <div style="font-size:48px;font-weight:900;color:#0f172a;">${score}<span style="font-size:20px;color:#94a3b8;">/100</span></div>
-                    </div>
-                    <div style="font-size:14px;color:#64748b;max-width:320px;line-height:1.6;">Supporting evidence only — your strategic priorities above are more actionable than any score. The DNA Score reflects the compound health of your brand's digital presence across 4 dimensions.</div>
-                </div>
-                <div class="dna-score-bar"><div class="dna-score-fill" style="width:0%" id="dna-fill"></div></div>
-                <div class="dna-dimensions">
-                    ${dims.map(d => `<div class="dna-dim"><div class="dna-dim-score">${Math.min(100, d.score)}</div><div class="dna-dim-label">${d.label}</div></div>`).join('')}
-                </div>`;
+  <!-- §02 Priority Action Matrix -->
+  <div class="ar-section">
+    <div class="ar-sh"><div class="ar-sh-num">02 — Priority Action Matrix</div><div class="ar-sh-title">Impact-Ordered Actions</div></div>
+    ${allActions.map(a => `
+    <div class="ar-action-card">
+      <div>
+        <span class="ar-phase-badge ${a.phase === 'QW' ? 'ph-qw' : a.phase === 'GP' ? 'ph-gp' : 'ph-si'}">${a.label}</span>
+        <div class="ar-action-meta" style="margin-top:6px;">${esc(a.timeframe || '')}</div>
+      </div>
+      <div class="ar-action-body">
+        <h4>${esc(a.action || '')}</h4>
+        <p>${esc(a.business_impact || '')}</p>
+        ${a.expected_outcome ? `<div class="ar-rm-outcome">Expected: ${esc(a.expected_outcome)}</div>` : ''}
+      </div>
+    </div>`).join('')}
+  </div>
+
+  <!-- §03 Risk Dashboard -->
+  <div class="ar-section">
+    <div class="ar-sh"><div class="ar-sh-num">03 — Risk Dashboard</div><div class="ar-sh-title">Brand Vulnerability Assessment</div></div>
+    <div class="ar-risk-grid">
+      <div class="ar-risk-card"><div class="ar-risk-top" style="background:${riskClr(visibilityRisk)}"></div><div class="ar-risk-inner"><div class="ar-risk-label">Visibility Risk</div><div class="ar-risk-pct" style="color:${riskClr(visibilityRisk)}">${visibilityRisk}%</div><div class="ar-risk-level" style="color:${riskClr(visibilityRisk)}">${riskLvl(visibilityRisk)}</div></div></div>
+      <div class="ar-risk-card"><div class="ar-risk-top" style="background:${riskClr(authorityRisk)}"></div><div class="ar-risk-inner"><div class="ar-risk-label">Authority Risk</div><div class="ar-risk-pct" style="color:${riskClr(authorityRisk)}">${authorityRisk}%</div><div class="ar-risk-level" style="color:${riskClr(authorityRisk)}">${riskLvl(authorityRisk)}</div></div></div>
+      <div class="ar-risk-card"><div class="ar-risk-top" style="background:${riskClr(conversionRisk)}"></div><div class="ar-risk-inner"><div class="ar-risk-label">Conversion Risk</div><div class="ar-risk-pct" style="color:${riskClr(conversionRisk)}">${conversionRisk}%</div><div class="ar-risk-level" style="color:${riskClr(conversionRisk)}">${riskLvl(conversionRisk)}</div></div></div>
+    </div>
+    <div class="ar-gap-grid">
+      <div class="ar-gap-card"><h5>Friction Points</h5><ul>${(car.conversion_friction_points||[]).map(i=>`<li>${esc(i)}</li>`).join('')}</ul></div>
+      <div class="ar-gap-card"><h5>Trust Gaps</h5><ul>${(car.trust_gaps||[]).map(i=>`<li>${esc(i)}</li>`).join('')}</ul></div>
+      <div class="ar-gap-card"><h5>CTA Weaknesses</h5><ul>${(car.cta_weaknesses||[]).map(i=>`<li>${esc(i)}</li>`).join('')}</ul></div>
+    </div>
+  </div>
+
+  <!-- §04 Evidence Panel -->
+  <div class="ar-section">
+    <div class="ar-sh"><div class="ar-sh-num">04 — Evidence Panel</div><div class="ar-sh-title">How We Reached These Conclusions</div><div class="ar-sh-sub">Every finding below is labeled with how it was determined.</div></div>
+    <div class="ar-ev-legend">
+      <span class="ar-ev-badge ar-ev-obs">✓ Observed — directly confirmed from crawled data</span>
+      <span class="ar-ev-badge ar-ev-inf">◎ Inferred — derived from available signals</span>
+      <span class="ar-ev-badge ar-ev-est">~ Estimated — industry benchmarks applied</span>
+    </div>
+    ${(ac.observed_findings||[]).map(f=>`<div class="ar-ev-item ar-ev-obs-i"><span class="ar-ev-icon">✓</span>${esc(f)}</div>`).join('')}
+    ${(ac.inferred_findings||[]).map(f=>`<div class="ar-ev-item ar-ev-inf-i"><span class="ar-ev-icon">◎</span>${esc(f)}</div>`).join('')}
+    ${(ac.estimated_findings||[]).map(f=>`<div class="ar-ev-item ar-ev-est-i"><span class="ar-ev-icon">~</span>${esc(f)}</div>`).join('')}
+    ${bp.evidence ? `<div class="ar-ev-item ar-ev-obs-i"><span class="ar-ev-icon">✓</span><strong>Business Profile Source:</strong> ${esc(bp.evidence)}</div>` : ''}
+  </div>
+
+  <!-- §05 Competitive Moat Map -->
+  <div class="ar-section">
+    <div class="ar-sh"><div class="ar-sh-num">05 — Competitive Moat Map</div><div class="ar-sh-title">Positioning & Gap Analysis</div></div>
+    <div class="ar-moat-overview">${esc(cmm.competitor_overview || '')}</div>
+    <div class="ar-moat-grid">
+      <div class="ar-moat-card ar-moat-po"><h5>Positioning Overlaps</h5><ul>${list(cmm.positioning_overlaps)}</ul></div>
+      <div class="ar-moat-card ar-moat-ag"><h5>Authority Gaps</h5><ul>${list(cmm.authority_gaps)}</ul></div>
+      <div class="ar-moat-card ar-moat-cg"><h5>Content Gaps</h5><ul>${list(cmm.content_gaps)}</ul></div>
+      <div class="ar-moat-card ar-moat-ws"><h5>Whitespace Opportunities</h5><ul>${list(cmm.whitespace_opportunities)}</ul></div>
+    </div>
+  </div>
+
+  <!-- §06 Content Genome -->
+  <div class="ar-section">
+    <div class="ar-sh"><div class="ar-sh-num">06 — Content Genome</div><div class="ar-sh-title">Estimated Content Mix</div><div class="ar-sh-sub">${esc(cga.mix_basis || '')}</div></div>
+    ${Object.entries(mix).map(([k,v]) => `
+    <div class="ar-cg-row">
+      <span class="ar-cg-lbl">${esc(k.replace(/_/g,' '))}</span>
+      <div class="ar-cg-track"><div class="ar-cg-fill" id="cg-${k}" style="width:0%;background:${cgColors[k]||'#6366f1'}"></div></div>
+      <span class="ar-cg-pct">${v}%</span>
+    </div>`).join('')}
+    <div class="ar-cg-themes">
+      ${(cga.strongest_themes||[]).map(t=>`<span class="ar-cg-pill ar-cg-strong">+ ${esc(t)}</span>`).join('')}
+      ${(cga.missing_themes||[]).map(t=>`<span class="ar-cg-pill ar-cg-miss">missing: ${esc(t)}</span>`).join('')}
+    </div>
+  </div>
+
+  <!-- §07 SWOT -->
+  <div class="ar-section">
+    <div class="ar-sh"><div class="ar-sh-num">07 — SWOT Analysis</div><div class="ar-sh-title">Strategic Position Matrix</div></div>
+    <div class="ar-swot">
+      <div class="ar-swot-q"><h4>Strengths</h4><ol>${list(swot.strengths)}</ol></div>
+      <div class="ar-swot-q"><h4>Weaknesses</h4><ol>${list(swot.weaknesses)}</ol></div>
+      <div class="ar-swot-q"><h4>Opportunities</h4><ol>${list(swot.opportunities)}</ol></div>
+      <div class="ar-swot-q"><h4>Threats</h4><ol>${list(swot.threats)}</ol></div>
+    </div>
+  </div>
+
+  <!-- §08 Strategic Roadmap -->
+  <div class="ar-section">
+    <div class="ar-sh"><div class="ar-sh-num">08 — Strategic Roadmap</div><div class="ar-sh-title">90-Day Execution Plan</div></div>
+    <div class="ar-phase-block">
+      <div class="ar-phase-head ar-ph-qw"><h4>⚡ Phase 1 — Quick Wins</h4><span>0–7 days · ${(sr.quick_wins||[]).length} actions</span></div>
+      ${(sr.quick_wins||[]).map(a=>`<div class="ar-rm-item"><h5>${esc(a.action||'')}</h5><p>${esc(a.business_impact||'')}</p>${a.expected_outcome?`<div class="ar-rm-outcome">${esc(a.expected_outcome)}</div>`:''}</div>`).join('')}
+    </div>
+    <div class="ar-phase-block">
+      <div class="ar-phase-head ar-ph-gp"><h4>📈 Phase 2 — Growth Plays</h4><span>30 days · ${(sr.growth_plays||[]).length} actions</span></div>
+      ${(sr.growth_plays||[]).map(a=>`<div class="ar-rm-item"><h5>${esc(a.action||'')}</h5><p>${esc(a.business_impact||'')}</p>${a.expected_outcome?`<div class="ar-rm-outcome">${esc(a.expected_outcome)}</div>`:''}</div>`).join('')}
+    </div>
+    <div class="ar-phase-block">
+      <div class="ar-phase-head ar-ph-si"><h4>🎯 Phase 3 — Strategic Investments</h4><span>60–90 days · ${(sr.strategic_investments||[]).length} actions</span></div>
+      ${(sr.strategic_investments||[]).map(a=>`<div class="ar-rm-item"><h5>${esc(a.action||'')}</h5><p>${esc(a.business_impact||'')}</p>${a.expected_outcome?`<div class="ar-rm-outcome">${esc(a.expected_outcome)}</div>`:''}</div>`).join('')}
+    </div>
+  </div>
+
+  <!-- §09 Business Impact Forecast -->
+  <div class="ar-section">
+    <div class="ar-sh"><div class="ar-sh-num">09 — Business Impact Forecast</div><div class="ar-sh-title">Growth Opportunities <span style="font-size:12px;font-weight:400;color:#94a3b8;"> — estimates, not guarantees</span></div></div>
+    <div class="ar-impact-grid">
+      <div class="ar-impact-card"><div class="ar-impact-top" style="background:${scoreColor(dims.web_presence||50)}"></div><div class="ar-impact-inner"><div class="ar-impact-dim">Visibility</div><div class="ar-impact-score">${dims.web_presence||0}<span>/100</span></div><ul class="ar-impact-opps">${(gf.visibility_opportunities||[]).map(o=>`<li>${esc(o)}</li>`).join('')}</ul></div></div>
+      <div class="ar-impact-card"><div class="ar-impact-top" style="background:${scoreColor(dims.content_strategy||50)}"></div><div class="ar-impact-inner"><div class="ar-impact-dim">Authority</div><div class="ar-impact-score">${dims.content_strategy||0}<span>/100</span></div><ul class="ar-impact-opps">${(gf.authority_opportunities||[]).map(o=>`<li>${esc(o)}</li>`).join('')}</ul></div></div>
+      <div class="ar-impact-card"><div class="ar-impact-top" style="background:${scoreColor(dims.social_presence||50)}"></div><div class="ar-impact-inner"><div class="ar-impact-dim">Audience Growth</div><div class="ar-impact-score">${dims.social_presence||0}<span>/100</span></div><ul class="ar-impact-opps">${(gf.audience_growth_opportunities||[]).map(o=>`<li>${esc(o)}</li>`).join('')}</ul></div></div>
+      <div class="ar-impact-card"><div class="ar-impact-top" style="background:${scoreColor(dims.conversion_readiness||50)}"></div><div class="ar-impact-inner"><div class="ar-impact-dim">Conversion</div><div class="ar-impact-score">${dims.conversion_readiness||0}<span>/100</span></div><ul class="ar-impact-opps">${(gf.conversion_opportunities||[]).map(o=>`<li>${esc(o)}</li>`).join('')}</ul></div></div>
+    </div>
+    ${gf.assumptions ? `<div class="ar-conf-limits" style="margin-top:16px;"><strong>Assumptions:</strong> ${esc(gf.assumptions)}</div>` : ''}
+  </div>
+
+  <!-- §10 Audit Confidence -->
+  <div class="ar-section">
+    <div class="ar-sh"><div class="ar-sh-num">10 — Audit Confidence</div><div class="ar-sh-title">How This Report Was Built</div></div>
+    <div class="ar-conf-qual">${esc(ac.data_quality || '')}</div>
+    <div class="ar-conf-grid">
+      <div class="ar-conf-card ar-conf-card-obs"><div class="ar-conf-count">${(ac.observed_findings||[]).length}</div><div class="ar-conf-type">Observed</div></div>
+      <div class="ar-conf-card ar-conf-card-inf"><div class="ar-conf-count">${(ac.inferred_findings||[]).length}</div><div class="ar-conf-type">Inferred</div></div>
+      <div class="ar-conf-card ar-conf-card-est"><div class="ar-conf-count">${(ac.estimated_findings||[]).length}</div><div class="ar-conf-type">Estimated</div></div>
+    </div>
+    ${ac.limitations ? `<div class="ar-conf-limits"><strong>What would improve this audit:</strong> ${esc(ac.limitations)}</div>` : ''}
+  </div>
+
+  <!-- §11 Unlock CTA -->
+  <div class="ar-unlock">
+    <h3>Unlock Verified Intelligence</h3>
+    <div class="ar-unlock-vp">${esc(uvi.value_proposition || 'Connect your accounts to move from estimated to confirmed data.')}</div>
+    <div class="ar-unlock-grid">
+      ${Object.entries(uvi.what_becomes_available || {}).map(([k,v]) => `
+      <div class="ar-unlock-item">
+        <h5>${esc(k.replace(/_/g,' '))}</h5>
+        <p>${esc(v)}</p>
+      </div>`).join('')}
+    </div>
+    <div class="ar-unlock-btns">
+      <button class="btn btn--primary btn--large" onclick="redirectToRegister()">Connect Accounts &amp; Verify</button>
+      <button class="btn btn--secondary" style="border-color:rgba(255,255,255,0.4);color:white;" onclick="showLeadCapture()">Download Snapshot Report</button>
+      <a href="/${window.location.pathname.split('/')[1] || ''}" style="color:rgba(255,255,255,0.5);font-size:14px;text-decoration:none;align-self:center;margin-left:8px;" onclick="location.reload();return false;">← Run another audit</a>
+    </div>
+  </div>
+
+</div>`;
+
+            /* Animate dimension bars */
             setTimeout(() => {
-                const fill = document.getElementById('dna-fill');
-                if (fill) fill.style.width = score + '%';
+                Object.entries(dims).forEach(([k, v]) => {
+                    const el = document.getElementById('df-' + k);
+                    if (el) el.style.width = v + '%';
+                });
+                Object.entries(mix).forEach(([k, v]) => {
+                    const el = document.getElementById('cg-' + k);
+                    if (el) el.style.width = v + '%';
+                });
             }, 300);
+
+            console.log('[AUDIT_RENDER] Results rendered', { sections: 11, score, brand: currentBrandName });
         }
 
         function redirectToRegister() {
