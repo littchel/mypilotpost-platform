@@ -1,143 +1,203 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { apiRequest } from "../lib/api/client";
 
-/* ─── Module tab config ────────────────────────────────── */
+/* ─── CSS injected once ─────────────────────────────────────────────── */
+
+const STYLES = `
+@keyframes intel-slide-in {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes intel-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+@keyframes intel-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(37,99,235,0.15); }
+  50%       { box-shadow: 0 0 0 8px rgba(37,99,235,0); }
+}
+.intel-new {
+  animation: intel-slide-in 0.35s ease forwards;
+}
+.intel-card {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  cursor: pointer;
+}
+.intel-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.1) !important;
+}
+.intel-module-btn {
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.intel-module-btn:hover {
+  background: #f1f5f9 !important;
+}
+.intel-unread-dot {
+  animation: intel-pulse 2s infinite;
+}
+.intel-new-badge {
+  animation: intel-glow 2s ease-in-out 3;
+}
+.intel-dismiss-btn {
+  transition: opacity 0.15s;
+  opacity: 0;
+}
+.intel-card:hover .intel-dismiss-btn {
+  opacity: 1;
+}
+`;
+
+/* ─── Module config ─────────────────────────────────────────────────── */
 
 const MODULES = [
-  { id: "platform_health",        label: "Platform Health",  icon: "fas fa-satellite-dish",  color: "#0891b2" },
-  { id: "content_intelligence",   label: "Content",          icon: "fas fa-file-alt",        color: "#7c3aed" },
-  { id: "audience_intelligence",  label: "Audience",         icon: "fas fa-users",           color: "#0369a1" },
-  { id: "competitive_moat",       label: "Competitive",      icon: "fas fa-binoculars",      color: "#dc2626" },
-  { id: "seo_intelligence",       label: "SEO",              icon: "fas fa-search",          color: "#059669" },
-  { id: "conversion_intelligence",label: "Conversion",       icon: "fas fa-funnel-dollar",   color: "#d97706" },
-  { id: "campaign_intelligence",  label: "Campaigns",        icon: "fas fa-bullhorn",        color: "#7c3aed" },
-  { id: "growth_engine",          label: "Growth Engine",    icon: "fas fa-rocket",          color: "#2563eb" },
+  { id: "platform_health",         label: "Platform Health",  icon: "fas fa-satellite-dish",  color: "#0891b2", shortLabel: "Platform"    },
+  { id: "growth_engine",           label: "Growth Engine",    icon: "fas fa-rocket",          color: "#2563eb", shortLabel: "Growth"      },
+  { id: "content_intelligence",    label: "Content",          icon: "fas fa-file-alt",        color: "#7c3aed", shortLabel: "Content"     },
+  { id: "audience_intelligence",   label: "Audience",         icon: "fas fa-users",           color: "#0369a1", shortLabel: "Audience"    },
+  { id: "competitive_moat",        label: "Competitive",      icon: "fas fa-binoculars",      color: "#dc2626", shortLabel: "Competitive" },
+  { id: "seo_intelligence",        label: "SEO",              icon: "fas fa-search",          color: "#059669", shortLabel: "SEO"         },
+  { id: "conversion_intelligence", label: "Conversion",       icon: "fas fa-filter",          color: "#d97706", shortLabel: "Conversion"  },
+  { id: "campaign_intelligence",   label: "Campaigns",        icon: "fas fa-bullhorn",        color: "#6d28d9", shortLabel: "Campaigns"   },
 ];
 
-const CONFIDENCE_STYLES = {
+const CONF_STYLES = {
   "Observed":            { bg: "#f0fdf4", border: "#86efac", text: "#166534" },
   "Observed + Inferred": { bg: "#eff6ff", border: "#93c5fd", text: "#1e40af" },
   "Industry Benchmark":  { bg: "#fdf4ff", border: "#d8b4fe", text: "#6b21a8" },
   "Estimated":           { bg: "#fffbeb", border: "#fcd34d", text: "#92400e" },
 };
 
-const PRIORITY_COLORS = {
-  high:   "#dc2626",
-  medium: "#d97706",
-  low:    "#16a34a",
-};
+const PRIORITY_COLOR = { high: "#dc2626", medium: "#d97706", low: "#16a34a" };
 
 const NOTIF_STYLES = {
-  urgent:      { bg: "#fff1f2", border: "#fca5a5", icon: "fas fa-exclamation-circle", iconColor: "#dc2626" },
-  warning:     { bg: "#fffbeb", border: "#fcd34d", icon: "fas fa-exclamation-triangle", iconColor: "#d97706" },
-  opportunity: { bg: "#eff6ff", border: "#93c5fd", icon: "fas fa-lightbulb",          iconColor: "#2563eb" },
-  win:         { bg: "#f0fdf4", border: "#86efac", icon: "fas fa-trophy",              iconColor: "#16a34a" },
+  urgent:      { bg: "#fff1f2", border: "#fca5a5", icon: "fas fa-exclamation-circle", color: "#dc2626" },
+  warning:     { bg: "#fffbeb", border: "#fcd34d", icon: "fas fa-exclamation-triangle", color: "#d97706" },
+  opportunity: { bg: "#eff6ff", border: "#93c5fd", icon: "fas fa-lightbulb",           color: "#2563eb" },
+  win:         { bg: "#f0fdf4", border: "#86efac", icon: "fas fa-trophy",               color: "#16a34a" },
 };
 
-/* ─── Atoms ─────────────────────────────────────────────── */
+/* ─── Atoms ─────────────────────────────────────────────────────────── */
 
-const ConfidenceBadge = ({ confidence }) => {
-  const s = CONFIDENCE_STYLES[confidence] || CONFIDENCE_STYLES["Estimated"];
+const ConfBadge = ({ v }) => {
+  const s = CONF_STYLES[v] || CONF_STYLES["Estimated"];
   return (
     <span style={{
-      display: "inline-block", padding: "3px 10px", borderRadius: 99,
+      display: "inline-block", padding: "2px 9px", borderRadius: 99,
       background: s.bg, border: `1px solid ${s.border}`,
-      fontSize: 11, fontWeight: 700, color: s.text, letterSpacing: 0.3,
+      fontSize: 10, fontWeight: 700, color: s.text, letterSpacing: 0.3,
     }}>
-      {confidence || "Estimated"}
+      {v || "Estimated"}
     </span>
   );
 };
 
-const PriorityDot = ({ priority }) => (
-  <span style={{
-    display: "inline-flex", alignItems: "center", gap: 5,
-    fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8,
-    color: PRIORITY_COLORS[priority] || PRIORITY_COLORS.medium,
-  }}>
-    <span style={{ width: 7, height: 7, borderRadius: "50%", background: PRIORITY_COLORS[priority] || PRIORITY_COLORS.medium }} />
-    {priority || "medium"}
+const PriorityPip = ({ v }) => (
+  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: PRIORITY_COLOR[v] || "#d97706" }}>
+    <span style={{ width: 6, height: 6, borderRadius: "50%", background: PRIORITY_COLOR[v] || "#d97706" }} />
+    {v || "medium"}
   </span>
 );
 
-const InsightCard = ({ insight, accentColor }) => {
-  const [expanded, setExpanded] = useState(false);
+const UnreadDot = () => (
+  <span className="intel-unread-dot" style={{ width: 7, height: 7, borderRadius: "50%", background: "#2563eb", display: "inline-block", flexShrink: 0 }} />
+);
+
+/* ─── Insight Card ───────────────────────────────────────────────────── */
+
+const InsightCard = ({ item, accentColor, isNew, onDismiss }) => {
+  const [expanded, setExpanded] = useState(isNew);
 
   return (
-    <div style={{
-      background: "#fff", borderRadius: 14, border: "1px solid #e5e9f0",
-      borderLeft: `4px solid ${accentColor}`, marginBottom: 14,
-      boxShadow: "0 1px 6px rgba(0,0,0,0.05)",
-    }}>
+    <div
+      className={`intel-card${isNew ? " intel-new" : ""}${isNew ? " intel-new-badge" : ""}`}
+      style={{
+        background: "#fff", borderRadius: 14,
+        border: `1px solid ${isNew ? accentColor + "40" : "#e5e9f0"}`,
+        borderLeft: `4px solid ${accentColor}`,
+        marginBottom: 12, position: "relative",
+        boxShadow: isNew ? `0 4px 16px ${accentColor}20` : "0 1px 4px rgba(0,0,0,0.04)",
+      }}
+    >
+      {/* New badge */}
+      {isNew && (
+        <div style={{
+          position: "absolute", top: -1, right: 12,
+          background: accentColor, color: "#fff",
+          fontSize: 9, fontWeight: 800, letterSpacing: 1,
+          padding: "2px 8px", borderRadius: "0 0 8px 8px",
+          textTransform: "uppercase",
+        }}>
+          New
+        </div>
+      )}
+
       <button
         onClick={() => setExpanded(v => !v)}
-        style={{
-          width: "100%", textAlign: "left", background: "none", border: "none",
-          padding: "18px 20px 14px", cursor: "pointer",
-        }}
+        style={{ width: "100%", textAlign: "left", background: "none", border: "none", padding: "16px 18px 12px", cursor: "pointer" }}
       >
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
           <div style={{ flex: 1 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6, flexWrap: "wrap" }}>
-              <PriorityDot priority={insight.priority} />
-              <ConfidenceBadge confidence={insight.confidence} />
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5, flexWrap: "wrap" }}>
+              <PriorityPip v={item.priority} />
+              <ConfBadge v={item.confidence} />
             </div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", lineHeight: 1.4 }}>
-              {insight.title}
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", lineHeight: 1.4, marginBottom: 4 }}>
+              {item.title}
             </div>
-            <div style={{ fontSize: 13, color: "#475569", marginTop: 5, lineHeight: 1.6 }}>
-              {insight.finding}
+            <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.55 }}>
+              {item.finding}
             </div>
           </div>
-          <i
-            className={`fas fa-chevron-${expanded ? "up" : "down"}`}
-            style={{ color: "#94a3b8", fontSize: 12, marginTop: 4, flexShrink: 0 }}
-          />
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+            <button
+              className="intel-dismiss-btn"
+              onClick={e => { e.stopPropagation(); onDismiss(item.id); }}
+              title="Dismiss"
+              style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 13, padding: "2px 4px" }}
+            >
+              <i className="fas fa-times" />
+            </button>
+            <i className={`fas fa-chevron-${expanded ? "up" : "down"}`} style={{ color: "#94a3b8", fontSize: 11 }} />
+          </div>
         </div>
       </button>
 
       {expanded && (
-        <div style={{ padding: "0 20px 18px", borderTop: "1px solid #f1f5f9" }}>
-          {/* Why it matters */}
-          <div style={{ marginTop: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: "#94a3b8", marginBottom: 5 }}>
-              Why It Matters
+        <div style={{ padding: "0 18px 16px", borderTop: "1px solid #f1f5f9" }}>
+          {item.why_it_matters && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: "#94a3b8", marginBottom: 4 }}>Why It Matters</div>
+              <div style={{ fontSize: 12, color: "#334155", lineHeight: 1.65 }}>{item.why_it_matters}</div>
             </div>
-            <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.65 }}>
-              {insight.why_it_matters}
-            </div>
-          </div>
+          )}
 
-          {/* Evidence */}
-          {(insight.evidence || []).length > 0 && (
-            <div style={{ marginTop: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: "#94a3b8", marginBottom: 6 }}>
-                Evidence
-              </div>
-              {insight.evidence.map((e, i) => (
-                <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 5 }}>
-                  <i className="fas fa-database" style={{ color: accentColor, fontSize: 11, marginTop: 3, flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, color: "#475569", lineHeight: 1.5 }}>{e}</span>
+          {(item.evidence || []).length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: "#94a3b8", marginBottom: 5 }}>Evidence</div>
+              {item.evidence.map((e, i) => (
+                <div key={i} style={{ display: "flex", gap: 7, alignItems: "flex-start", marginBottom: 4 }}>
+                  <i className="fas fa-database" style={{ color: accentColor, fontSize: 10, marginTop: 3, flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, color: "#475569", lineHeight: 1.5 }}>{e}</span>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Recommended Action */}
           <div style={{
             marginTop: 14, background: "#f8fafc", borderRadius: 10,
-            padding: "14px 16px", border: "1px solid #e2e8f0",
+            padding: "12px 14px", border: "1px solid #e2e8f0",
           }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: accentColor, marginBottom: 5 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: accentColor, marginBottom: 4 }}>
               Recommended Action
             </div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a", lineHeight: 1.55 }}>
-              {insight.recommended_action}
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a", lineHeight: 1.5 }}>
+              {item.recommended_action}
             </div>
-            {insight.expected_impact && (
-              <div style={{ fontSize: 12, color: "#64748b", marginTop: 6, lineHeight: 1.5 }}>
+            {item.expected_impact && (
+              <div style={{ fontSize: 11, color: "#64748b", marginTop: 5, lineHeight: 1.5 }}>
                 <i className="fas fa-arrow-trend-up" style={{ marginRight: 5, color: "#16a34a" }} />
-                {insight.expected_impact}
+                {item.expected_impact}
               </div>
             )}
           </div>
@@ -147,89 +207,55 @@ const InsightCard = ({ insight, accentColor }) => {
   );
 };
 
-const ModulePanel = ({ moduleData, moduleConfig }) => {
-  if (!moduleData) return (
-    <div style={{ textAlign: "center", padding: "40px 0", color: "#94a3b8" }}>
-      <i className={moduleConfig.icon} style={{ fontSize: 32, marginBottom: 12, display: "block" }} />
-      <div style={{ fontSize: 14 }}>No data available for this module yet.</div>
-    </div>
-  );
+/* ─── Notification Strip ─────────────────────────────────────────────── */
 
-  const insights = moduleData.insights || [];
-
-  return (
-    <div>
-      {/* Module summary banner */}
-      {(moduleData.headline || moduleData.summary) && (
-        <div style={{
-          background: "#f8fafc", borderRadius: 12, padding: "16px 20px",
-          border: "1px solid #e2e8f0", marginBottom: 20,
-        }}>
-          {moduleData.headline && (
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 5 }}>
-              {moduleData.headline}
-            </div>
-          )}
-          {moduleData.summary && (
-            <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.65 }}>
-              {moduleData.summary}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Insight cards */}
-      {insights.map((insight, i) => (
-        <InsightCard key={i} insight={insight} accentColor={moduleConfig.color} />
-      ))}
-
-      {insights.length === 0 && (
-        <div style={{ fontSize: 14, color: "#94a3b8", textAlign: "center", padding: "24px 0" }}>
-          No insights generated for this module.
-        </div>
-      )}
-    </div>
-  );
-};
-
-/* ─── Notification Center ───────────────────────────────── */
-
-const NotificationCenter = ({ notifications }) => {
+const NotificationStrip = ({ notifications, newNotifications, onDismiss }) => {
   const [dismissed, setDismissed] = useState(new Set());
 
-  const visible = (notifications || []).filter((_, i) => !dismissed.has(i));
+  const visible = notifications.filter(n => !dismissed.has(n.id));
   if (!visible.length) return null;
 
+  const handleDismiss = (id) => {
+    setDismissed(p => new Set([...p, id]));
+    onDismiss(id);
+  };
+
   return (
-    <div style={{ marginBottom: 24 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: "#94a3b8", marginBottom: 10 }}>
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: "#94a3b8", marginBottom: 8 }}>
         Intelligence Alerts
       </div>
-      {(notifications || []).map((n, i) => {
-        if (dismissed.has(i)) return null;
-        const s = NOTIF_STYLES[n.type] || NOTIF_STYLES.opportunity;
+      {visible.map(n => {
+        const s = NOTIF_STYLES[n.notification_type] || NOTIF_STYLES.opportunity;
+        const isNew = newNotifications.some(nn => nn.id === n.id);
         return (
-          <div key={i} style={{
-            background: s.bg, border: `1px solid ${s.border}`, borderRadius: 10,
-            padding: "13px 16px", marginBottom: 8,
-            display: "flex", gap: 12, alignItems: "flex-start",
-          }}>
-            <i className={s.icon} style={{ color: s.iconColor, fontSize: 15, marginTop: 2, flexShrink: 0 }} />
+          <div
+            key={n.id}
+            className={isNew ? "intel-new" : ""}
+            style={{
+              background: s.bg, border: `1px solid ${s.border}`, borderRadius: 10,
+              padding: "11px 14px", marginBottom: 7,
+              display: "flex", gap: 10, alignItems: "flex-start",
+            }}
+          >
+            <i className={s.icon} style={{ color: s.color, fontSize: 13, marginTop: 2, flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 2 }}>{n.title}</div>
-              <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.5 }}>{n.body}</div>
-              {n.action && (
-                <div style={{ fontSize: 12, fontWeight: 600, color: s.iconColor, marginTop: 4 }}>
-                  → {n.action}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 2 }}>{n.title}</div>
+                  <div style={{ fontSize: 11, color: "#475569", lineHeight: 1.5 }}>{n.notification_body || n.finding}</div>
+                  {n.notification_action && (
+                    <div style={{ fontSize: 11, fontWeight: 600, color: s.color, marginTop: 3 }}>→ {n.notification_action}</div>
+                  )}
                 </div>
-              )}
+                <button
+                  onClick={() => handleDismiss(n.id)}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 12, padding: 0, flexShrink: 0 }}
+                >
+                  <i className="fas fa-times" />
+                </button>
+              </div>
             </div>
-            <button
-              onClick={() => setDismissed(p => new Set([...p, i]))}
-              style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 14, padding: 0, flexShrink: 0 }}
-            >
-              <i className="fas fa-times" />
-            </button>
           </div>
         );
       })}
@@ -237,201 +263,430 @@ const NotificationCenter = ({ notifications }) => {
   );
 };
 
-/* ─── Empty State ─────────────────────────────────────────── */
+/* ─── Pending Reveal Banner ──────────────────────────────────────────── */
 
-const EmptyState = ({ activeBrand }) => (
-  <div style={{ textAlign: "center", maxWidth: 540, margin: "60px auto", padding: "0 16px" }}>
-    <div style={{ fontSize: 48, marginBottom: 20 }}>🧠</div>
-    <h2 style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", marginBottom: 10 }}>
-      AI Brand Intelligence
-    </h2>
-    <p style={{ fontSize: 15, color: "#64748b", lineHeight: 1.65, marginBottom: 28 }}>
-      Get a real-time intelligence report for{" "}
-      <strong>{activeBrand?.name || "your brand"}</strong> — 8 modules covering Platform Health,
-      Content, Audience, Competitive Position, SEO, Conversion, Campaigns, and Growth.
-      Every insight is generated from your actual data.
-    </p>
-    <a href="/brand-audit" style={{
-      display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px",
-      background: "linear-gradient(135deg, #2563eb, #1d4ed8)", color: "#fff",
-      borderRadius: 12, fontWeight: 700, fontSize: 14, textDecoration: "none",
-      boxShadow: "0 4px 14px rgba(37,99,235,0.35)",
+const PendingBanner = ({ count, onReveal, revealing }) => {
+  if (count <= 0) return null;
+  return (
+    <div style={{
+      background: "linear-gradient(135deg, #eff6ff, #f0fdf4)", border: "1px solid #93c5fd",
+      borderRadius: 12, padding: "14px 18px", marginBottom: 16,
+      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
     }}>
-      <i className="fas fa-chart-line" /> Run Brand Audit First
-    </a>
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#1e40af", marginBottom: 2 }}>
+          <i className="fas fa-brain" style={{ marginRight: 8 }} />
+          {count} more intelligence insight{count !== 1 ? "s" : ""} queued
+        </div>
+        <div style={{ fontSize: 11, color: "#475569" }}>
+          Your strategist is working. Check back to reveal more insights.
+        </div>
+      </div>
+      <button
+        onClick={onReveal}
+        disabled={revealing}
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 16px",
+          background: "#2563eb", color: "#fff", border: "none",
+          borderRadius: 9, fontWeight: 700, fontSize: 12, cursor: revealing ? "not-allowed" : "pointer",
+          flexShrink: 0, opacity: revealing ? 0.6 : 1,
+        }}
+      >
+        {revealing ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-eye" />}
+        Reveal Next
+      </button>
+    </div>
+  );
+};
+
+/* ─── Module Sidebar ─────────────────────────────────────────────────── */
+
+const ModuleSidebar = ({ activeModule, setActiveModule, unreadByModule }) => (
+  <div style={{
+    width: 200, flexShrink: 0,
+    background: "#fff", borderRadius: 16, border: "1px solid #e5e9f0",
+    padding: "16px 10px", height: "fit-content",
+    boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
+  }}>
+    <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: "#94a3b8", padding: "0 8px", marginBottom: 10 }}>
+      Intelligence Modules
+    </div>
+    {MODULES.map(m => {
+      const isActive = activeModule === m.id;
+      const unread = unreadByModule[m.id] || 0;
+      return (
+        <button
+          key={m.id}
+          onClick={() => setActiveModule(m.id)}
+          className="intel-module-btn"
+          style={{
+            width: "100%", textAlign: "left", padding: "9px 10px", borderRadius: 9,
+            background: isActive ? `${m.color}15` : "none",
+            border: isActive ? `1px solid ${m.color}30` : "1px solid transparent",
+            cursor: "pointer", marginBottom: 2,
+            display: "flex", alignItems: "center", gap: 9,
+          }}
+        >
+          <i className={m.icon} style={{ fontSize: 12, color: isActive ? m.color : "#64748b", width: 14, textAlign: "center" }} />
+          <span style={{ fontSize: 12, fontWeight: isActive ? 700 : 500, color: isActive ? m.color : "#374151", flex: 1 }}>
+            {m.shortLabel}
+          </span>
+          {unread > 0 && <UnreadDot />}
+        </button>
+      );
+    })}
   </div>
 );
 
-/* ─── Generate State ──────────────────────────────────────── */
+/* ─── Generating State ───────────────────────────────────────────────── */
 
 const GeneratingState = () => (
-  <div style={{ textAlign: "center", padding: "56px 0" }}>
-    <div style={{ width: 48, height: 48, margin: "0 auto 20px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div className="spinner-border text-primary" role="status" />
+  <div style={{
+    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+    padding: "60px 0", gap: 16,
+  }}>
+    <div style={{
+      width: 56, height: 56, borderRadius: "50%",
+      background: "linear-gradient(135deg, #eff6ff, #dbeafe)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      boxShadow: "0 0 0 12px rgba(37,99,235,0.08)",
+    }}>
+      <i className="fas fa-brain" style={{ fontSize: 22, color: "#2563eb" }} />
     </div>
-    <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>
-      Generating Intelligence Report
+    <div style={{ textAlign: "center" }}>
+      <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>
+        Analysing Your Brand
+      </div>
+      <div style={{ fontSize: 13, color: "#64748b", maxWidth: 340 }}>
+        Your strategist is working across 8 intelligence modules. This takes 15–25 seconds.
+      </div>
     </div>
-    <div style={{ fontSize: 13, color: "#64748b" }}>
-      Analysing your brand data across 8 modules — this takes 15–30 seconds
+    <div style={{ display: "flex", gap: 6 }}>
+      {["Platform", "Content", "Growth", "SEO", "Conversion"].map((label, i) => (
+        <div key={i} style={{
+          fontSize: 11, fontWeight: 600, color: "#475569",
+          background: "#f1f5f9", borderRadius: 99, padding: "4px 10px",
+          animation: `intel-pulse 1.5s ease ${i * 0.2}s infinite`,
+        }}>
+          {label}
+        </div>
+      ))}
     </div>
   </div>
 );
 
-/* ─── Main Component ─────────────────────────────────────── */
+/* ─── Empty / First-run State ────────────────────────────────────────── */
+
+const EmptyState = ({ activeBrand, onGenerate, loading }) => (
+  <div style={{ textAlign: "center", maxWidth: 520, margin: "60px auto", padding: "0 16px" }}>
+    <div style={{
+      width: 72, height: 72, borderRadius: "50%",
+      background: "linear-gradient(135deg, #eff6ff, #dbeafe)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      margin: "0 auto 24px",
+    }}>
+      <i className="fas fa-brain" style={{ fontSize: 28, color: "#2563eb" }} />
+    </div>
+    <h2 style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", marginBottom: 10 }}>
+      Brand Intelligence
+    </h2>
+    <p style={{ fontSize: 14, color: "#64748b", lineHeight: 1.7, marginBottom: 28 }}>
+      Get a daily strategic intelligence report for{" "}
+      <strong style={{ color: "#0f172a" }}>{activeBrand?.name || "your brand"}</strong> — 8 modules,
+      every insight backed by evidence, every action specific to your situation.
+    </p>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, maxWidth: 420, margin: "0 auto 28px", textAlign: "left" }}>
+      {[
+        { icon: "fas fa-satellite-dish", label: "Platform Health",    desc: "Connection & publishing status" },
+        { icon: "fas fa-rocket",         label: "Growth Engine",      desc: "Highest-leverage next moves"   },
+        { icon: "fas fa-binoculars",     label: "Competitive Moat",   desc: "Positioning vs. competitors"   },
+        { icon: "fas fa-filter",         label: "Conversion Intel",   desc: "Revenue leaks & quick wins"    },
+      ].map(({ icon, label, desc }) => (
+        <div key={label} style={{ padding: "14px", background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0" }}>
+          <i className={icon} style={{ color: "#2563eb", marginBottom: 8, display: "block", fontSize: 14 }} />
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 3 }}>{label}</div>
+          <div style={{ fontSize: 11, color: "#64748b" }}>{desc}</div>
+        </div>
+      ))}
+    </div>
+    <button
+      onClick={onGenerate}
+      disabled={loading}
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 28px",
+        background: "linear-gradient(135deg, #2563eb, #1d4ed8)", color: "#fff",
+        borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: loading ? "not-allowed" : "pointer",
+        border: "none", boxShadow: "0 4px 14px rgba(37,99,235,0.35)", opacity: loading ? 0.7 : 1,
+      }}
+    >
+      <i className={loading ? "fas fa-spinner fa-spin" : "fas fa-brain"} />
+      {loading ? "Generating…" : "Generate Intelligence Report"}
+    </button>
+    <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 12 }}>
+      Generated once per day. Revealed progressively.
+    </div>
+  </div>
+);
+
+/* ─── Main Component ─────────────────────────────────────────────────── */
 
 export default function DashboardInsights({ activeBrand }) {
   const [activeModule, setActiveModule] = useState("platform_health");
-  const [intelligenceData, setIntelligenceData] = useState(null);
+  const [feed, setFeed] = useState(null);           // full API response
+  const [newIds, setNewIds] = useState(new Set());  // IDs that are "new" this session
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [generatedAt, setGeneratedAt] = useState(null);
-  const [isCached, setIsCached] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [err, setErr] = useState(null);
+  const [revealing, setRevealing] = useState(false);
+  const styleInjected = useRef(false);
 
-  const load = useCallback(async (forceRefresh = false) => {
+  // Inject CSS once
+  useEffect(() => {
+    if (styleInjected.current) return;
+    styleInjected.current = true;
+    const el = document.createElement("style");
+    el.textContent = STYLES;
+    document.head.appendChild(el);
+  }, []);
+
+  const loadFeed = useCallback(async (isGenerate = false) => {
     if (!activeBrand?.id) return;
-    setLoading(true);
-    setError(null);
+    if (isGenerate) setGenerating(true); else setLoading(true);
+    setErr(null);
+
     try {
-      const url = forceRefresh
-        ? "/api/customer/intelligence/modules?refresh=true"
-        : "/api/customer/intelligence/modules";
-      const res = await apiRequest(url);
-      if (res?.data) {
-        setIntelligenceData(res.data);
-        setGeneratedAt(res.generated_at);
-        setIsCached(!!res.cached);
+      const res = await apiRequest("/api/customer/intelligence/feed");
+      if (res) {
+        // Track which IDs are new this load
+        const freshIds = new Set([
+          ...(res.new_insights     || []).map(i => i.id),
+          ...(res.new_notifications || []).map(i => i.id),
+        ]);
+        setNewIds(prev => new Set([...prev, ...freshIds]));
+        setFeed(res);
+
+        // If new insights arrived, switch to the module of the first one
+        if ((res.new_insights || []).length > 0) {
+          setActiveModule(res.new_insights[0].module_id || "platform_health");
+        }
       }
-    } catch (err) {
-      setError(err?.message || "Failed to load intelligence data.");
+    } catch (e) {
+      setErr(e?.message || "Failed to load intelligence.");
     } finally {
       setLoading(false);
+      setGenerating(false);
     }
   }, [activeBrand?.id]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadFeed(); }, [loadFeed]);
 
-  const modules     = intelligenceData?.modules     || null;
-  const notifs      = intelligenceData?.notifications || [];
-  const activeConf  = MODULES.find(m => m.id === activeModule) || MODULES[0];
-  const moduleData  = modules?.[activeModule] || null;
+  const handleRevealNext = async () => {
+    setRevealing(true);
+    await loadFeed();
+    setRevealing(false);
+  };
 
+  const handleDismiss = async (id) => {
+    try {
+      await apiRequest(`/api/customer/intelligence/dismiss/${id}`, { method: "POST" });
+      // Optimistically remove from feed
+      setFeed(prev => {
+        if (!prev) return prev;
+        const filterOut = (arr) => (arr || []).filter(i => i.id !== id);
+        return {
+          ...prev,
+          delivered:     filterOut(prev.delivered),
+          new_insights:  filterOut(prev.new_insights),
+          notifications: filterOut(prev.notifications),
+          new_notifications: filterOut(prev.new_notifications),
+        };
+      });
+      setNewIds(prev => { const s = new Set(prev); s.delete(id); return s; });
+    } catch {}
+  };
+
+  // ── Derive UI state ──────────────────────────────────────────────────────
+  const hasAnyItems = feed && (
+    (feed.delivered?.length || 0) + (feed.new_insights?.length || 0) > 0
+  );
+
+  // All insights for the active module (delivered + new)
+  const allInsights = [
+    ...(feed?.delivered     || []),
+    ...(feed?.new_insights  || []),
+  ];
+  const moduleInsights = allInsights.filter(i => i.module_id === activeModule);
+
+  // Unread count per module
+  const unreadByModule = {};
+  for (const i of (feed?.new_insights || [])) {
+    if (!unreadByModule[i.module_id]) unreadByModule[i.module_id] = 0;
+    unreadByModule[i.module_id]++;
+  }
+
+  const activeConf = MODULES.find(m => m.id === activeModule) || MODULES[0];
+
+  const generatedAt = feed?.generated_at;
   const formattedDate = generatedAt
-    ? new Date(generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    ? new Date(generatedAt).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" }) +
+      " · " + new Date(generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     : null;
 
+  // ── Render ───────────────────────────────────────────────────────────────
+
   return (
-    <div style={{ padding: "32px 36px", maxWidth: 1100, margin: "0 auto" }}>
+    <div style={{ padding: "28px 32px", maxWidth: 1160, margin: "0 auto" }}>
       {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, color: "#2563EB", marginBottom: 8 }}>
-          AI-Powered Intelligence
+      <div style={{ marginBottom: 22 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, color: "#2563EB", marginBottom: 6 }}>
+          Strategic Command Center
         </div>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 14 }}>
           <div>
-            <h1 style={{ fontSize: 26, fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>
+            <h1 style={{ fontSize: 24, fontWeight: 800, color: "#0f172a", marginBottom: 5, lineHeight: 1.2 }}>
               Brand Intelligence
             </h1>
-            <p style={{ fontSize: 14, color: "#64748b", maxWidth: 560, lineHeight: 1.6 }}>
-              {modules
-                ? <>Real-time intelligence for <strong style={{ color: "#0f172a" }}>{activeBrand?.name || "your brand"}</strong>.
-                    {isCached && formattedDate && <> Cached at {formattedDate}.</>}
-                  </>
-                : <>AI-generated insights from your live brand data — across 8 strategic modules.</>
-              }
-            </p>
-          </div>
-          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            {modules && (
-              <button
-                onClick={() => load(true)}
-                disabled={loading}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 16px",
-                  background: "#f1f5f9", border: "1px solid #e2e8f0",
-                  borderRadius: 9, fontWeight: 600, fontSize: 13, cursor: loading ? "not-allowed" : "pointer",
-                  color: "#374151",
-                }}
-              >
-                <i className={`fas fa-sync-alt ${loading ? "fa-spin" : ""}`} style={{ fontSize: 12 }} />
-                Refresh
-              </button>
-            )}
-            {!modules && !loading && (
-              <button
-                onClick={() => load(false)}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px",
-                  background: "linear-gradient(135deg, #2563eb, #1d4ed8)", color: "#fff",
-                  borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: "pointer",
-                  border: "none", boxShadow: "0 2px 8px rgba(37,99,235,0.3)",
-                }}
-              >
-                <i className="fas fa-brain" /> Generate Intelligence Report
-              </button>
+            {formattedDate && (
+              <div style={{ fontSize: 12, color: "#94a3b8" }}>
+                <i className="fas fa-clock" style={{ marginRight: 5 }} />
+                Last generated {formattedDate}
+                <span style={{ margin: "0 8px", color: "#e2e8f0" }}>·</span>
+                <span style={{ color: "#16a34a", fontWeight: 600 }}>Fresh today</span>
+              </div>
             )}
           </div>
+          {hasAnyItems && (
+            <button
+              onClick={() => loadFeed(true)}
+              disabled={generating}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 7, padding: "8px 14px",
+                background: "#f8fafc", border: "1px solid #e2e8f0",
+                borderRadius: 9, fontWeight: 600, fontSize: 12, cursor: generating ? "not-allowed" : "pointer",
+                color: "#374151", opacity: generating ? 0.6 : 1,
+              }}
+            >
+              <i className={`fas fa-sync-alt${generating ? " fa-spin" : ""}`} style={{ fontSize: 11 }} />
+              Refresh
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Error state */}
-      {error && (
-        <div style={{ background: "#fff1f2", border: "1px solid #fca5a5", borderRadius: 10, padding: "14px 18px", marginBottom: 20 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#991b1b", marginBottom: 4 }}>
+      {/* Error */}
+      {err && !loading && !generating && (
+        <div style={{ background: "#fff1f2", border: "1px solid #fca5a5", borderRadius: 10, padding: "12px 16px", marginBottom: 18 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#991b1b", marginBottom: 3 }}>
             <i className="fas fa-exclamation-circle" style={{ marginRight: 6 }} />
-            Intelligence generation failed
+            Generation failed
           </div>
-          <div style={{ fontSize: 13, color: "#7f1d1d" }}>{error}</div>
-          <button
-            onClick={() => load(true)}
-            style={{ marginTop: 10, fontSize: 12, fontWeight: 600, color: "#dc2626", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-          >
+          <div style={{ fontSize: 12, color: "#7f1d1d", marginBottom: 8 }}>{err}</div>
+          <button onClick={() => loadFeed(true)} style={{ fontSize: 11, fontWeight: 600, color: "#dc2626", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
             Try again →
           </button>
         </div>
       )}
 
-      {/* Loading state */}
-      {loading && <GeneratingState />}
+      {/* Generating */}
+      {generating && <GeneratingState />}
 
-      {/* No data + not loading */}
-      {!loading && !modules && !error && <EmptyState activeBrand={activeBrand} />}
+      {/* Loading spinner (not generating) */}
+      {loading && !generating && (
+        <div style={{ textAlign: "center", padding: "40px 0", color: "#94a3b8" }}>
+          <div className="spinner-border spinner-border-sm" role="status" />
+          <div style={{ fontSize: 12, marginTop: 10 }}>Loading intelligence…</div>
+        </div>
+      )}
+
+      {/* Empty / first run */}
+      {!loading && !generating && !hasAnyItems && !err && (
+        <EmptyState activeBrand={activeBrand} onGenerate={() => loadFeed(true)} loading={generating} />
+      )}
 
       {/* Intelligence UI */}
-      {!loading && modules && (
+      {!loading && !generating && hasAnyItems && (
         <div>
-          {/* Notification center */}
-          {notifs.length > 0 && <NotificationCenter notifications={notifs} />}
+          {/* Notifications */}
+          {(feed?.notifications || []).length > 0 && (
+            <NotificationStrip
+              notifications={feed.notifications}
+              newNotifications={feed.new_notifications || []}
+              onDismiss={handleDismiss}
+            />
+          )}
 
-          {/* Module tabs */}
-          <div style={{
-            display: "flex", gap: 2, marginBottom: 24,
-            borderBottom: "1px solid #e5e9f0", paddingBottom: 0, overflowX: "auto",
-          }}>
-            {MODULES.map(m => {
-              const isActive = activeModule === m.id;
-              return (
-                <button
-                  key={m.id}
-                  onClick={() => setActiveModule(m.id)}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 7, padding: "10px 15px",
-                    background: "none", border: "none",
-                    borderBottom: isActive ? `2px solid ${m.color}` : "2px solid transparent",
-                    color: isActive ? m.color : "#64748b",
-                    fontWeight: isActive ? 700 : 500, fontSize: 12, cursor: "pointer",
-                    whiteSpace: "nowrap", marginBottom: -1, transition: "all 0.15s",
-                  }}
-                >
-                  <i className={m.icon} style={{ fontSize: 11 }} />
-                  {m.label}
-                </button>
-              );
-            })}
+          {/* Pending reveal */}
+          <PendingBanner
+            count={feed?.pending_count || 0}
+            onReveal={handleRevealNext}
+            revealing={revealing}
+          />
+
+          {/* 2-column layout: sidebar + feed */}
+          <div style={{ display: "flex", gap: 18, alignItems: "flex-start" }}>
+            <ModuleSidebar
+              activeModule={activeModule}
+              setActiveModule={setActiveModule}
+              unreadByModule={unreadByModule}
+            />
+
+            {/* Main feed */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {/* Module header */}
+              <div style={{
+                background: "#fff", borderRadius: 14, border: "1px solid #e5e9f0",
+                padding: "14px 18px", marginBottom: 14,
+                display: "flex", alignItems: "center", gap: 12,
+                boxShadow: "0 1px 4px rgba(0,0,0,0.03)",
+              }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  background: `${activeConf.color}15`, display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <i className={activeConf.icon} style={{ fontSize: 14, color: activeConf.color }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{activeConf.label}</div>
+                  <div style={{ fontSize: 11, color: "#94a3b8" }}>
+                    {moduleInsights.length} insight{moduleInsights.length !== 1 ? "s" : ""} available
+                    {unreadByModule[activeModule] > 0 && (
+                      <span style={{ marginLeft: 8, color: activeConf.color, fontWeight: 700 }}>
+                        {unreadByModule[activeModule]} new
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Insight cards */}
+              {moduleInsights.length > 0 ? (
+                moduleInsights.map(item => (
+                  <InsightCard
+                    key={item.id}
+                    item={item}
+                    accentColor={activeConf.color}
+                    isNew={newIds.has(item.id)}
+                    onDismiss={handleDismiss}
+                  />
+                ))
+              ) : (
+                <div style={{
+                  background: "#f8fafc", borderRadius: 14, border: "1px solid #e2e8f0",
+                  padding: "40px 24px", textAlign: "center",
+                }}>
+                  <i className={activeConf.icon} style={{ fontSize: 28, color: "#cbd5e1", marginBottom: 12, display: "block" }} />
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#94a3b8", marginBottom: 6 }}>
+                    No insights for this module yet
+                  </div>
+                  <div style={{ fontSize: 12, color: "#b0b7c3" }}>
+                    {(feed?.pending_count || 0) > 0
+                      ? "Queued insights will reveal across your next sessions."
+                      : "Intelligence will be refreshed in the next daily cycle."}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-
-          {/* Module panel */}
-          <ModulePanel moduleData={moduleData} moduleConfig={activeConf} />
         </div>
       )}
     </div>

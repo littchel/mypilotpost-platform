@@ -92,7 +92,11 @@ import {
   processGrowthAction, 
   registerReferral as registerGrowthReferral 
 } from "./core/growth/handlers.js";
-import { listInsights, resolveInsight, listAudits, getFullAudit, getBrandIntelligenceModules } from "./core/intelligence/handlers.js";
+import {
+  listInsights, resolveInsight, listAudits, getFullAudit,
+  getIntelligenceFeedHandler, dismissIntelligenceHandler, forceRefreshIntelligence,
+  runDailyIntelligence,
+} from "./core/intelligence/handlers.js";
 import { runPublicAudit, captureAuditLead, getPublicAuditById } from "./core/intelligence/public_audit.js";
 
 
@@ -1256,11 +1260,13 @@ export default {
             return withCors(request, getExecutiveAnalytics(request, env, auth));
 
           /* ---------- INTELLIGENCE & AUDITS ---------- */
-         if (method === "GET" && path === "/api/customer/intelligence") return withCors(request, listInsights(request, env, auth));
+         if (method === "GET"  && path === "/api/customer/intelligence") return withCors(request, listInsights(request, env, auth));
          if (method === "POST" && path === "/api/customer/intelligence/resolve") return withCors(request, resolveInsight(request, env, auth));
-         if (method === "GET" && path === "/api/customer/intelligence/audits") return withCors(request, listAudits(request, env, auth));
-         if (method === "GET" && path.startsWith("/api/customer/intelligence/audits/")) return withCors(request, getFullAudit(request, env, auth));
-         if (method === "GET" && path === "/api/customer/intelligence/modules") return withCors(request, getBrandIntelligenceModules(request, env, auth));
+         if (method === "GET"  && path === "/api/customer/intelligence/audits") return withCors(request, listAudits(request, env, auth));
+         if (method === "GET"  && path.startsWith("/api/customer/intelligence/audits/")) return withCors(request, getFullAudit(request, env, auth));
+         if (method === "GET"  && path === "/api/customer/intelligence/feed") return withCors(request, getIntelligenceFeedHandler(request, env, auth));
+         if (method === "POST" && path === "/api/customer/intelligence/force-refresh") return withCors(request, forceRefreshIntelligence(request, env, auth));
+         if (method === "POST" && path.startsWith("/api/customer/intelligence/dismiss/")) return withCors(request, dismissIntelligenceHandler(request, env, auth));
 
           /* ---------- BRAND DNA (STRATEGIC LAYER) ---------- */
           if (method === "GET" && path === "/api/customer/brand-dna") return withCors(request, getBrandDNA(request, env, auth));
@@ -1884,12 +1890,40 @@ export default {
           }
         }
 
-        // Daily 3am cron: lifecycle email campaigns
+        // Daily 3am cron: lifecycle emails + brand intelligence pre-generation
         if (cron === "0 3 * * *") {
           try {
             await runLifecycleCron(env);
           } catch (err) {
             console.error("[CRON] Lifecycle cron failed:", err?.message || err);
+          }
+
+          // Pre-generate intelligence for active brands so users see fresh intelligence on first login
+          try {
+            const db = getDB(env);
+            const { results: activeBrands } = await db.prepare(`
+              SELECT id FROM brands
+              WHERE (last_intelligence_run_at IS NULL OR last_intelligence_run_at < datetime('now', '-23 hours'))
+                AND id IN (
+                  SELECT DISTINCT brand_id FROM delivery_jobs
+                  WHERE created_at > datetime('now', '-30 days')
+                  UNION
+                  SELECT DISTINCT brand_id FROM content_analytics
+                  WHERE created_at > datetime('now', '-30 days')
+                )
+              LIMIT 30
+            `).all();
+
+            console.log(`[CRON_INTEL] Pre-generating intelligence for ${activeBrands?.length || 0} active brands`);
+            for (const brand of (activeBrands || [])) {
+              try {
+                await runDailyIntelligence(env, brand.id, false);
+              } catch (e) {
+                console.error(`[CRON_INTEL] Failed for brand=${brand.id}: ${e.message}`);
+              }
+            }
+          } catch (err) {
+            console.error("[CRON_INTEL] Daily intelligence cron failed:", err?.message || err);
           }
         }
 
