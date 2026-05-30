@@ -35,6 +35,35 @@ const DEFAULT_META = { label: "Intelligence", color: "#2563eb", bg: "#eff6ff", b
 function getMeta(item)        { return CATEGORY_META[item?.category] || CATEGORY_META[item?.module_id] || DEFAULT_META; }
 function getActionLabel(item) { return ACTION_LABELS[item?.category] || ACTION_LABELS[item?.module_id] || "Take Action"; }
 
+const TITLE_HUMANIZE = {
+  "No Publishing Activity":       "Your Publishing Pipeline Is Empty",
+  "No SEO Data":                  "SEO Intelligence Awaiting Data",
+  "No Content Performance Data":  "Content Performance Not Yet Tracked",
+  "No Audience Data":             "Audience Intelligence Pending",
+  "No Competitive Data":          "Competitive Landscape Not Yet Mapped",
+  "No Conversion Data":           "Conversion Pathway Not Yet Tracked",
+  "No Campaign Data":             "No Active Campaigns Detected",
+  "No Platform Data":             "Platform Health Check Pending",
+  "Insufficient Data":            "Building Your Intelligence Baseline",
+  "No Social Media Data":         "Social Intelligence Initialising",
+};
+
+const FINDING_HUMANIZE = {
+  "No publishing activity detected.":         "Once you publish content across your connected platforms, the advisor will surface your highest-leverage opportunities here.",
+  "No SEO data available.":                   "Connect your website analytics to unlock SEO positioning analysis and keyword opportunity mapping.",
+  "No content performance data available.":   "Publish content and allow 24–48 hours for performance data to populate across your connected channels.",
+  "No audience data available.":              "Audience intelligence builds as your platforms accumulate engagement data. Check back after your next publishing cycle.",
+  "No competitive data available.":           "Competitive signals emerge once your brand has sufficient publishing history to compare against industry benchmarks.",
+  "No conversion data available.":            "Connect your website or landing pages to begin tracking the journey from content to conversion.",
+};
+
+function humanize(item) {
+  if (!item) return item;
+  const title   = TITLE_HUMANIZE[item.title?.trim()]   || item.title;
+  const finding = FINDING_HUMANIZE[item.finding?.trim()] || item.finding;
+  return (title !== item.title || finding !== item.finding) ? { ...item, title, finding } : item;
+}
+
 function twoSentences(text) {
   if (!text) return "";
   const m = text.match(/[^.!?]+[.!?]+/g);
@@ -264,7 +293,7 @@ const BrandIntelligenceAdvisor = ({ feed = [], brandId, switchTab }) => {
   }, []);
 
   const activeItems = feed.filter(i => !dismissed.has(i.id));
-  const current     = activeItems.length > 0 ? activeItems[currentIdx % activeItems.length] : null;
+  const current     = activeItems.length > 0 ? humanize(activeItems[currentIdx % activeItems.length]) : null;
 
   useEffect(() => {
     clearInterval(timerRef.current);

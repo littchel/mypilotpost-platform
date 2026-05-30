@@ -547,7 +547,7 @@ function App() {
   };
 
   const { data: connectionsData } = useApi(brandId ? "/api/customer/social-connections" : null, [brandId, listVersion]);
-  const connectedPlatforms = (connectionsData?.connections || []).map(i => i.platform);
+  const connectedPlatforms = [...new Set((connectionsData?.connections || []).map(i => i.platform))];
 
   const { data: draftListData, loading: _draftsLoading } = useApi(brandId ? "/api/customer/content/social" : null, [brandId, listVersion]);
   const _socialDrafts = draftListData?.data || [];
@@ -1309,7 +1309,6 @@ function App() {
             switchTab={switchTab}
             user={user}
             growth={growth}
-            intelligenceFeed={intelligenceFeed}
             allContent={allContent}
             connectedPlatforms={connectedPlatforms}
             campaignsList={campaignsList}

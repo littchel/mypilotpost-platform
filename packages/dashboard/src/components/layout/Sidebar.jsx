@@ -37,9 +37,9 @@ const Sidebar = ({ activeTab, switchTab, brands, activeBrand, onSwitchBrand }) =
         </select>
       </div>
 
-      {/* ── WORKSPACE ── */}
-      <div className="nav-group-title">Workspace</div>
-      <nav aria-label="Workspace">
+      {/* ── COMMAND TOWER ── */}
+      <div className="nav-group-title">Command Tower</div>
+      <nav aria-label="Command Tower">
         <NavLink tab="dashboard"           activeTab={activeTab} switchTab={switchTab} icon="fas fa-tachometer-alt" label="Dashboard" />
         <NavLink tab="insights"            activeTab={activeTab} switchTab={switchTab} icon="fas fa-stream"         label="Insights" />
         <NavLink tab="brand-intelligence"  activeTab={activeTab} switchTab={switchTab} icon="fas fa-brain"          label="Brand Intelligence" />
@@ -56,17 +56,17 @@ const Sidebar = ({ activeTab, switchTab, brands, activeBrand, onSwitchBrand }) =
         <NavLink tab="hashtags" activeTab={activeTab} switchTab={switchTab} icon="fas fa-hashtag"  label="Hashtag Manager" />
       </nav>
 
-      {/* ── PUBLISHING ── */}
-      <div className="nav-group-title">Publishing</div>
-      <nav aria-label="Publishing">
+      {/* ── MISSION LAUNCH PAD ── */}
+      <div className="nav-group-title">Mission Launch Pad</div>
+      <nav aria-label="Mission Launch Pad">
         <NavLink tab="schedule" activeTab={activeTab} switchTab={switchTab} icon="fas fa-calendar-alt" label="Schedule" />
         <NavLink tab="content"  activeTab={activeTab} switchTab={switchTab} icon="fas fa-copy"         label="Content Management" />
         <NavLink tab="media"    activeTab={activeTab} switchTab={switchTab} icon="fas fa-photo-video"  label="Media Library" />
       </nav>
 
-      {/* ── ANALYTICS ── */}
-      <div className="nav-group-title">Analytics</div>
-      <nav aria-label="Analytics">
+      {/* ── MISSION ANALYTICS ── */}
+      <div className="nav-group-title">Mission Analytics</div>
+      <nav aria-label="Mission Analytics">
         <NavLink tab="analytics" activeTab={activeTab} switchTab={switchTab} icon="fas fa-chart-pie"    label="Analytics" />
         <NavLink tab="reporting" activeTab={activeTab} switchTab={switchTab} icon="fas fa-file-contract" label="Reporting" />
         <NavLink tab="seo"       activeTab={activeTab} switchTab={switchTab} icon="fas fa-search"        label="SEO" />

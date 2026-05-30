@@ -19,34 +19,6 @@ const PLATFORM_COLORS = {
   pinterest: "#BD081C", threads: "#111827",
 };
 
-// ── Intelligence metadata ─────────────────────────────────────────────────────
-
-const CATEGORY_META = {
-  "Platform Health":         { label: "Platform Alert",     color: "#dc2626", bg: "#fff1f2", border: "#fca5a5" },
-  "Content Intelligence":    { label: "Content Gap",        color: "#7c3aed", bg: "#faf5ff", border: "#c4b5fd" },
-  "Audience Intelligence":   { label: "Audience Shift",     color: "#0891b2", bg: "#ecfeff", border: "#67e8f9" },
-  "Competitive Moat Map":    { label: "Competitive Alert",  color: "#d97706", bg: "#fffbeb", border: "#fcd34d" },
-  "SEO Intelligence":        { label: "SEO Opportunity",    color: "#059669", bg: "#f0fdf4", border: "#6ee7b7" },
-  "Conversion Intelligence": { label: "Conversion Leak",    color: "#dc2626", bg: "#fff1f2", border: "#fca5a5" },
-  "Campaign Intelligence":   { label: "Campaign Signal",    color: "#2563eb", bg: "#eff6ff", border: "#93c5fd" },
-  "Growth Engine":           { label: "Growth Opportunity", color: "#059669", bg: "#f0fdf4", border: "#6ee7b7" },
-};
-const DEFAULT_META = { label: "Intelligence", color: "#6366f1", bg: "#eef2ff", border: "#c7d2fe" };
-
-function getMeta(item) { return CATEGORY_META[item?.category] || DEFAULT_META; }
-
-const ACTION_LABELS = {
-  "Platform Health":         "Fix Now →",
-  "Content Intelligence":    "Create Content →",
-  "Audience Intelligence":   "Review Audience →",
-  "Competitive Moat Map":    "View Competitors →",
-  "SEO Intelligence":        "Improve SEO →",
-  "Conversion Intelligence": "Fix Funnel →",
-  "Campaign Intelligence":   "Review Campaign →",
-  "Growth Engine":           "Launch Campaign →",
-};
-function getActionLabel(item) { return ACTION_LABELS[item?.category] || "View Details →"; }
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function relativeTime(dateStr) {
@@ -107,12 +79,12 @@ function KPICard({ label, value, change, sub, emphasis = false }) {
 
 // ── Business Performance Chart ────────────────────────────────────────────────
 
-const PERIOD_DAYS = { "30d": 30, "90d": 90, "12m": 365 };
+const PERIOD_DAYS = { "24h": 1, "7d": 7, "14d": 14, "30d": 30 };
 const METRIC_COLORS = { reach: "#6366f1", engagement: "#059669", clicks: "#f59e0b" };
 const METRIC_LABELS = { reach: "Reach", engagement: "Engagement", clicks: "Clicks" };
 
 function PerformanceChart({ brandId }) {
-  const [period, setPeriod]   = useState("30d");
+  const [period, setPeriod]   = useState("7d");
   const [metric, setMetric]   = useState("reach");
 
   const days = PERIOD_DAYS[period];
@@ -141,7 +113,7 @@ function PerformanceChart({ brandId }) {
         </div>
         {/* Period toggle */}
         <div style={{ display: "flex", gap: 2, background: "#f1f5f9", borderRadius: 8, padding: 3 }}>
-          {["30d", "90d", "12m"].map(p => (
+          {["24h", "7d", "14d", "30d"].map(p => (
             <button key={p} type="button" onClick={() => setPeriod(p)} style={{
               padding: "4px 10px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 12,
               background: period === p ? "#fff" : "transparent",
@@ -198,80 +170,6 @@ function PerformanceChart({ brandId }) {
           </AreaChart>
         </ResponsiveContainer>
       )}
-    </div>
-  );
-}
-
-// ── Today's Focus ─────────────────────────────────────────────────────────────
-
-function TodaysFocus({ item, switchTab }) {
-  if (!item) {
-    return (
-      <div style={{
-        background: "#fff", border: "1px solid #e5e7eb", borderRadius: 14,
-        padding: "24px 20px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-        display: "flex", flexDirection: "column", justifyContent: "center",
-        alignItems: "center", textAlign: "center", minHeight: 200,
-      }}>
-        <div style={{ fontSize: 14, color: "#9ca3af", fontWeight: 600, marginBottom: 8 }}>No active insights</div>
-        <div style={{ fontSize: 12, color: "#cbd5e1", lineHeight: 1.6, marginBottom: 20 }}>
-          Run Brand Intelligence to surface your top opportunity.
-        </div>
-        <button type="button" onClick={() => switchTab?.("brand-intelligence")} style={{
-          padding: "10px 18px", borderRadius: 8, background: "#6366f1",
-          color: "#fff", border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer",
-        }}>
-          Run Intelligence →
-        </button>
-      </div>
-    );
-  }
-
-  const meta   = getMeta(item);
-  const impact = item.expected_impact || item.priority_level || null;
-  const effort = item.estimated_effort || null;
-
-  return (
-    <div style={{
-      background: "#fff", border: `1px solid ${meta.border}`,
-      borderTop: `3px solid ${meta.color}`, borderRadius: 14,
-      padding: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-    }}>
-      <div style={{ fontSize: 11, fontWeight: 600, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
-        Today's Focus
-      </div>
-      <span style={{
-        fontSize: 10, fontWeight: 700, padding: "3px 9px", borderRadius: 99,
-        background: meta.bg, color: meta.color, border: `1px solid ${meta.border}`,
-        textTransform: "uppercase", letterSpacing: 0.4,
-      }}>
-        {meta.label}
-      </span>
-      <div style={{
-        fontSize: 15, fontWeight: 800, color: "#111827", marginTop: 10, marginBottom: 8,
-        lineHeight: 1.4,
-        display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden",
-      }}>
-        {item.title}
-      </div>
-      <div style={{
-        fontSize: 12, color: "#6b7280", lineHeight: 1.65, marginBottom: 14,
-        display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
-      }}>
-        {item.finding}
-      </div>
-      {(impact || effort) && (
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
-          {impact && <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 99, background: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe" }}>Impact: {impact}</span>}
-          {effort && <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 99, background: "#f8fafc", color: "#64748b", border: "1px solid #e2e8f0" }}>Effort: {effort}</span>}
-        </div>
-      )}
-      <button type="button" onClick={() => switchTab?.("brand-intelligence")} style={{
-        width: "100%", padding: "10px 0", borderRadius: 8, border: "none",
-        background: meta.color, color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer",
-      }}>
-        {getActionLabel(item)}
-      </button>
     </div>
   );
 }
@@ -333,70 +231,6 @@ function ActivityFeed({ items = [] }) {
                   <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", lineHeight: 1.4 }}>{activityText(item)}</div>
                   <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>{relativeTime(item.time)}</div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Top Opportunities ─────────────────────────────────────────────────────────
-
-function TopOpportunities({ items = [], switchTab }) {
-  return (
-    <div style={{
-      background: "#fff", border: "1px solid #e5e7eb", borderRadius: 14,
-      padding: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-    }}>
-      <div style={{ fontSize: 15, fontWeight: 700, color: "#111827", marginBottom: 16 }}>
-        Top Opportunities
-      </div>
-      {items.length === 0 ? (
-        <div style={{ height: 180, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
-          <div style={{ fontSize: 13, color: "#9ca3af", textAlign: "center" }}>No opportunities found</div>
-          <button type="button" onClick={() => switchTab?.("brand-intelligence")} style={{
-            padding: "9px 16px", borderRadius: 8, background: "#6366f1",
-            color: "#fff", border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer",
-          }}>
-            Run Brand Intelligence →
-          </button>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {items.slice(0, 3).map((item, i) => {
-            const meta = getMeta(item);
-            return (
-              <div key={i} style={{
-                background: meta.bg, border: `1px solid ${meta.border}`,
-                borderLeft: `3px solid ${meta.color}`, borderRadius: 10, padding: "12px 14px",
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 7 }}>
-                  <span style={{
-                    fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 99,
-                    background: "#fff", color: meta.color, border: `1px solid ${meta.border}`,
-                    textTransform: "uppercase", letterSpacing: 0.4,
-                  }}>
-                    {meta.label}
-                  </span>
-                  {item.expected_impact && (
-                    <span style={{ fontSize: 10, color: "#6b7280", flexShrink: 0 }}>{item.expected_impact}</span>
-                  )}
-                </div>
-                <div style={{
-                  fontSize: 13, fontWeight: 700, color: "#111827", lineHeight: 1.4, marginBottom: 10,
-                  display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
-                }}>
-                  {item.title}
-                </div>
-                <button type="button" onClick={() => switchTab?.("brand-intelligence")} style={{
-                  padding: "6px 12px", borderRadius: 6, background: "#fff",
-                  border: `1px solid ${meta.border}`, color: meta.color,
-                  fontWeight: 700, fontSize: 11, cursor: "pointer",
-                }}>
-                  {getActionLabel(item)}
-                </button>
               </div>
             );
           })}
@@ -501,7 +335,6 @@ export default function DashboardOverview({
   activeBrand,
   switchTab,
   user,
-  intelligenceFeed   = [],
   connectedPlatforms = [],
 }) {
   const brandId = activeBrand?.id;
@@ -521,9 +354,6 @@ export default function DashboardOverview({
 
   const noReach  = !summary.reach || summary.reach === "0";
   const noEngmt  = !summary.engagement_rate || summary.engagement_rate === "0.0%";
-
-  const focusItem     = intelligenceFeed[0]     || null;
-  const opportunities = intelligenceFeed.slice(1, 4);
 
   const hour    = new Date().getHours();
   const greeting = hour < 12 ? "Good Morning" : hour < 17 ? "Good Afternoon" : "Good Evening";
@@ -574,21 +404,19 @@ export default function DashboardOverview({
         />
       </div>
 
-      {/* ── ROW 2: Chart (70%) + Today's Focus (30%) ─────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "70fr 30fr", gap: 14, marginBottom: 20 }}>
+      {/* ── ROW 2: Performance Chart (full width) ────────────────────────── */}
+      <div style={{ marginBottom: 20 }}>
         <PerformanceChart brandId={brandId} />
-        <TodaysFocus item={focusItem} switchTab={switchTab} />
       </div>
 
-      {/* ── ROW 3: Activity (50%) + Opportunities (50%) ──────────────────── */}
+      {/* ── ROW 3: Activity (50%) + Channel (50%) ────────────────────────── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 20 }}>
         <ActivityFeed items={activity} />
-        <TopOpportunities items={opportunities} switchTab={switchTab} />
+        <ChannelChart brandId={brandId} connectedPlatforms={connectedPlatforms} />
       </div>
 
-      {/* ── ROW 4: Channel Chart (50%) + Audience (50%) ──────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-        <ChannelChart brandId={brandId} connectedPlatforms={connectedPlatforms} />
+      {/* ── ROW 4: Audience (full width) ─────────────────────────────────── */}
+      <div>
         <AudienceBreakdown />
       </div>
 

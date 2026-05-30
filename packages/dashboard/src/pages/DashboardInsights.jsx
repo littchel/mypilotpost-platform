@@ -39,12 +39,6 @@ const CONF_STYLES = {
   "Estimated":           { bg: "#fffbeb", border: "#fcd34d", text: "#92400e" },
 };
 const PRI_COLOR = { high: "#dc2626", medium: "#d97706", low: "#16a34a" };
-const NOTIF_S = {
-  urgent:      { bg: "#fff1f2", border: "#fca5a5", icon: "fas fa-exclamation-circle", color: "#dc2626" },
-  warning:     { bg: "#fffbeb", border: "#fcd34d", icon: "fas fa-exclamation-triangle",color: "#d97706" },
-  opportunity: { bg: "#eff6ff", border: "#93c5fd", icon: "fas fa-lightbulb",          color: "#2563eb" },
-  win:         { bg: "#f0fdf4", border: "#86efac", icon: "fas fa-trophy",              color: "#16a34a" },
-};
 
 /* ─── Atoms ─────────────────────────────────────────────────────────── */
 const ConfBadge = ({ v }) => {
@@ -113,36 +107,6 @@ const InsightCard = ({ item, color, isNew, onDismiss }) => {
   );
 };
 
-/* ─── Notification Strip ─────────────────────────────────────────────── */
-const NotifStrip = ({ notifications, newIds, onDismiss }) => {
-  const [dismissed, setDismissed] = useState(new Set());
-  const visible = (notifications||[]).filter(n=>!dismissed.has(n.id));
-  if (!visible.length) return null;
-  const dismiss = id => { setDismissed(p=>new Set([...p,id])); onDismiss(id); };
-  return (
-    <div style={{ marginBottom:20 }}>
-      <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:1.5, color:"#94a3b8", marginBottom:8 }}>Intelligence Alerts</div>
-      {visible.map(n=>{
-        const s=NOTIF_S[n.notification_type]||NOTIF_S.opportunity;
-        return (
-          <div key={n.id} className={newIds.has(n.id)?"intel-new":""} style={{ background:s.bg, border:`1px solid ${s.border}`, borderRadius:10, padding:"11px 14px", marginBottom:7, display:"flex", gap:10, alignItems:"flex-start" }}>
-            <i className={s.icon} style={{ color:s.color, fontSize:13, marginTop:2, flexShrink:0 }}/>
-            <div style={{ flex:1 }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:8 }}>
-                <div>
-                  <div style={{ fontSize:12, fontWeight:700, color:"#0f172a", marginBottom:2 }}>{n.title}</div>
-                  <div style={{ fontSize:11, color:"#475569", lineHeight:1.5 }}>{n.notification_body||n.finding}</div>
-                  {n.notification_action && <div style={{ fontSize:11, fontWeight:600, color:s.color, marginTop:3 }}>→ {n.notification_action}</div>}
-                </div>
-                <button onClick={()=>dismiss(n.id)} style={{ background:"none", border:"none", cursor:"pointer", color:"#94a3b8", fontSize:12, padding:0, flexShrink:0 }}><i className="fas fa-times"/></button>
-              </div>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-};
 
 /* ─── Pending Banner ─────────────────────────────────────────────────── */
 const PendingBanner = ({ count, onReveal, revealing }) => {
@@ -313,7 +277,6 @@ export default function DashboardInsights({ activeBrand, switchTab }) {
       if (res) {
         const freshIds = new Set([
           ...(res.new_insights||[]).map(i=>i.id),
-          ...(res.new_notifications||[]).map(i=>i.id),
         ]);
         setNewIds(prev => new Set([...prev,...freshIds]));
         setFeed(res);
@@ -332,7 +295,7 @@ export default function DashboardInsights({ activeBrand, switchTab }) {
       setFeed(prev => {
         if (!prev) return prev;
         const f = arr => (arr||[]).filter(i=>i.id!==id);
-        return { ...prev, delivered:f(prev.delivered), new_insights:f(prev.new_insights), notifications:f(prev.notifications), new_notifications:f(prev.new_notifications) };
+        return { ...prev, delivered:f(prev.delivered), new_insights:f(prev.new_insights) };
       });
       setNewIds(prev => { const s=new Set(prev); s.delete(id); return s; });
     } catch { /* empty */ }
@@ -415,9 +378,6 @@ export default function DashboardInsights({ activeBrand, switchTab }) {
       {/* Intelligence feed */}
       {!loading && !generating && !requiresPlatforms && hasAny && (
         <div>
-          {(feed?.notifications||[]).length > 0 && (
-            <NotifStrip notifications={feed.notifications} newIds={newIds} onDismiss={handleDismiss} />
-          )}
           <PendingBanner count={feed?.pending_count||0} onReveal={handleReveal} revealing={revealing} />
 
           <div style={{ display:"flex", gap:18, alignItems:"flex-start" }}>
