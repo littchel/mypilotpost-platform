@@ -1376,7 +1376,7 @@ function App() {
           <Templates
             activeBrand={activeBrand}
             intelligenceFeed={intelligenceFeed}
-            campaignsList={campaignsList}
+            connectedPlatforms={connectedPlatforms}
             switchTab={switchTab}
           />
         </TabContent>

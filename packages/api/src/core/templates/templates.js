@@ -4,7 +4,7 @@ import { trackedRunLLM } from "../ai/ai_client.js";
 
 const POST_DAILY_LIMIT = 3;
 
-// ── Campaign Plan Generator ───────────────────────────────────────────────────
+// ── Campaign Plan Generator (kept for backward compatibility) ─────────────────
 
 export async function generateCampaignPlan(request, env, auth) {
   if (!auth?.brand_id) return error("Unauthorized", "UNAUTHORIZED", null, 401);
@@ -71,12 +71,9 @@ Respond with only the JSON object. No markdown. No explanation.`;
 
   const brandCtx = profile || brand || { archetype: "Strategic Builder" };
   const result = await trackedRunLLM(env, {
-    brand: brandCtx,
-    prompt,
-    brand_id: auth.brand_id,
-    user_id: auth.user_id || null,
-    content_type: "campaign_plan",
-    options: { mode: "deep" },
+    brand: brandCtx, prompt,
+    brand_id: auth.brand_id, user_id: auth.user_id || null,
+    content_type: "campaign_plan", options: { mode: "deep" },
   });
 
   if (!result) return error("Failed to generate campaign. Please try again.", "AI_ERROR", null, 500);
@@ -88,12 +85,90 @@ Respond with only the JSON object. No markdown. No explanation.`;
   await db.prepare(`
     INSERT INTO campaigns (id, brand_id, name, objective_type, objective_text, status, created_at)
     VALUES (?, ?, ?, ?, ?, 'active', CURRENT_TIMESTAMP)
-  `).bind(
-    campaignId, auth.brand_id, campaignName, objectiveKey,
-    result.campaign_objective || goal,
-  ).run();
+  `).bind(campaignId, auth.brand_id, campaignName, objectiveKey, result.campaign_objective || goal).run();
 
   return json({ id: campaignId, goal, ...result });
+}
+
+// ── Goal Recommendation Generator ─────────────────────────────────────────────
+// Returns a planning document only. Does NOT create a campaign record.
+
+export async function generateRecommendation(request, env, auth) {
+  if (!auth?.brand_id) return error("Unauthorized", "UNAUTHORIZED", null, 401);
+
+  const body = await request.json();
+  const { goal } = body;
+  if (!goal) return error("Goal is required", "BAD_REQUEST", null, 400);
+
+  const db = getDB(env);
+
+  const [brand, profile, intelResult, connectionsResult] = await Promise.all([
+    db.prepare("SELECT name, industry, tone FROM brands WHERE id = ?").bind(auth.brand_id).first(),
+    db.prepare("SELECT industry, value_proposition, brand_personality FROM brand_dna_profiles WHERE brand_id = ?").bind(auth.brand_id).first(),
+    db.prepare(`
+      SELECT title, finding, category, expected_impact
+      FROM brand_intelligence_queue
+      WHERE brand_id = ? AND dismissed_at IS NULL
+      ORDER BY priority_rank ASC
+      LIMIT 5
+    `).bind(auth.brand_id).all(),
+    db.prepare("SELECT platform FROM social_connections WHERE brand_id = ? AND status = 'active'").bind(auth.brand_id).all(),
+  ]);
+
+  const brandName     = brand?.name || "this brand";
+  const industry      = profile?.industry || brand?.industry || "General";
+  const valueProp     = profile?.value_proposition || "";
+  const personality   = profile?.brand_personality || "";
+  const platforms     = (connectionsResult.results || []).map(c => c.platform).join(", ") || "not specified";
+  const intelligence  = (intelResult.results || [])
+    .map(i => `• [${i.category}] ${i.finding}`)
+    .join("\n") || "No recent intelligence available.";
+
+  const prompt = `You are a senior digital marketing strategist generating a strategic content recommendation for a real brand. This is planning advice — do not create a campaign, create a recommendation document.
+
+BRAND
+Name: ${brandName}
+Industry: ${industry}
+Value Proposition: ${valueProp || "not specified"}
+Brand Personality: ${personality || "not specified"}
+Active Platforms: ${platforms}
+
+CURRENT BRAND INTELLIGENCE (what is happening for this brand right now)
+${intelligence}
+
+GOAL: ${goal}
+
+Generate a specific, opinionated recommendation based on this brand's actual situation. Do not use generic advice.
+
+Return ONLY this JSON object:
+{
+  "goal": "${goal}",
+  "why_this_goal_now": "2-3 sentences — why this goal is right for this specific brand at this moment, grounded in the intelligence data above",
+  "recommended_content_mix": [
+    {"type": "content type name", "percentage": "40%", "reason": "why this type serves this goal for this brand"},
+    {"type": "content type name", "percentage": "35%", "reason": "why"},
+    {"type": "content type name", "percentage": "25%", "reason": "why"}
+  ],
+  "publishing_frequency": "e.g. 4x per week — Mon/Wed/Thu/Sat",
+  "recommended_platforms": ["platform1", "platform2"],
+  "content_themes": ["specific theme 1", "specific theme 2", "specific theme 3", "specific theme 4"],
+  "campaign_concept": "one powerful, specific campaign idea tailored to this brand and goal",
+  "first_7_days": ["Day 1: specific action", "Day 3: specific action", "Day 5: specific action", "Day 7: specific action"],
+  "success_signals": ["what to watch in week 1", "what to watch in week 2"]
+}
+
+Respond with only the JSON object. No markdown. No explanation.`;
+
+  const brandCtx = profile || brand || {};
+  const result = await trackedRunLLM(env, {
+    brand: brandCtx, prompt,
+    brand_id: auth.brand_id, user_id: auth.user_id || null,
+    content_type: "goal_recommendation", options: { mode: "deep" },
+  });
+
+  if (!result) return error("Failed to generate recommendation. Please try again.", "AI_ERROR", null, 500);
+
+  return json({ goal, ...result });
 }
 
 // ── Post Idea Generator ───────────────────────────────────────────────────────
@@ -104,10 +179,8 @@ export async function generatePostIdea(request, env, auth) {
   const db = getDB(env);
   const today = new Date().toISOString().slice(0, 10);
 
-  // Server-side daily limit — counts post_idea generations today
   const countRow = await db.prepare(`
-    SELECT COUNT(*) as count
-    FROM ai_generations
+    SELECT COUNT(*) as count FROM ai_generations
     WHERE brand_id = ? AND content_type = 'post_idea' AND DATE(created_at) = ?
   `).bind(auth.brand_id, today).first();
 
@@ -122,40 +195,67 @@ export async function generatePostIdea(request, env, auth) {
   const { framework } = body;
   if (!framework) return error("Framework is required", "BAD_REQUEST", null, 400);
 
-  const [brand, profile] = await Promise.all([
-    db.prepare("SELECT name, industry FROM brands WHERE id = ?").bind(auth.brand_id).first(),
-    db.prepare("SELECT industry, value_proposition FROM brand_dna_profiles WHERE brand_id = ?").bind(auth.brand_id).first(),
+  const [brand, profile, intelResult, connectionsResult] = await Promise.all([
+    db.prepare("SELECT name, industry, tone FROM brands WHERE id = ?").bind(auth.brand_id).first(),
+    db.prepare("SELECT industry, value_proposition, brand_personality FROM brand_dna_profiles WHERE brand_id = ?").bind(auth.brand_id).first(),
+    db.prepare(`
+      SELECT finding, category FROM brand_intelligence_queue
+      WHERE brand_id = ? AND dismissed_at IS NULL
+      ORDER BY priority_rank ASC LIMIT 3
+    `).bind(auth.brand_id).all(),
+    db.prepare("SELECT platform FROM social_connections WHERE brand_id = ? AND status = 'active'").bind(auth.brand_id).all(),
   ]);
 
-  const industry  = profile?.industry || brand?.industry || "General";
-  const brandName = brand?.name || "this brand";
+  const brandName   = brand?.name || "this brand";
+  const industry    = profile?.industry || brand?.industry || "General";
+  const valueProp   = profile?.value_proposition || "";
+  const personality = profile?.brand_personality || "";
+  const brandVoice  = brand?.tone || "";
+  const platforms   = (connectionsResult.results || []).map(c => c.platform).join(", ") || "not specified";
+  const intelligence = (intelResult.results || [])
+    .map(i => `• [${i.category}] ${i.finding}`)
+    .join("\n") || "No recent intelligence.";
 
-  const prompt = `You are a social media content strategist.
+  const prompt = `You are a content strategist writing for a specific brand. Your job is to generate a post strategy that feels like it came from someone who deeply understands this brand — not generic AI output.
 
-Brand: ${brandName}
+BRAND CONTEXT
+Name: ${brandName}
 Industry: ${industry}
-Post Framework: ${framework}
+Value Proposition: ${valueProp || "not specified"}
+Brand Personality: ${personality || "not specified"}
+Brand Voice: ${brandVoice || "not specified"}
+Active Platforms: ${platforms}
 
-Generate a post strategy guide as strict JSON with these exact keys:
+CURRENT BRAND INTELLIGENCE (use this to make the content specific and timely)
+${intelligence}
+
+POST FRAMEWORK: ${framework}
+
+Your task: Generate a high-quality, opinionated post strategy for ${brandName} using the ${framework} framework. The content must:
+- Be specific to this industry and this brand's actual situation
+- Reference what is happening for this brand right now (from the intelligence above) where relevant
+- Have a hook that stops the scroll — surprising, specific, or provocative
+- Avoid motivational fluff, generic business advice, recycled AI language, or empty listicles
+- Sound like a real person with a point of view, not a content mill
+
+Return ONLY this JSON object:
 {
-  "post_angle": "the specific angle or spin to make this framework compelling for this brand",
-  "post_structure": ["step 1", "step 2", "step 3", "step 4"],
-  "suggested_hook": "opening line that stops the scroll — specific, not generic",
-  "suggested_cta": "specific call-to-action line",
-  "visual_type": "e.g. Single Image, Carousel, Short Video, Quote Card",
-  "canva_asset": "recommended Canva template type e.g. Instagram Carousel, Story"
+  "post_angle": "the specific, opinionated angle for this brand — why this topic, why now, what makes it theirs",
+  "suggested_hook": "opening line that stops the scroll — specific, not generic, max 15 words",
+  "key_message": "the one thing the audience should take away from this post",
+  "post_structure": ["opening — hook + context", "body point 1", "body point 2", "tension or pivot", "resolution", "CTA"],
+  "suggested_cta": "specific call-to-action — not 'comment below' or generic phrases",
+  "visual_type": "e.g. Single Image, Carousel, Short Video, Quote Card, Talking Head",
+  "canva_asset": "specific Canva template type e.g. LinkedIn Carousel 1080x1080, Instagram Story 1080x1920"
 }
 
 Respond with only the JSON object. No markdown. No explanation.`;
 
-  const brandCtx = profile || brand || { archetype: "Strategic Builder" };
+  const brandCtx = profile || brand || {};
   const result = await trackedRunLLM(env, {
-    brand: brandCtx,
-    prompt,
-    brand_id: auth.brand_id,
-    user_id: auth.user_id || null,
-    content_type: "post_idea",
-    options: { mode: "fast" },
+    brand: brandCtx, prompt,
+    brand_id: auth.brand_id, user_id: auth.user_id || null,
+    content_type: "post_idea", options: { mode: "fast" },
   });
 
   if (!result) return error("Failed to generate post idea. Please try again.", "AI_ERROR", null, 500);
