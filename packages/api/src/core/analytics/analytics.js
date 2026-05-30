@@ -105,10 +105,16 @@ export async function getAnalyticsDetailed(request, env, auth, campaignId) {
   const db = getDB(env);
   const brandId = auth.brand_id;
 
+  // days param: how many days of trend history to return (default 30, max 365)
+  const days = request
+    ? Math.min(parseInt(new URL(request.url).searchParams.get("days") || "30"), 365)
+    : 30;
+  const cutoffDate = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+
   // filter by campaign if passed
   const campaignFilter = campaignId ? `AND ca.content_id IN (SELECT id FROM social_assets WHERE campaign_id = '${campaignId}' UNION SELECT id FROM blog_posts WHERE campaign_id = '${campaignId}')` : "";
 
-  // 1. Platform Breakdown
+  // 1. Platform Breakdown (all-time)
   const { results: platforms } = await db.prepare(`
     SELECT
       platform,
@@ -121,7 +127,7 @@ export async function getAnalyticsDetailed(request, env, auth, campaignId) {
     GROUP BY platform
   `).bind(brandId).all();
 
-  // 2. Trends (Daily)
+  // 2. Trends (Daily) — scoped to requested period
   const { results: trends } = await db.prepare(`
     SELECT
       strftime('%Y-%m-%d', reported_at) AS date,
@@ -129,11 +135,10 @@ export async function getAnalyticsDetailed(request, env, auth, campaignId) {
       SUM(engagements) AS engagement,
       SUM(clicks) AS clicks
     FROM content_analytics ca
-    WHERE ca.brand_id = ? ${campaignFilter}
+    WHERE ca.brand_id = ? AND strftime('%Y-%m-%d', reported_at) >= ? ${campaignFilter}
     GROUP BY date
     ORDER BY date ASC
-    LIMIT 30
-  `).bind(brandId).all();
+  `).bind(brandId, cutoffDate).all();
 
   // 3. Top Content
   const { results: topContent } = await db.prepare(`
