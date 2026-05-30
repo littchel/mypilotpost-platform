@@ -1372,7 +1372,12 @@ function App() {
 
         {/* Content Opportunities Tab */}
         <TabContent id="templates" activeTab={activeTab}>
-          <Templates activeBrand={activeBrand} />
+          <Templates
+            activeBrand={activeBrand}
+            intelligenceFeed={intelligenceFeed}
+            campaignsList={campaignsList}
+            switchTab={switchTab}
+          />
         </TabContent>
 
         {/* Brand DNA Tab */}

@@ -205,6 +205,7 @@ import {
   detectCampaignPatterns
 } from "./core/campaigns/campaigns.js";
 
+import { generateCampaignPlan, generatePostIdea } from "./core/templates/templates.js";
 
 /* ======================================================
    ADMIN — CAMPAIGNS & EMAILS
@@ -1848,10 +1849,16 @@ export default {
 
           if (subRoute === "timeline") return withCors(request, getTimeline(request, env, auth, campaignId));
           if (subRoute === "insights") return withCors(request, getCampaignInsights(request, env, auth, campaignId));
-          
+
           return withCors(request, getCampaignDetails(request, env, auth, campaignId));
         }
 
+        /* ---------- TEMPLATES 2.0 ---------- */
+        if (method === "POST" && path === "/api/customer/templates/generate-campaign")
+          return withCors(request, generateCampaignPlan(request, env, auth));
+
+        if (method === "POST" && path === "/api/customer/templates/generate-post")
+          return withCors(request, generatePostIdea(request, env, auth));
 
         /* ---------- AI & SEO ---------- */
         if (method === "POST" && path === "/api/customer/ai/generate/social")
