@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion"; // eslint-disable-line no-unused-vars
 import Sidebar from "./Sidebar";
 import Header from "./Header";
@@ -83,30 +83,29 @@ const PREVIEW_CSS = `
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.intel-preview-card     { transition: transform 0.18s ease; }
 .intel-preview-card-new { animation: intelSlideIn 0.32s ease forwards; }
 `;
 
-const IntelPreviewCard = ({ item, onDismiss, isNew }) => {
+const IntelPreviewCard = ({ item, onDismiss, onCTAClick }) => {
   const meta        = getMeta(item);
   const actionLabel = getActionLabel(item);
 
   return (
     <motion.div
       key={item.id}
-      className={`intel-preview-card${isNew ? " intel-preview-card-new" : ""}`}
+      className="intel-preview-card-new"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
+      exit={{ opacity: 0, y: -6 }}
       transition={{ duration: 0.22, ease: "easeOut" }}
       style={{
-        background: "#fff",
-        border: `1px solid ${meta.border}`,
-        borderLeft: `4px solid ${meta.color}`,
-        borderRadius: 12,
-        padding: "12px 13px",
-        animation: "intelGlow 2.5s ease-in-out 3",
-        boxShadow: "0 1px 8px rgba(0,0,0,0.05)",
+        background:    "#fff",
+        border:        `1px solid ${meta.border}`,
+        borderLeft:    `4px solid ${meta.color}`,
+        borderRadius:  12,
+        padding:       "12px 13px",
+        animation:     "intelGlow 2.5s ease-in-out 3",
+        boxShadow:     "0 1px 8px rgba(0,0,0,0.05)",
       }}
     >
       {/* Category + Dismiss */}
@@ -151,6 +150,7 @@ const IntelPreviewCard = ({ item, onDismiss, isNew }) => {
 
       {/* CTA */}
       <button
+        onClick={onCTAClick}
         style={{
           display: "block", width: "100%",
           background: meta.color,
@@ -166,13 +166,19 @@ const IntelPreviewCard = ({ item, onDismiss, isNew }) => {
 };
 
 // ── Brand Intelligence sidebar preview ────────────────────────────────────────
+// Fetches its own lifecycle-aware data from /api/customer/intelligence/dashboard.
+// Fires impression API on first render of each item.
+// Fires acknowledge API on any user interaction.
+// Polls every 10 minutes to pick up newly eligible items (20min, 50min, 3hr windows).
 
-const BrandIntelligencePreview = ({ feed = [], brandId, switchTab }) => {
-  const [currentIdx, setCurrentIdx] = useState(0);
-  const [dismissed,  setDismissed]  = useState(new Set());
-  const hoveredRef = useRef(false);
-  const timerRef   = useRef(null);
-  const styleRef   = useRef(false);
+const POLL_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+
+const BrandIntelligencePreview = ({ brandId, switchTab }) => {
+  const [item,          setItem]         = useState(null);
+  const [eligibleCount, setEligibleCount] = useState(0);
+  const [loading,       setLoading]      = useState(true);
+  const impressedRef = useRef(new Set()); // IDs we've already fired impression for
+  const styleRef     = useRef(false);
 
   useEffect(() => {
     if (styleRef.current) return;
@@ -182,24 +188,63 @@ const BrandIntelligencePreview = ({ feed = [], brandId, switchTab }) => {
     document.head.appendChild(el);
   }, []);
 
-  const activeItems = feed.filter(i => !dismissed.has(i.id));
-  const current     = activeItems.length > 0 ? humanize(activeItems[currentIdx % activeItems.length]) : null;
+  const fetchItem = useCallback(async () => {
+    if (!brandId) return;
+    try {
+      const res = await apiRequest("/api/customer/intelligence/dashboard");
+      setItem(res?.item ? humanize(res.item) : null);
+      setEligibleCount(res?.eligible_count || 0);
+    } catch {
+      // Non-fatal — sidebar degrades gracefully
+    } finally {
+      setLoading(false);
+    }
+  }, [brandId]);
 
+  // Initial fetch
+  useEffect(() => { fetchItem(); }, [fetchItem]);
+
+  // Poll every 10 minutes for newly eligible items (20min / 50min / 3hr windows)
   useEffect(() => {
-    clearInterval(timerRef.current);
-    if (activeItems.length <= 1) return;
-    timerRef.current = setInterval(() => {
-      if (!hoveredRef.current) setCurrentIdx(p => p + 1);
-    }, 20000);
-    return () => clearInterval(timerRef.current);
-  }, [activeItems.length]); // eslint-disable-line react-hooks/exhaustive-deps
+    const timer = setInterval(fetchItem, POLL_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [fetchItem]);
 
-  const handleDismiss = async (item) => {
-    setDismissed(prev => new Set([...prev, item.id]));
-    try { await apiRequest(`/api/customer/intelligence/dismiss/${item.id}`, { method: "POST" }); } catch {}
+  // Fire impression API once per unique item ID
+  useEffect(() => {
+    if (!item?.id || impressedRef.current.has(item.id)) return;
+    impressedRef.current.add(item.id);
+    apiRequest(`/api/customer/intelligence/impression/${item.id}`, { method: "POST" }).catch(() => {});
+  }, [item?.id]);
+
+  const handleDismiss = async (dismissedItem) => {
+    // Both dismiss (hides from everywhere) and acknowledge (stops reminders)
+    await Promise.all([
+      apiRequest(`/api/customer/intelligence/dismiss/${dismissedItem.id}`, { method: "POST" }),
+      apiRequest(`/api/customer/intelligence/acknowledge/${dismissedItem.id}`, { method: "POST" }),
+    ]).catch(() => {});
+    setItem(null);
+    fetchItem(); // Surface next eligible item
   };
 
-  if (feed.length === 0) {
+  const handleCTAClick = async () => {
+    if (item?.id) {
+      apiRequest(`/api/customer/intelligence/acknowledge/${item.id}`, { method: "POST" }).catch(() => {});
+    }
+    switchTab?.("brand-intelligence");
+  };
+
+  // ── Empty / Loading states ────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <div style={{ padding: "20px 0", textAlign: "center" }}>
+        <div style={{ fontSize: 11, color: "#94a3b8" }}>Loading intelligence…</div>
+      </div>
+    );
+  }
+
+  if (!item) {
     return (
       <div style={{
         background: "linear-gradient(135deg, #f8fafc, #eff6ff)",
@@ -236,63 +281,23 @@ const BrandIntelligencePreview = ({ feed = [], brandId, switchTab }) => {
     );
   }
 
-  if (!current) {
-    return (
-      <div style={{
-        background: "#f0fdf4", border: "1px solid #86efac",
-        borderRadius: 12, padding: "14px", textAlign: "center",
-      }}>
-        <div style={{ fontSize: 20, marginBottom: 6 }}>✓</div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>
-          All insights reviewed
-        </div>
-        <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.5, marginBottom: 12 }}>
-          New intelligence delivers in the next daily cycle.
-        </div>
-        <button
-          onClick={() => switchTab?.("brand-intelligence")}
-          style={{
-            display: "block", width: "100%",
-            background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
-            border: "none", borderRadius: 8, padding: "9px 0",
-            fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer",
-          }}
-        >
-          View Intelligence →
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div
-      onMouseEnter={() => { hoveredRef.current = true; }}
-      onMouseLeave={() => { hoveredRef.current = false; }}
-    >
+    <div>
       <AnimatePresence mode="wait">
         <IntelPreviewCard
-          key={current.id}
-          item={current}
+          key={item.id}
+          item={item}
           onDismiss={handleDismiss}
-          isNew={false}
+          onCTAClick={handleCTAClick}
         />
       </AnimatePresence>
 
-      {/* Dot nav */}
-      {activeItems.length > 1 && (
-        <div style={{ display: "flex", justifyContent: "center", gap: 4, marginTop: 8 }}>
-          {activeItems.slice(0, 8).map((item, i) => (
-            <button
-              key={item.id}
-              onClick={() => setCurrentIdx(i)}
-              style={{
-                width: i === (currentIdx % activeItems.length) ? 14 : 5,
-                height: 5, borderRadius: 99, border: "none", padding: 0, cursor: "pointer",
-                background: i === (currentIdx % activeItems.length) ? "#2563eb" : "#e2e8f0",
-                transition: "all 0.2s",
-              }}
-            />
-          ))}
+      {/* Queue depth indicator */}
+      {eligibleCount > 1 && (
+        <div style={{ marginTop: 8, textAlign: "center" }}>
+          <span style={{ fontSize: 10, color: "#94a3b8", fontWeight: 600 }}>
+            {eligibleCount - 1} more insight{eligibleCount - 1 !== 1 ? "s" : ""} queued
+          </span>
         </div>
       )}
 
@@ -324,16 +329,10 @@ const LayoutShell = ({
   user,
   logout,
   onAssistantOpen,
-  brandIntelligence = { feed: [] },
   notifications = [],
   growth = { points: 0, level: 1, streak_days: 0 },
   stats,
 }) => {
-  const feed = brandIntelligence.feed || [
-    ...(brandIntelligence.executive || []),
-    ...(brandIntelligence.advisory  || []),
-  ];
-
   return (
     <>
       <Sidebar
@@ -384,16 +383,13 @@ const LayoutShell = ({
                 <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1, color: "#64748b" }}>
                   Brand Intelligence
                 </div>
-                {feed.length > 0 && (
-                  <span style={{
-                    fontSize: 8, fontWeight: 800, color: "#fff", letterSpacing: 0.6,
-                    background: "#2563eb", borderRadius: 99, padding: "2px 6px",
-                  }}>LIVE</span>
-                )}
+                <span style={{
+                  fontSize: 8, fontWeight: 800, color: "#fff", letterSpacing: 0.6,
+                  background: "#2563eb", borderRadius: 99, padding: "2px 6px",
+                }}>LIVE</span>
               </div>
 
               <BrandIntelligencePreview
-                feed={feed}
                 brandId={activeBrand?.id}
                 switchTab={switchTab}
               />

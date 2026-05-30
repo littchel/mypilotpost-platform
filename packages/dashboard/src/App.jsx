@@ -1294,7 +1294,6 @@ function App() {
         onAssistantOpen={() => setAssistantOpen(true)}
         notifications={notifications}
         growth={growth}
-        brandIntelligence={{ feed: intelligenceFeed }}
         stats={{
           socials: (allContent || []).filter(c => c.type === 'social').length,
           blogs: (allContent || []).filter(c => c.type === 'article').length,

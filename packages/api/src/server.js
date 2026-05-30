@@ -95,6 +95,7 @@ import {
 import {
   listInsights, resolveInsight, listAudits, getFullAudit,
   getIntelligenceFeedHandler, dismissIntelligenceHandler, forceRefreshIntelligence,
+  getDashboardFeedHandler, recordImpressionHandler, acknowledgeHandler,
   runDailyIntelligence,
 } from "./core/intelligence/handlers.js";
 import { getInsightsFeed } from "./core/insights/handlers.js";
@@ -1270,8 +1271,11 @@ export default {
          if (method === "GET"  && path === "/api/customer/intelligence/audits") return withCors(request, listAudits(request, env, auth));
          if (method === "GET"  && path.startsWith("/api/customer/intelligence/audits/")) return withCors(request, getFullAudit(request, env, auth));
          if (method === "GET"  && path === "/api/customer/intelligence/feed") return withCors(request, getIntelligenceFeedHandler(request, env, auth));
+         if (method === "GET"  && path === "/api/customer/intelligence/dashboard") return withCors(request, getDashboardFeedHandler(request, env, auth));
          if (method === "POST" && path === "/api/customer/intelligence/force-refresh") return withCors(request, forceRefreshIntelligence(request, env, auth));
          if (method === "POST" && path.startsWith("/api/customer/intelligence/dismiss/")) return withCors(request, dismissIntelligenceHandler(request, env, auth));
+         if (method === "POST" && path.startsWith("/api/customer/intelligence/impression/")) return withCors(request, recordImpressionHandler(request, env, auth));
+         if (method === "POST" && path.startsWith("/api/customer/intelligence/acknowledge/")) return withCors(request, acknowledgeHandler(request, env, auth));
 
           /* ---------- BRAND DNA (STRATEGIC LAYER) ---------- */
           if (method === "GET" && path === "/api/customer/brand-dna") return withCors(request, getBrandDNA(request, env, auth));

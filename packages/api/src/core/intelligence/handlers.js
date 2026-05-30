@@ -14,6 +14,11 @@ import {
   isEligibleForGeneration,
   markGenerationComplete,
 } from "./brand_intelligence_store.js";
+import {
+  getDashboardItem,
+  recordImpression,
+  acknowledgeItem,
+} from "./intelligence_lifecycle.js";
 
 /**
  * GET /api/customer/intelligence
@@ -180,6 +185,7 @@ export async function getIntelligenceFeedHandler(request, env, auth) {
 
 /**
  * POST /api/customer/intelligence/dismiss/:id
+ * Dismisses and acknowledges the item (stops all dashboard reminders).
  */
 export async function dismissIntelligenceHandler(request, env, auth) {
   const { brand_id } = auth;
@@ -187,7 +193,51 @@ export async function dismissIntelligenceHandler(request, env, auth) {
   if (!itemId) return error("Item ID required", "BAD_REQUEST", null, 400);
 
   const db = getDB(env);
-  const ok = await dismissIntelligenceItem(db, brand_id, itemId);
+  await dismissIntelligenceItem(db, brand_id, itemId);
+  await acknowledgeItem(db, brand_id, itemId);
+  return json({ success: true });
+}
+
+/**
+ * GET /api/customer/intelligence/dashboard
+ * Lifecycle-aware feed for the dashboard sidebar.
+ * Returns the single highest-priority eligible item + queue count.
+ */
+export async function getDashboardFeedHandler(request, env, auth) {
+  const { brand_id } = auth;
+  const db = getDB(env);
+  const result = await getDashboardItem(db, brand_id);
+  return json(result);
+}
+
+/**
+ * POST /api/customer/intelligence/impression/:id
+ * Records that an intelligence item was displayed on the dashboard.
+ * Calculates next eligible show time based on impression schedule.
+ */
+export async function recordImpressionHandler(request, env, auth) {
+  const { brand_id } = auth;
+  const itemId = request.url.split('/').pop();
+  if (!itemId) return error("Item ID required", "BAD_REQUEST", null, 400);
+
+  const db = getDB(env);
+  const ok = await recordImpression(db, brand_id, itemId);
+  return json({ success: ok });
+}
+
+/**
+ * POST /api/customer/intelligence/acknowledge/:id
+ * Marks an item as acknowledged — user has interacted with it.
+ * Immediately stops further dashboard reminders for this item.
+ * Triggered by: CTA click, save, add to plan, open details, dismiss.
+ */
+export async function acknowledgeHandler(request, env, auth) {
+  const { brand_id } = auth;
+  const itemId = request.url.split('/').pop();
+  if (!itemId) return error("Item ID required", "BAD_REQUEST", null, 400);
+
+  const db = getDB(env);
+  const ok = await acknowledgeItem(db, brand_id, itemId);
   return json({ success: ok });
 }
 
