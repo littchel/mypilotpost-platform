@@ -409,49 +409,71 @@ const BrandIntelligencePreview = ({ intelligenceFeed = [], switchTab }) => {
 
 // ── Growth Engine Preview ───────────────────────────────────────────────────────
 
-const GrowthEnginePreview = ({ switchTab }) => (
-  <div style={{ background: "#fff", border: "1px solid #f1f5f9", borderRadius: 16, padding: "18px", height: "100%", display: "flex", flexDirection: "column" }}>
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-      <div>
-        <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: "#94a3b8", marginBottom: 2 }}>Execution</div>
-        <div style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>Growth Engine</div>
-      </div>
-      <TrendingUp size={15} color="#059669" />
-    </div>
+const GrowthEnginePreview = ({ intelligenceFeed = [], switchTab }) => {
+  const growthItem    = intelligenceFeed.find(i => i.module_id === "growth_engine"        || i.category === "Growth Engine");
+  const campaignItem  = intelligenceFeed.find(i => i.module_id === "campaign_intelligence" || i.category === "Campaign Intelligence");
+  const hasData       = !!(growthItem || campaignItem);
 
-    <div style={{ flex: 1 }}>
-      {[
-        { label: "Top Campaign",      value: "—" },
-        { label: "Expected Impact",   value: "—" },
-      ].map(({ label, value }) => (
-        <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #f8fafc" }}>
-          <span style={{ fontSize: 9, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.4 }}>{label}</span>
-          <span style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8" }}>{value}</span>
+  const rows = [
+    { label: "Recommended Goal",     value: growthItem?.title },
+    { label: "Recommended Campaign", value: campaignItem?.title },
+    { label: "Expected Impact",      value: growthItem?.expected_impact },
+  ];
+
+  return (
+    <div style={{ background: "#fff", border: "1px solid #f1f5f9", borderRadius: 16, padding: "18px", height: "100%", display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <div>
+          <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: "#94a3b8", marginBottom: 2 }}>Execution</div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>Growth Engine</div>
         </div>
-      ))}
-      <div style={{ marginTop: 10, textAlign: "center" }}>
-        <span style={{ fontSize: 9, fontWeight: 700, color: "#d97706", background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 99, padding: "2px 8px" }}>
-          Coming Soon
-        </span>
+        <TrendingUp size={15} color="#059669" />
       </div>
-    </div>
 
-    <button
-      onClick={() => switchTab?.("campaign")}
-      style={{
-        display: "block", width: "100%", marginTop: 14,
-        background: "#f8fafc", border: "1px solid #e2e8f0",
-        borderRadius: 9, padding: "9px 0",
-        fontSize: 11, fontWeight: 700, color: "#374151", cursor: "pointer",
-        transition: "background 0.15s",
-      }}
-      onMouseEnter={e => { e.currentTarget.style.background = "#f1f5f9"; }}
-      onMouseLeave={e => { e.currentTarget.style.background = "#f8fafc"; }}
-    >
-      Launch Campaign →
-    </button>
-  </div>
-);
+      <div style={{ flex: 1 }}>
+        {hasData ? (
+          rows.map(({ label, value }) => (
+            <div key={label} style={{ padding: "6px 0", borderBottom: "1px solid #f8fafc" }}>
+              <div style={{ fontSize: 9, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 3 }}>{label}</div>
+              {value ? (
+                <div style={{
+                  fontSize: 11, fontWeight: 700, color: "#0f172a", lineHeight: 1.35,
+                  display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+                }}>
+                  {value}
+                </div>
+              ) : (
+                <div style={{ fontSize: 11, color: "#cbd5e1" }}>—</div>
+              )}
+            </div>
+          ))
+        ) : (
+          <div style={{ textAlign: "center", padding: "18px 0", color: "#94a3b8" }}>
+            <TrendingUp size={24} color="#e2e8f0" style={{ marginBottom: 8, display: "block", margin: "0 auto 8px" }} />
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#cbd5e1" }}>Run Brand Intelligence to generate growth recommendations.</div>
+          </div>
+        )}
+      </div>
+
+      <button
+        onClick={() => switchTab?.(hasData ? "campaign" : "brand-intelligence")}
+        style={{
+          display: "block", width: "100%", marginTop: 14,
+          background: hasData ? "linear-gradient(135deg, #059669, #047857)" : "#f8fafc",
+          border: hasData ? "none" : "1px solid #e2e8f0",
+          borderRadius: 9, padding: "9px 0",
+          fontSize: 11, fontWeight: 700,
+          color: hasData ? "#fff" : "#374151",
+          cursor: "pointer", transition: "opacity 0.15s",
+        }}
+        onMouseEnter={e => { e.currentTarget.style.opacity = "0.88"; }}
+        onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
+      >
+        {hasData ? "Launch Campaign →" : "Run Brand Intelligence →"}
+      </button>
+    </div>
+  );
+};
 
 // ── Rewards Engine Preview ──────────────────────────────────────────────────────
 
@@ -590,7 +612,7 @@ const DashboardOverview = ({
       <SectionDivider label="Growth overview" />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
         <BrandIntelligencePreview intelligenceFeed={intelligenceFeed} switchTab={switchTab} />
-        <GrowthEnginePreview      switchTab={switchTab} />
+        <GrowthEnginePreview      intelligenceFeed={intelligenceFeed} switchTab={switchTab} />
         <RewardsEnginePreview     growth={growth} switchTab={switchTab} />
       </div>
 
