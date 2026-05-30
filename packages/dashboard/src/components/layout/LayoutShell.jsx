@@ -64,7 +64,7 @@ function savePlan(brandId, set) {
   try { localStorage.setItem(PLAN_KEY(brandId), JSON.stringify([...set])); } catch { /* full */ }
 }
 
-// ── AI Advisor card ───────────────────────────────────────────────────────────
+// ── Brand Intelligence card ───────────────────────────────────────────────────
 
 const AdvisorCard = ({ item, onDismiss, onPlan, inPlan }) => {
   const [showWhy, setShowWhy] = useState(false);
@@ -210,9 +210,9 @@ const AdvisorCard = ({ item, onDismiss, onPlan, inPlan }) => {
   );
 };
 
-// ── AI Advisor (rotating container) ──────────────────────────────────────────
+// ── Brand Intelligence (rotating container) ───────────────────────────────────
 
-const AIAdvisor = ({ feed = [], brandId, switchTab }) => {
+const BrandIntelligenceAdvisor = ({ feed = [], brandId, switchTab }) => {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [dismissed,  setDismissed]  = useState(new Set());
   const [inPlan,     setInPlan]     = useState(() => loadPlan(brandId));
@@ -408,9 +408,9 @@ const LayoutShell = ({
                 <span className="stat-label">Campaigns</span>
               </div>
 
-              {/* AI Advisor */}
+              {/* Brand Intelligence */}
               <div className="nav-group-title mt-3 mb-2" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontWeight: 800, letterSpacing: 0.3 }}>AI ADVISOR</span>
+                <span style={{ fontWeight: 800, letterSpacing: 0.3 }}>Brand Intelligence</span>
                 {feed.length > 0 && (
                   <span style={{
                     fontSize: 8, fontWeight: 800, color: "#fff", letterSpacing: 0.6,
@@ -419,7 +419,7 @@ const LayoutShell = ({
                 )}
               </div>
 
-              <AIAdvisor
+              <BrandIntelligenceAdvisor
                 feed={feed}
                 brandId={activeBrand?.id}
                 switchTab={switchTab}
