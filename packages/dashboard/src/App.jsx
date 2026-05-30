@@ -1312,6 +1312,7 @@ function App() {
             intelligenceFeed={intelligenceFeed}
             allContent={allContent}
             connectedPlatforms={connectedPlatforms}
+            campaignsList={campaignsList}
             brandDna={{ completionPct: brandDnaCompletionPct }}
             stats={metrics}
           />

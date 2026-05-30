@@ -1,522 +1,333 @@
 import React from "react";
-import {
-  TrendingUp, CheckCircle, Share2, Target,
-  Layout, ChevronRight,
-} from "lucide-react";
 import InsightsSnapshot from "../components/dashboard/InsightsSnapshot";
 
-// ── Shared ─────────────────────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
 
-const DNARing = ({ pct }) => {
-  const r    = 24;
-  const circ = 2 * Math.PI * r;
-  const fill = circ - (pct / 100) * circ;
+const ALL_PLATFORMS   = ["instagram","facebook","linkedin","x","tiktok","youtube","pinterest","threads"];
+const PLATFORM_LABELS = {
+  instagram:"Instagram", facebook:"Facebook", linkedin:"LinkedIn",
+  x:"X (Twitter)", tiktok:"TikTok", youtube:"YouTube",
+  pinterest:"Pinterest", threads:"Threads",
+};
+
+const CATEGORY_META = {
+  "Platform Health":         { label: "Platform Alert",     color: "#dc2626", bg: "#fff1f2", border: "#fca5a5" },
+  "Content Intelligence":    { label: "Content Gap",        color: "#7c3aed", bg: "#faf5ff", border: "#c4b5fd" },
+  "Audience Intelligence":   { label: "Audience Shift",     color: "#0891b2", bg: "#ecfeff", border: "#67e8f9" },
+  "Competitive Moat Map":    { label: "Competitive Alert",  color: "#d97706", bg: "#fffbeb", border: "#fcd34d" },
+  "SEO Intelligence":        { label: "SEO Opportunity",    color: "#059669", bg: "#f0fdf4", border: "#6ee7b7" },
+  "Conversion Intelligence": { label: "Conversion Leak",    color: "#dc2626", bg: "#fff1f2", border: "#fca5a5" },
+  "Campaign Intelligence":   { label: "Campaign Signal",    color: "#2563eb", bg: "#eff6ff", border: "#93c5fd" },
+  "Growth Engine":           { label: "Growth Opportunity", color: "#059669", bg: "#f0fdf4", border: "#6ee7b7" },
+};
+const DEFAULT_META = { label: "Intelligence", color: "#2563eb", bg: "#eff6ff", border: "#93c5fd" };
+function getMeta(item) { return CATEGORY_META[item?.category] || DEFAULT_META; }
+
+const ACTION_LABELS = {
+  "Platform Health":         "Fix Now →",
+  "Content Intelligence":    "Create Content →",
+  "Audience Intelligence":   "Review Audience →",
+  "Competitive Moat Map":    "View Competitors →",
+  "SEO Intelligence":        "Improve SEO →",
+  "Conversion Intelligence": "Fix Funnel →",
+  "Campaign Intelligence":   "Review Campaign →",
+  "Growth Engine":           "Launch Campaign →",
+};
+function getActionLabel(item) { return ACTION_LABELS[item?.category] || "View Details →"; }
+
+// ── Row 1: KPI Card ───────────────────────────────────────────────────────────
+
+function KPICard({ label, value, sub, color = "#0f172a", subColor = "#64748b" }) {
   return (
-    <div style={{ position: "relative", width: 60, height: 60, flexShrink: 0 }}>
-      <svg width="60" height="60" style={{ transform: "rotate(-90deg)" }}>
-        <circle cx="30" cy="30" r={r} fill="none" stroke="#f1f5f9" strokeWidth="6" />
-        <circle cx="30" cy="30" r={r} fill="none" stroke="url(#dnaGradSmall)" strokeWidth="6"
-          strokeDasharray={circ} strokeDashoffset={fill}
-          style={{ transition: "stroke-dashoffset 1s cubic-bezier(0.16,1,0.3,1)" }}
-          strokeLinecap="round"
-        />
-        <defs>
-          <linearGradient id="dnaGradSmall" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#2563EB" />
-            <stop offset="100%" stopColor="#7c3aed" />
-          </linearGradient>
-        </defs>
-      </svg>
-      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>{pct}%</div>
+    <div style={{
+      background: "#fff", border: "1px solid #f1f5f9", borderRadius: 16,
+      padding: "20px 22px", flex: 1, minWidth: 140,
+      boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+    }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 10, lineHeight: 1.2 }}>
+        {label}
       </div>
+      <div style={{ fontSize: 38, fontWeight: 800, color, lineHeight: 1, marginBottom: 6 }}>
+        {value}
+      </div>
+      {sub && (
+        <div style={{ fontSize: 13, color: subColor, fontWeight: 500 }}>{sub}</div>
+      )}
     </div>
   );
-};
+}
 
-const SectionDivider = ({ label }) => (
-  <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "24px 0 18px" }}>
-    <div style={{ flex: 1, height: 1, background: "#f1f5f9" }} />
-    <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, color: "#cbd5e1" }}>
-      {label}
-    </span>
-    <div style={{ flex: 1, height: 1, background: "#f1f5f9" }} />
-  </div>
-);
+// ── Row 2: Brand Intelligence Hero ────────────────────────────────────────────
 
-// ── Platform list ───────────────────────────────────────────────────────────────
+function IntelligenceHero({ intelligenceFeed = [], connectedPlatforms = [], switchTab }) {
+  const topItem = intelligenceFeed[0];
 
-const ALL_PLATFORMS   = ["instagram", "facebook", "linkedin", "x", "tiktok", "youtube", "pinterest", "threads"];
-const PLATFORM_LABELS = {
-  instagram: "Instagram", facebook: "Facebook", linkedin: "LinkedIn",
-  x: "X (Twitter)", tiktok: "TikTok", youtube: "YouTube",
-  pinterest: "Pinterest", threads: "Threads",
-};
-
-// ── Growth System Status ────────────────────────────────────────────────────────
-
-const State1NewUser = ({ switchTab, brandDna }) => (
-  <div className="card-workspace p-5 bg-white shadow-sm border border-primary border-opacity-25" style={{ borderRadius: 24 }}>
-    <div className="text-center mb-4">
-      <div className="d-inline-flex p-3 bg-primary bg-opacity-10 rounded-circle mb-3">
-        <Target className="text-primary" size={28} />
-      </div>
-      <h4 className="fw-bold text-main mb-1">Welcome to your Strategic Growth System</h4>
-    </div>
-    <div className="row g-3 justify-content-center">
-      <div className="col-md-5">
-        <div className="p-4 bg-light rounded-4 border h-100 d-flex flex-column cursor-pointer hover-bg-white" onClick={() => switchTab("brand-dna")}>
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <div className="fw-bold text-main small">1. Complete Brand DNA</div>
-            <DNARing pct={brandDna?.completionPct || 0} />
-          </div>
-          <button className="btn btn-primary w-100 fw-bold rounded-pill mt-auto">Setup Brand DNA</button>
-        </div>
-      </div>
-      <div className="col-md-5">
-        <div className="p-4 bg-light rounded-4 border h-100 d-flex flex-column cursor-pointer hover-bg-white" onClick={() => switchTab("integrations")}>
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <div className="fw-bold text-main small">2. Connect Platforms</div>
-            <div className="p-2 bg-white rounded-circle border"><Share2 size={20} className="text-muted" /></div>
-          </div>
-          <button className="btn btn-outline-primary w-100 fw-bold rounded-pill mt-auto">Connect Platforms</button>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-const State2PartialActivation = ({ switchTab, brandDna }) => (
-  <div className="card-workspace p-4 mb-4 bg-white shadow-sm" style={{ borderRadius: 20 }}>
-    <div className="d-flex justify-content-between align-items-center mb-3">
-      <h6 className="fw-bold text-main mb-0">Growth System Status</h6>
-      <div className="d-flex align-items-center gap-2">
-        <DNARing pct={brandDna?.completionPct || 0} />
-      </div>
-    </div>
-    <div className="row g-2">
-      <div className="col-md-6">
-        <div className="p-3 border rounded-3 d-flex align-items-center gap-3 cursor-pointer hover-bg-light" onClick={() => switchTab("brand-intelligence")}>
-          <div className="p-2 bg-success bg-opacity-10 text-success rounded-circle"><Target size={18} /></div>
-          <div className="small fw-bold text-main">Run Brand Intelligence</div>
-          <ChevronRight className="ms-auto text-muted" size={14} />
-        </div>
-      </div>
-      <div className="col-md-6">
-        <div className="p-3 border rounded-3 d-flex align-items-center gap-3 cursor-pointer hover-bg-light" onClick={() => switchTab("reporting")}>
-          <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle"><Layout size={18} /></div>
-          <div className="small fw-bold text-main">Executive Reports</div>
-          <ChevronRight className="ms-auto text-muted" size={14} />
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-const State3Active = ({ switchTab, connectedPlatforms = [], publishedCount = 0 }) => (
-  <div className="d-flex align-items-center gap-3 mb-4 p-3 bg-white shadow-sm rounded-3" style={{ border: "1px solid #f1f5f9" }}>
-    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", display: "inline-block", boxShadow: "0 0 0 3px rgba(34,197,94,0.2)" }} />
-    <span className="extra-small fw-bold text-muted">
-      {connectedPlatforms.length} platform{connectedPlatforms.length !== 1 ? "s" : ""} · {publishedCount} published
-    </span>
-    <div className="d-flex gap-2 ms-auto">
-      <button className="btn btn-sm btn-light extra-small fw-bold px-3" onClick={() => switchTab("insights")}>Insights</button>
-      <button className="btn btn-sm btn-primary extra-small fw-bold px-3" onClick={() => switchTab("brand-intelligence")}>Intelligence</button>
-    </div>
-  </div>
-);
-
-const State4Advanced = ({ switchTab }) => (
-  <div className="d-flex align-items-center gap-3 mb-4 p-3 bg-white shadow-sm rounded-3" style={{ border: "1px solid #f1f5f9" }}>
-    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#2563eb", display: "inline-block", boxShadow: "0 0 0 3px rgba(37,99,235,0.2)" }} />
-    <span className="extra-small fw-bold text-muted">Executive Operations Active</span>
-    <div className="d-flex gap-2 ms-auto">
-      <button className="btn btn-sm btn-light extra-small fw-bold px-3" onClick={() => switchTab("templates")}>Templates</button>
-      <button className="btn btn-sm btn-primary extra-small fw-bold px-3" onClick={() => switchTab("brand-intelligence")}>Intelligence</button>
-    </div>
-  </div>
-);
-
-// ── Today's Priority ────────────────────────────────────────────────────────────
-
-const TodaysPriority = ({ intelligenceFeed = [], connectedPlatforms = [], switchTab }) => {
-  let priority = null;
-
-  if (intelligenceFeed.length > 0) {
-    const top = intelligenceFeed[0];
-    priority = {
-      badge:      top.category || "Brand Intelligence",
-      badgeColor: "#2563eb",
-      title:      top.title,
-      impact:     top.expected_impact,
-      time:       top.priority === "high" ? "5–10 min" : "15–20 min",
-      cta:        "View Intelligence →",
-      tab:        "brand-intelligence",
-    };
-  } else if (connectedPlatforms.length === 0) {
-    priority = {
-      badge:      "Setup Required",
-      badgeColor: "#dc2626",
-      title:      "Connect your first platform",
-      impact:     "Enables content scheduling, delivery tracking, and Brand Intelligence.",
-      time:       "2–5 min",
-      cta:        "Connect Now →",
-      tab:        "integrations",
-    };
-  } else if (connectedPlatforms.length < 2) {
-    priority = {
-      badge:      "Quick Win",
-      badgeColor: "#d97706",
-      title:      "Connect a second platform to activate intelligence",
-      impact:     "Brand Intelligence requires ≥2 platforms for cross-channel analysis.",
-      time:       "2–5 min",
-      cta:        "Connect Now →",
-      tab:        "integrations",
-    };
-  }
-
-  if (!priority) {
+  if (!topItem && connectedPlatforms.length < 2) {
     return (
       <div style={{
-        background: "#f8fafc", border: "1px dashed #e2e8f0",
-        borderRadius: 14, padding: "20px 24px",
-        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16,
+        border: "1px solid #e0e7ff", borderLeft: "4px solid #4f46e5", borderRadius: 16,
+        padding: "24px 28px", background: "linear-gradient(135deg, #fafaff 0%, #eff6ff 100%)",
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24,
+        flexWrap: "wrap",
       }}>
         <div>
-          <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: "#94a3b8", marginBottom: 6 }}>Today's Priority</div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#374151" }}>No intelligence generated today</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#4f46e5", letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>
+            Brand Intelligence
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "#0f172a", marginBottom: 8, lineHeight: 1.3 }}>
+            {connectedPlatforms.length === 0 ? "Connect your first platform to activate intelligence" : "Connect one more platform to activate intelligence"}
+          </div>
+          <div style={{ fontSize: 14, color: "#475569", lineHeight: 1.6 }}>
+            Brand Intelligence requires 2+ connected platforms for cross-channel analysis.
+          </div>
         </div>
         <button
-          onClick={() => switchTab?.("brand-intelligence")}
+          onClick={() => switchTab?.("integrations")}
           style={{
-            padding: "9px 18px", borderRadius: 9, border: "none", cursor: "pointer",
-            fontSize: 12, fontWeight: 700, background: "#2563eb", color: "#fff",
-            whiteSpace: "nowrap",
+            padding: "13px 26px", borderRadius: 10, border: "none",
+            background: "#4f46e5", color: "#fff", fontWeight: 700, fontSize: 14,
+            cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
           }}
         >
-          Run Brand Intelligence →
+          Connect Platforms →
         </button>
       </div>
     );
   }
 
+  if (!topItem) {
+    return (
+      <div style={{
+        border: "1px dashed #e2e8f0", borderRadius: 16, padding: "28px 32px",
+        background: "#f8fafc",
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24,
+        flexWrap: "wrap",
+      }}>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>
+            Brand Intelligence
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: "#374151", marginBottom: 6 }}>
+            No intelligence generated yet
+          </div>
+          <div style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.6 }}>
+            Run Brand Intelligence to surface opportunities and risks across your platforms.
+          </div>
+        </div>
+        <button
+          onClick={() => switchTab?.("brand-intelligence")}
+          style={{
+            padding: "13px 26px", borderRadius: 10, border: "none",
+            background: "#2563eb", color: "#fff", fontWeight: 700, fontSize: 14,
+            cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
+          }}
+        >
+          Run Intelligence →
+        </button>
+      </div>
+    );
+  }
+
+  const meta    = getMeta(topItem);
+  const ctaText = getActionLabel(topItem);
+
   return (
     <div style={{
-      background: "linear-gradient(135deg, #f8faff 0%, #eff6ff 100%)",
-      border: "1px solid #dbeafe",
-      borderLeft: `4px solid ${priority.badgeColor}`,
-      borderRadius: 14,
-      padding: "18px 22px",
+      border: `1px solid ${meta.border}`,
+      borderLeft: `4px solid ${meta.color}`,
+      borderRadius: 16, padding: "24px 28px",
+      background: meta.bg,
+      display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24,
+      flexWrap: "wrap",
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-        <span style={{
-          fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1,
-          color: priority.badgeColor, background: "rgba(255,255,255,0.9)",
-          border: `1px solid ${priority.badgeColor}33`, borderRadius: 99, padding: "2px 8px",
-        }}>
-          {priority.badge}
-        </span>
-        <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, color: "#94a3b8" }}>
-          Today's Priority
-        </span>
+      <div style={{ flex: 1, minWidth: 260 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+          <span style={{
+            fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8,
+            color: meta.color, background: "#fff", border: `1px solid ${meta.border}`,
+            borderRadius: 99, padding: "4px 12px",
+          }}>
+            {meta.label}
+          </span>
+          {topItem.confidence && (
+            <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 500 }}>
+              Confidence: {topItem.confidence}
+            </span>
+          )}
+          {intelligenceFeed.length > 1 && (
+            <span style={{ fontSize: 12, color: "#94a3b8", marginLeft: "auto" }}>
+              +{intelligenceFeed.length - 1} more insights
+            </span>
+          )}
+        </div>
+        <div style={{ fontSize: 20, fontWeight: 800, color: "#0f172a", lineHeight: 1.35, marginBottom: 10 }}>
+          {topItem.title}
+        </div>
+        <div style={{ fontSize: 14, color: "#374151", lineHeight: 1.7, maxWidth: 580 }}>
+          {topItem.finding}
+        </div>
       </div>
 
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a", lineHeight: 1.3, marginBottom: priority.impact ? 8 : 0 }}>
-            {priority.title}
-          </div>
-          {priority.impact && (
-            <div style={{ fontSize: 11, color: "#475569", lineHeight: 1.5 }}>{priority.impact}</div>
-          )}
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
-          {priority.time && (
-            <span style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8" }}>{priority.time}</span>
-          )}
-          <button
-            onClick={() => switchTab?.(priority.tab)}
-            style={{
-              padding: "9px 18px", borderRadius: 9, border: "none", cursor: "pointer",
-              fontSize: 11, fontWeight: 700, background: priority.badgeColor, color: "#fff",
-              whiteSpace: "nowrap", transition: "opacity 0.15s",
-            }}
-            onMouseEnter={e => { e.currentTarget.style.opacity = "0.88"; }}
-            onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
-          >
-            {priority.cta}
-          </button>
-        </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, flexShrink: 0, alignItems: "stretch", minWidth: 160 }}>
+        <button
+          onClick={() => switchTab?.("brand-intelligence")}
+          style={{
+            padding: "13px 20px", borderRadius: 10, border: "none",
+            background: meta.color, color: "#fff", fontWeight: 700, fontSize: 14,
+            cursor: "pointer", textAlign: "center",
+          }}
+        >
+          {ctaText}
+        </button>
+        <button
+          onClick={() => switchTab?.("brand-intelligence")}
+          style={{
+            padding: "10px 20px", borderRadius: 10,
+            border: `1px solid ${meta.border}`, background: "transparent",
+            color: meta.color, fontWeight: 600, fontSize: 13, cursor: "pointer", textAlign: "center",
+          }}
+        >
+          View All Intelligence
+        </button>
       </div>
     </div>
   );
-};
+}
 
-// ── Platform Status ─────────────────────────────────────────────────────────────
+// ── Row 4a: Platform Coverage Panel ───────────────────────────────────────────
 
-const PlatformStatus = ({ connectedPlatforms = [], switchTab }) => {
+function PlatformPanel({ connectedPlatforms = [], switchTab }) {
   const connected = ALL_PLATFORMS.filter(p => connectedPlatforms.includes(p));
   const missing   = ALL_PLATFORMS.filter(p => !connectedPlatforms.includes(p));
-  const readyPct  = Math.round((connected.length / ALL_PLATFORMS.length) * 100);
-  const isHealthy = connected.length === ALL_PLATFORMS.length;
+  const pct       = Math.round((connected.length / ALL_PLATFORMS.length) * 100);
+  const status    = connected.length === ALL_PLATFORMS.length ? "full" : connected.length > 0 ? "partial" : "empty";
+
+  const statusStyle = {
+    full:    { bg: "#f0fdf4", text: "#15803d", border: "#bbf7d0", label: "Fully Connected" },
+    partial: { bg: "#fffbeb", text: "#d97706", border: "#fcd34d", label: "Partially Connected" },
+    empty:   { bg: "#fff1f2", text: "#dc2626", border: "#fca5a5", label: "Setup Required" },
+  }[status];
 
   return (
-    <div style={{ background: "#fff", border: "1px solid #f1f5f9", borderRadius: 16, padding: "18px 22px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>Platform Status</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{
-            width: 7, height: 7, borderRadius: "50%", display: "inline-block",
-            background: isHealthy ? "#22c55e" : connected.length > 0 ? "#f59e0b" : "#ef4444",
+    <div style={{
+      background: "#fff", border: "1px solid #f1f5f9", borderRadius: 16,
+      padding: "20px 22px", flex: 3, minWidth: 0,
+      boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>Platform Coverage</div>
+        <span style={{
+          fontSize: 12, fontWeight: 700, padding: "4px 12px", borderRadius: 99,
+          background: statusStyle.bg, color: statusStyle.text, border: `1px solid ${statusStyle.border}`,
+        }}>
+          {statusStyle.label}
+        </span>
+      </div>
+
+      <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
+        <div style={{ flex: 1, textAlign: "center", background: "#f0fdf4", borderRadius: 12, padding: "16px 12px" }}>
+          <div style={{ fontSize: 36, fontWeight: 800, color: "#16a34a", lineHeight: 1 }}>{connected.length}</div>
+          <div style={{ fontSize: 13, color: "#64748b", marginTop: 6, fontWeight: 500 }}>Connected</div>
+        </div>
+        <div style={{ flex: 1, textAlign: "center", background: "#fff7ed", borderRadius: 12, padding: "16px 12px" }}>
+          <div style={{ fontSize: 36, fontWeight: 800, color: "#d97706", lineHeight: 1 }}>{missing.length}</div>
+          <div style={{ fontSize: 13, color: "#64748b", marginTop: 6, fontWeight: 500 }}>Remaining</div>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+          <span style={{ fontSize: 13, color: "#64748b" }}>Coverage</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#2563eb" }}>{pct}%</span>
+        </div>
+        <div style={{ height: 6, background: "#f1f5f9", borderRadius: 99, overflow: "hidden" }}>
+          <div style={{
+            height: "100%", borderRadius: 99, width: `${pct}%`,
+            background: "linear-gradient(90deg, #22c55e, #2563eb)",
+            transition: "width 0.8s cubic-bezier(0.16,1,0.3,1)",
           }} />
-          <span style={{ fontSize: 10, fontWeight: 700, color: isHealthy ? "#16a34a" : connected.length > 0 ? "#d97706" : "#dc2626" }}>
-            {isHealthy ? "Fully Connected" : connected.length > 0 ? "Partially Connected" : "Setup Required"}
-          </span>
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 20, alignItems: "start" }}>
-        <div style={{ display: "flex", gap: 10 }}>
-          <div style={{ textAlign: "center", background: "#f0fdf4", borderRadius: 10, padding: "12px 16px" }}>
-            <div style={{ fontSize: 28, fontWeight: 900, color: "#16a34a", lineHeight: 1 }}>{connected.length}</div>
-            <div style={{ fontSize: 9, fontWeight: 600, color: "#64748b", marginTop: 3 }}>Connected</div>
+      {missing.length > 0 && (
+        <>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+            Not Connected
           </div>
-          <div style={{ textAlign: "center", background: "#fff7ed", borderRadius: 10, padding: "12px 16px" }}>
-            <div style={{ fontSize: 28, fontWeight: 900, color: "#d97706", lineHeight: 1 }}>{missing.length}</div>
-            <div style={{ fontSize: 9, fontWeight: 600, color: "#64748b", marginTop: 3 }}>Remaining</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 18 }}>
+            {missing.map(p => (
+              <span key={p} style={{
+                fontSize: 13, fontWeight: 500, padding: "5px 12px",
+                background: "#f8fafc", border: "1px solid #e2e8f0",
+                borderRadius: 8, color: "#475569",
+              }}>
+                {PLATFORM_LABELS[p]}
+              </span>
+            ))}
           </div>
-        </div>
+          <button
+            onClick={() => switchTab?.("integrations")}
+            style={{
+              display: "block", width: "100%", padding: "12px 0",
+              background: "#2563eb", border: "none", borderRadius: 10,
+              color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer",
+            }}
+          >
+            Complete Platform Setup →
+          </button>
+        </>
+      )}
 
-        <div>
-          {isHealthy ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 18 }}>🎉</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#0f172a" }}>All platforms connected</span>
-            </div>
-          ) : (
-            <>
-              <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "#94a3b8", marginBottom: 8 }}>Not Connected</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
-                {missing.map(p => (
-                  <span key={p} style={{
-                    fontSize: 10, fontWeight: 600, color: "#475569",
-                    background: "#f8fafc", border: "1px solid #e2e8f0",
-                    borderRadius: 7, padding: "3px 9px",
-                  }}>
-                    {PLATFORM_LABELS[p] || p}
-                  </span>
-                ))}
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                <span style={{ fontSize: 9, color: "#94a3b8" }}>Coverage</span>
-                <span style={{ fontSize: 9, fontWeight: 700, color: "#2563eb" }}>{readyPct}%</span>
-              </div>
-              <div style={{ height: 4, background: "#f1f5f9", borderRadius: 99, overflow: "hidden" }}>
-                <div style={{
-                  height: "100%", borderRadius: 99, width: `${readyPct}%`,
-                  background: "linear-gradient(90deg, #22c55e, #2563eb)",
-                  transition: "width 0.8s cubic-bezier(0.16,1,0.3,1)",
-                }} />
-              </div>
-            </>
-          )}
+      {status === "full" && (
+        <div style={{ textAlign: "center", fontSize: 14, color: "#15803d", fontWeight: 600, padding: "6px 0" }}>
+          All platforms connected ✓
         </div>
-      </div>
-
-      {!isHealthy && (
-        <button
-          onClick={() => switchTab?.("integrations")}
-          style={{
-            display: "block", width: "100%", marginTop: 16,
-            background: "linear-gradient(135deg, #2563EB, #1d4ed8)",
-            border: "none", borderRadius: 10, padding: "9px 0",
-            fontSize: 11, fontWeight: 700, color: "#fff", cursor: "pointer",
-            transition: "opacity 0.15s",
-          }}
-          onMouseEnter={e => { e.currentTarget.style.opacity = "0.88"; }}
-          onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
-        >
-          Complete Platform Setup →
-        </button>
       )}
     </div>
   );
-};
+}
 
-// ── Brand Intelligence Preview ──────────────────────────────────────────────────
+// ── Row 4b: Growth Panel ──────────────────────────────────────────────────────
 
-const BrandIntelligencePreview = ({ intelligenceFeed = [], switchTab }) => {
-  const topItem = intelligenceFeed[0];
-  const isEmpty = intelligenceFeed.length === 0;
-
-  const lastGenDate = topItem?.generated_at
-    ? new Date(topItem.generated_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-    : null;
+function GrowthPanel({ growth = {}, switchTab }) {
+  const { level = null, points = 0, streak_days = 0, progress_percentage = 0, next_reward } = growth;
 
   return (
-    <div style={{ background: "#fff", border: "1px solid #f1f5f9", borderRadius: 16, padding: "18px", height: "100%", display: "flex", flexDirection: "column" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-        <div>
-          <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: "#94a3b8", marginBottom: 2 }}>Strategic</div>
-          <div style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>Brand Intelligence</div>
-        </div>
-        <span style={{ fontSize: 8, fontWeight: 800, color: "#2563eb", background: "#eff6ff", border: "1px solid #93c5fd", borderRadius: 99, padding: "2px 7px" }}>AI</span>
+    <div style={{
+      background: "#fff", border: "1px solid #f1f5f9", borderRadius: 16,
+      padding: "20px 22px", flex: 2, minWidth: 0,
+      boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>Growth</div>
+        <span style={{ fontSize: 22 }}>🏆</span>
       </div>
 
-      <div style={{ flex: 1 }}>
-        {isEmpty ? (
-          <div style={{ fontSize: 11, color: "#94a3b8", textAlign: "center", padding: "20px 0" }}>
-            No intelligence generated yet.
-          </div>
-        ) : (
-          <>
-            <div style={{
-              fontSize: 12, fontWeight: 800, color: "#0f172a", lineHeight: 1.35, marginBottom: 8,
-              display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
-            }}>
-              {topItem.title}
-            </div>
-            <div style={{
-              fontSize: 11, color: "#475569", lineHeight: 1.5, marginBottom: 10,
-              display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
-            }}>
-              {topItem.finding}
-            </div>
-            {lastGenDate && (
-              <div style={{ fontSize: 9, color: "#94a3b8" }}>Generated {lastGenDate} · {intelligenceFeed.length} insights</div>
-            )}
-          </>
-        )}
-      </div>
-
-      <button
-        onClick={() => switchTab?.("brand-intelligence")}
-        style={{
-          display: "block", width: "100%", marginTop: 14,
-          background: "linear-gradient(135deg, #2563EB, #1d4ed8)",
-          border: "none", borderRadius: 9, padding: "9px 0",
-          fontSize: 11, fontWeight: 700, color: "#fff", cursor: "pointer",
-          transition: "opacity 0.15s",
-        }}
-        onMouseEnter={e => { e.currentTarget.style.opacity = "0.88"; }}
-        onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
-      >
-        View Full Brand Intelligence →
-      </button>
-    </div>
-  );
-};
-
-// ── Growth Engine Preview ───────────────────────────────────────────────────────
-
-const GrowthEnginePreview = ({ intelligenceFeed = [], switchTab }) => {
-  const growthItem    = intelligenceFeed.find(i => i.module_id === "growth_engine"        || i.category === "Growth Engine");
-  const campaignItem  = intelligenceFeed.find(i => i.module_id === "campaign_intelligence" || i.category === "Campaign Intelligence");
-  const hasData       = !!(growthItem || campaignItem);
-
-  const rows = [
-    { label: "Recommended Goal",     value: growthItem?.title },
-    { label: "Recommended Campaign", value: campaignItem?.title },
-    { label: "Expected Impact",      value: growthItem?.expected_impact },
-  ];
-
-  return (
-    <div style={{ background: "#fff", border: "1px solid #f1f5f9", borderRadius: 16, padding: "18px", height: "100%", display: "flex", flexDirection: "column" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-        <div>
-          <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: "#94a3b8", marginBottom: 2 }}>Execution</div>
-          <div style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>Growth Engine</div>
-        </div>
-        <TrendingUp size={15} color="#059669" />
-      </div>
-
-      <div style={{ flex: 1 }}>
-        {hasData ? (
-          rows.map(({ label, value }) => (
-            <div key={label} style={{ padding: "6px 0", borderBottom: "1px solid #f8fafc" }}>
-              <div style={{ fontSize: 9, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 3 }}>{label}</div>
-              {value ? (
-                <div style={{
-                  fontSize: 11, fontWeight: 700, color: "#0f172a", lineHeight: 1.35,
-                  display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
-                }}>
-                  {value}
-                </div>
-              ) : (
-                <div style={{ fontSize: 11, color: "#cbd5e1" }}>—</div>
-              )}
-            </div>
-          ))
-        ) : (
-          <div style={{ textAlign: "center", padding: "18px 0", color: "#94a3b8" }}>
-            <TrendingUp size={24} color="#e2e8f0" style={{ marginBottom: 8, display: "block", margin: "0 auto 8px" }} />
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#cbd5e1" }}>Run Brand Intelligence to generate growth recommendations.</div>
-          </div>
-        )}
-      </div>
-
-      <button
-        onClick={() => switchTab?.(hasData ? "campaign" : "brand-intelligence")}
-        style={{
-          display: "block", width: "100%", marginTop: 14,
-          background: hasData ? "linear-gradient(135deg, #059669, #047857)" : "#f8fafc",
-          border: hasData ? "none" : "1px solid #e2e8f0",
-          borderRadius: 9, padding: "9px 0",
-          fontSize: 11, fontWeight: 700,
-          color: hasData ? "#fff" : "#374151",
-          cursor: "pointer", transition: "opacity 0.15s",
-        }}
-        onMouseEnter={e => { e.currentTarget.style.opacity = "0.88"; }}
-        onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
-      >
-        {hasData ? "Launch Campaign →" : "Run Brand Intelligence →"}
-      </button>
-    </div>
-  );
-};
-
-// ── Rewards Engine Preview ──────────────────────────────────────────────────────
-
-const RewardsEnginePreview = ({ growth = {}, switchTab }) => {
-  const points = growth.points              || 0;
-  const level  = growth.level              || null;
-  const streak = growth.streak_days        || 0;
-  const next   = growth.next_reward;
-  const pct    = growth.progress_percentage || 0;
-
-  return (
-    <div style={{ background: "#fff", border: "1px solid #f1f5f9", borderRadius: 16, padding: "18px", height: "100%", display: "flex", flexDirection: "column" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-        <div>
-          <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: "#94a3b8", marginBottom: 2 }}>Motivation</div>
-          <div style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>Rewards Engine</div>
-        </div>
-        <span style={{ fontSize: 15 }}>🏆</span>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12, flex: 1 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
         {[
-          { label: "Level",   value: level   || "—" },
-          { label: "Points",  value: points > 0 ? points.toLocaleString() : "—" },
-          { label: "Streak",  value: streak  > 0 ? `${streak}d 🔥`        : "—" },
-          { label: "Next",    value: next?.title ? next.title.slice(0, 16) + (next.title.length > 16 ? "…" : "") : "—" },
-        ].map(({ label, value }) => (
-          <div key={label} style={{ background: "#f8fafc", borderRadius: 9, padding: "9px 10px" }}>
-            <div style={{ fontSize: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "#94a3b8", marginBottom: 3 }}>{label}</div>
-            <div style={{ fontSize: 12, fontWeight: 800, color: value === "—" ? "#cbd5e1" : "#0f172a" }}>{value}</div>
+          { label: "Level",   value: level || "—",                                  dim: !level },
+          { label: "Points",  value: points > 0 ? points.toLocaleString() : "—",    dim: !points },
+          { label: "Streak",  value: streak_days > 0 ? `${streak_days}d 🔥` : "—", dim: !streak_days },
+          { label: "Next",    value: next_reward?.title ? next_reward.title.slice(0, 14) + "…" : "—", dim: !next_reward },
+        ].map(({ label, value, dim }) => (
+          <div key={label} style={{ background: "#f8fafc", borderRadius: 10, padding: "12px 14px" }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 5 }}>
+              {label}
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: dim ? "#cbd5e1" : "#0f172a" }}>{value}</div>
           </div>
         ))}
       </div>
 
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-          <span style={{ fontSize: 9, color: "#94a3b8" }}>Next reward</span>
-          <span style={{ fontSize: 9, fontWeight: 700, color: "#2563eb" }}>{pct}%</span>
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+          <span style={{ fontSize: 13, color: "#64748b" }}>Next reward</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#7c3aed" }}>{progress_percentage}%</span>
         </div>
-        <div style={{ height: 4, background: "#f1f5f9", borderRadius: 99, overflow: "hidden" }}>
+        <div style={{ height: 6, background: "#f1f5f9", borderRadius: 99, overflow: "hidden" }}>
           <div style={{
-            height: "100%", borderRadius: 99, width: `${pct}%`,
-            background: "linear-gradient(90deg, #2563eb, #7c3aed)",
+            height: "100%", borderRadius: 99, width: `${progress_percentage}%`,
+            background: "linear-gradient(90deg, #7c3aed, #2563eb)",
             transition: "width 0.8s cubic-bezier(0.16,1,0.3,1)",
           }} />
         </div>
@@ -525,95 +336,169 @@ const RewardsEnginePreview = ({ growth = {}, switchTab }) => {
       <button
         onClick={() => switchTab?.("growth")}
         style={{
-          display: "block", width: "100%",
+          display: "block", width: "100%", padding: "12px 0",
           background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
-          border: "none", borderRadius: 9, padding: "9px 0",
-          fontSize: 11, fontWeight: 700, color: "#fff", cursor: "pointer",
-          transition: "opacity 0.15s",
+          border: "none", borderRadius: 10,
+          color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer",
         }}
-        onMouseEnter={e => { e.currentTarget.style.opacity = "0.88"; }}
-        onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
       >
         View Rewards →
       </button>
     </div>
   );
-};
+}
 
-// ── Main ────────────────────────────────────────────────────────────────────────
+// ── Row 5: Quick Actions ──────────────────────────────────────────────────────
+
+function QuickActions({ switchTab }) {
+  const actions = [
+    { label: "Create Post",      emoji: "✏️",  tab: "social"            },
+    { label: "Create Campaign",  emoji: "🚀",  tab: "templates"         },
+    { label: "Run Intelligence", emoji: "⚡",  tab: "brand-intelligence" },
+    { label: "View Reports",     emoji: "📊",  tab: "reporting"         },
+  ];
+
+  return (
+    <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+      {actions.map(({ label, emoji, tab }) => (
+        <button
+          key={label}
+          onClick={() => switchTab?.(tab)}
+          style={{
+            flex: 1, minWidth: 130,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            padding: "14px 16px", borderRadius: 12,
+            border: "1px solid #e5e7eb", background: "#fff",
+            color: "#374151", fontWeight: 600, fontSize: 14, cursor: "pointer",
+            transition: "all 0.15s",
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.borderColor = "#2563eb";
+            e.currentTarget.style.color = "#2563eb";
+            e.currentTarget.style.background = "#eff6ff";
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.borderColor = "#e5e7eb";
+            e.currentTarget.style.color = "#374151";
+            e.currentTarget.style.background = "#fff";
+          }}
+        >
+          <span style={{ fontSize: 16 }}>{emoji}</span>
+          <span>{label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Section label ─────────────────────────────────────────────────────────────
+
+function SectionLabel({ label }) {
+  return (
+    <div style={{
+      fontSize: 11, fontWeight: 700, color: "#94a3b8",
+      textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 14,
+    }}>
+      {label}
+    </div>
+  );
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
 
 const DashboardOverview = ({
   activeBrand,
   switchTab,
   user,
-  growth,
-  intelligenceFeed    = [],
-  allContent          = [],
-  connectedPlatforms  = [],
-  stats: metrics      = {},
-  brandDna            = { completionPct: 0 },
-  auditData           = null,
+  growth          = {},
+  intelligenceFeed   = [],
+  allContent         = [],
+  connectedPlatforms = [],
+  campaignsList      = [],
+  stats: _metrics    = {},
+  brandDna           = { completionPct: 0 },
 }) => {
   const hour         = new Date().getHours();
-  const greeting     = hour < 12 ? "Good Morning" : hour < 17 ? "Good Afternoon" : hour < 21 ? "Good Evening" : "Good Night";
+  const greeting     = hour < 12 ? "Good Morning" : hour < 17 ? "Good Afternoon" : "Good Evening";
   const greetingName = user?.first_name || user?.email?.split("@")[0] || "there";
 
-  const publishedCount = allContent.filter(c => c.status === "published").length;
-  const scheduledCount = allContent.filter(c => c.status === "scheduled").length;
-  const isConnected    = connectedPlatforms.length > 0;
-  const dnaComplete    = brandDna.completionPct >= 70;
-
-  let state = 1;
-  if (isConnected || brandDna.completionPct > 0)                                state = 2;
-  if (isConnected && dnaComplete && (publishedCount > 0 || scheduledCount > 0)) state = 3;
-  if (state === 3 && publishedCount >= 10 && (metrics.reach || 0) > 1000)       state = 4;
+  const publishedCount = (allContent || []).filter(c => c.status === "published").length;
 
   return (
-    <div className="dashboard-intel animate__animated animate__fadeIn p-1">
+    <div style={{ paddingBottom: 40 }}>
 
       {/* Greeting */}
-      <div className="mb-4 d-flex justify-content-between align-items-end">
-        <div>
-          <h3 className="fw-bold text-main mb-1" style={{ letterSpacing: "-0.03em" }}>
-            {greeting}, {greetingName}!
-          </h3>
+      <div style={{ marginBottom: 28 }}>
+        <h3 style={{ fontSize: 24, fontWeight: 800, color: "#0f172a", margin: 0, letterSpacing: "-0.02em" }}>
+          {greeting}, {greetingName}
+        </h3>
+        <div style={{ fontSize: 14, color: "#64748b", marginTop: 5 }}>
+          Here's what's happening with your brand today.
         </div>
-        {auditData?.audit_id && (
-          <div className="d-flex align-items-center gap-2 bg-primary bg-opacity-10 px-3 py-2 rounded-pill">
-            <CheckCircle size={13} className="text-primary" />
-            <span className="extra-small fw-bold text-primary">Audit Hydrated</span>
-          </div>
-        )}
       </div>
 
-      {/* Growth System Status */}
-      {state === 1 && <State1NewUser           switchTab={switchTab} brandDna={brandDna} />}
-      {state === 2 && <State2PartialActivation  switchTab={switchTab} brandDna={brandDna} />}
-      {state === 3 && <State3Active            switchTab={switchTab} connectedPlatforms={connectedPlatforms} publishedCount={publishedCount} />}
-      {state === 4 && <State4Advanced          switchTab={switchTab} />}
+      {/* ── ROW 1: KPI Strip ──────────────────────────────────────────────── */}
+      <div style={{ display: "flex", gap: 14, marginBottom: 28, flexWrap: "wrap" }}>
+        <KPICard
+          label="Platforms Connected"
+          value={connectedPlatforms.length}
+          sub={`of ${ALL_PLATFORMS.length} available`}
+          color={connectedPlatforms.length === 0 ? "#dc2626" : connectedPlatforms.length >= 4 ? "#16a34a" : "#d97706"}
+        />
+        <KPICard
+          label="Published Content"
+          value={publishedCount}
+          sub={publishedCount === 0 ? "No content yet" : "posts & articles"}
+        />
+        <KPICard
+          label="Active Campaigns"
+          value={campaignsList.length}
+          sub={campaignsList.length === 0 ? "No campaigns yet" : "in progress"}
+        />
+        <KPICard
+          label="Intelligence Items"
+          value={intelligenceFeed.length}
+          sub={intelligenceFeed.length === 0 ? "Run intelligence" : "insights ready"}
+          color={intelligenceFeed.length > 0 ? "#2563eb" : "#94a3b8"}
+          subColor={intelligenceFeed.length === 0 ? "#94a3b8" : "#64748b"}
+        />
+        <KPICard
+          label="Growth Level"
+          value={growth.level || "—"}
+          sub={growth.points > 0 ? `${growth.points.toLocaleString()} pts` : "Start earning"}
+          color={growth.level ? "#7c3aed" : "#94a3b8"}
+          subColor={growth.points > 0 ? "#64748b" : "#94a3b8"}
+        />
+      </div>
 
-      {/* ══ TODAY'S PRIORITY ═════════════════════════════════════════════════ */}
-      <SectionDivider label="Today's focus" />
-      <TodaysPriority
-        intelligenceFeed={intelligenceFeed}
-        connectedPlatforms={connectedPlatforms}
-        switchTab={switchTab}
-      />
+      {/* ── ROW 2: Brand Intelligence Hero ────────────────────────────────── */}
+      <div style={{ marginBottom: 28 }}>
+        <SectionLabel label="Brand Intelligence" />
+        <IntelligenceHero
+          intelligenceFeed={intelligenceFeed}
+          connectedPlatforms={connectedPlatforms}
+          switchTab={switchTab}
+        />
+      </div>
 
-      {/* ══ INSIGHTS SNAPSHOT ════════════════════════════════════════════════ */}
-      <SectionDivider label="What's happening" />
-      <InsightsSnapshot activeBrand={activeBrand} switchTab={switchTab} />
+      {/* ── ROW 3: Activity Feed ──────────────────────────────────────────── */}
+      <div style={{ marginBottom: 28 }}>
+        <InsightsSnapshot activeBrand={activeBrand} switchTab={switchTab} />
+      </div>
 
-      {/* ══ PLATFORM STATUS ══════════════════════════════════════════════════ */}
-      <SectionDivider label="Platform health" />
-      <PlatformStatus connectedPlatforms={connectedPlatforms} switchTab={switchTab} />
+      {/* ── ROW 4: Platform + Growth ──────────────────────────────────────── */}
+      <div style={{ marginBottom: 28 }}>
+        <SectionLabel label="Platform & Growth" />
+        <div style={{ display: "flex", gap: 14, alignItems: "flex-start", flexWrap: "wrap" }}>
+          <PlatformPanel connectedPlatforms={connectedPlatforms} switchTab={switchTab} />
+          <GrowthPanel   growth={growth} switchTab={switchTab} />
+        </div>
+      </div>
 
-      {/* ══ GROWTH OVERVIEW ══════════════════════════════════════════════════ */}
-      <SectionDivider label="Growth overview" />
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
-        <BrandIntelligencePreview intelligenceFeed={intelligenceFeed} switchTab={switchTab} />
-        <GrowthEnginePreview      intelligenceFeed={intelligenceFeed} switchTab={switchTab} />
-        <RewardsEnginePreview     growth={growth} switchTab={switchTab} />
+      {/* ── ROW 5: Quick Actions ──────────────────────────────────────────── */}
+      <div>
+        <SectionLabel label="Quick Actions" />
+        <QuickActions switchTab={switchTab} />
       </div>
 
     </div>

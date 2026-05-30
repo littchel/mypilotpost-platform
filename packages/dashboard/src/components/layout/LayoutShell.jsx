@@ -91,9 +91,9 @@ const AdvisorCard = ({ item, onDismiss, onPlan, inPlan }) => {
       {/* Row 1: badge + dismiss */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
         <span style={{
-          fontSize: 8, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.7,
+          fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.7,
           color: meta.color, background: meta.bg, border: `1px solid ${meta.border}`,
-          borderRadius: 99, padding: "2px 6px", lineHeight: 1.4,
+          borderRadius: 99, padding: "3px 8px", lineHeight: 1.4,
         }}>
           {meta.label}
         </span>
@@ -110,26 +110,26 @@ const AdvisorCard = ({ item, onDismiss, onPlan, inPlan }) => {
 
       {/* Title */}
       <div style={{
-        fontSize: 13, fontWeight: 800, color: "#0f172a", lineHeight: 1.35, marginBottom: 7,
+        fontSize: 14, fontWeight: 800, color: "#0f172a", lineHeight: 1.35, marginBottom: 8,
         display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
       }}>
         {item.title}
       </div>
 
       {/* Finding */}
-      <div style={{ fontSize: 11, color: "#475569", lineHeight: 1.5, marginBottom: 9 }}>
+      <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.55, marginBottom: 10 }}>
         {twoSentences(item.finding)}
       </div>
 
       {/* Confidence */}
       {item.confidence && (
-        <div style={{ marginBottom: 9 }}>
+        <div style={{ marginBottom: 10 }}>
           <span style={{
-            fontSize: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5,
+            fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5,
             color: "#64748b", background: "#f8fafc", border: "1px solid #e2e8f0",
-            borderRadius: 99, padding: "2px 6px",
+            borderRadius: 99, padding: "3px 8px",
           }}>
-            {item.confidence}
+            Confidence: {item.confidence}
           </span>
         </div>
       )}
@@ -140,12 +140,12 @@ const AdvisorCard = ({ item, onDismiss, onPlan, inPlan }) => {
         style={{
           display: "block", width: "100%",
           background: `linear-gradient(135deg, ${meta.color}, ${meta.color}cc)`,
-          border: "none", borderRadius: 7, padding: "8px 0",
-          fontSize: 11, fontWeight: 700, color: "#fff", cursor: "pointer",
-          letterSpacing: 0.2, marginBottom: 8,
+          border: "none", borderRadius: 8, padding: "10px 0",
+          fontSize: 13, fontWeight: 700, color: "#fff", cursor: "pointer",
+          letterSpacing: 0.2, marginBottom: 9,
         }}
         animate={{ opacity: [1, 0.78, 1] }}
-        transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 8 }}
+        transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 12 }}
       >
         {actionLabel} →
       </motion.button>
@@ -156,7 +156,7 @@ const AdvisorCard = ({ item, onDismiss, onPlan, inPlan }) => {
           onClick={() => onPlan(item)}
           style={{
             background: "none", border: "none", cursor: "pointer", padding: "2px 0",
-            fontSize: 9, fontWeight: 700, letterSpacing: 0.2,
+            fontSize: 11, fontWeight: 700, letterSpacing: 0.2,
             color: inPlan ? "#059669" : "#94a3b8",
             transition: "color 0.15s",
           }}
@@ -169,7 +169,7 @@ const AdvisorCard = ({ item, onDismiss, onPlan, inPlan }) => {
           onClick={() => setShowWhy(p => !p)}
           style={{
             background: "none", border: "none", cursor: "pointer", padding: "2px 0",
-            fontSize: 9, fontWeight: 600, color: "#94a3b8", transition: "color 0.15s",
+            fontSize: 11, fontWeight: 600, color: "#94a3b8", transition: "color 0.15s",
           }}
           onMouseEnter={e => { e.currentTarget.style.color = "#2563eb"; }}
           onMouseLeave={e => { e.currentTarget.style.color = "#94a3b8"; }}
@@ -197,9 +197,9 @@ const AdvisorCard = ({ item, onDismiss, onPlan, inPlan }) => {
                 { label: "Generated",  value: formatTime(item.generated_at) },
                 { label: "Module",     value: item.module_id },
               ].filter(r => r.value).map(({ label, value }) => (
-                <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: 4, marginBottom: 4 }}>
-                  <span style={{ fontSize: 8, fontWeight: 700, textTransform: "uppercase", color: "#94a3b8", flexShrink: 0 }}>{label}</span>
-                  <span style={{ fontSize: 8, fontWeight: 600, color: "#475569", textAlign: "right", lineHeight: 1.4 }}>{value}</span>
+                <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: 4, marginBottom: 5 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "#94a3b8", flexShrink: 0 }}>{label}</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: "#475569", textAlign: "right", lineHeight: 1.4 }}>{value}</span>
                 </div>
               ))}
             </div>
@@ -227,7 +227,7 @@ const BrandIntelligenceAdvisor = ({ feed = [], brandId, switchTab }) => {
     if (activeItems.length <= 1) return;
     timerRef.current = setInterval(() => {
       if (!hoveredRef.current) setCurrentIdx(p => p + 1);
-    }, 9000);
+    }, 18000);
     return () => clearInterval(timerRef.current);
   }, [activeItems.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -248,9 +248,9 @@ const BrandIntelligenceAdvisor = ({ feed = [], brandId, switchTab }) => {
   if (feed.length === 0) {
     return (
       <div style={{ textAlign: "center", padding: "14px 0" }}>
-        <div style={{ fontSize: 18, marginBottom: 6 }}>🧠</div>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#374151", marginBottom: 3 }}>No intelligence yet</div>
-        <div style={{ fontSize: 9, color: "#94a3b8", marginBottom: 10, lineHeight: 1.5 }}>
+        <div style={{ fontSize: 22, marginBottom: 8 }}>🧠</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", marginBottom: 5 }}>No intelligence yet</div>
+        <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 12, lineHeight: 1.5 }}>
           Connect platforms to generate AI insights.
         </div>
         <button
@@ -258,8 +258,8 @@ const BrandIntelligenceAdvisor = ({ feed = [], brandId, switchTab }) => {
           style={{
             display: "block", width: "100%",
             background: "linear-gradient(135deg, #2563EB, #1d4ed8)",
-            border: "none", borderRadius: 7, padding: "8px 0",
-            fontSize: 10, fontWeight: 700, color: "#fff", cursor: "pointer",
+            border: "none", borderRadius: 8, padding: "10px 0",
+            fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer",
           }}
         >
           Run Intelligence →
@@ -271,14 +271,14 @@ const BrandIntelligenceAdvisor = ({ feed = [], brandId, switchTab }) => {
   if (!current) {
     return (
       <div style={{ textAlign: "center", padding: "12px 0" }}>
-        <div style={{ fontSize: 10, color: "#94a3b8", marginBottom: 8 }}>All insights reviewed.</div>
+        <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 10 }}>All insights reviewed.</div>
         <button
           onClick={() => switchTab?.("brand-intelligence")}
           style={{
             display: "block", width: "100%",
             background: "linear-gradient(135deg, #2563EB, #1d4ed8)",
-            border: "none", borderRadius: 7, padding: "8px 0",
-            fontSize: 10, fontWeight: 700, color: "#fff", cursor: "pointer",
+            border: "none", borderRadius: 8, padding: "10px 0",
+            fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer",
           }}
         >
           View All Intelligence →
