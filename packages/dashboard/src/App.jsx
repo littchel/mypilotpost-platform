@@ -37,7 +37,7 @@ import Teams from "./pages/Teams";
 import Growth from "./pages/Growth";
 import DashboardInsights from "./pages/DashboardInsights";
 import BrandDNA from "./pages/BrandDNA";
-import ContentOpportunities from "./pages/ContentOpportunities";
+import Templates from "./pages/Templates";
 import BillingTab from "./pages/BillingTab";
 import NotificationsTab from "./pages/NotificationsTab";
 import AssistantModal from "./components/shared/AssistantModal";
@@ -1374,12 +1374,12 @@ function App() {
 
         {/* Insights Tab */}
         <TabContent id="insights" activeTab={activeTab}>
-          <DashboardInsights activeBrand={activeBrand} />
+          <DashboardInsights activeBrand={activeBrand} switchTab={setActiveTab} />
         </TabContent>
 
         {/* Content Opportunities Tab */}
-        <TabContent id="content-opportunities" activeTab={activeTab}>
-          <ContentOpportunities activeBrand={activeBrand} switchTab={setActiveTab} />
+        <TabContent id="templates" activeTab={activeTab}>
+          <Templates activeBrand={activeBrand} />
         </TabContent>
 
         {/* Brand DNA Tab */}

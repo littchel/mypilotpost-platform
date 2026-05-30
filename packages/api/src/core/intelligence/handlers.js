@@ -150,11 +150,29 @@ export async function getIntelligenceFeedHandler(request, env, auth) {
     generationStatus = result;
   }
 
+  // Check connected platform count (gate enforcement)
+  const platformRow = await db.prepare(`
+    SELECT COUNT(*) as total FROM connected_accounts
+    WHERE brand_id = ? AND status = 'active'
+  `).bind(brand_id).first();
+  const platformCount = platformRow?.total || 0;
+
+  // If < 2 platforms and no intelligence exists yet, return gate state
+  if (platformCount < 2) {
+    const hasExisting = await db.prepare(`
+      SELECT COUNT(*) as total FROM brand_intelligence_queue WHERE brand_id = ?
+    `).bind(brand_id).first();
+    if (!hasExisting?.total) {
+      return json({ requires_platforms: true, platform_count: platformCount, delivered: [], new_insights: [], pending_count: 0, notifications: [], batch_id: null, generated_at: null });
+    }
+  }
+
   // Progressive delivery feed
   const feed = await getIntelligenceFeed(db, brand_id);
 
   return json({
     ...feed,
+    platform_count: platformCount,
     just_generated: justGenerated,
     generation_status: generationStatus,
   });

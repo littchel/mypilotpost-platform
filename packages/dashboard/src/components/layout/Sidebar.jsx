@@ -42,7 +42,7 @@ const Sidebar = ({ activeTab, switchTab, brands, activeBrand, onSwitchBrand }) =
       <nav aria-label="Workspace">
         <NavLink tab="dashboard"             activeTab={activeTab} switchTab={switchTab} icon="fas fa-tachometer-alt" label="Dashboard" />
         <NavLink tab="insights"              activeTab={activeTab} switchTab={switchTab} icon="fas fa-lightbulb"      label="Insights" />
-        <NavLink tab="content-opportunities" activeTab={activeTab} switchTab={switchTab} icon="fas fa-crosshairs"     label="Content Opportunities" />
+        <NavLink tab="templates" activeTab={activeTab} switchTab={switchTab} icon="fas fa-layer-group" label="Templates" />
         <NavLink tab="brand-dna"             activeTab={activeTab} switchTab={switchTab} icon="fas fa-dna"            label="Brand DNA" />
       </nav>
 

@@ -375,6 +375,12 @@
             .footer__grid { grid-template-columns: 1fr 1fr; gap: 40px; }
             .insight-grid { grid-template-columns: 1fr; }
         }
+        @media print {
+            header, #site-footer, .audit-hero, .audit-form-section, .ar-unlock-btns, nav { display: none !important; }
+            .ar-results { padding: 0; }
+            .ar-unlock { background: #0f172a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            body { font-size: 12px; }
+        }
     </style>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
   <link rel="stylesheet" href="/assets/css/footer.css">
@@ -552,19 +558,6 @@
         <section id="results-view" class="results-page ar-results" style="display:none;"></section>
     </main>
 
-    <!-- Lead Capture Modal -->
-    <div id="lead-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:2000;align-items:center;justify-content:center;">
-        <div style="background:white;padding:48px;border-radius:32px;max-width:500px;width:90%;position:relative;">
-            <button onclick="hideLeadCapture()" style="position:absolute;top:24px;right:24px;background:none;border:none;font-size:24px;cursor:pointer;">&times;</button>
-            <h3 style="margin-bottom:16px;font-weight:700;">Get Your Social Media Audit Report</h3>
-            <p style="color:var(--text-gray);margin-bottom:24px;">We'll send the executive summary and strategic gap analysis directly to your inbox.</p>
-            <div class="input-group">
-                <input type="text" id="lead-name" class="premium-input" placeholder="Your Name" style="margin-bottom:16px;">
-                <input type="email" id="lead-email" class="premium-input" placeholder="Email Address">
-            </div>
-            <button id="send-report-btn" class="btn btn--primary" style="width:100%;padding:16px;">Email My Report</button>
-        </div>
-    </div>
 
     <!-- Footer -->
 
@@ -901,21 +894,43 @@
     ${ac.limitations ? `<div class="ar-conf-limits"><strong>What would improve this audit:</strong> ${esc(ac.limitations)}</div>` : ''}
   </div>
 
-  <!-- §11 Unlock CTA -->
+  <!-- §11 Growth System CTA -->
   <div class="ar-unlock">
-    <h3>Unlock Verified Intelligence</h3>
-    <div class="ar-unlock-vp">${esc(uvi.value_proposition || 'Connect your accounts to move from estimated to confirmed data.')}</div>
-    <div class="ar-unlock-grid">
-      ${Object.entries(uvi.what_becomes_available || {}).map(([k,v]) => `
-      <div class="ar-unlock-item">
-        <h5>${esc(k.replace(/_/g,' '))}</h5>
-        <p>${esc(v)}</p>
+    <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.12);border-radius:99px;padding:6px 14px;margin-bottom:20px;font-size:13px;font-weight:600;color:rgba(255,255,255,0.9);">
+      <span style="width:7px;height:7px;background:#22c55e;border-radius:50%;display:inline-block;"></span>
+      Your audit is based on public signals only
+    </div>
+    <h3 style="font-size:30px;font-weight:900;margin-bottom:14px;line-height:1.2;">
+      Turn This Audit Into a<br>Live Growth System
+    </h3>
+    <div class="ar-unlock-vp" style="font-size:16px;max-width:560px;">
+      This report was built from public data — your website, social profiles, and observable signals. Connect your platforms and the intelligence layer activates: real audience data, post-level analytics, competitor monitoring, and daily strategic recommendations.
+    </div>
+
+    <div class="ar-unlock-grid" style="grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:36px;">
+      ${[
+        { icon: '👥', title: 'Audience Intelligence', desc: 'Who actually engages, peak times, follower growth velocity, demographic breakdown.' },
+        { icon: '📊', title: 'Content Intelligence', desc: 'Post-by-post performance. What format, length, and topic drives results for your brand.' },
+        { icon: '🔍', title: 'Competitor Monitoring', desc: 'Track competitor publishing cadence, engagement rates, and content gaps in real time.' },
+        { icon: '⚡', title: 'Platform Intelligence', desc: 'Algorithm health scores, reach suppression alerts, and platform-specific optimizations.' },
+        { icon: '🎯', title: 'Growth Engine', desc: 'Daily AI-generated strategic recommendations based on your live performance data.' },
+        { icon: '💡', title: 'Conversion Intelligence', desc: 'Map which content drives profile visits, link clicks, and lead actions — not just likes.' },
+      ].map(item => `
+      <div class="ar-unlock-item" style="display:flex;flex-direction:column;gap:8px;">
+        <div style="font-size:22px;">${item.icon}</div>
+        <h5 style="font-size:13px;font-weight:700;color:rgba(255,255,255,0.95);">${item.title}</h5>
+        <p style="font-size:12px;color:rgba(255,255,255,0.6);line-height:1.6;">${item.desc}</p>
       </div>`).join('')}
     </div>
+
     <div class="ar-unlock-btns">
-      <button class="btn btn--primary btn--large" onclick="redirectToRegister()">Connect Accounts &amp; Verify</button>
-      <button class="btn btn--secondary" style="border-color:rgba(255,255,255,0.4);color:white;" onclick="showLeadCapture()">Download Snapshot Report</button>
-      <a href="/${window.location.pathname.split('/')[1] || ''}" style="color:rgba(255,255,255,0.5);font-size:14px;text-decoration:none;align-self:center;margin-left:8px;" onclick="location.reload();return false;">← Run another audit</a>
+      <button class="btn btn--primary btn--large" onclick="redirectToRegister()" style="background:#22c55e;border-color:#22c55e;color:#fff;font-size:16px;padding:16px 32px;">
+        Activate My Growth System →
+      </button>
+      <button class="btn btn--secondary" style="border-color:rgba(255,255,255,0.3);color:rgba(255,255,255,0.9);font-size:14px;" onclick="exportAuditPDF()">
+        Download PDF Report
+      </button>
+      <a href="javascript:void(0)" style="color:rgba(255,255,255,0.45);font-size:13px;text-decoration:none;align-self:center;margin-left:8px;" onclick="location.reload();return false;">← Run another audit</a>
     </div>
   </div>
 
@@ -944,33 +959,9 @@
             });
         }
 
-        function showLeadCapture() { document.getElementById('lead-modal').style.display = 'flex'; }
-        function hideLeadCapture() { document.getElementById('lead-modal').style.display = 'none'; }
-
-        document.getElementById('send-report-btn').addEventListener('click', async () => {
-            const name  = document.getElementById('lead-name').value.trim();
-            const email = document.getElementById('lead-email').value.trim();
-            if (!name || !email) return alert('Please fill in both fields.');
-            const btn = document.getElementById('send-report-btn');
-            btn.disabled = true;
-            btn.innerText = 'Sending...';
-            console.log(`[AUDIT_DOWNLOAD] Lead capture submit audit_id=${currentAuditId} email=${email}`);
-            try {
-                await fetch(`${API_BASE}/api/public/audit-lead`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ audit_id: currentAuditId, name, email, business_name: currentBrandName })
-                });
-                btn.innerText = '✓ Report Sent!';
-                btn.style.background = '#059669';
-                setTimeout(() => hideLeadCapture(), 2000);
-            } catch (err) {
-                console.error('[AUDIT_DOWNLOAD_ERROR]', err);
-                btn.innerText = 'Email My Report';
-                btn.disabled  = false;
-                alert('Failed to send. Please try again.');
-            }
-        });
+        function exportAuditPDF() {
+            window.print();
+        }
     </script>
 
   <footer id="site-footer" class="footer"></footer>
