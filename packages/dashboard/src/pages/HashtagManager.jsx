@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import {
   Plus, Search, Star, Trash2, Copy, Tag, Hash,
   Edit2, Check, X, ChevronRight, Pin
@@ -254,7 +254,7 @@ const CollectionEditor = ({ collection, onSave, onClose }) => {
 
 /* ── Main Component ── */
 export default function HashtagManager({ onInsertTags }) {
-  const [collections, setCollections]   = useState([]);
+  const [collections, setCollections]   = useState(loadCollections);
   const [search, setSearch]             = useState("");
   const [filterCat, setFilterCat]       = useState("All");
   const [filterPlatform, setFilterPlatform] = useState("All Platforms");
@@ -262,10 +262,6 @@ export default function HashtagManager({ onInsertTags }) {
   const [editingCollection, setEditingCollection] = useState(null);
   const [selectedId, setSelectedId]     = useState(null);
   const [insertMsg, setInsertMsg]       = useState("");
-
-  useEffect(() => {
-    setCollections(loadCollections());
-  }, []);
 
   const persist = useCallback((updated) => {
     setCollections(updated);

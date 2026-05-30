@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useOnboarding } from '../../../contexts/OnboardingContext';
 import { useBrand } from '../../../contexts/BrandContext';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
 import { apiRequest } from '../../../lib/api/client';
 
 const ActivationStep = ({ isWizard, onFinish }) => {

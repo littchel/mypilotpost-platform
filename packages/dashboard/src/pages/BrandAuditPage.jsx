@@ -182,7 +182,7 @@ const BrandAuditPage = () => {
         setAuditResult(session.result);
         setStage(3);
       }
-    } catch {}
+    } catch { /* empty */ }
   }, []);
 
   const runAudit = async () => {
@@ -209,7 +209,7 @@ const BrandAuditPage = () => {
       setAuditResult(data);
       localStorage.setItem(SESSION_KEY, JSON.stringify({ websiteUrl: url, brandName: brandNameHint.trim(), auditId: data.audit_id, result: data, timestamp: Date.now() }));
       setStage(3);
-    } catch (err) {
+    } catch {
       clearInterval(timerRef.current);
       setError('We ran into a problem generating your audit. Please check the URL and try again.');
       setStage(1);
@@ -223,7 +223,7 @@ const BrandAuditPage = () => {
     try {
       await fetch('/api/public/audit-lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ audit_id: auditResult.audit_id, email: leadEmail, name: auditResult.brand_name, business_name: auditResult.brand_name }) });
       setLeadCaptured(true);
-    } catch {}
+    } catch { /* empty */ }
     setLeadLoading(false);
   };
 
@@ -317,7 +317,6 @@ const BrandAuditPage = () => {
     const scoreLabel = sl(score);
 
     // Derived risk values
-    const dimArr = Object.values(dims);
     const webSocAvg = Math.round(((dims.web_presence || 50) + (dims.social_presence || 50)) / 2);
     const contBrandAvg = Math.round(((dims.content_strategy || 50) + (dims.brand_consistency || 50)) / 2);
     const convReady = dims.conversion_readiness || 50;

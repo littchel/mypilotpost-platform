@@ -143,7 +143,7 @@ function App() {
   };
 
   const { brands, activeBrand, switchBrand, createBrand: contextCreateBrand, loading: brandLoading } = useBrand();
-  const { step, loading: onboardingLoading, data: onboardingData, showCelebration, isComplete, signupSource } = useOnboarding();
+  const { step, loading: onboardingLoading, data: onboardingData, showCelebration, isComplete } = useOnboarding();
   const _onboardingMode = onboardingData?.onboardingMode;
 
   const location = useLocation();

@@ -132,7 +132,7 @@ const Settings = () => {
       setDeleteConfirm(false);
       setPrivacyMsg({ type: "warning", text: `Deletion scheduled for ${new Date(res.scheduled_for).toLocaleDateString()}. You can cancel within 7 days.` });
       await fetchPrivacyData();
-    } catch (e) {
+    } catch {
       setPrivacyMsg({ type: "error", text: "Failed to submit deletion request. Please try again." });
     }
     setDeletionLoading(false);
@@ -145,7 +145,7 @@ const Settings = () => {
       await apiRequest("/api/customer/account/delete-request", { method: "DELETE" });
       setPrivacyMsg({ type: "success", text: "Account deletion cancelled. Your account is safe." });
       await fetchPrivacyData();
-    } catch (e) {
+    } catch {
       setPrivacyMsg({ type: "error", text: "Failed to cancel deletion request." });
     }
     setDeletionLoading(false);
@@ -172,7 +172,7 @@ const Settings = () => {
       URL.revokeObjectURL(url);
       setPrivacyMsg({ type: "success", text: "Your data export has been downloaded." });
       await fetchPrivacyData();
-    } catch (e) {
+    } catch {
       setPrivacyMsg({ type: "error", text: "Export failed. Please try again." });
     }
     setExportLoading(false);
@@ -184,7 +184,7 @@ const Settings = () => {
     try {
       await apiRequest("/api/customer/consent", { method: "POST", body: JSON.stringify(consent) });
       setPrivacyMsg({ type: "success", text: "Consent preferences saved." });
-    } catch (e) {
+    } catch {
       setPrivacyMsg({ type: "error", text: "Failed to save consent preferences." });
     }
     setConsentSaving(false);

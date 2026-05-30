@@ -382,17 +382,11 @@ function TemplateCard({ tpl, expanded, onToggle }) {
   );
 }
 
-export default function Templates({ activeBrand }) {
+export default function Templates() {
   const [view, setView] = useState("recommended");
   const [expanded, setExpanded] = useState(null);
   const [search, setSearch] = useState("");
   const [filterCat, setFilterCat] = useState("all");
-
-  const recommended = TEMPLATES.filter(t =>
-    Object.values(SITUATION_MAP).includes(t.id)
-      ? TEMPLATES.slice(0, 5).map(tt => tt.id).includes(t.id)
-      : false
-  );
 
   const filtered = TEMPLATES.filter(t => {
     const matchSearch = !search || t.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -401,8 +395,6 @@ export default function Templates({ activeBrand }) {
     const matchCat = filterCat === "all" || t.category === filterCat;
     return matchSearch && matchCat;
   });
-
-  const displayList = view === "recommended" ? TEMPLATES.slice(0, 5) : filtered;
 
   return (
     <div style={{ padding: "24px 0" }}>

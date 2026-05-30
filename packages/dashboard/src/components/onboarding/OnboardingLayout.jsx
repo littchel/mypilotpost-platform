@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
 
 const OnboardingLayout = ({ children }) => {
   const { logout } = useAuth();

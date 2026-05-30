@@ -335,7 +335,7 @@ export default function DashboardInsights({ activeBrand, switchTab }) {
         return { ...prev, delivered:f(prev.delivered), new_insights:f(prev.new_insights), notifications:f(prev.notifications), new_notifications:f(prev.new_notifications) };
       });
       setNewIds(prev => { const s=new Set(prev); s.delete(id); return s; });
-    } catch {}
+    } catch { /* empty */ }
   };
 
   // Derived state
