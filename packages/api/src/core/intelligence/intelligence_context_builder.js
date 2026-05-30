@@ -5,6 +5,15 @@
  * Groq-ready context string for the Brand Intelligence Engine.
  *
  * TOKEN TARGET: ≤ 2,500 input tokens
+ *
+ * Column audit (verified against production migrations):
+ *   brands:            id, name, industry, archetype (no website_url, no target_audience)
+ *   brand_audit_v2:    website_url, overall_score, full_report_json
+ *   delivery_jobs:     platform, status, created_at
+ *   content_analytics: platform, impressions, engagements, clicks, created_at (no ctr)
+ *   connected_accounts: provider (not platform), status, token_expires_at (not expires_at)
+ *   blog_posts:        status, created_at
+ *   campaigns:         status
  */
 
 function safeJSON(str, fallback = null) {
@@ -27,13 +36,14 @@ export async function buildIntelligenceContext(db, brandId) {
     blogStats,
     campaignStats,
   ] = await Promise.all([
+    // Only columns that exist on brands table
     db.prepare(`
-      SELECT name, industry, website_url, target_audience, archetype
+      SELECT name, industry, archetype
       FROM brands WHERE id = ?
     `).bind(brandId).first(),
 
     db.prepare(`
-      SELECT overall_score, full_report_json, created_at
+      SELECT overall_score, website_url, full_report_json, created_at
       FROM brand_audit_results_v2
       WHERE brand_id = ? ORDER BY created_at DESC LIMIT 1
     `).bind(brandId).first(),
@@ -45,20 +55,21 @@ export async function buildIntelligenceContext(db, brandId) {
       GROUP BY platform, status
     `).bind(brandId).all(),
 
+    // No ctr column — compute from clicks/impressions
     db.prepare(`
       SELECT platform,
              COUNT(*) as posts,
              SUM(impressions) as total_impressions,
              AVG(engagements) as avg_engagements,
              SUM(clicks) as total_clicks,
-             AVG(ctr) as avg_ctr,
              MAX(impressions) as peak_impressions
       FROM content_analytics WHERE brand_id = ?
       GROUP BY platform
     `).bind(brandId).all(),
 
+    // provider (not platform), token_expires_at (not expires_at)
     db.prepare(`
-      SELECT platform, status, expires_at
+      SELECT provider, status, token_expires_at
       FROM connected_accounts WHERE brand_id = ?
     `).bind(brandId).all(),
 
@@ -79,11 +90,11 @@ export async function buildIntelligenceContext(db, brandId) {
 
   // ── Parse audit report ────────────────────────────────────────────────────
   const auditReport = safeJSON(latestAudit?.full_report_json);
-  const auditDims   = auditReport?.brand_score?.dimensions || {};
-  const diagSnap    = auditReport?.diagnostic_snapshot    || {};
-  const moatMap     = auditReport?.competitive_moat_map   || {};
+  const auditDims   = auditReport?.brand_score?.dimensions   || {};
+  const diagSnap    = auditReport?.diagnostic_snapshot       || {};
+  const moatMap     = auditReport?.competitive_moat_map      || {};
   const convArch    = auditReport?.conversion_architecture_review || {};
-  const contentDNA  = auditReport?.content_genome_analysis || {};
+  const contentDNA  = auditReport?.content_genome_analysis   || {};
 
   // ── Process delivery stats ────────────────────────────────────────────────
   const platformActivity = {};
@@ -98,24 +109,26 @@ export async function buildIntelligenceContext(db, brandId) {
     if (!p.last_post || row.last_post > p.last_post) p.last_post = row.last_post;
   }
 
-  const allLastPosts = Object.values(platformActivity).map(p => p.last_post).filter(Boolean).sort();
-  const lastPostDate = allLastPosts.at(-1) || null;
+  const allLastPosts  = Object.values(platformActivity).map(p => p.last_post).filter(Boolean).sort();
+  const lastPostDate  = allLastPosts.at(-1) || null;
   const daysSincePost = daysSince(lastPostDate);
   const totalPublished = Object.values(platformActivity).reduce((s, p) => s + p.published, 0);
 
-  // ── Platform connections ──────────────────────────────────────────────────
-  const connected = (connectedRows.results || []).filter(a => a.status === 'active').map(a => a.platform);
-  const expired   = (connectedRows.results || []).filter(a => {
-    return a.status === 'expired' || (a.expires_at && new Date(a.expires_at) < new Date());
-  }).map(a => a.platform);
+  // ── Platform connections (using 'provider' column) ────────────────────────
+  const connArr     = connectedRows.results || [];
+  const connected   = connArr.filter(a => a.status === 'active').map(a => a.provider);
+  const expired     = connArr.filter(a => {
+    return a.status === 'expired' || a.status === 'revoked' ||
+           (a.token_expires_at && new Date(a.token_expires_at) < new Date());
+  }).map(a => a.provider);
 
   // ── Build compact context string ─────────────────────────────────────────
   const L = [];
 
   L.push(`=== BRAND PROFILE ===`);
-  L.push(`Brand: ${brand?.name || 'Unknown'} | Industry: ${brand?.industry || 'Unknown'} | Website: ${brand?.website_url || 'none'}`);
-  if (brand?.target_audience) L.push(`Audience: ${String(brand.target_audience).slice(0, 120)}`);
-  if (brand?.archetype)       L.push(`Archetype: ${brand.archetype}`);
+  L.push(`Brand: ${brand?.name || 'Unknown'} | Industry: ${brand?.industry || 'Unknown'}`);
+  if (brand?.archetype) L.push(`Archetype: ${brand.archetype}`);
+  if (latestAudit?.website_url) L.push(`Website: ${latestAudit.website_url}`);
 
   L.push(`\n=== BRAND AUDIT SNAPSHOT ===`);
   if (latestAudit) {
@@ -124,13 +137,13 @@ export async function buildIntelligenceContext(db, brandId) {
       L.push(`Dimensions: web=${auditDims.web_presence||0} social=${auditDims.social_presence||0} content=${auditDims.content_strategy||0} consistency=${auditDims.brand_consistency||0} conversion=${auditDims.conversion_readiness||0}`);
     }
     const weaknesses = (diagSnap.strategic_weaknesses || []).slice(0, 3);
-    if (weaknesses.length) L.push(`Top Weaknesses: ${weaknesses.join(' | ')}`);
+    if (weaknesses.length) L.push(`Weaknesses: ${weaknesses.join(' | ')}`);
     const opps = (diagSnap.growth_opportunities || []).slice(0, 2);
     if (opps.length) L.push(`Growth Opportunities: ${opps.join(' | ')}`);
     const whitespace = (moatMap.whitespace_opportunities || []).slice(0, 2);
     if (whitespace.length) L.push(`Competitive Whitespace: ${whitespace.join(' | ')}`);
     const contentMix = contentDNA.estimated_content_mix;
-    if (contentMix) L.push(`Content Mix (estimated): edu=${contentMix.educational||0}% promo=${contentMix.promotional||0}% proof=${contentMix.social_proof||0}% community=${contentMix.community||0}% thought_lead=${contentMix.thought_leadership||0}%`);
+    if (contentMix) L.push(`Content Mix: edu=${contentMix.educational||0}% promo=${contentMix.promotional||0}% proof=${contentMix.social_proof||0}% thought=${contentMix.thought_leadership||0}%`);
     const friction = (convArch.conversion_friction_points || []).slice(0, 2);
     if (friction.length) L.push(`Conversion Friction: ${friction.join(' | ')}`);
   } else {
@@ -149,8 +162,11 @@ export async function buildIntelligenceContext(db, brandId) {
   if (analytics.length) {
     for (const row of analytics) {
       const eng = row.avg_engagements ? Number(row.avg_engagements).toFixed(1) : '0';
-      const ctr = row.avg_ctr ? (Number(row.avg_ctr) * 100).toFixed(2) + '%' : '0%';
-      L.push(`${row.platform}: posts=${row.posts} impressions=${row.total_impressions||0} avg_eng=${eng} clicks=${row.total_clicks||0} avg_ctr=${ctr} peak=${row.peak_impressions||0}`);
+      // Compute CTR from clicks/impressions since no ctr column exists
+      const ctr = row.total_impressions > 0
+        ? ((row.total_clicks / row.total_impressions) * 100).toFixed(2) + '%'
+        : '0%';
+      L.push(`${row.platform || 'unknown'}: posts=${row.posts} impressions=${row.total_impressions||0} avg_eng=${eng} clicks=${row.total_clicks||0} ctr=${ctr} peak=${row.peak_impressions||0}`);
     }
   } else {
     L.push(`No content analytics data yet.`);
@@ -158,7 +174,7 @@ export async function buildIntelligenceContext(db, brandId) {
 
   L.push(`\n=== PLATFORM CONNECTIONS ===`);
   L.push(`Connected: ${connected.join(', ') || 'none'} | Expired/Broken: ${expired.join(', ') || 'none'}`);
-  L.push(`Total Integrations: ${(connectedRows.results || []).length}`);
+  L.push(`Total Integrations: ${connArr.length}`);
 
   L.push(`\n=== CONTENT LIBRARY ===`);
   L.push(`Blog Posts: published=${blogStats?.published||0} drafts=${blogStats?.drafts||0} last_published=${(blogStats?.last_published||'').split('T')[0] || 'never'}`);
