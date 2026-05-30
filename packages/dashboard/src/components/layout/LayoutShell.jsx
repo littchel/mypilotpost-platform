@@ -33,7 +33,9 @@ const ACTION_LABELS = {
 const DEFAULT_META = { label: "Intelligence", color: "#2563eb", bg: "#eff6ff", border: "#93c5fd" };
 
 function getMeta(item)        { return CATEGORY_META[item?.category] || CATEGORY_META[item?.module_id] || DEFAULT_META; }
-function getActionLabel(item) { return ACTION_LABELS[item?.category] || ACTION_LABELS[item?.module_id] || "Take Action"; }
+function getActionLabel(item) { return ACTION_LABELS[item?.category] || ACTION_LABELS[item?.module_id] || "View Intelligence"; }
+
+// ── Humanize raw DB outputs ───────────────────────────────────────────────────
 
 const TITLE_HUMANIZE = {
   "No Publishing Activity":       "Your Publishing Pipeline Is Empty",
@@ -49,76 +51,50 @@ const TITLE_HUMANIZE = {
 };
 
 const FINDING_HUMANIZE = {
-  "No publishing activity detected.":         "Once you publish content across your connected platforms, the advisor will surface your highest-leverage opportunities here.",
-  "No SEO data available.":                   "Connect your website analytics to unlock SEO positioning analysis and keyword opportunity mapping.",
-  "No content performance data available.":   "Publish content and allow 24–48 hours for performance data to populate across your connected channels.",
-  "No audience data available.":              "Audience intelligence builds as your platforms accumulate engagement data. Check back after your next publishing cycle.",
-  "No competitive data available.":           "Competitive signals emerge once your brand has sufficient publishing history to compare against industry benchmarks.",
-  "No conversion data available.":            "Connect your website or landing pages to begin tracking the journey from content to conversion.",
+  "No publishing activity detected.":         "Publish content to your connected platforms to unlock strategic analysis.",
+  "No SEO data available.":                   "Connect your website analytics to unlock SEO positioning and keyword opportunity mapping.",
+  "No content performance data available.":   "Publish content and allow 24–48 hours for performance data to populate.",
+  "No audience data available.":              "Audience intelligence builds as your platforms accumulate engagement data.",
+  "No competitive data available.":           "Competitive signals emerge once your brand has sufficient publishing history.",
+  "No conversion data available.":            "Connect your website or landing pages to begin tracking content-to-conversion.",
 };
 
 function humanize(item) {
   if (!item) return item;
-  const title   = TITLE_HUMANIZE[item.title?.trim()]   || item.title;
+  const title   = TITLE_HUMANIZE[item.title?.trim()]    || item.title;
   const finding = FINDING_HUMANIZE[item.finding?.trim()] || item.finding;
   return (title !== item.title || finding !== item.finding) ? { ...item, title, finding } : item;
 }
 
-function twoSentences(text) {
+function oneSentence(text) {
   if (!text) return "";
-  const m = text.match(/[^.!?]+[.!?]+/g);
-  return m ? m.slice(0, 2).join(" ").trim() : text.slice(0, 160);
+  const m = text.match(/[^.!?]+[.!?]+/);
+  return m ? m[0].trim() : text.slice(0, 120);
 }
 
-function formatTime(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  const now = new Date();
-  const sameDay = d.toDateString() === now.toDateString();
-  return sameDay
-    ? `Today ${d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`
-    : d.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-}
+// ── Intelligence preview card (sidebar only) ──────────────────────────────────
 
-// ── Growth Plan + Saved persistence ──────────────────────────────────────────
-
-const PLAN_KEY  = (brandId) => `mpp_growth_plan_${brandId || "default"}`;
-const SAVED_KEY = (brandId) => `mpp_saved_insights_${brandId || "default"}`;
-
-function loadPlan(brandId)  { try { return new Set(JSON.parse(localStorage.getItem(PLAN_KEY(brandId))  || "[]")); } catch { return new Set(); } }
-function savePlan(brandId, set) { try { localStorage.setItem(PLAN_KEY(brandId),  JSON.stringify([...set])); } catch {} }
-function loadSaved(brandId) { try { return new Set(JSON.parse(localStorage.getItem(SAVED_KEY(brandId)) || "[]")); } catch { return new Set(); } }
-function saveSaved(brandId, set) { try { localStorage.setItem(SAVED_KEY(brandId), JSON.stringify([...set])); } catch {} }
-
-// ── Advisor Card ─────────────────────────────────────────────────────────────
-
-const ADVISOR_CSS = `
-@keyframes advisorGlow {
+const PREVIEW_CSS = `
+@keyframes intelGlow {
   0%, 100% { box-shadow: 0 0 0 0 rgba(37,99,235,0); }
-  50%       { box-shadow: 0 0 0 6px rgba(37,99,235,0.14); }
+  50%       { box-shadow: 0 0 0 6px rgba(37,99,235,0.12); }
 }
-@keyframes advisorPulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.72; }
-}
-@keyframes advisorSlideIn {
+@keyframes intelSlideIn {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.advisor-card-new { animation: advisorSlideIn 0.32s ease forwards; }
-.advisor-card     { transition: transform 0.18s ease, box-shadow 0.18s ease; }
-.advisor-card:hover { transform: translateY(-2px); }
-.advisor-cta-pulse { animation: advisorPulse 1.8s ease-in-out infinite; }
+.intel-preview-card     { transition: transform 0.18s ease; }
+.intel-preview-card-new { animation: intelSlideIn 0.32s ease forwards; }
 `;
 
-const AdvisorCard = ({ item, brandId, onDismiss, onPlan, onSave, inPlan, isSaved, isNew }) => {
+const IntelPreviewCard = ({ item, onDismiss, isNew }) => {
   const meta        = getMeta(item);
   const actionLabel = getActionLabel(item);
 
   return (
     <motion.div
       key={item.id}
-      className={`advisor-card${isNew ? " advisor-card-new" : ""}`}
+      className={`intel-preview-card${isNew ? " intel-preview-card-new" : ""}`}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
@@ -127,19 +103,18 @@ const AdvisorCard = ({ item, brandId, onDismiss, onPlan, onSave, inPlan, isSaved
         background: "#fff",
         border: `1px solid ${meta.border}`,
         borderLeft: `4px solid ${meta.color}`,
-        borderRadius: 14,
-        padding: "14px",
-        animation: "advisorGlow 2.5s ease-in-out 4",
-        cursor: "default",
-        boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+        borderRadius: 12,
+        padding: "12px 13px",
+        animation: "intelGlow 2.5s ease-in-out 3",
+        boxShadow: "0 1px 8px rgba(0,0,0,0.05)",
       }}
     >
-      {/* Row 1: Category + Dismiss */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 10 }}>
+      {/* Category + Dismiss */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 9 }}>
         <span style={{
-          fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.8,
+          fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.8,
           color: meta.color, background: meta.bg, border: `1px solid ${meta.border}`,
-          borderRadius: 99, padding: "3px 9px", lineHeight: 1.4, flexShrink: 0,
+          borderRadius: 99, padding: "2px 8px", lineHeight: 1.5, flexShrink: 0,
         }}>
           {meta.label}
         </span>
@@ -148,7 +123,7 @@ const AdvisorCard = ({ item, brandId, onDismiss, onPlan, onSave, inPlan, isSaved
           onClick={() => onDismiss(item)}
           style={{
             background: "none", border: "none", cursor: "pointer",
-            padding: "1px 4px", fontSize: 13, color: "#cbd5e1", lineHeight: 1,
+            padding: "1px 3px", fontSize: 12, color: "#cbd5e1", lineHeight: 1,
             transition: "color 0.15s", flexShrink: 0, marginLeft: 4,
           }}
           onMouseEnter={e => { e.currentTarget.style.color = "#64748b"; }}
@@ -160,126 +135,41 @@ const AdvisorCard = ({ item, brandId, onDismiss, onPlan, onSave, inPlan, isSaved
 
       {/* Title */}
       <div style={{
-        fontSize: 18, fontWeight: 800, color: "#0f172a", lineHeight: 1.3, marginBottom: 9,
+        fontSize: 14, fontWeight: 700, color: "#0f172a", lineHeight: 1.4, marginBottom: 6,
         display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden",
       }}>
         {item.title}
       </div>
 
-      {/* Finding */}
-      <div style={{ fontSize: 15, color: "#334155", lineHeight: 1.6, marginBottom: 12 }}>
-        {twoSentences(item.finding)}
+      {/* Insight — one sentence */}
+      <div style={{
+        fontSize: 12, color: "#475569", lineHeight: 1.55, marginBottom: 13,
+        display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden",
+      }}>
+        {oneSentence(item.finding)}
       </div>
 
-      {/* Why This Matters */}
-      {item.why_it_matters && (
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1, color: "#94a3b8", marginBottom: 5 }}>
-            Why This Matters
-          </div>
-          <div style={{ fontSize: 14, color: "#475569", lineHeight: 1.6 }}>
-            {item.why_it_matters}
-          </div>
-        </div>
-      )}
-
-      {/* Recommended Action */}
-      {item.recommended_action && (
-        <div style={{ background: `${meta.bg}`, border: `1px solid ${meta.border}`, borderRadius: 10, padding: "10px 12px", marginBottom: 12 }}>
-          <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1, color: meta.color, marginBottom: 4 }}>
-            Recommended Action
-          </div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "#0f172a", lineHeight: 1.5 }}>
-            {item.recommended_action}
-          </div>
-          {item.expected_impact && (
-            <div style={{ fontSize: 12, color: "#64748b", marginTop: 5, lineHeight: 1.5 }}>
-              <i className="fas fa-arrow-trend-up" style={{ marginRight: 5, color: "#16a34a", fontSize: 10 }} />
-              {item.expected_impact}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Confidence */}
-      {item.confidence && (
-        <div style={{ marginBottom: 12 }}>
-          <span style={{
-            fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5,
-            color: "#64748b", background: "#f8fafc", border: "1px solid #e2e8f0",
-            borderRadius: 99, padding: "3px 9px",
-          }}>
-            Confidence: {item.confidence}
-          </span>
-        </div>
-      )}
-
-      {/* Primary Action */}
-      <motion.button
-        className="advisor-cta-pulse"
-        onClick={() => {}}
+      {/* CTA */}
+      <button
         style={{
           display: "block", width: "100%",
-          background: `linear-gradient(135deg, ${meta.color}, ${meta.color}cc)`,
-          border: "none", borderRadius: 10, padding: "12px 0",
-          fontSize: 15, fontWeight: 700, color: "#fff", cursor: "pointer",
-          letterSpacing: 0.2, marginBottom: 10,
+          background: meta.color,
+          border: "none", borderRadius: 8, padding: "9px 0",
+          fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer",
+          letterSpacing: 0.1,
         }}
-        whileHover={{ scale: 1.015 }}
-        whileTap={{ scale: 0.98 }}
       >
         {actionLabel} →
-      </motion.button>
-
-      {/* Save / Add to Plan */}
-      <div style={{ display: "flex", gap: 6 }}>
-        <button
-          onClick={() => onSave(item)}
-          style={{
-            flex: 1, background: isSaved ? "#f0fdf4" : "#f8fafc",
-            border: `1px solid ${isSaved ? "#86efac" : "#e2e8f0"}`,
-            borderRadius: 8, padding: "7px 0",
-            fontSize: 12, fontWeight: 700, cursor: "pointer",
-            color: isSaved ? "#15803d" : "#64748b", transition: "all 0.15s",
-          }}
-          onMouseEnter={e => { if (!isSaved) { e.currentTarget.style.borderColor = "#86efac"; e.currentTarget.style.color = "#15803d"; } }}
-          onMouseLeave={e => { if (!isSaved) { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.color = "#64748b"; } }}
-        >
-          {isSaved ? "✓ Saved" : "Save"}
-        </button>
-        <button
-          onClick={() => onPlan(item)}
-          style={{
-            flex: 1, background: inPlan ? "#eff6ff" : "#f8fafc",
-            border: `1px solid ${inPlan ? "#93c5fd" : "#e2e8f0"}`,
-            borderRadius: 8, padding: "7px 0",
-            fontSize: 12, fontWeight: 700, cursor: "pointer",
-            color: inPlan ? "#2563eb" : "#64748b", transition: "all 0.15s",
-          }}
-          onMouseEnter={e => { if (!inPlan) { e.currentTarget.style.borderColor = "#93c5fd"; e.currentTarget.style.color = "#2563eb"; } }}
-          onMouseLeave={e => { if (!inPlan) { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.color = "#64748b"; } }}
-        >
-          {inPlan ? "✓ In Plan" : "+ Plan"}
-        </button>
-      </div>
-
-      {/* Debug: generated time */}
-      {item.generated_at && (
-        <div style={{ marginTop: 8, fontSize: 10, color: "#c4cdd6", textAlign: "center" }}>
-          {formatTime(item.generated_at)}
-        </div>
-      )}
+      </button>
     </motion.div>
   );
 };
 
-// ── Brand Intelligence Advisor ────────────────────────────────────────────────
+// ── Brand Intelligence sidebar preview ────────────────────────────────────────
 
-const BrandIntelligenceAdvisor = ({ feed = [], brandId, switchTab }) => {
+const BrandIntelligencePreview = ({ feed = [], brandId, switchTab }) => {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [dismissed,  setDismissed]  = useState(new Set());
-  const [inPlan,     setInPlan]     = useState(() => loadPlan(brandId));
-  const [saved,      setSaved]      = useState(() => loadSaved(brandId));
   const hoveredRef = useRef(false);
   const timerRef   = useRef(null);
   const styleRef   = useRef(false);
@@ -288,7 +178,7 @@ const BrandIntelligenceAdvisor = ({ feed = [], brandId, switchTab }) => {
     if (styleRef.current) return;
     styleRef.current = true;
     const el = document.createElement("style");
-    el.textContent = ADVISOR_CSS;
+    el.textContent = PREVIEW_CSS;
     document.head.appendChild(el);
   }, []);
 
@@ -309,90 +199,67 @@ const BrandIntelligenceAdvisor = ({ feed = [], brandId, switchTab }) => {
     try { await apiRequest(`/api/customer/intelligence/dismiss/${item.id}`, { method: "POST" }); } catch {}
   };
 
-  const handlePlan = (item) => {
-    setInPlan(prev => {
-      const next = new Set(prev);
-      next.has(item.id) ? next.delete(item.id) : next.add(item.id);
-      savePlan(brandId, next);
-      return next;
-    });
-  };
-
-  const handleSave = (item) => {
-    setSaved(prev => {
-      const next = new Set(prev);
-      next.has(item.id) ? next.delete(item.id) : next.add(item.id);
-      saveSaved(brandId, next);
-      return next;
-    });
-  };
-
   if (feed.length === 0) {
     return (
-      <div style={{ padding: "12px 0" }}>
+      <div style={{
+        background: "linear-gradient(135deg, #f8fafc, #eff6ff)",
+        border: "1px solid #e2e8f0", borderRadius: 12,
+        padding: "18px 14px", textAlign: "center",
+      }}>
         <div style={{
-          background: "linear-gradient(135deg, #f8fafc, #eff6ff)",
-          border: "1px solid #e2e8f0", borderRadius: 12,
-          padding: "20px 14px", textAlign: "center",
+          width: 40, height: 40, borderRadius: "50%",
+          background: "linear-gradient(135deg, #eff6ff, #dbeafe)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          margin: "0 auto 10px",
+          boxShadow: "0 0 0 8px rgba(37,99,235,0.05)",
         }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: "50%",
-            background: "linear-gradient(135deg, #eff6ff, #dbeafe)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            margin: "0 auto 12px",
-            boxShadow: "0 0 0 8px rgba(37,99,235,0.06)",
-          }}>
-            <i className="fas fa-brain" style={{ fontSize: 18, color: "#2563eb" }} />
-          </div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>
-            Your Advisor is standing by
-          </div>
-          <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.6, marginBottom: 14 }}>
-            Connect at least 2 platforms to unlock strategic analysis tailored to your brand.
-          </div>
-          <button
-            onClick={() => switchTab?.("brand-intelligence")}
-            style={{
-              display: "block", width: "100%",
-              background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
-              border: "none", borderRadius: 9, padding: "11px 0",
-              fontSize: 13, fontWeight: 700, color: "#fff", cursor: "pointer",
-              boxShadow: "0 4px 12px rgba(37,99,235,0.28)",
-            }}
-          >
-            Run Intelligence →
-          </button>
+          <i className="fas fa-brain" style={{ fontSize: 16, color: "#2563eb" }} />
         </div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 5 }}>
+          Brand Intelligence
+        </div>
+        <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.55, marginBottom: 12 }}>
+          Connect at least 2 platforms to unlock daily intelligence.
+        </div>
+        <button
+          onClick={() => switchTab?.("brand-intelligence")}
+          style={{
+            display: "block", width: "100%",
+            background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+            border: "none", borderRadius: 8, padding: "10px 0",
+            fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer",
+          }}
+        >
+          Run Intelligence →
+        </button>
       </div>
     );
   }
 
   if (!current) {
     return (
-      <div style={{ padding: "12px 0" }}>
-        <div style={{
-          background: "#f0fdf4", border: "1px solid #86efac",
-          borderRadius: 12, padding: "16px 14px", textAlign: "center",
-        }}>
-          <div style={{ fontSize: 22, marginBottom: 8 }}>✓</div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 5 }}>
-            You're fully up to date
-          </div>
-          <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.6, marginBottom: 12 }}>
-            Your advisor will deliver new strategic insights in the next daily cycle.
-          </div>
-          <button
-            onClick={() => switchTab?.("brand-intelligence")}
-            style={{
-              display: "block", width: "100%",
-              background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
-              border: "none", borderRadius: 9, padding: "10px 0",
-              fontSize: 13, fontWeight: 700, color: "#fff", cursor: "pointer",
-            }}
-          >
-            View Full Intelligence →
-          </button>
+      <div style={{
+        background: "#f0fdf4", border: "1px solid #86efac",
+        borderRadius: 12, padding: "14px", textAlign: "center",
+      }}>
+        <div style={{ fontSize: 20, marginBottom: 6 }}>✓</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>
+          All insights reviewed
         </div>
+        <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.5, marginBottom: 12 }}>
+          New intelligence delivers in the next daily cycle.
+        </div>
+        <button
+          onClick={() => switchTab?.("brand-intelligence")}
+          style={{
+            display: "block", width: "100%",
+            background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+            border: "none", borderRadius: 8, padding: "9px 0",
+            fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer",
+          }}
+        >
+          View Intelligence →
+        </button>
       </div>
     );
   }
@@ -403,22 +270,17 @@ const BrandIntelligenceAdvisor = ({ feed = [], brandId, switchTab }) => {
       onMouseLeave={() => { hoveredRef.current = false; }}
     >
       <AnimatePresence mode="wait">
-        <AdvisorCard
+        <IntelPreviewCard
           key={current.id}
           item={current}
-          brandId={brandId}
           onDismiss={handleDismiss}
-          onPlan={handlePlan}
-          onSave={handleSave}
-          inPlan={inPlan.has(current.id)}
-          isSaved={saved.has(current.id)}
           isNew={false}
         />
       </AnimatePresence>
 
       {/* Dot nav */}
       {activeItems.length > 1 && (
-        <div style={{ display: "flex", justifyContent: "center", gap: 4, marginTop: 10 }}>
+        <div style={{ display: "flex", justifyContent: "center", gap: 4, marginTop: 8 }}>
           {activeItems.slice(0, 8).map((item, i) => (
             <button
               key={item.id}
@@ -437,14 +299,14 @@ const BrandIntelligenceAdvisor = ({ feed = [], brandId, switchTab }) => {
       <button
         onClick={() => switchTab?.("brand-intelligence")}
         style={{
-          display: "block", width: "100%", marginTop: 10,
+          display: "block", width: "100%", marginTop: 9,
           background: "none", border: "1px solid #e2e8f0", borderRadius: 8, padding: "7px 0",
           fontSize: 11, fontWeight: 700, color: "#64748b", cursor: "pointer", transition: "all 0.15s",
         }}
         onMouseEnter={e => { e.currentTarget.style.borderColor = "#2563eb"; e.currentTarget.style.color = "#2563eb"; }}
         onMouseLeave={e => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.color = "#64748b"; }}
       >
-        View All Intelligence →
+        View Full Intelligence →
       </button>
     </div>
   );
@@ -517,10 +379,10 @@ const LayoutShell = ({
                 ))}
               </div>
 
-              {/* Advisor Header */}
+              {/* Intelligence header */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                 <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1, color: "#64748b" }}>
-                  Brand Advisor
+                  Brand Intelligence
                 </div>
                 {feed.length > 0 && (
                   <span style={{
@@ -530,7 +392,7 @@ const LayoutShell = ({
                 )}
               </div>
 
-              <BrandIntelligenceAdvisor
+              <BrandIntelligencePreview
                 feed={feed}
                 brandId={activeBrand?.id}
                 switchTab={switchTab}
