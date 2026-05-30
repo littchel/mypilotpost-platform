@@ -1,32 +1,274 @@
 import React, { useState, useEffect } from "react";
 import { apiRequest } from "../lib/api/client";
 
-// ── Frameworks ─────────────────────────────────────────────────────────────────
+// ── Frameworks ────────────────────────────────────────────────────────────────
 
 const FRAMEWORKS = [
-  { id: 1,  name: "Myth vs Reality",    desc: "Challenge a common misconception in your industry with evidence and authority.",        use_case: "Building authority and sparking debate",         platforms: ["LinkedIn", "X", "Instagram"],          preview: 'Myth: "[common belief in your industry]"\n\nReality: [the truth most people miss]\n\nHere\'s why this changes everything...' },
-  { id: 2,  name: "Behind The Scenes",  desc: "Show your real process — the decisions, the tradeoffs, the actual work.",               use_case: "Building trust and humanising your brand",       platforms: ["Instagram", "TikTok", "Facebook"],      preview: "What [your process] actually looks like:\n\n→ Step 1: [real step]\n→ Step 2: [real step]\n→ The part nobody shows: [insight]\n\nMost people only see the result." },
-  { id: 3,  name: "Mistakes To Avoid",  desc: "Educate your audience on a costly error and position yourself as the guide.",           use_case: "Positioning as an expert guide",                 platforms: ["LinkedIn", "Instagram", "Facebook"],    preview: "The most expensive mistake I see [audience] make:\n\n[describe the mistake]\n\nHere's what to do instead:\n1. [fix 1]\n2. [fix 2]\n3. [fix 3]" },
-  { id: 4,  name: "Before & After",     desc: "Show the transformation your product or service delivers with real specifics.",         use_case: "Social proof and conversion content",            platforms: ["Instagram", "Facebook", "TikTok"],      preview: "Before:\n✗ [pain point 1]\n✗ [pain point 2]\n\nAfter 90 days:\n✓ [result 1]\n✓ [result 2]\n\n[brief story of the transformation]" },
-  { id: 5,  name: "Customer Story",     desc: "Share a real result from a customer in narrative form — specific, not vague.",          use_case: "Building trust and driving conversions",          platforms: ["LinkedIn", "Instagram", "Facebook"],    preview: "When [customer] came to us, they were struggling with [problem].\n\nHere's what changed:\n[story in 3-4 punchy lines]\n\nResult: [specific outcome]" },
-  { id: 6,  name: "FAQ",               desc: "Answer the question you get asked most — with real depth, not a surface answer.",        use_case: "Reducing friction and educating prospects",       platforms: ["Instagram", "LinkedIn", "YouTube"],     preview: "The question I get asked every week:\n\n\"[exact question]\"\n\nThe honest answer: [direct, specific response]\n\nHere's the full breakdown..." },
-  { id: 7,  name: "Industry Prediction", desc: "Share where you see the industry heading and why it matters for your audience.",       use_case: "Thought leadership and authority building",       platforms: ["LinkedIn", "X", "YouTube"],             preview: "My prediction for [industry] in the next 12 months:\n\n[bold prediction]\n\nHere's what I'm seeing:\n→ [signal 1]\n→ [signal 2]\n\nWhat this means for you..." },
-  { id: 8,  name: "Unpopular Opinion",  desc: "Share a contrarian view that challenges conventional wisdom in your space.",            use_case: "Sparking engagement and showing conviction",      platforms: ["LinkedIn", "X", "Instagram"],          preview: "Unpopular opinion: [bold, specific claim]\n\nEveryone says [conventional view].\n\nBut here's what I've actually seen:\n[your real experience]\n\n[defend your position]" },
-  { id: 9,  name: "Problem / Solution", desc: "Name a real problem your audience faces and walk through exactly how you solve it.",    use_case: "Lead generation and offer positioning",           platforms: ["LinkedIn", "Instagram", "Facebook"],    preview: "The problem: [specific pain point]\n\nWhy most approaches fail: [common mistake]\n\nWhat actually works: [your solution]\n\nThe result: [measurable outcome]" },
-  { id: 10, name: "Founder Insight",    desc: "Share a personal lesson you learned building your business — earned, not recycled.",    use_case: "Brand storytelling and audience connection",      platforms: ["LinkedIn", "Instagram", "TikTok"],     preview: "3 years ago I made a decision that changed how we operate.\n\n[brief story setup]\n\nWhat I learned: [specific insight]\n\nHow we applied it: [what changed]\n\nResult: [outcome]" },
-  { id: 11, name: "Top Tips",           desc: "Give 3–5 specific, actionable tips your audience can use today — nothing obvious.",    use_case: "High reach and saves — shareable content",        platforms: ["Instagram", "LinkedIn", "Pinterest"],   preview: "5 things I wish someone told me about [topic]:\n\n1. [specific tip]\n2. [specific tip]\n3. [specific tip]\n4. [specific tip]\n5. [specific tip]\n\nSave this for later." },
-  { id: 12, name: "Checklist",          desc: "Give your audience a step-by-step checklist they can bookmark and return to.",         use_case: "High-save content that builds authority",         platforms: ["Instagram", "Pinterest", "LinkedIn"],   preview: "The [topic] checklist:\n\n☐ [step 1]\n☐ [step 2]\n☐ [step 3]\n☐ [step 4]\n☐ [step 5]\n\nBookmark this. You'll need it." },
-  { id: 13, name: "Lessons Learned",    desc: "Share what you wish you knew earlier — earned wisdom, not borrowed quotes.",           use_case: "Relatability and audience connection",            platforms: ["LinkedIn", "Instagram", "TikTok"],     preview: "If I could go back 3 years, I'd tell myself:\n\n[Lesson 1] — because [why]\n[Lesson 2] — because [why]\n[Lesson 3] — because [why]\n\nSave yourself the detour." },
-  { id: 14, name: "Common Questions",   desc: "Answer the top 3 questions you get from customers — the ones that reveal real gaps.",   use_case: "Reducing sales friction",                         platforms: ["LinkedIn", "Instagram", "Facebook"],    preview: "The 3 questions I get from every new client:\n\nQ1: [question]\nA: [honest answer]\n\nQ2: [question]\nA: [honest answer]\n\nQ3: [question]\nA: [honest answer]" },
-  { id: 15, name: "Industry Reaction",  desc: "React to a recent development in your industry with a specific, considered point of view.", use_case: "Timeliness and establishing a point of view", platforms: ["LinkedIn", "X", "YouTube"],            preview: "[Industry news or trend] just happened.\n\nHere's what it actually means for [your audience]:\n\n→ [implication 1]\n→ [implication 2]\n\nMy take: [your specific opinion]" },
-  { id: 16, name: "Case Study",         desc: "Walk through a specific result you achieved — numbers, process, and the honest story.", use_case: "Conversion content and proof",                    platforms: ["LinkedIn", "Facebook", "YouTube"],     preview: "Client: [industry/type]\nChallenge: [specific problem]\nApproach: [what we did in 3 steps]\nResult: [numbers + outcome]\n\nThe part most people skip: [real insight]" },
-  { id: 17, name: "Trend Analysis",     desc: "Break down a trend happening in your industry right now — what it really means.",      use_case: "Authority and discoverability",                   platforms: ["LinkedIn", "YouTube", "X"],            preview: "The trend everyone in [industry] is talking about:\n\n[Name the trend]\n\nWhy it's actually happening: [real reason]\n\nWhat it means for you:\n→ [implication 1]\n→ [implication 2]" },
-  { id: 18, name: "Community Question", desc: "Ask your audience a specific, thought-provoking question that reveals something real.", use_case: "Engagement and community building",               platforms: ["Instagram", "Facebook", "LinkedIn"],   preview: "I'm curious: [specific question that reveals something about your audience]\n\nFor us, [share your own take to spark discussion].\n\nWhat about you?" },
-  { id: 19, name: "Success Story",      desc: "Celebrate a milestone — yours or a customer's — and tell the real story behind it.",   use_case: "Inspiration and social proof",                    platforms: ["LinkedIn", "Instagram", "Facebook"],   preview: "[The milestone] just happened.\n\nBut the real story is how we got here:\n\n[start point] → [key decision] → [today]\n\nThe lesson: [what it means]" },
-  { id: 20, name: "Quick Win",          desc: "Give your audience one thing they can implement today and see a real result from.",     use_case: "High value, high trust content",                  platforms: ["Instagram", "LinkedIn", "TikTok"],     preview: "One thing you can do today to [desired outcome]:\n\n[The action — specific, simple, doable in under 30 min]\n\nWhy it works: [brief explanation]\n\nResult you'll see: [realistic outcome]" },
+  {
+    id: 1, name: "Myth vs Reality",
+    desc: "Challenge a common misconception in your industry with evidence and authority.",
+    use_case: "Building authority and sparking debate",
+    platforms: ["LinkedIn", "X", "Instagram"],
+    example: 'Most people think the cheapest moving quote saves money.\n\nReality:\n\nThe cheapest quote often becomes the most expensive mistake.',
+    preview: 'Myth: "[common belief in your industry]"\n\nReality: [the truth most people miss]\n\nHere\'s why this changes everything...',
+    previewTheme: "split",
+    previewLeft: { label: "MYTH", text: '"The cheapest quote saves money."', bg: "#0f172a", textColor: "#94a3b8" },
+    previewRight: { label: "REALITY", text: "The cheapest quote is often the most expensive mistake.", bg: "#fff7ed", textColor: "#374151" },
+    accent: "#f59e0b",
+  },
+  {
+    id: 2, name: "Behind The Scenes",
+    desc: "Show your real process — the decisions, the tradeoffs, the actual work.",
+    use_case: "Building trust and humanising your brand",
+    platforms: ["Instagram", "TikTok", "Facebook"],
+    example: 'What creating this post actually looks like:\n\n→ Research: 45 min\n→ Draft: 20 min\n→ The part nobody shows: 3 rewrites.',
+    preview: "What [your process] actually looks like:\n\n→ Step 1: [real step]\n→ Step 2: [real step]\n→ The part nobody shows: [insight]\n\nMost people only see the result.",
+    previewTheme: "dark-process",
+    accent: "#38bdf8",
+    previewBg: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+    previewBadge: "BTS",
+    previewHeadline: "What nobody shows you",
+    previewSteps: ["→ Research", "→ Drafting", "→ The part nobody talks about"],
+  },
+  {
+    id: 3, name: "Mistakes To Avoid",
+    desc: "Educate your audience on a costly error and position yourself as the guide.",
+    use_case: "Positioning as an expert guide",
+    platforms: ["LinkedIn", "Instagram", "Facebook"],
+    example: 'The most expensive mistake I see founders make:\n\nHiring before validating.\n\nHere\'s what to do instead:\n1. Validate first\n2. Hire after revenue',
+    preview: "The most expensive mistake I see [audience] make:\n\n[describe the mistake]\n\nHere's what to do instead:\n1. [fix 1]\n2. [fix 2]\n3. [fix 3]",
+    previewTheme: "list-warning",
+    accent: "#dc2626",
+    previewBg: "#fff1f2",
+    previewTitle: "3 Mistakes to Avoid",
+    previewItems: ["Hiring too fast", "Skipping validation", "Optimising too early"],
+  },
+  {
+    id: 4, name: "Before & After",
+    desc: "Show the transformation your product or service delivers with real specifics.",
+    use_case: "Social proof and conversion content",
+    platforms: ["Instagram", "Facebook", "TikTok"],
+    example: 'Before:\n✗ 3 hours per post\n✗ Low engagement\n\nAfter 60 days:\n✓ 20 posts/week\n✓ 3× reach',
+    preview: "Before:\n✗ [pain point 1]\n✗ [pain point 2]\n\nAfter 90 days:\n✓ [result 1]\n✓ [result 2]\n\n[brief story of the transformation]",
+    previewTheme: "split",
+    previewLeft: { label: "BEFORE", text: "✗ 3h per post\n✗ Low reach\n✗ No system", bg: "#fef2f2", textColor: "#dc2626" },
+    previewRight: { label: "AFTER", text: "✓ 20 posts/week\n✓ 3× reach\n✓ Fully automated", bg: "#f0fdf4", textColor: "#16a34a" },
+    accent: "#059669",
+  },
+  {
+    id: 5, name: "Customer Story",
+    desc: "Share a real result from a customer in narrative form — specific, not vague.",
+    use_case: "Building trust and driving conversions",
+    platforms: ["LinkedIn", "Instagram", "Facebook"],
+    example: 'When Sarah came to us, she had 48 hours to complete her move.\n\nHere\'s what happened.\n\nResult: Moved in 16 hours. Zero stress.',
+    preview: "When [customer] came to us, they were struggling with [problem].\n\nHere's what changed:\n[story in 3-4 punchy lines]\n\nResult: [specific outcome]",
+    previewTheme: "quote",
+    accent: "#7c3aed",
+    previewBg: "linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)",
+    previewQuote: '"Moving in 16 hours. Zero stress. Exactly what we needed."',
+    previewAttr: "— Sarah M., Client",
+  },
+  {
+    id: 6, name: "FAQ",
+    desc: "Answer the question you get asked most — with real depth, not a surface answer.",
+    use_case: "Reducing friction and educating prospects",
+    platforms: ["Instagram", "LinkedIn", "YouTube"],
+    example: 'The question I get asked every week:\n\n"How long does onboarding take?"\n\nThe honest answer: 48 hours. Not weeks.',
+    preview: "The question I get asked every week:\n\n\"[exact question]\"\n\nThe honest answer: [direct, specific response]\n\nHere's the full breakdown...",
+    previewTheme: "faq",
+    accent: "#2563eb",
+    previewBg: "#eff6ff",
+    previewQ: "How long does onboarding take?",
+    previewA: "48 hours. Not weeks. Here's exactly what happens on Day 1.",
+  },
+  {
+    id: 7, name: "Industry Prediction",
+    desc: "Share where you see the industry heading and why it matters for your audience.",
+    use_case: "Thought leadership and authority building",
+    platforms: ["LinkedIn", "X", "YouTube"],
+    example: 'My prediction for SaaS in the next 12 months:\n\nAI will kill the mid-market.\n\nHere\'s what I\'m seeing across 50+ companies:',
+    preview: "My prediction for [industry] in the next 12 months:\n\n[bold prediction]\n\nHere's what I'm seeing:\n→ [signal 1]\n→ [signal 2]\n\nWhat this means for you...",
+    previewTheme: "bold-statement",
+    accent: "#d97706",
+    previewBg: "linear-gradient(135deg, #0c0a09 0%, #1c1917 100%)",
+    previewLabel: "PREDICTION",
+    previewStatement: "AI will kill the mid-market SaaS by Q4.",
+    previewSub: "Here's what I'm seeing across 50+ companies →",
+  },
+  {
+    id: 8, name: "Unpopular Opinion",
+    desc: "Share a contrarian view that challenges conventional wisdom in your space.",
+    use_case: "Sparking engagement and showing conviction",
+    platforms: ["LinkedIn", "X", "Instagram"],
+    example: 'Unpopular opinion: Hustle culture is killing your business.\n\nSlow strategy beats fast burnout every time.',
+    preview: "Unpopular opinion: [bold, specific claim]\n\nEveryone says [conventional view].\n\nBut here's what I've actually seen:\n[your real experience]\n\n[defend your position]",
+    previewTheme: "bold-statement",
+    accent: "#ef4444",
+    previewBg: "linear-gradient(135deg, #1e0a0a 0%, #450a0a 100%)",
+    previewLabel: "UNPOPULAR OPINION",
+    previewStatement: "Hustle culture is killing your business.",
+    previewSub: "Slow strategy beats fast burnout. Every. Time.",
+  },
+  {
+    id: 9, name: "Problem / Solution",
+    desc: "Name a real problem your audience faces and walk through exactly how you solve it.",
+    use_case: "Lead generation and offer positioning",
+    platforms: ["LinkedIn", "Instagram", "Facebook"],
+    example: 'The problem: You\'re creating content no one reads.\n\nThe fix:\nWrite for one person. Publish for thousands.\n\nResult: 3× organic reach.',
+    preview: "The problem: [specific pain point]\n\nWhy most approaches fail: [common mistake]\n\nWhat actually works: [your solution]\n\nThe result: [measurable outcome]",
+    previewTheme: "split",
+    previewLeft: { label: "PROBLEM", text: "Creating content no one reads.", bg: "#fef2f2", textColor: "#dc2626" },
+    previewRight: { label: "SOLUTION", text: "Write for one person. Publish for thousands.", bg: "#f0fdf4", textColor: "#16a34a" },
+    accent: "#059669",
+  },
+  {
+    id: 10, name: "Founder Insight",
+    desc: "Share a personal lesson you learned building your business — earned, not recycled.",
+    use_case: "Brand storytelling and audience connection",
+    platforms: ["LinkedIn", "Instagram", "TikTok"],
+    example: '3 years ago I made the decision that changed everything.\n\nI stopped saying yes to everyone.\n\nResult: 3× revenue. Half the clients.',
+    preview: "3 years ago I made a decision that changed how we operate.\n\n[brief story setup]\n\nWhat I learned: [specific insight]\n\nHow we applied it: [what changed]\n\nResult: [outcome]",
+    previewTheme: "quote",
+    accent: "#0891b2",
+    previewBg: "linear-gradient(135deg, #0c1a2e 0%, #0f2744 100%)",
+    previewQuote: '"The decision that tripled revenue was saying no more than yes."',
+    previewAttr: "— Founder, 3 years in",
+  },
+  {
+    id: 11, name: "Top Tips",
+    desc: "Give 3–5 specific, actionable tips your audience can use today — nothing obvious.",
+    use_case: "High reach and saves — shareable content",
+    platforms: ["Instagram", "LinkedIn", "Pinterest"],
+    example: '5 things I wish someone told me about pricing:\n\n1. Never anchor low\n2. Your rate is a signal\n3. Silence after quoting\n\nSave this.',
+    preview: "5 things I wish someone told me about [topic]:\n\n1. [specific tip]\n2. [specific tip]\n3. [specific tip]\n4. [specific tip]\n5. [specific tip]\n\nSave this for later.",
+    previewTheme: "list-clean",
+    accent: "#059669",
+    previewBg: "#fff",
+    previewTitle: "5 Things Nobody Tells You",
+    previewItems: ["1. Never anchor low", "2. Your rate is a signal", "3. Silence after quoting"],
+  },
+  {
+    id: 12, name: "Checklist",
+    desc: "Give your audience a step-by-step checklist they can bookmark and return to.",
+    use_case: "High-save content that builds authority",
+    platforms: ["Instagram", "Pinterest", "LinkedIn"],
+    example: 'The pre-launch checklist:\n\n☐ Email sequence live\n☐ Landing page tested\n☐ Waitlist automated\n\nBookmark this.',
+    preview: "The [topic] checklist:\n\n☐ [step 1]\n☐ [step 2]\n☐ [step 3]\n☐ [step 4]\n☐ [step 5]\n\nBookmark this. You'll need it.",
+    previewTheme: "list-clean",
+    accent: "#4f46e5",
+    previewBg: "#f5f3ff",
+    previewTitle: "Pre-Launch Checklist",
+    previewItems: ["☐ Email sequence live", "☐ Landing page tested", "☐ Waitlist automated"],
+  },
+  {
+    id: 13, name: "Lessons Learned",
+    desc: "Share what you wish you knew earlier — earned wisdom, not borrowed quotes.",
+    use_case: "Relatability and audience connection",
+    platforms: ["LinkedIn", "Instagram", "TikTok"],
+    example: 'If I could go back 2 years, I\'d tell myself:\n\nDon\'t optimise what you haven\'t validated.\n\nSave yourself 6 months.',
+    preview: "If I could go back 3 years, I'd tell myself:\n\n[Lesson 1] — because [why]\n[Lesson 2] — because [why]\n[Lesson 3] — because [why]\n\nSave yourself the detour.",
+    previewTheme: "quote",
+    accent: "#6d28d9",
+    previewBg: "linear-gradient(135deg, #1a0533 0%, #2e1065 100%)",
+    previewQuote: '"Don\'t optimise what you haven\'t validated yet."',
+    previewAttr: "— What I wish I knew 2 years ago",
+  },
+  {
+    id: 14, name: "Common Questions",
+    desc: "Answer the top 3 questions you get from customers — the ones that reveal real gaps.",
+    use_case: "Reducing sales friction",
+    platforms: ["LinkedIn", "Instagram", "Facebook"],
+    example: 'Q1: Is this right for beginners?\nA: Yes — built for it.\n\nQ2: How fast will I see results?\nA: First wins in week 2.',
+    preview: "The 3 questions I get from every new client:\n\nQ1: [question]\nA: [honest answer]\n\nQ2: [question]\nA: [honest answer]\n\nQ3: [question]\nA: [honest answer]",
+    previewTheme: "faq",
+    accent: "#0891b2",
+    previewBg: "#ecfeff",
+    previewQ: "Is this right for me?",
+    previewA: "Yes — built for exactly where you are right now.",
+  },
+  {
+    id: 15, name: "Industry Reaction",
+    desc: "React to a recent development in your industry with a specific, considered point of view.",
+    use_case: "Timeliness and establishing a point of view",
+    platforms: ["LinkedIn", "X", "YouTube"],
+    example: 'Google just changed how content ranks.\n\nHere\'s what it actually means for your brand:\n\n→ Long-form is back\n→ Authority > volume',
+    preview: "[Industry news or trend] just happened.\n\nHere's what it actually means for [your audience]:\n\n→ [implication 1]\n→ [implication 2]\n\nMy take: [your specific opinion]",
+    previewTheme: "bold-statement",
+    accent: "#d97706",
+    previewBg: "linear-gradient(135deg, #1c1400 0%, #292100 100%)",
+    previewLabel: "BREAKING",
+    previewStatement: "Google just changed how content ranks.",
+    previewSub: "Here's what it means for your brand →",
+  },
+  {
+    id: 16, name: "Case Study",
+    desc: "Walk through a specific result you achieved — numbers, process, and the honest story.",
+    use_case: "Conversion content and proof",
+    platforms: ["LinkedIn", "Facebook", "YouTube"],
+    example: 'Client: B2B SaaS\nChallenge: 0 inbound leads\nApproach: 3 content types, 6 weeks\nResult: 47 qualified leads',
+    preview: "Client: [industry/type]\nChallenge: [specific problem]\nApproach: [what we did in 3 steps]\nResult: [numbers + outcome]\n\nThe part most people skip: [real insight]",
+    previewTheme: "metrics",
+    accent: "#2563eb",
+    previewBg: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+    previewMetrics: [{ label: "Leads", val: "47" }, { label: "Weeks", val: "6" }, { label: "ROI", val: "3.2×" }],
+    previewCaption: "B2B SaaS · 0 → 47 qualified leads",
+  },
+  {
+    id: 17, name: "Trend Analysis",
+    desc: "Break down a trend happening in your industry right now — what it really means.",
+    use_case: "Authority and discoverability",
+    platforms: ["LinkedIn", "YouTube", "X"],
+    example: 'The trend everyone in marketing is missing:\n\nDistribution > Creation.\n\nWhy it\'s happening and what it means for your content strategy:',
+    preview: "The trend everyone in [industry] is talking about:\n\n[Name the trend]\n\nWhy it's actually happening: [real reason]\n\nWhat it means for you:\n→ [implication 1]\n→ [implication 2]",
+    previewTheme: "bold-statement",
+    accent: "#6366f1",
+    previewBg: "linear-gradient(135deg, #09090b 0%, #18181b 100%)",
+    previewLabel: "TREND ANALYSIS",
+    previewStatement: "Distribution > Creation. Here's why.",
+    previewSub: "The shift nobody in marketing is talking about →",
+  },
+  {
+    id: 18, name: "Community Question",
+    desc: "Ask your audience a specific, thought-provoking question that reveals something real.",
+    use_case: "Engagement and community building",
+    platforms: ["Instagram", "Facebook", "LinkedIn"],
+    example: 'I\'m curious: What\'s the one decision that moved the needle for your business this year?\n\nFor us, it was niching down.',
+    preview: "I'm curious: [specific question that reveals something about your audience]\n\nFor us, [share your own take to spark discussion].\n\nWhat about you?",
+    previewTheme: "faq",
+    accent: "#059669",
+    previewBg: "#f0fdf4",
+    previewQ: "What moved the needle most for you this year?",
+    previewA: "Drop your answer below — I'll compile the top responses.",
+  },
+  {
+    id: 19, name: "Success Story",
+    desc: "Celebrate a milestone — yours or a customer's — and tell the real story behind it.",
+    use_case: "Inspiration and social proof",
+    platforms: ["LinkedIn", "Instagram", "Facebook"],
+    example: 'We just hit 1,000 customers.\n\nBut the real story is the 3 years before that.\n\nHere\'s what actually changed:',
+    preview: "[The milestone] just happened.\n\nBut the real story is how we got here:\n\n[start point] → [key decision] → [today]\n\nThe lesson: [what it means]",
+    previewTheme: "metrics",
+    accent: "#16a34a",
+    previewBg: "linear-gradient(135deg, #052e16 0%, #14532d 100%)",
+    previewMetrics: [{ label: "Customers", val: "1K" }, { label: "Years", val: "3" }, { label: "Growth", val: "12×" }],
+    previewCaption: "The milestone. The story behind it.",
+  },
+  {
+    id: 20, name: "Quick Win",
+    desc: "Give your audience one thing they can implement today and see a real result from.",
+    use_case: "High value, high trust content",
+    platforms: ["Instagram", "LinkedIn", "TikTok"],
+    example: 'One thing you can do today to increase conversions:\n\nRewrite your hero headline.\nMake it outcome-focused.\n\nResult: Higher CTR within 48 hours.',
+    preview: "One thing you can do today to [desired outcome]:\n\n[The action — specific, simple, doable in under 30 min]\n\nWhy it works: [brief explanation]\n\nResult you'll see: [realistic outcome]",
+    previewTheme: "faq",
+    accent: "#f59e0b",
+    previewBg: "#fffbeb",
+    previewQ: "Quick Win: Rewrite your hero headline today.",
+    previewA: "Make it outcome-focused. Result: higher CTR within 48 hours.",
+  },
 ];
 
-// ── Goals ──────────────────────────────────────────────────────────────────────
+// ── Goals ─────────────────────────────────────────────────────────────────────
 
 const GOALS = [
   { id: "increase_brand_awareness", name: "Increase Brand Awareness",  desc: "Get your brand in front of more of the right people.",                   outcome: "Wider reach, more profile visits, new followers",         effort: "Medium", channels: ["Instagram", "TikTok", "YouTube", "LinkedIn"],  content_types: ["Short-form Video", "Carousels", "Thought Leadership"] },
@@ -47,7 +289,7 @@ const EFFORT_COLORS = {
   High:   { bg: "#fdf2f8", text: "#be185d", border: "#fbcfe8" },
 };
 
-// ── Library Helpers ────────────────────────────────────────────────────────────
+// ── Library Helpers ───────────────────────────────────────────────────────────
 
 const libKey = (brandId) => `mpp_library_${brandId}`;
 
@@ -93,7 +335,10 @@ function genId() {
 
 // ── Shared Styles ─────────────────────────────────────────────────────────────
 
-const SPIN_CSS = `@keyframes mpp-spin{to{transform:rotate(360deg)}}`;
+const SPIN_CSS = `
+@keyframes mpp-spin { to { transform: rotate(360deg) } }
+@keyframes mpp-card-in { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:translateY(0) } }
+`;
 
 const MODAL_OVERLAY = {
   position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)",
@@ -126,7 +371,122 @@ function TabPills({ tabs, active, onChange }) {
   );
 }
 
-// ── Post Modal ─────────────────────────────────────────────────────────────────
+// ── Framework Visual Preview ───────────────────────────────────────────────────
+
+function FrameworkPreview({ fw }) {
+  const h = 160;
+
+  if (fw.previewTheme === "split") {
+    const L = fw.previewLeft;
+    const R = fw.previewRight;
+    return (
+      <div style={{ height: h, display: "flex", overflow: "hidden" }}>
+        <div style={{ flex: 1, background: L.bg, display: "flex", flexDirection: "column", justifyContent: "center", padding: "12px 14px", gap: 6 }}>
+          <span style={{ fontSize: 9, fontWeight: 900, color: fw.accent || L.textColor, letterSpacing: 2.5, textTransform: "uppercase" }}>{L.label}</span>
+          <span style={{ fontSize: 12, color: L.textColor, lineHeight: 1.45, whiteSpace: "pre-line" }}>{L.text}</span>
+        </div>
+        <div style={{ width: 1, background: "#e2e8f0", flexShrink: 0 }} />
+        <div style={{ flex: 1, background: R.bg, display: "flex", flexDirection: "column", justifyContent: "center", padding: "12px 14px", gap: 6 }}>
+          <span style={{ fontSize: 9, fontWeight: 900, color: fw.accent || R.textColor, letterSpacing: 2.5, textTransform: "uppercase" }}>{R.label}</span>
+          <span style={{ fontSize: 12, color: R.textColor, lineHeight: 1.45, whiteSpace: "pre-line" }}>{R.text}</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (fw.previewTheme === "dark-process") {
+    return (
+      <div style={{ height: h, background: fw.previewBg, display: "flex", flexDirection: "column", justifyContent: "center", padding: "14px 16px", gap: 6, position: "relative" }}>
+        <span style={{
+          position: "absolute", top: 10, right: 12,
+          fontSize: 9, fontWeight: 900, color: fw.accent, background: "rgba(255,255,255,0.08)",
+          borderRadius: 4, padding: "2px 7px", letterSpacing: 1.5, textTransform: "uppercase",
+        }}>{fw.previewBadge}</span>
+        <div style={{ fontSize: 13, fontWeight: 800, color: "#f8fafc", marginBottom: 8 }}>{fw.previewHeadline}</div>
+        {fw.previewSteps.map((s, i) => (
+          <div key={i} style={{ fontSize: 11, color: fw.accent, fontWeight: 600, lineHeight: 1.4 }}>{s}</div>
+        ))}
+      </div>
+    );
+  }
+
+  if (fw.previewTheme === "quote") {
+    return (
+      <div style={{ height: h, background: fw.previewBg, display: "flex", flexDirection: "column", justifyContent: "center", padding: "14px 16px", position: "relative", overflow: "hidden" }}>
+        <div style={{ fontSize: 48, color: "rgba(255,255,255,0.10)", fontFamily: "Georgia,serif", lineHeight: 0.8, position: "absolute", top: 8, left: 12, userSelect: "none" }}>"</div>
+        <div style={{ fontSize: 13, color: "#e2e8f0", lineHeight: 1.55, fontStyle: "italic", position: "relative", zIndex: 1, marginBottom: 10 }}>
+          {fw.previewQuote}
+        </div>
+        <div style={{ fontSize: 10, color: fw.accent, fontWeight: 700, letterSpacing: 0.5 }}>{fw.previewAttr}</div>
+      </div>
+    );
+  }
+
+  if (fw.previewTheme === "bold-statement") {
+    return (
+      <div style={{ height: h, background: fw.previewBg, display: "flex", flexDirection: "column", justifyContent: "center", padding: "14px 16px", gap: 8 }}>
+        <span style={{ fontSize: 8, fontWeight: 900, color: fw.accent, letterSpacing: 3, textTransform: "uppercase" }}>{fw.previewLabel}</span>
+        <div style={{ fontSize: 15, fontWeight: 900, color: "#f8fafc", lineHeight: 1.3 }}>{fw.previewStatement}</div>
+        <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.4 }}>{fw.previewSub}</div>
+      </div>
+    );
+  }
+
+  if (fw.previewTheme === "list-clean" || fw.previewTheme === "list-warning") {
+    const isDark = fw.previewTheme === "list-warning";
+    return (
+      <div style={{ height: h, background: fw.previewBg, display: "flex", flexDirection: "column", justifyContent: "center", padding: "14px 16px", gap: 7 }}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: isDark ? fw.accent : "#111827", marginBottom: 4 }}>{fw.previewTitle}</div>
+        {fw.previewItems.map((item, i) => (
+          <div key={i} style={{ fontSize: 12, color: isDark ? "#dc2626" : "#374151", fontWeight: 600, lineHeight: 1.35, display: "flex", alignItems: "flex-start", gap: 4 }}>
+            {!isDark && <span style={{ color: fw.accent, flexShrink: 0 }}>›</span>}
+            {item}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (fw.previewTheme === "faq") {
+    return (
+      <div style={{ height: h, background: fw.previewBg, display: "flex", flexDirection: "column", justifyContent: "center", padding: "14px 16px", gap: 8 }}>
+        <div style={{ background: "#fff", borderRadius: 8, padding: "9px 11px", boxShadow: "0 1px 4px rgba(0,0,0,0.07)" }}>
+          <span style={{ fontSize: 9, fontWeight: 800, color: fw.accent, textTransform: "uppercase", letterSpacing: 1 }}>Q</span>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", lineHeight: 1.4, marginTop: 2 }}>{fw.previewQ}</div>
+        </div>
+        <div style={{ background: "rgba(255,255,255,0.7)", borderRadius: 8, padding: "8px 11px" }}>
+          <span style={{ fontSize: 9, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: 1 }}>A</span>
+          <div style={{ fontSize: 11, color: "#374151", lineHeight: 1.45, marginTop: 2 }}>{fw.previewA}</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (fw.previewTheme === "metrics") {
+    return (
+      <div style={{ height: h, background: fw.previewBg, display: "flex", flexDirection: "column", justifyContent: "center", padding: "14px 16px", gap: 10 }}>
+        <div style={{ display: "flex", gap: 8 }}>
+          {fw.previewMetrics.map((m, i) => (
+            <div key={i} style={{ flex: 1, background: "rgba(255,255,255,0.08)", borderRadius: 8, padding: "8px 6px", textAlign: "center" }}>
+              <div style={{ fontSize: 20, fontWeight: 900, color: fw.accent, lineHeight: 1 }}>{m.val}</div>
+              <div style={{ fontSize: 9, color: "#94a3b8", fontWeight: 600, marginTop: 2, letterSpacing: 0.5 }}>{m.label}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ fontSize: 10, color: "#64748b", textAlign: "center", fontWeight: 600 }}>{fw.previewCaption}</div>
+      </div>
+    );
+  }
+
+  // Fallback
+  return (
+    <div style={{ height: h, background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <span style={{ fontSize: 24, color: fw.accent }}><i className="fas fa-file-alt" /></span>
+    </div>
+  );
+}
+
+// ── Post Modal ────────────────────────────────────────────────────────────────
 
 function PostModal({ framework, brandId, onClose, onSaved }) {
   const count   = getPostCount(brandId);
@@ -262,7 +622,7 @@ function PostModal({ framework, brandId, onClose, onSaved }) {
   );
 }
 
-// ── Recommendation View ────────────────────────────────────────────────────────
+// ── Recommendation View ───────────────────────────────────────────────────────
 
 function RecommendationView({ rec }) {
   return (
@@ -347,7 +707,7 @@ function RecommendationView({ rec }) {
   );
 }
 
-// ── Recommendation Modal ───────────────────────────────────────────────────────
+// ── Recommendation Modal ──────────────────────────────────────────────────────
 
 function RecommendationModal({ goal, onClose, onSaved, onCreateCampaign }) {
   const [step, setStep] = useState("idle");
@@ -454,59 +814,91 @@ function RecommendationModal({ goal, onClose, onSaved, onCreateCampaign }) {
   );
 }
 
-// ── Framework Card ─────────────────────────────────────────────────────────────
+// ── Framework Card ────────────────────────────────────────────────────────────
 
 function FrameworkCard({ fw, onGenerate, canvaConnected, switchTab }) {
+  const [hovered, setHovered] = useState(false);
+
   return (
-    <div style={{
-      border: "1px solid #e5e7eb", borderRadius: 14, padding: "16px",
-      background: "#fff", display: "flex", flexDirection: "column",
-      boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
-    }}>
-      <div style={{ fontSize: 14, fontWeight: 700, color: "#111827", marginBottom: 5 }}>{fw.name}</div>
-      <div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.55, marginBottom: 10, flex: 1 }}>{fw.desc}</div>
+    <div
+      style={{
+        border: "1px solid #e5e7eb", borderRadius: 16,
+        background: "#fff", display: "flex", flexDirection: "column",
+        boxShadow: hovered ? "0 12px 36px rgba(0,0,0,0.13)" : "0 2px 8px rgba(0,0,0,0.06)",
+        transition: "box-shadow 0.22s ease, transform 0.22s ease",
+        transform: hovered ? "translateY(-3px)" : "translateY(0)",
+        overflow: "hidden", cursor: "default",
+        animation: "mpp-card-in 0.3s ease both",
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <style>{SPIN_CSS}</style>
 
-      {/* Format preview */}
-      <div style={{
-        background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 8,
-        padding: "10px 12px", marginBottom: 10,
-        fontFamily: "monospace", fontSize: 11, color: "#64748b",
-        whiteSpace: "pre-line", lineHeight: 1.55,
-      }}>
-        {fw.preview}
+      {/* Visual Preview — hero element */}
+      <div style={{ borderRadius: "14px 14px 0 0", overflow: "hidden", flexShrink: 0 }}>
+        <FrameworkPreview fw={fw} />
       </div>
 
-      <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 6 }}>
-        <span style={{ fontWeight: 600, color: "#6b7280" }}>Best for: </span>{fw.use_case}
-      </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 12 }}>
-        {fw.platforms.map(p => (
-          <span key={p} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, background: "#f1f5f9", color: "#475569", fontWeight: 500 }}>{p}</span>
-        ))}
-      </div>
+      {/* Card Body */}
+      <div style={{ padding: "14px 16px 16px", display: "flex", flexDirection: "column", flex: 1 }}>
+        {/* Framework Name */}
+        <div style={{ fontSize: 16, fontWeight: 800, color: "#111827", marginBottom: 8, lineHeight: 1.2 }}>
+          {fw.name}
+        </div>
 
-      <div style={{ display: "flex", gap: 6 }}>
-        <button type="button" onClick={() => onGenerate(fw)} style={{
-          flex: 1, padding: "9px 0", borderRadius: 8,
-          background: "linear-gradient(135deg, #059669, #047857)",
-          color: "#fff", fontWeight: 700, fontSize: 13, border: "none", cursor: "pointer",
+        {/* Example Post — real post style, not monospace */}
+        <div style={{
+          fontSize: 13, color: "#374151", lineHeight: 1.6, marginBottom: 10, flex: 1,
+          display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden",
+          whiteSpace: "pre-line",
         }}>
-          Generate Post
-        </button>
-        <button type="button" onClick={() => switchTab(canvaConnected ? "canva" : "integrations")} style={{
-          padding: "9px 11px", borderRadius: 8, border: "1px solid #e5e7eb",
-          background: canvaConnected ? "#faf5ff" : "#f9fafb",
-          color: canvaConnected ? "#7c3aed" : "#6b7280",
-          fontWeight: 600, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap",
-        }}>
-          {canvaConnected ? "Open Canva" : "Create Design"}
-        </button>
+          {fw.example}
+        </div>
+
+        {/* Platform Tags */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 12 }}>
+          {fw.platforms.map(p => (
+            <span key={p} style={{
+              fontSize: 11, padding: "3px 9px", borderRadius: 99,
+              background: "#f1f5f9", color: "#475569", fontWeight: 600,
+            }}>{p}</span>
+          ))}
+        </div>
+
+        {/* CTAs */}
+        <div style={{ display: "flex", gap: 7 }}>
+          <button type="button" onClick={() => onGenerate(fw)} style={{
+            flex: 1, padding: "10px 0", borderRadius: 9,
+            background: "linear-gradient(135deg, #059669, #047857)",
+            color: "#fff", fontWeight: 700, fontSize: 13, border: "none", cursor: "pointer",
+            transition: "opacity 0.15s",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.opacity = "0.9"; }}
+          onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
+          >
+            Generate Post
+          </button>
+          <button type="button" onClick={() => switchTab(canvaConnected ? "canva" : "integrations")} style={{
+            padding: "10px 12px", borderRadius: 9,
+            border: `1px solid ${canvaConnected ? "#c4b5fd" : "#e5e7eb"}`,
+            background: canvaConnected ? "#faf5ff" : "#f9fafb",
+            color: canvaConnected ? "#7c3aed" : "#6b7280",
+            fontWeight: 700, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap",
+            transition: "all 0.15s",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = canvaConnected ? "#7c3aed" : "#d1d5db"; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = canvaConnected ? "#c4b5fd" : "#e5e7eb"; }}
+          >
+            {canvaConnected ? "Open Canva" : "Edit In Canva"}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-// ── Goal Card ──────────────────────────────────────────────────────────────────
+// ── Goal Card ─────────────────────────────────────────────────────────────────
 
 function GoalCard({ goal, onGenerate }) {
   const eff = EFFORT_COLORS[goal.effort] || EFFORT_COLORS.Medium;
@@ -546,7 +938,7 @@ function GoalCard({ goal, onGenerate }) {
   );
 }
 
-// ── Library View ───────────────────────────────────────────────────────────────
+// ── Library View ──────────────────────────────────────────────────────────────
 
 function LibraryView({ items, onRemove, canvaConnected, switchTab }) {
   const [filter, setFilter] = useState("all");
@@ -668,16 +1060,16 @@ function LibraryView({ items, onRemove, canvaConnected, switchTab }) {
   );
 }
 
-// ── Main Component ─────────────────────────────────────────────────────────────
+// ── Main Component ────────────────────────────────────────────────────────────
 
 export default function Templates({ activeBrand, intelligenceFeed = [], connectedPlatforms = [], switchTab }) {
-  const brandId       = activeBrand?.id;
+  const brandId        = activeBrand?.id;
   const canvaConnected = connectedPlatforms.includes("canva");
 
   const [activeTab,  setActiveTab]  = useState("posts");
   const [library,    setLibrary]    = useState([]);
-  const [postModal,  setPostModal]  = useState(null); // framework object
-  const [recModal,   setRecModal]   = useState(null); // goal object
+  const [postModal,  setPostModal]  = useState(null);
+  const [recModal,   setRecModal]   = useState(null);
 
   useEffect(() => {
     if (brandId) setLibrary(getLibrary(brandId));
@@ -703,9 +1095,9 @@ export default function Templates({ activeBrand, intelligenceFeed = [], connecte
   return (
     <div style={{ padding: "24px 0" }}>
       <div style={{ marginBottom: 28 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 800, color: "#111827", margin: 0 }}>Templates</h2>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: "#111827", margin: 0 }}>Content Studio</h2>
         <p style={{ color: "#6b7280", fontSize: 14, marginTop: 5 }}>
-          Create content. Plan goals. Build your library.
+          Browse frameworks. Generate posts. Build your library.
         </p>
       </div>
 
@@ -716,17 +1108,23 @@ export default function Templates({ activeBrand, intelligenceFeed = [], connecte
       {/* ── Posts tab ─────────────────────────────────────────────────── */}
       {activeTab === "posts" && (
         <div>
-          <div style={{ marginBottom: 20 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 700, color: "#111827", margin: 0 }}>20 Proven Content Frameworks</h3>
-            <p style={{ color: "#6b7280", fontSize: 13, marginTop: 4 }}>
-              Browse freely — AI only runs when you click <strong>Generate Post</strong>.
-              {canvaConnected
-                ? <span style={{ color: "#7c3aed" }}> Canva connected.</span>
-                : <span> <button type="button" onClick={() => switchTab("integrations")} style={{ background: "none", border: "none", cursor: "pointer", color: "#6366f1", fontWeight: 600, fontSize: 13, padding: 0 }}>Connect Canva</button> to unlock design tools.</span>
-              }
-            </p>
+          <div style={{ marginBottom: 22, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+            <div>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: "#111827", margin: 0 }}>20 Content Frameworks</h3>
+              <p style={{ color: "#6b7280", fontSize: 13, marginTop: 3, marginBottom: 0 }}>
+                Choose a design. Generate a post built for your brand.
+              </p>
+            </div>
+            {!canvaConnected && (
+              <button type="button" onClick={() => switchTab("integrations")} style={{
+                padding: "7px 14px", borderRadius: 8, border: "1px solid #c4b5fd",
+                background: "#faf5ff", color: "#7c3aed", fontWeight: 700, fontSize: 12, cursor: "pointer",
+              }}>
+                Connect Canva
+              </button>
+            )}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
             {FRAMEWORKS.map(fw => (
               <FrameworkCard
                 key={fw.id}

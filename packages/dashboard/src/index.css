@@ -71,13 +71,13 @@ header {
   padding: 0 20px; /* 1.25rem = 20px (Grid aligned) */
 }
 
-main { 
-  display: grid; 
-  grid-template-columns: 1fr 180px; 
-  gap: 0; 
-  padding: 0; 
-  overflow: hidden; 
-  flex: 1; 
+main {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  flex: 1;
 }
 
 #workspace-area { 
@@ -151,11 +151,11 @@ main {
 }
 
 /* INTEL SIDEBAR */
-.intel-sidebar { 
-  background: var(--surface-primary); 
-  padding: 12px 8px; 
-  overflow-y: auto; 
-  width: 180px; 
+.intel-sidebar {
+  background: var(--surface-primary);
+  padding: 14px 12px;
+  overflow-y: auto;
+  width: 260px;
 }
 
 .stat-card { 
@@ -1621,7 +1621,7 @@ input:checked + .slider:before {
   }
 
   .intel-sidebar {
-    width: 160px;
+    width: 210px;
   }
 }
 
