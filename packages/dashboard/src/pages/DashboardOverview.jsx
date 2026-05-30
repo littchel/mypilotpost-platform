@@ -1,7 +1,7 @@
 import React from "react";
 import {
   TrendingUp, CheckCircle, Share2, Target,
-  ArrowRight, Layout, ChevronRight,
+  Layout, ChevronRight,
 } from "lucide-react";
 import InsightsSnapshot from "../components/dashboard/InsightsSnapshot";
 
@@ -35,7 +35,7 @@ const DNARing = ({ pct }) => {
 };
 
 const SectionDivider = ({ label }) => (
-  <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "28px 0 20px" }}>
+  <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "24px 0 18px" }}>
     <div style={{ flex: 1, height: 1, background: "#f1f5f9" }} />
     <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, color: "#cbd5e1" }}>
       {label}
@@ -44,58 +44,42 @@ const SectionDivider = ({ label }) => (
   </div>
 );
 
-const SnapshotRow = ({ label, value, color }) => (
-  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "7px 0", borderBottom: "1px solid #f8fafc", gap: 8 }}>
-    <span style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.4, flexShrink: 0 }}>{label}</span>
-    <span style={{ fontSize: 11, fontWeight: 700, color: color || "#0f172a", textAlign: "right", lineHeight: 1.4, maxWidth: "60%" }}>{value || "—"}</span>
-  </div>
-);
-
 // ── Platform list ───────────────────────────────────────────────────────────────
 
-const ALL_PLATFORMS = ["instagram", "facebook", "linkedin", "x", "tiktok", "youtube", "pinterest", "threads"];
+const ALL_PLATFORMS   = ["instagram", "facebook", "linkedin", "x", "tiktok", "youtube", "pinterest", "threads"];
 const PLATFORM_LABELS = {
   instagram: "Instagram", facebook: "Facebook", linkedin: "LinkedIn",
   x: "X (Twitter)", tiktok: "TikTok", youtube: "YouTube",
   pinterest: "Pinterest", threads: "Threads",
 };
 
-// ── Growth System Status (State components) ─────────────────────────────────────
+// ── Growth System Status ────────────────────────────────────────────────────────
 
 const State1NewUser = ({ switchTab, brandDna }) => (
   <div className="card-workspace p-5 bg-white shadow-sm border border-primary border-opacity-25" style={{ borderRadius: 24 }}>
-    <div className="text-center mb-5">
+    <div className="text-center mb-4">
       <div className="d-inline-flex p-3 bg-primary bg-opacity-10 rounded-circle mb-3">
-        <Target className="text-primary" size={32} />
+        <Target className="text-primary" size={28} />
       </div>
-      <h3 className="fw-bold text-main mb-2">Welcome to your Strategic Growth System</h3>
-      <p className="text-muted" style={{ maxWidth: 500, margin: "0 auto" }}>
-        Complete your setup to enable AI-powered content opportunities and executive intelligence.
-      </p>
+      <h4 className="fw-bold text-main mb-1">Welcome to your Strategic Growth System</h4>
     </div>
-    <div className="row g-4 justify-content-center">
+    <div className="row g-3 justify-content-center">
       <div className="col-md-5">
-        <div className="p-4 bg-light rounded-4 border h-100 d-flex flex-column hover-bg-white transition-all cursor-pointer shadow-sm" onClick={() => switchTab("brand-dna")}>
-          <div className="d-flex justify-content-between align-items-start mb-3">
-            <div className="fw-bold text-main">1. Complete Brand DNA</div>
+        <div className="p-4 bg-light rounded-4 border h-100 d-flex flex-column cursor-pointer hover-bg-white" onClick={() => switchTab("brand-dna")}>
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <div className="fw-bold text-main small">1. Complete Brand DNA</div>
             <DNARing pct={brandDna?.completionPct || 0} />
           </div>
-          <p className="extra-small text-muted mb-4 flex-1">
-            Teach the intelligence engine about your audience, voice, and goals.
-          </p>
-          <button className="btn btn-primary w-100 fw-bold rounded-pill">Setup Brand DNA</button>
+          <button className="btn btn-primary w-100 fw-bold rounded-pill mt-auto">Setup Brand DNA</button>
         </div>
       </div>
       <div className="col-md-5">
-        <div className="p-4 bg-light rounded-4 border h-100 d-flex flex-column hover-bg-white transition-all cursor-pointer shadow-sm" onClick={() => switchTab("integrations")}>
-          <div className="d-flex justify-content-between align-items-start mb-3">
-            <div className="fw-bold text-main">2. Connect Platforms</div>
-            <div className="p-2 bg-white rounded-circle border"><Share2 size={24} className="text-muted" /></div>
+        <div className="p-4 bg-light rounded-4 border h-100 d-flex flex-column cursor-pointer hover-bg-white" onClick={() => switchTab("integrations")}>
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <div className="fw-bold text-main small">2. Connect Platforms</div>
+            <div className="p-2 bg-white rounded-circle border"><Share2 size={20} className="text-muted" /></div>
           </div>
-          <p className="extra-small text-muted mb-4 flex-1">
-            Connect LinkedIn and other platforms to activate live performance intelligence and scheduling.
-          </p>
-          <button className="btn btn-outline-primary w-100 fw-bold rounded-pill">Connect Platforms</button>
+          <button className="btn btn-outline-primary w-100 fw-bold rounded-pill mt-auto">Connect Platforms</button>
         </div>
       </div>
     </div>
@@ -104,35 +88,25 @@ const State1NewUser = ({ switchTab, brandDna }) => (
 
 const State2PartialActivation = ({ switchTab, brandDna }) => (
   <div className="card-workspace p-4 mb-4 bg-white shadow-sm" style={{ borderRadius: 20 }}>
-    <div className="d-flex justify-content-between align-items-center mb-4">
-      <div>
-        <h5 className="fw-bold text-main mb-1">Growth System Status</h5>
-        <div className="extra-small text-muted">Complete your setup to enable the full intelligence cycle.</div>
-      </div>
-      <div className="d-flex align-items-center gap-3">
+    <div className="d-flex justify-content-between align-items-center mb-3">
+      <h6 className="fw-bold text-main mb-0">Growth System Status</h6>
+      <div className="d-flex align-items-center gap-2">
         <DNARing pct={brandDna?.completionPct || 0} />
-        <div className="extra-small fw-bold text-primary">DNA Setup</div>
       </div>
     </div>
-    <div className="row g-3">
+    <div className="row g-2">
       <div className="col-md-6">
         <div className="p-3 border rounded-3 d-flex align-items-center gap-3 cursor-pointer hover-bg-light" onClick={() => switchTab("brand-intelligence")}>
-          <div className="p-2 bg-success bg-opacity-10 text-success rounded-circle"><Target size={20} /></div>
-          <div>
-            <div className="small fw-bold text-main mb-1">Run Brand Intelligence</div>
-            <div className="extra-small text-muted">Generate your first strategic analysis.</div>
-          </div>
-          <ChevronRight className="ms-auto text-muted" size={16} />
+          <div className="p-2 bg-success bg-opacity-10 text-success rounded-circle"><Target size={18} /></div>
+          <div className="small fw-bold text-main">Run Brand Intelligence</div>
+          <ChevronRight className="ms-auto text-muted" size={14} />
         </div>
       </div>
       <div className="col-md-6">
         <div className="p-3 border rounded-3 d-flex align-items-center gap-3 cursor-pointer hover-bg-light" onClick={() => switchTab("reporting")}>
-          <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle"><Layout size={20} /></div>
-          <div>
-            <div className="small fw-bold text-main mb-1">Executive Reports</div>
-            <div className="extra-small text-muted">Set up your first automated executive summary.</div>
-          </div>
-          <ChevronRight className="ms-auto text-muted" size={16} />
+          <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle"><Layout size={18} /></div>
+          <div className="small fw-bold text-main">Executive Reports</div>
+          <ChevronRight className="ms-auto text-muted" size={14} />
         </div>
       </div>
     </div>
@@ -141,57 +115,24 @@ const State2PartialActivation = ({ switchTab, brandDna }) => (
 
 const State3Active = ({ switchTab, connectedPlatforms = [], publishedCount = 0 }) => (
   <div className="d-flex align-items-center gap-3 mb-4 p-3 bg-white shadow-sm rounded-3" style={{ border: "1px solid #f1f5f9" }}>
-    <div className="d-flex align-items-center gap-2">
-      <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", display: "inline-block", boxShadow: "0 0 0 3px rgba(34,197,94,0.2)" }} />
-      <span className="extra-small fw-bold text-muted">System Active</span>
-    </div>
-    <div className="extra-small text-muted">
-      {connectedPlatforms.length} platform{connectedPlatforms.length !== 1 ? "s" : ""} connected · {publishedCount} published
-    </div>
+    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", display: "inline-block", boxShadow: "0 0 0 3px rgba(34,197,94,0.2)" }} />
+    <span className="extra-small fw-bold text-muted">
+      {connectedPlatforms.length} platform{connectedPlatforms.length !== 1 ? "s" : ""} · {publishedCount} published
+    </span>
     <div className="d-flex gap-2 ms-auto">
-      <button className="btn btn-sm btn-light extra-small fw-bold px-3" onClick={() => switchTab("insights")}>
-        Insights
-      </button>
-      <button className="btn btn-sm btn-primary extra-small fw-bold px-3" onClick={() => switchTab("brand-intelligence")}>
-        Brand Intelligence
-      </button>
+      <button className="btn btn-sm btn-light extra-small fw-bold px-3" onClick={() => switchTab("insights")}>Insights</button>
+      <button className="btn btn-sm btn-primary extra-small fw-bold px-3" onClick={() => switchTab("brand-intelligence")}>Intelligence</button>
     </div>
   </div>
 );
 
 const State4Advanced = ({ switchTab }) => (
-  <div className="card-workspace p-4 mb-4 bg-white shadow-sm" style={{ borderRadius: 20 }}>
-    <div className="d-flex justify-content-between align-items-center mb-4">
-      <div>
-        <h5 className="fw-bold text-main mb-1">Executive Operations Active</h5>
-        <div className="extra-small text-muted">Strategic intelligence and automation fully engaged.</div>
-      </div>
-      <button className="btn btn-outline-primary btn-sm extra-small fw-bold" onClick={() => switchTab("brand-intelligence")}>
-        Open Brand Intelligence
-      </button>
-    </div>
-    <div className="row g-3">
-      <div className="col-md-4">
-        <div className="p-3 bg-light rounded-3 border cursor-pointer hover-bg-white transition-all" onClick={() => switchTab("templates")}>
-          <div className="extra-small fw-bold text-muted text-uppercase mb-1">Next Action</div>
-          <div className="small fw-bold text-main mb-0">Content Templates</div>
-          <div className="extra-small text-muted mt-1">Pick a template and execute →</div>
-        </div>
-      </div>
-      <div className="col-md-4">
-        <div className="p-3 bg-light rounded-3 border cursor-pointer hover-bg-white transition-all" onClick={() => switchTab("reporting")}>
-          <div className="extra-small fw-bold text-muted text-uppercase mb-1">Reports</div>
-          <div className="small fw-bold text-main mb-0">Executive Reports</div>
-          <div className="extra-small text-muted mt-1">View performance summaries →</div>
-        </div>
-      </div>
-      <div className="col-md-4">
-        <div className="p-3 bg-light rounded-3 border cursor-pointer hover-bg-white transition-all" onClick={() => switchTab("analytics")}>
-          <div className="extra-small fw-bold text-muted text-uppercase mb-1">Analytics</div>
-          <div className="small fw-bold text-main mb-0">Platform Analytics</div>
-          <div className="extra-small text-muted mt-1">Review delivery data →</div>
-        </div>
-      </div>
+  <div className="d-flex align-items-center gap-3 mb-4 p-3 bg-white shadow-sm rounded-3" style={{ border: "1px solid #f1f5f9" }}>
+    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#2563eb", display: "inline-block", boxShadow: "0 0 0 3px rgba(37,99,235,0.2)" }} />
+    <span className="extra-small fw-bold text-muted">Executive Operations Active</span>
+    <div className="d-flex gap-2 ms-auto">
+      <button className="btn btn-sm btn-light extra-small fw-bold px-3" onClick={() => switchTab("templates")}>Templates</button>
+      <button className="btn btn-sm btn-primary extra-small fw-bold px-3" onClick={() => switchTab("brand-intelligence")}>Intelligence</button>
     </div>
   </div>
 );
@@ -199,53 +140,64 @@ const State4Advanced = ({ switchTab }) => (
 // ── Today's Priority ────────────────────────────────────────────────────────────
 
 const TodaysPriority = ({ intelligenceFeed = [], connectedPlatforms = [], switchTab }) => {
-  let priority;
+  let priority = null;
 
   if (intelligenceFeed.length > 0) {
     const top = intelligenceFeed[0];
     priority = {
-      badge: "Brand Intelligence",
+      badge:      top.category || "Brand Intelligence",
       badgeColor: "#2563eb",
-      title: top.title,
-      why: top.why_it_matters || top.finding,
-      impact: top.expected_impact,
-      time: top.priority === "high" ? "5–10 minutes" : "15–20 minutes",
-      cta: "View Intelligence →",
-      tab: "brand-intelligence",
+      title:      top.title,
+      impact:     top.expected_impact,
+      time:       top.priority === "high" ? "5–10 min" : "15–20 min",
+      cta:        "View Intelligence →",
+      tab:        "brand-intelligence",
     };
   } else if (connectedPlatforms.length === 0) {
     priority = {
-      badge: "Setup Required",
+      badge:      "Setup Required",
       badgeColor: "#dc2626",
-      title: "Connect your first platform",
-      why: "Platform connections enable Audience Intelligence, Content Intelligence, and the full intelligence cycle.",
-      impact: "More accurate recommendations, content scheduling, and campaign opportunities.",
-      time: "2–5 minutes",
-      cta: "Connect Now →",
-      tab: "integrations",
+      title:      "Connect your first platform",
+      impact:     "Enables content scheduling, delivery tracking, and Brand Intelligence.",
+      time:       "2–5 min",
+      cta:        "Connect Now →",
+      tab:        "integrations",
     };
   } else if (connectedPlatforms.length < 2) {
     priority = {
-      badge: "Quick Win",
+      badge:      "Quick Win",
       badgeColor: "#d97706",
-      title: "Connect a second platform to activate intelligence",
-      why: "Brand Intelligence V3 requires at least 2 connected platforms to generate strategic analysis.",
-      impact: "Enables the full intelligence cycle and cross-platform content strategy.",
-      time: "2–5 minutes",
-      cta: "Connect Now →",
-      tab: "integrations",
+      title:      "Connect a second platform to activate intelligence",
+      impact:     "Brand Intelligence requires ≥2 platforms for cross-channel analysis.",
+      time:       "2–5 min",
+      cta:        "Connect Now →",
+      tab:        "integrations",
     };
-  } else {
-    priority = {
-      badge: "Recommended",
-      badgeColor: "#059669",
-      title: "Run Brand Intelligence to generate today's priorities",
-      why: "Brand Intelligence analyses your connected platforms, content performance, and market position to surface your most impactful opportunities.",
-      impact: "Actionable strategic priorities based on your real brand data.",
-      time: "30 seconds",
-      cta: "Run Brand Intelligence →",
-      tab: "brand-intelligence",
-    };
+  }
+
+  if (!priority) {
+    return (
+      <div style={{
+        background: "#f8fafc", border: "1px dashed #e2e8f0",
+        borderRadius: 14, padding: "20px 24px",
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16,
+      }}>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: "#94a3b8", marginBottom: 6 }}>Today's Priority</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#374151" }}>No intelligence generated today</div>
+        </div>
+        <button
+          onClick={() => switchTab?.("brand-intelligence")}
+          style={{
+            padding: "9px 18px", borderRadius: 9, border: "none", cursor: "pointer",
+            fontSize: 12, fontWeight: 700, background: "#2563eb", color: "#fff",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Run Brand Intelligence →
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -253,16 +205,14 @@ const TodaysPriority = ({ intelligenceFeed = [], connectedPlatforms = [], switch
       background: "linear-gradient(135deg, #f8faff 0%, #eff6ff 100%)",
       border: "1px solid #dbeafe",
       borderLeft: `4px solid ${priority.badgeColor}`,
-      borderRadius: 16,
-      padding: "20px 24px",
-      marginBottom: 8,
+      borderRadius: 14,
+      padding: "18px 22px",
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
         <span style={{
-          fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1.2,
-          color: priority.badgeColor, background: "rgba(255,255,255,0.85)",
-          border: `1px solid ${priority.badgeColor}33`,
-          borderRadius: 99, padding: "3px 9px",
+          fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1,
+          color: priority.badgeColor, background: "rgba(255,255,255,0.9)",
+          border: `1px solid ${priority.badgeColor}33`, borderRadius: 99, padding: "2px 8px",
         }}>
           {priority.badge}
         </span>
@@ -271,42 +221,25 @@ const TodaysPriority = ({ intelligenceFeed = [], connectedPlatforms = [], switch
         </span>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 20, alignItems: "start" }}>
-        <div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", lineHeight: 1.3, marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a", lineHeight: 1.3, marginBottom: priority.impact ? 8 : 0 }}>
             {priority.title}
           </div>
-          <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-            {priority.why && (
-              <div style={{ flex: "1 1 180px" }}>
-                <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: "#94a3b8", marginBottom: 4 }}>Why</div>
-                <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.6 }}>{priority.why}</div>
-              </div>
-            )}
-            {priority.impact && (
-              <div style={{ flex: "1 1 180px" }}>
-                <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: "#94a3b8", marginBottom: 4 }}>Expected Impact</div>
-                <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.6 }}>{priority.impact}</div>
-              </div>
-            )}
-          </div>
+          {priority.impact && (
+            <div style={{ fontSize: 11, color: "#475569", lineHeight: 1.5 }}>{priority.impact}</div>
+          )}
         </div>
-
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10, flexShrink: 0 }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
           {priority.time && (
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: "#94a3b8", marginBottom: 2 }}>Est. Time</div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>{priority.time}</div>
-            </div>
+            <span style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8" }}>{priority.time}</span>
           )}
           <button
             onClick={() => switchTab?.(priority.tab)}
             style={{
-              display: "inline-flex", alignItems: "center", gap: 6,
-              padding: "10px 20px", borderRadius: 10, border: "none", cursor: "pointer",
-              fontSize: 12, fontWeight: 700, letterSpacing: 0.2,
-              background: priority.badgeColor, color: "#fff",
-              transition: "opacity 0.15s", whiteSpace: "nowrap",
+              padding: "9px 18px", borderRadius: 9, border: "none", cursor: "pointer",
+              fontSize: 11, fontWeight: 700, background: priority.badgeColor, color: "#fff",
+              whiteSpace: "nowrap", transition: "opacity 0.15s",
             }}
             onMouseEnter={e => { e.currentTarget.style.opacity = "0.88"; }}
             onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
@@ -328,59 +261,54 @@ const PlatformStatus = ({ connectedPlatforms = [], switchTab }) => {
   const isHealthy = connected.length === ALL_PLATFORMS.length;
 
   return (
-    <div style={{ background: "#fff", border: "1px solid #f1f5f9", borderRadius: 16, padding: "20px 24px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-        <div>
-          <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: "#94a3b8", marginBottom: 3 }}>System Health</div>
-          <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Platform Status</div>
-        </div>
+    <div style={{ background: "#fff", border: "1px solid #f1f5f9", borderRadius: 16, padding: "18px 22px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>Platform Status</div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: isHealthy ? "#22c55e" : connected.length > 0 ? "#f59e0b" : "#ef4444", display: "inline-block" }} />
+          <span style={{
+            width: 7, height: 7, borderRadius: "50%", display: "inline-block",
+            background: isHealthy ? "#22c55e" : connected.length > 0 ? "#f59e0b" : "#ef4444",
+          }} />
           <span style={{ fontSize: 10, fontWeight: 700, color: isHealthy ? "#16a34a" : connected.length > 0 ? "#d97706" : "#dc2626" }}>
             {isHealthy ? "Fully Connected" : connected.length > 0 ? "Partially Connected" : "Setup Required"}
           </span>
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 24, alignItems: "start" }}>
-        {/* Counters */}
-        <div style={{ display: "flex", gap: 12 }}>
-          <div style={{ textAlign: "center", background: "#f0fdf4", borderRadius: 12, padding: "14px 18px" }}>
-            <div style={{ fontSize: 30, fontWeight: 900, color: "#16a34a", lineHeight: 1 }}>{connected.length}</div>
-            <div style={{ fontSize: 10, fontWeight: 600, color: "#64748b", marginTop: 4 }}>Connected</div>
+      <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 20, alignItems: "start" }}>
+        <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ textAlign: "center", background: "#f0fdf4", borderRadius: 10, padding: "12px 16px" }}>
+            <div style={{ fontSize: 28, fontWeight: 900, color: "#16a34a", lineHeight: 1 }}>{connected.length}</div>
+            <div style={{ fontSize: 9, fontWeight: 600, color: "#64748b", marginTop: 3 }}>Connected</div>
           </div>
-          <div style={{ textAlign: "center", background: "#fff7ed", borderRadius: 12, padding: "14px 18px" }}>
-            <div style={{ fontSize: 30, fontWeight: 900, color: "#d97706", lineHeight: 1 }}>{missing.length}</div>
-            <div style={{ fontSize: 10, fontWeight: 600, color: "#64748b", marginTop: 4 }}>Remaining</div>
+          <div style={{ textAlign: "center", background: "#fff7ed", borderRadius: 10, padding: "12px 16px" }}>
+            <div style={{ fontSize: 28, fontWeight: 900, color: "#d97706", lineHeight: 1 }}>{missing.length}</div>
+            <div style={{ fontSize: 9, fontWeight: 600, color: "#64748b", marginTop: 3 }}>Remaining</div>
           </div>
         </div>
 
-        {/* Missing list + progress */}
         <div>
           {isHealthy ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0" }}>
-              <span style={{ fontSize: 22 }}>🎉</span>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>All platforms connected</div>
-                <div style={{ fontSize: 11, color: "#64748b" }}>Your intelligence engine has maximum data coverage.</div>
-              </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 18 }}>🎉</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#0f172a" }}>All platforms connected</span>
             </div>
           ) : (
             <>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "#94a3b8", marginBottom: 10 }}>Not Connected</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 14 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "#94a3b8", marginBottom: 8 }}>Not Connected</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
                 {missing.map(p => (
                   <span key={p} style={{
-                    fontSize: 11, fontWeight: 600, color: "#475569",
+                    fontSize: 10, fontWeight: 600, color: "#475569",
                     background: "#f8fafc", border: "1px solid #e2e8f0",
-                    borderRadius: 8, padding: "4px 11px",
+                    borderRadius: 7, padding: "3px 9px",
                   }}>
                     {PLATFORM_LABELS[p] || p}
                   </span>
                 ))}
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-                <span style={{ fontSize: 9, fontWeight: 600, color: "#94a3b8" }}>Platform coverage</span>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                <span style={{ fontSize: 9, color: "#94a3b8" }}>Coverage</span>
                 <span style={{ fontSize: 9, fontWeight: 700, color: "#2563eb" }}>{readyPct}%</span>
               </div>
               <div style={{ height: 4, background: "#f1f5f9", borderRadius: 99, overflow: "hidden" }}>
@@ -399,10 +327,10 @@ const PlatformStatus = ({ connectedPlatforms = [], switchTab }) => {
         <button
           onClick={() => switchTab?.("integrations")}
           style={{
-            display: "block", width: "100%", marginTop: 18,
+            display: "block", width: "100%", marginTop: 16,
             background: "linear-gradient(135deg, #2563EB, #1d4ed8)",
-            border: "none", borderRadius: 10, padding: "10px 0",
-            fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer",
+            border: "none", borderRadius: 10, padding: "9px 0",
+            fontSize: 11, fontWeight: 700, color: "#fff", cursor: "pointer",
             transition: "opacity 0.15s",
           }}
           onMouseEnter={e => { e.currentTarget.style.opacity = "0.88"; }}
@@ -418,14 +346,7 @@ const PlatformStatus = ({ connectedPlatforms = [], switchTab }) => {
 // ── Brand Intelligence Preview ──────────────────────────────────────────────────
 
 const BrandIntelligencePreview = ({ intelligenceFeed = [], switchTab }) => {
-  const topItem     = intelligenceFeed[0];
-  const opportunity = intelligenceFeed.find(i =>
-    i.module_id === "growth_engine"       || i.category === "Growth Engine"      ||
-    i.module_id === "content_intelligence"|| i.category === "Content Intelligence"
-  );
-  const risk = intelligenceFeed.find(i =>
-    i.module_id === "platform_health" || i.category === "Platform Health"
-  );
+  const topItem = intelligenceFeed[0];
   const isEmpty = intelligenceFeed.length === 0;
 
   const lastGenDate = topItem?.generated_at
@@ -433,28 +354,40 @@ const BrandIntelligencePreview = ({ intelligenceFeed = [], switchTab }) => {
     : null;
 
   return (
-    <div style={{ background: "#fff", border: "1px solid #f1f5f9", borderRadius: 16, padding: "20px", height: "100%" }}>
+    <div style={{ background: "#fff", border: "1px solid #f1f5f9", borderRadius: 16, padding: "18px", height: "100%", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
         <div>
-          <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: "#94a3b8", marginBottom: 3 }}>Strategic</div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>Brand Intelligence</div>
+          <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: "#94a3b8", marginBottom: 2 }}>Strategic</div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>Brand Intelligence</div>
         </div>
-        <span style={{ fontSize: 8, fontWeight: 800, color: "#2563eb", background: "#eff6ff", border: "1px solid #93c5fd", borderRadius: 99, padding: "2px 8px", letterSpacing: 0.8 }}>AI</span>
+        <span style={{ fontSize: 8, fontWeight: 800, color: "#2563eb", background: "#eff6ff", border: "1px solid #93c5fd", borderRadius: 99, padding: "2px 7px" }}>AI</span>
       </div>
 
-      {isEmpty ? (
-        <div style={{ fontSize: 11, color: "#94a3b8", textAlign: "center", padding: "16px 0", lineHeight: 1.7 }}>
-          Connect platforms to generate<br />Brand Intelligence.
-        </div>
-      ) : (
-        <div>
-          <SnapshotRow label="Next Best Action"  value={topItem?.recommended_action || topItem?.title}  color="#2563eb" />
-          <SnapshotRow label="Top Opportunity"   value={opportunity?.title}                              color="#059669" />
-          <SnapshotRow label="Platform Risk"     value={risk?.title}                                     color="#dc2626" />
-          <SnapshotRow label="Confidence"        value={topItem?.confidence}                                            />
-          <SnapshotRow label="Last Generated"    value={lastGenDate}                                                    />
-        </div>
-      )}
+      <div style={{ flex: 1 }}>
+        {isEmpty ? (
+          <div style={{ fontSize: 11, color: "#94a3b8", textAlign: "center", padding: "20px 0" }}>
+            No intelligence generated yet.
+          </div>
+        ) : (
+          <>
+            <div style={{
+              fontSize: 12, fontWeight: 800, color: "#0f172a", lineHeight: 1.35, marginBottom: 8,
+              display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+            }}>
+              {topItem.title}
+            </div>
+            <div style={{
+              fontSize: 11, color: "#475569", lineHeight: 1.5, marginBottom: 10,
+              display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+            }}>
+              {topItem.finding}
+            </div>
+            {lastGenDate && (
+              <div style={{ fontSize: 9, color: "#94a3b8" }}>Generated {lastGenDate} · {intelligenceFeed.length} insights</div>
+            )}
+          </>
+        )}
+      </div>
 
       <button
         onClick={() => switchTab?.("brand-intelligence")}
@@ -477,32 +410,36 @@ const BrandIntelligencePreview = ({ intelligenceFeed = [], switchTab }) => {
 // ── Growth Engine Preview ───────────────────────────────────────────────────────
 
 const GrowthEnginePreview = ({ switchTab }) => (
-  <div style={{ background: "#fff", border: "1px solid #f1f5f9", borderRadius: 16, padding: "20px", height: "100%", display: "flex", flexDirection: "column" }}>
+  <div style={{ background: "#fff", border: "1px solid #f1f5f9", borderRadius: 16, padding: "18px", height: "100%", display: "flex", flexDirection: "column" }}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
       <div>
-        <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: "#94a3b8", marginBottom: 3 }}>Execution</div>
-        <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>Growth Engine</div>
+        <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: "#94a3b8", marginBottom: 2 }}>Execution</div>
+        <div style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>Growth Engine</div>
       </div>
-      <TrendingUp size={16} color="#059669" />
+      <TrendingUp size={15} color="#059669" />
     </div>
 
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "16px 0" }}>
-      <div style={{
-        width: 44, height: 44, borderRadius: 12, background: "linear-gradient(135deg, #ecfdf5, #d1fae5)",
-        display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10,
-      }}>
-        <TrendingUp size={22} color="#059669" />
-      </div>
-      <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 6 }}>Coming Soon</div>
-      <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.6, maxWidth: 160 }}>
-        AI-powered growth recommendations and campaign execution engine.
+    <div style={{ flex: 1 }}>
+      {[
+        { label: "Top Campaign",      value: "—" },
+        { label: "Expected Impact",   value: "—" },
+      ].map(({ label, value }) => (
+        <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #f8fafc" }}>
+          <span style={{ fontSize: 9, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.4 }}>{label}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8" }}>{value}</span>
+        </div>
+      ))}
+      <div style={{ marginTop: 10, textAlign: "center" }}>
+        <span style={{ fontSize: 9, fontWeight: 700, color: "#d97706", background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 99, padding: "2px 8px" }}>
+          Coming Soon
+        </span>
       </div>
     </div>
 
     <button
       onClick={() => switchTab?.("campaign")}
       style={{
-        display: "block", width: "100%", marginTop: "auto",
+        display: "block", width: "100%", marginTop: 14,
         background: "#f8fafc", border: "1px solid #e2e8f0",
         borderRadius: 9, padding: "9px 0",
         fontSize: 11, fontWeight: 700, color: "#374151", cursor: "pointer",
@@ -519,42 +456,42 @@ const GrowthEnginePreview = ({ switchTab }) => (
 // ── Rewards Engine Preview ──────────────────────────────────────────────────────
 
 const RewardsEnginePreview = ({ growth = {}, switchTab }) => {
-  const points  = growth.points              || 0;
-  const level   = growth.level              || "Starter";
-  const streak  = growth.streak_days        || 0;
-  const next    = growth.next_reward;
-  const pct     = growth.progress_percentage || 0;
+  const points = growth.points              || 0;
+  const level  = growth.level              || null;
+  const streak = growth.streak_days        || 0;
+  const next   = growth.next_reward;
+  const pct    = growth.progress_percentage || 0;
 
   return (
-    <div style={{ background: "#fff", border: "1px solid #f1f5f9", borderRadius: 16, padding: "20px", height: "100%", display: "flex", flexDirection: "column" }}>
+    <div style={{ background: "#fff", border: "1px solid #f1f5f9", borderRadius: 16, padding: "18px", height: "100%", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
         <div>
-          <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: "#94a3b8", marginBottom: 3 }}>Motivation</div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>Rewards Engine</div>
+          <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: "#94a3b8", marginBottom: 2 }}>Motivation</div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>Rewards Engine</div>
         </div>
-        <span style={{ fontSize: 16 }}>🏆</span>
+        <span style={{ fontSize: 15 }}>🏆</span>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12, flex: 1 }}>
         {[
-          { label: "Level",   value: level                                                                       },
-          { label: "Points",  value: points.toLocaleString()                                                     },
-          { label: "Streak",  value: `${streak}d 🔥`                                                             },
-          { label: "Next",    value: next?.title ? next.title.slice(0, 18) + (next.title.length > 18 ? "…" : "") : "—" },
+          { label: "Level",   value: level   || "—" },
+          { label: "Points",  value: points > 0 ? points.toLocaleString() : "—" },
+          { label: "Streak",  value: streak  > 0 ? `${streak}d 🔥`        : "—" },
+          { label: "Next",    value: next?.title ? next.title.slice(0, 16) + (next.title.length > 16 ? "…" : "") : "—" },
         ].map(({ label, value }) => (
-          <div key={label} style={{ background: "#f8fafc", borderRadius: 10, padding: "10px 12px" }}>
-            <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "#94a3b8", marginBottom: 4 }}>{label}</div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>{value}</div>
+          <div key={label} style={{ background: "#f8fafc", borderRadius: 9, padding: "9px 10px" }}>
+            <div style={{ fontSize: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "#94a3b8", marginBottom: 3 }}>{label}</div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: value === "—" ? "#cbd5e1" : "#0f172a" }}>{value}</div>
           </div>
         ))}
       </div>
 
-      <div style={{ marginBottom: 14 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-          <span style={{ fontSize: 9, fontWeight: 600, color: "#94a3b8" }}>Progress to next reward</span>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+          <span style={{ fontSize: 9, color: "#94a3b8" }}>Next reward</span>
           <span style={{ fontSize: 9, fontWeight: 700, color: "#2563eb" }}>{pct}%</span>
         </div>
-        <div style={{ height: 5, background: "#f1f5f9", borderRadius: 99, overflow: "hidden" }}>
+        <div style={{ height: 4, background: "#f1f5f9", borderRadius: 99, overflow: "hidden" }}>
           <div style={{
             height: "100%", borderRadius: 99, width: `${pct}%`,
             background: "linear-gradient(90deg, #2563eb, #7c3aed)",
@@ -566,7 +503,7 @@ const RewardsEnginePreview = ({ growth = {}, switchTab }) => {
       <button
         onClick={() => switchTab?.("growth")}
         style={{
-          display: "block", width: "100%", marginTop: "auto",
+          display: "block", width: "100%",
           background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
           border: "none", borderRadius: 9, padding: "9px 0",
           fontSize: 11, fontWeight: 700, color: "#fff", cursor: "pointer",
@@ -609,13 +546,6 @@ const DashboardOverview = ({
   if (isConnected && dnaComplete && (publishedCount > 0 || scheduledCount > 0)) state = 3;
   if (state === 3 && publishedCount >= 10 && (metrics.reach || 0) > 1000)       state = 4;
 
-  const subtitles = {
-    1: "Let's set up your strategic foundation today.",
-    2: "Continue building your platform architecture.",
-    3: "Here is your operational overview.",
-    4: "Your AI strategic operating system is fully active.",
-  };
-
   return (
     <div className="dashboard-intel animate__animated animate__fadeIn p-1">
 
@@ -625,25 +555,23 @@ const DashboardOverview = ({
           <h3 className="fw-bold text-main mb-1" style={{ letterSpacing: "-0.03em" }}>
             {greeting}, {greetingName}!
           </h3>
-          <p className="small text-muted mb-0">{subtitles[state]}</p>
         </div>
         {auditData?.audit_id && (
           <div className="d-flex align-items-center gap-2 bg-primary bg-opacity-10 px-3 py-2 rounded-pill">
-            <CheckCircle size={14} className="text-primary" />
+            <CheckCircle size={13} className="text-primary" />
             <span className="extra-small fw-bold text-primary">Audit Hydrated</span>
           </div>
         )}
       </div>
 
       {/* Growth System Status */}
-      {state === 1 && <State1NewUser          switchTab={switchTab} brandDna={brandDna} />}
-      {state === 2 && <State2PartialActivation switchTab={switchTab} brandDna={brandDna} />}
-      {state === 3 && <State3Active           switchTab={switchTab} connectedPlatforms={connectedPlatforms} publishedCount={publishedCount} />}
-      {state === 4 && <State4Advanced         switchTab={switchTab} />}
+      {state === 1 && <State1NewUser           switchTab={switchTab} brandDna={brandDna} />}
+      {state === 2 && <State2PartialActivation  switchTab={switchTab} brandDna={brandDna} />}
+      {state === 3 && <State3Active            switchTab={switchTab} connectedPlatforms={connectedPlatforms} publishedCount={publishedCount} />}
+      {state === 4 && <State4Advanced          switchTab={switchTab} />}
 
       {/* ══ TODAY'S PRIORITY ═════════════════════════════════════════════════ */}
       <SectionDivider label="Today's focus" />
-
       <TodaysPriority
         intelligenceFeed={intelligenceFeed}
         connectedPlatforms={connectedPlatforms}
@@ -652,18 +580,15 @@ const DashboardOverview = ({
 
       {/* ══ INSIGHTS SNAPSHOT ════════════════════════════════════════════════ */}
       <SectionDivider label="What's happening" />
-
       <InsightsSnapshot activeBrand={activeBrand} switchTab={switchTab} />
 
       {/* ══ PLATFORM STATUS ══════════════════════════════════════════════════ */}
       <SectionDivider label="Platform health" />
-
       <PlatformStatus connectedPlatforms={connectedPlatforms} switchTab={switchTab} />
 
       {/* ══ GROWTH OVERVIEW ══════════════════════════════════════════════════ */}
       <SectionDivider label="Growth overview" />
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
         <BrandIntelligencePreview intelligenceFeed={intelligenceFeed} switchTab={switchTab} />
         <GrowthEnginePreview      switchTab={switchTab} />
         <RewardsEnginePreview     growth={growth} switchTab={switchTab} />
