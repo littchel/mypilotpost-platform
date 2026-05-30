@@ -97,6 +97,7 @@ import {
   getIntelligenceFeedHandler, dismissIntelligenceHandler, forceRefreshIntelligence,
   runDailyIntelligence,
 } from "./core/intelligence/handlers.js";
+import { getInsightsFeed } from "./core/insights/handlers.js";
 import { runPublicAudit, captureAuditLead, getPublicAuditById } from "./core/intelligence/public_audit.js";
 
 
@@ -1258,6 +1259,9 @@ export default {
 
                    if (method === "GET" && path === "/api/customer/analytics/executive")
             return withCors(request, getExecutiveAnalytics(request, env, auth));
+
+          /* ---------- INSIGHTS (OPERATIONAL FEED) ---------- */
+         if (method === "GET"  && path === "/api/customer/insights/feed") return withCors(request, getInsightsFeed(request, env, auth));
 
           /* ---------- INTELLIGENCE & AUDITS ---------- */
          if (method === "GET"  && path === "/api/customer/intelligence") return withCors(request, listInsights(request, env, auth));

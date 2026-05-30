@@ -36,6 +36,7 @@ import ContentManagement from "./pages/ContentManagement";
 import Teams from "./pages/Teams";
 import Growth from "./pages/Growth";
 import DashboardInsights from "./pages/DashboardInsights";
+import InsightsFeed from "./pages/InsightsFeed";
 import BrandDNA from "./pages/BrandDNA";
 import Templates from "./pages/Templates";
 import BillingTab from "./pages/BillingTab";
@@ -1301,10 +1302,6 @@ function App() {
         notifications={notifications}
         growth={growth}
         brandIntelligence={{ executive: intelligence.slice(0, 2), advisory: intelligence.slice(2, 5) }}
-        onInsightClick={(insight) => {
-          setActiveInsight(insight);
-          setIsInsightModalOpen(true);
-        }}
         stats={{
           socials: (allContent || []).filter(c => c.type === 'social').length,
           blogs: (allContent || []).filter(c => c.type === 'article').length,
@@ -1372,8 +1369,13 @@ function App() {
           <Reporting activeBrand={activeBrand} />
         </TabContent>
 
-        {/* Insights Tab */}
+        {/* Insights Tab — operational event feed */}
         <TabContent id="insights" activeTab={activeTab}>
+          <InsightsFeed activeBrand={activeBrand} switchTab={setActiveTab} />
+        </TabContent>
+
+        {/* Brand Intelligence Tab — strategic command center */}
+        <TabContent id="brand-intelligence" activeTab={activeTab}>
           <DashboardInsights activeBrand={activeBrand} switchTab={setActiveTab} />
         </TabContent>
 

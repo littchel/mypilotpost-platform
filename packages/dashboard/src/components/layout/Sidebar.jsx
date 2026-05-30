@@ -40,10 +40,11 @@ const Sidebar = ({ activeTab, switchTab, brands, activeBrand, onSwitchBrand }) =
       {/* ── WORKSPACE ── */}
       <div className="nav-group-title">Workspace</div>
       <nav aria-label="Workspace">
-        <NavLink tab="dashboard"             activeTab={activeTab} switchTab={switchTab} icon="fas fa-tachometer-alt" label="Dashboard" />
-        <NavLink tab="insights"              activeTab={activeTab} switchTab={switchTab} icon="fas fa-lightbulb"      label="Insights" />
-        <NavLink tab="templates" activeTab={activeTab} switchTab={switchTab} icon="fas fa-layer-group" label="Templates" />
-        <NavLink tab="brand-dna"             activeTab={activeTab} switchTab={switchTab} icon="fas fa-dna"            label="Brand DNA" />
+        <NavLink tab="dashboard"           activeTab={activeTab} switchTab={switchTab} icon="fas fa-tachometer-alt" label="Dashboard" />
+        <NavLink tab="insights"            activeTab={activeTab} switchTab={switchTab} icon="fas fa-stream"         label="Insights" />
+        <NavLink tab="brand-intelligence"  activeTab={activeTab} switchTab={switchTab} icon="fas fa-brain"          label="Brand Intelligence" />
+        <NavLink tab="templates"           activeTab={activeTab} switchTab={switchTab} icon="fas fa-layer-group"    label="Templates" />
+        <NavLink tab="brand-dna"           activeTab={activeTab} switchTab={switchTab} icon="fas fa-dna"            label="Brand DNA" />
       </nav>
 
       {/* ── CREATE ── */}
