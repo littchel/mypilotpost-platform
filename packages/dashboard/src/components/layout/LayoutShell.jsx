@@ -361,19 +361,20 @@ const LayoutShell = ({
 
           <aside className="intel-sidebar d-flex flex-column">
             <div className="flex-1">
-              {/* Fleet Stats — compact row */}
-              <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+              {/* Fleet Stats — vertical stack */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
                 {[
                   { val: stats?.socials ?? 0,   label: "Posts" },
                   { val: stats?.blogs ?? 0,     label: "Articles" },
                   { val: stats?.campaigns ?? 0, label: "Campaigns" },
                 ].map(({ val, label }) => (
                   <div key={label} style={{
-                    flex: 1, background: "#f8fafc", border: "1px solid #e5e9f0",
-                    borderRadius: 8, padding: "6px 4px", textAlign: "center",
+                    background: "#fff", border: "1px solid #e5e9f0",
+                    borderRadius: 12, padding: "14px 18px",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
                   }}>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a", lineHeight: 1 }}>{val}</div>
-                    <div style={{ fontSize: 9, fontWeight: 600, color: "#94a3b8", marginTop: 2, letterSpacing: 0.3 }}>{label}</div>
+                    <div style={{ fontSize: 30, fontWeight: 800, color: "#0f172a", lineHeight: 1, marginBottom: 5 }}>{val}</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.9, color: "#94a3b8" }}>{label}</div>
                   </div>
                 ))}
               </div>
