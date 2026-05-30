@@ -15,11 +15,18 @@ const SnapshotRow = ({ label, value, accent }) => (
 
 const BrandIntelligenceSnapshot = ({ feed = [], switchTab }) => {
   const topItem    = feed[0] || null;
-  const opportunity = feed.find(i => ["opportunity", "growth", "visibility"].includes(i.category));
-  const risk        = feed.find(i => i.category === "risk");
-  const competitor  = feed.find(i => i.category === "competitor");
+  const opportunity = feed.find(i =>
+    i.module_id === "growth_engine"        || i.category === "Growth Engine"       ||
+    i.module_id === "content_intelligence" || i.category === "Content Intelligence"
+  );
+  const risk = feed.find(i =>
+    i.module_id === "platform_health" || i.category === "Platform Health"
+  );
+  const competitor = feed.find(i =>
+    i.module_id === "competitive_moat_map" || i.category === "Competitive Moat Map"
+  );
 
-  const nextAction  = topItem?.cta || topItem?.title || "Connect platforms to unlock";
+  const nextAction  = topItem?.recommended_action || topItem?.title || "Connect platforms to activate";
   const oppLabel    = opportunity?.title || "No opportunity detected";
   const riskLabel   = risk?.title        || "No active risks";
   const compLabel   = competitor?.title  || "No competitive alerts";

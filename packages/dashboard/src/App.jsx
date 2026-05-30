@@ -49,7 +49,6 @@ import BrandDNAWizardModal from "./components/shared/BrandDNAWizardModal";
 import FloatingChat from "./components/specialized/FloatingChat";
 import InsightModal from "./components/shared/InsightModal";
 import HashtagManager from "./pages/HashtagManager";
-import { generateIntelligence } from "./lib/intelligence";
 import "./styles/auth.css";
 
 const PLATFORM_ICONS = {
@@ -164,7 +163,7 @@ function App() {
   // Notification & Growth Global State
   const [notifications, setNotifications] = useState([]);
   const [growth, setGrowth] = useState({ points: 0, level: 'Starter', streak_days: 0, progress_percentage: 0 });
-  const [intelligence, setIntelligence] = useState([]);
+  const [_intelligence, setIntelligence] = useState([]);
   const [_isLoadingGlobal, setIsLoadingGlobal] = useState(false);
 
   const apiSafeFetch = async (url) => {
@@ -564,21 +563,17 @@ function App() {
 
   const { data: seoData } = useApi(brandId ? "/api/customer/seo/analyze" : null, [brandId, listVersion]);
   const seoProfile = seoData || { metrics: { organicTraffic: '0', keywords: '0', health: '0%' }, keywords: [] };
-  const seoMetrics = seoProfile?.metrics || { organicTraffic: '0', keywords: '0', health: '0%' };
+  const _seoMetrics = seoProfile?.metrics || { organicTraffic: '0', keywords: '0', health: '0%' };
   const _seoKeywords = seoProfile?.keywords || [];
 
   const { data: brandDnaData } = useApi(brandId ? "/api/customer/brand-dna" : null, [brandId]);
   const brandDnaCompletionPct = brandDnaData?.completeness ?? 0;
 
-  const brandIntelligence = generateIntelligence({
-    allContent,
-    connectedPlatforms,
-    seoMetrics,
-    metrics,
-    growth,
-    auditData: null,
-    brandDna: { completionPct: brandDnaCompletionPct },
-  });
+  const { data: intelligenceFeedData } = useApi(brandId ? "/api/customer/intelligence/feed" : null, [brandId, listVersion]);
+  const intelligenceFeed = [
+    ...(intelligenceFeedData?.delivered    || []),
+    ...(intelligenceFeedData?.new_insights || []),
+  ].sort((a, b) => (a.priority_rank || 99) - (b.priority_rank || 99));
 
   const _handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -1299,7 +1294,7 @@ function App() {
         onAssistantOpen={() => setAssistantOpen(true)}
         notifications={notifications}
         growth={growth}
-        brandIntelligence={{ executive: intelligence.slice(0, 2), advisory: intelligence.slice(2, 5) }}
+        brandIntelligence={{ feed: intelligenceFeed }}
         stats={{
           socials: (allContent || []).filter(c => c.type === 'social').length,
           blogs: (allContent || []).filter(c => c.type === 'article').length,
@@ -1314,9 +1309,11 @@ function App() {
             switchTab={switchTab}
             user={user}
             growth={growth}
-            brandIntelligence={brandIntelligence}
+            intelligenceFeed={intelligenceFeed}
             allContent={allContent}
             connectedPlatforms={connectedPlatforms}
+            brandDna={{ completionPct: brandDnaCompletionPct }}
+            stats={metrics}
           />
         </TabContent>
 

@@ -5,12 +5,6 @@ import {
 } from "lucide-react";
 import InsightsSnapshot from "../components/dashboard/InsightsSnapshot";
 
-/**
- * Dashboard Overview
- * Mission control — operational pulse at a glance.
- * Four sections: Insights Snapshot | Brand Intelligence | Growth Engine | Rewards Engine
- */
-
 // ── Shared ─────────────────────────────────────────────────────────────────────
 
 const DNARing = ({ pct }) => {
@@ -50,7 +44,23 @@ const SectionDivider = ({ label }) => (
   </div>
 );
 
-// ── Activation States ───────────────────────────────────────────────────────────
+const SnapshotRow = ({ label, value, color }) => (
+  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "7px 0", borderBottom: "1px solid #f8fafc", gap: 8 }}>
+    <span style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.4, flexShrink: 0 }}>{label}</span>
+    <span style={{ fontSize: 11, fontWeight: 700, color: color || "#0f172a", textAlign: "right", lineHeight: 1.4, maxWidth: "60%" }}>{value || "—"}</span>
+  </div>
+);
+
+// ── Platform list ───────────────────────────────────────────────────────────────
+
+const ALL_PLATFORMS = ["instagram", "facebook", "linkedin", "x", "tiktok", "youtube", "pinterest", "threads"];
+const PLATFORM_LABELS = {
+  instagram: "Instagram", facebook: "Facebook", linkedin: "LinkedIn",
+  x: "X (Twitter)", tiktok: "TikTok", youtube: "YouTube",
+  pinterest: "Pinterest", threads: "Threads",
+};
+
+// ── Growth System Status (State components) ─────────────────────────────────────
 
 const State1NewUser = ({ switchTab, brandDna }) => (
   <div className="card-workspace p-5 bg-white shadow-sm border border-primary border-opacity-25" style={{ borderRadius: 24 }}>
@@ -60,7 +70,7 @@ const State1NewUser = ({ switchTab, brandDna }) => (
       </div>
       <h3 className="fw-bold text-main mb-2">Welcome to your Strategic Growth System</h3>
       <p className="text-muted" style={{ maxWidth: 500, margin: "0 auto" }}>
-        Complete your setup to unlock AI-powered content opportunities and executive intelligence.
+        Complete your setup to enable AI-powered content opportunities and executive intelligence.
       </p>
     </div>
     <div className="row g-4 justify-content-center">
@@ -96,8 +106,8 @@ const State2PartialActivation = ({ switchTab, brandDna }) => (
   <div className="card-workspace p-4 mb-4 bg-white shadow-sm" style={{ borderRadius: 20 }}>
     <div className="d-flex justify-content-between align-items-center mb-4">
       <div>
-        <h5 className="fw-bold text-main mb-1">Activation Progress</h5>
-        <div className="extra-small text-muted">Complete these steps to unlock the full intelligence feed.</div>
+        <h5 className="fw-bold text-main mb-1">Growth System Status</h5>
+        <div className="extra-small text-muted">Complete your setup to enable the full intelligence cycle.</div>
       </div>
       <div className="d-flex align-items-center gap-3">
         <DNARing pct={brandDna?.completionPct || 0} />
@@ -119,7 +129,7 @@ const State2PartialActivation = ({ switchTab, brandDna }) => (
         <div className="p-3 border rounded-3 d-flex align-items-center gap-3 cursor-pointer hover-bg-light" onClick={() => switchTab("reporting")}>
           <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle"><Layout size={20} /></div>
           <div>
-            <div className="small fw-bold text-main mb-1">Configure Reporting</div>
+            <div className="small fw-bold text-main mb-1">Executive Reports</div>
             <div className="extra-small text-muted">Set up your first automated executive summary.</div>
           </div>
           <ChevronRight className="ms-auto text-muted" size={16} />
@@ -133,7 +143,7 @@ const State3Active = ({ switchTab, connectedPlatforms = [], publishedCount = 0 }
   <div className="d-flex align-items-center gap-3 mb-4 p-3 bg-white shadow-sm rounded-3" style={{ border: "1px solid #f1f5f9" }}>
     <div className="d-flex align-items-center gap-2">
       <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", display: "inline-block", boxShadow: "0 0 0 3px rgba(34,197,94,0.2)" }} />
-      <span className="extra-small fw-bold text-muted">Platform Active</span>
+      <span className="extra-small fw-bold text-muted">System Active</span>
     </div>
     <div className="extra-small text-muted">
       {connectedPlatforms.length} platform{connectedPlatforms.length !== 1 ? "s" : ""} connected · {publishedCount} published
@@ -186,21 +196,241 @@ const State4Advanced = ({ switchTab }) => (
   </div>
 );
 
-// ── Preview Widgets ─────────────────────────────────────────────────────────────
+// ── Today's Priority ────────────────────────────────────────────────────────────
 
-const SnapshotRow = ({ label, value, color }) => (
-  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "7px 0", borderBottom: "1px solid #f8fafc", gap: 8 }}>
-    <span style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.4, flexShrink: 0 }}>{label}</span>
-    <span style={{ fontSize: 11, fontWeight: 700, color: color || "#0f172a", textAlign: "right", lineHeight: 1.4, maxWidth: "60%" }}>{value || "—"}</span>
-  </div>
-);
+const TodaysPriority = ({ intelligenceFeed = [], connectedPlatforms = [], switchTab }) => {
+  let priority;
 
-const BrandIntelligencePreview = ({ brandIntelligence, switchTab }) => {
-  const feed        = [...(brandIntelligence?.executive || []), ...(brandIntelligence?.advisory || [])];
-  const topItem     = feed.find(i => i.urgency === "critical" || i.urgency === "high") || feed[0];
-  const opportunity = feed.find(i => ["opportunity", "growth"].includes(i.category));
-  const risk        = feed.find(i => i.category === "risk");
-  const isEmpty     = feed.length === 0;
+  if (intelligenceFeed.length > 0) {
+    const top = intelligenceFeed[0];
+    priority = {
+      badge: "Brand Intelligence",
+      badgeColor: "#2563eb",
+      title: top.title,
+      why: top.why_it_matters || top.finding,
+      impact: top.expected_impact,
+      time: top.priority === "high" ? "5–10 minutes" : "15–20 minutes",
+      cta: "View Intelligence →",
+      tab: "brand-intelligence",
+    };
+  } else if (connectedPlatforms.length === 0) {
+    priority = {
+      badge: "Setup Required",
+      badgeColor: "#dc2626",
+      title: "Connect your first platform",
+      why: "Platform connections enable Audience Intelligence, Content Intelligence, and the full intelligence cycle.",
+      impact: "More accurate recommendations, content scheduling, and campaign opportunities.",
+      time: "2–5 minutes",
+      cta: "Connect Now →",
+      tab: "integrations",
+    };
+  } else if (connectedPlatforms.length < 2) {
+    priority = {
+      badge: "Quick Win",
+      badgeColor: "#d97706",
+      title: "Connect a second platform to activate intelligence",
+      why: "Brand Intelligence V3 requires at least 2 connected platforms to generate strategic analysis.",
+      impact: "Enables the full intelligence cycle and cross-platform content strategy.",
+      time: "2–5 minutes",
+      cta: "Connect Now →",
+      tab: "integrations",
+    };
+  } else {
+    priority = {
+      badge: "Recommended",
+      badgeColor: "#059669",
+      title: "Run Brand Intelligence to generate today's priorities",
+      why: "Brand Intelligence analyses your connected platforms, content performance, and market position to surface your most impactful opportunities.",
+      impact: "Actionable strategic priorities based on your real brand data.",
+      time: "30 seconds",
+      cta: "Run Brand Intelligence →",
+      tab: "brand-intelligence",
+    };
+  }
+
+  return (
+    <div style={{
+      background: "linear-gradient(135deg, #f8faff 0%, #eff6ff 100%)",
+      border: "1px solid #dbeafe",
+      borderLeft: `4px solid ${priority.badgeColor}`,
+      borderRadius: 16,
+      padding: "20px 24px",
+      marginBottom: 8,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+        <span style={{
+          fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1.2,
+          color: priority.badgeColor, background: "rgba(255,255,255,0.85)",
+          border: `1px solid ${priority.badgeColor}33`,
+          borderRadius: 99, padding: "3px 9px",
+        }}>
+          {priority.badge}
+        </span>
+        <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, color: "#94a3b8" }}>
+          Today's Priority
+        </span>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 20, alignItems: "start" }}>
+        <div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", lineHeight: 1.3, marginBottom: 12 }}>
+            {priority.title}
+          </div>
+          <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+            {priority.why && (
+              <div style={{ flex: "1 1 180px" }}>
+                <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: "#94a3b8", marginBottom: 4 }}>Why</div>
+                <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.6 }}>{priority.why}</div>
+              </div>
+            )}
+            {priority.impact && (
+              <div style={{ flex: "1 1 180px" }}>
+                <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: "#94a3b8", marginBottom: 4 }}>Expected Impact</div>
+                <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.6 }}>{priority.impact}</div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10, flexShrink: 0 }}>
+          {priority.time && (
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: "#94a3b8", marginBottom: 2 }}>Est. Time</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>{priority.time}</div>
+            </div>
+          )}
+          <button
+            onClick={() => switchTab?.(priority.tab)}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              padding: "10px 20px", borderRadius: 10, border: "none", cursor: "pointer",
+              fontSize: 12, fontWeight: 700, letterSpacing: 0.2,
+              background: priority.badgeColor, color: "#fff",
+              transition: "opacity 0.15s", whiteSpace: "nowrap",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.opacity = "0.88"; }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
+          >
+            {priority.cta}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Platform Status ─────────────────────────────────────────────────────────────
+
+const PlatformStatus = ({ connectedPlatforms = [], switchTab }) => {
+  const connected = ALL_PLATFORMS.filter(p => connectedPlatforms.includes(p));
+  const missing   = ALL_PLATFORMS.filter(p => !connectedPlatforms.includes(p));
+  const readyPct  = Math.round((connected.length / ALL_PLATFORMS.length) * 100);
+  const isHealthy = connected.length === ALL_PLATFORMS.length;
+
+  return (
+    <div style={{ background: "#fff", border: "1px solid #f1f5f9", borderRadius: 16, padding: "20px 24px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+        <div>
+          <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: "#94a3b8", marginBottom: 3 }}>System Health</div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Platform Status</div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: isHealthy ? "#22c55e" : connected.length > 0 ? "#f59e0b" : "#ef4444", display: "inline-block" }} />
+          <span style={{ fontSize: 10, fontWeight: 700, color: isHealthy ? "#16a34a" : connected.length > 0 ? "#d97706" : "#dc2626" }}>
+            {isHealthy ? "Fully Connected" : connected.length > 0 ? "Partially Connected" : "Setup Required"}
+          </span>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 24, alignItems: "start" }}>
+        {/* Counters */}
+        <div style={{ display: "flex", gap: 12 }}>
+          <div style={{ textAlign: "center", background: "#f0fdf4", borderRadius: 12, padding: "14px 18px" }}>
+            <div style={{ fontSize: 30, fontWeight: 900, color: "#16a34a", lineHeight: 1 }}>{connected.length}</div>
+            <div style={{ fontSize: 10, fontWeight: 600, color: "#64748b", marginTop: 4 }}>Connected</div>
+          </div>
+          <div style={{ textAlign: "center", background: "#fff7ed", borderRadius: 12, padding: "14px 18px" }}>
+            <div style={{ fontSize: 30, fontWeight: 900, color: "#d97706", lineHeight: 1 }}>{missing.length}</div>
+            <div style={{ fontSize: 10, fontWeight: 600, color: "#64748b", marginTop: 4 }}>Remaining</div>
+          </div>
+        </div>
+
+        {/* Missing list + progress */}
+        <div>
+          {isHealthy ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0" }}>
+              <span style={{ fontSize: 22 }}>🎉</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>All platforms connected</div>
+                <div style={{ fontSize: 11, color: "#64748b" }}>Your intelligence engine has maximum data coverage.</div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "#94a3b8", marginBottom: 10 }}>Not Connected</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 14 }}>
+                {missing.map(p => (
+                  <span key={p} style={{
+                    fontSize: 11, fontWeight: 600, color: "#475569",
+                    background: "#f8fafc", border: "1px solid #e2e8f0",
+                    borderRadius: 8, padding: "4px 11px",
+                  }}>
+                    {PLATFORM_LABELS[p] || p}
+                  </span>
+                ))}
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+                <span style={{ fontSize: 9, fontWeight: 600, color: "#94a3b8" }}>Platform coverage</span>
+                <span style={{ fontSize: 9, fontWeight: 700, color: "#2563eb" }}>{readyPct}%</span>
+              </div>
+              <div style={{ height: 4, background: "#f1f5f9", borderRadius: 99, overflow: "hidden" }}>
+                <div style={{
+                  height: "100%", borderRadius: 99, width: `${readyPct}%`,
+                  background: "linear-gradient(90deg, #22c55e, #2563eb)",
+                  transition: "width 0.8s cubic-bezier(0.16,1,0.3,1)",
+                }} />
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {!isHealthy && (
+        <button
+          onClick={() => switchTab?.("integrations")}
+          style={{
+            display: "block", width: "100%", marginTop: 18,
+            background: "linear-gradient(135deg, #2563EB, #1d4ed8)",
+            border: "none", borderRadius: 10, padding: "10px 0",
+            fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer",
+            transition: "opacity 0.15s",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.opacity = "0.88"; }}
+          onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
+        >
+          Complete Platform Setup →
+        </button>
+      )}
+    </div>
+  );
+};
+
+// ── Brand Intelligence Preview ──────────────────────────────────────────────────
+
+const BrandIntelligencePreview = ({ intelligenceFeed = [], switchTab }) => {
+  const topItem     = intelligenceFeed[0];
+  const opportunity = intelligenceFeed.find(i =>
+    i.module_id === "growth_engine"       || i.category === "Growth Engine"      ||
+    i.module_id === "content_intelligence"|| i.category === "Content Intelligence"
+  );
+  const risk = intelligenceFeed.find(i =>
+    i.module_id === "platform_health" || i.category === "Platform Health"
+  );
+  const isEmpty = intelligenceFeed.length === 0;
+
+  const lastGenDate = topItem?.generated_at
+    ? new Date(topItem.generated_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    : null;
 
   return (
     <div style={{ background: "#fff", border: "1px solid #f1f5f9", borderRadius: 16, padding: "20px", height: "100%" }}>
@@ -209,7 +439,7 @@ const BrandIntelligencePreview = ({ brandIntelligence, switchTab }) => {
           <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: "#94a3b8", marginBottom: 3 }}>Strategic</div>
           <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>Brand Intelligence</div>
         </div>
-        <span style={{ fontSize: 8, fontWeight: 800, color: "#2563eb", background: "#eff6ff", border: "1px solid #93c5fd", borderRadius: 99, padding: "2px 8px", letterSpacing: 0.8 }}>LIVE</span>
+        <span style={{ fontSize: 8, fontWeight: 800, color: "#2563eb", background: "#eff6ff", border: "1px solid #93c5fd", borderRadius: 99, padding: "2px 8px", letterSpacing: 0.8 }}>AI</span>
       </div>
 
       {isEmpty ? (
@@ -218,10 +448,11 @@ const BrandIntelligencePreview = ({ brandIntelligence, switchTab }) => {
         </div>
       ) : (
         <div>
-          <SnapshotRow label="Next Best Action"  value={topItem?.cta || topItem?.title}  color="#2563eb" />
-          <SnapshotRow label="Growth Opportunity" value={opportunity?.title}              color="#059669" />
-          <SnapshotRow label="Growth Risk"        value={risk?.title}                     color="#dc2626" />
-          <SnapshotRow label="Confidence"         value={topItem?.confidence || "Live"}              />
+          <SnapshotRow label="Next Best Action"  value={topItem?.recommended_action || topItem?.title}  color="#2563eb" />
+          <SnapshotRow label="Top Opportunity"   value={opportunity?.title}                              color="#059669" />
+          <SnapshotRow label="Platform Risk"     value={risk?.title}                                     color="#dc2626" />
+          <SnapshotRow label="Confidence"        value={topItem?.confidence}                                            />
+          <SnapshotRow label="Last Generated"    value={lastGenDate}                                                    />
         </div>
       )}
 
@@ -242,6 +473,8 @@ const BrandIntelligencePreview = ({ brandIntelligence, switchTab }) => {
     </div>
   );
 };
+
+// ── Growth Engine Preview ───────────────────────────────────────────────────────
 
 const GrowthEnginePreview = ({ switchTab }) => (
   <div style={{ background: "#fff", border: "1px solid #f1f5f9", borderRadius: 16, padding: "20px", height: "100%", display: "flex", flexDirection: "column" }}>
@@ -283,10 +516,12 @@ const GrowthEnginePreview = ({ switchTab }) => (
   </div>
 );
 
+// ── Rewards Engine Preview ──────────────────────────────────────────────────────
+
 const RewardsEnginePreview = ({ growth = {}, switchTab }) => {
-  const points  = growth.points        || 0;
-  const level   = growth.level         || "Starter";
-  const streak  = growth.streak_days   || 0;
+  const points  = growth.points              || 0;
+  const level   = growth.level              || "Starter";
+  const streak  = growth.streak_days        || 0;
   const next    = growth.next_reward;
   const pct     = growth.progress_percentage || 0;
 
@@ -302,9 +537,9 @@ const RewardsEnginePreview = ({ growth = {}, switchTab }) => {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
         {[
-          { label: "Level",   value: level          },
-          { label: "Points",  value: points.toLocaleString() },
-          { label: "Streak",  value: `${streak}d 🔥`       },
+          { label: "Level",   value: level                                                                       },
+          { label: "Points",  value: points.toLocaleString()                                                     },
+          { label: "Streak",  value: `${streak}d 🔥`                                                             },
           { label: "Next",    value: next?.title ? next.title.slice(0, 18) + (next.title.length > 18 ? "…" : "") : "—" },
         ].map(({ label, value }) => (
           <div key={label} style={{ background: "#f8fafc", borderRadius: 10, padding: "10px 12px" }}>
@@ -314,7 +549,6 @@ const RewardsEnginePreview = ({ growth = {}, switchTab }) => {
         ))}
       </div>
 
-      {/* Progress bar */}
       <div style={{ marginBottom: 14 }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
           <span style={{ fontSize: 9, fontWeight: 600, color: "#94a3b8" }}>Progress to next reward</span>
@@ -354,12 +588,12 @@ const DashboardOverview = ({
   switchTab,
   user,
   growth,
-  brandIntelligence,
-  allContent         = [],
-  connectedPlatforms = [],
-  stats: metrics     = {},
-  brandDna           = { completionPct: 0 },
-  auditData          = null,
+  intelligenceFeed    = [],
+  allContent          = [],
+  connectedPlatforms  = [],
+  stats: metrics      = {},
+  brandDna            = { completionPct: 0 },
+  auditData           = null,
 }) => {
   const hour         = new Date().getHours();
   const greeting     = hour < 12 ? "Good Morning" : hour < 17 ? "Good Afternoon" : hour < 21 ? "Good Evening" : "Good Night";
@@ -371,9 +605,9 @@ const DashboardOverview = ({
   const dnaComplete    = brandDna.completionPct >= 70;
 
   let state = 1;
-  if (isConnected || brandDna.completionPct > 0)                                      state = 2;
-  if (isConnected && dnaComplete && (publishedCount > 0 || scheduledCount > 0))       state = 3;
-  if (state === 3 && publishedCount >= 10 && (metrics.reach || 0) > 1000)             state = 4;
+  if (isConnected || brandDna.completionPct > 0)                                state = 2;
+  if (isConnected && dnaComplete && (publishedCount > 0 || scheduledCount > 0)) state = 3;
+  if (state === 3 && publishedCount >= 10 && (metrics.reach || 0) > 1000)       state = 4;
 
   const subtitles = {
     1: "Let's set up your strategic foundation today.",
@@ -401,22 +635,36 @@ const DashboardOverview = ({
         )}
       </div>
 
-      {/* Activation state component */}
-      {state === 1 && <State1NewUser      switchTab={switchTab} brandDna={brandDna} />}
+      {/* Growth System Status */}
+      {state === 1 && <State1NewUser          switchTab={switchTab} brandDna={brandDna} />}
       {state === 2 && <State2PartialActivation switchTab={switchTab} brandDna={brandDna} />}
-      {state === 3 && <State3Active       switchTab={switchTab} connectedPlatforms={connectedPlatforms} publishedCount={publishedCount} />}
-      {state === 4 && <State4Advanced     switchTab={switchTab} />}
+      {state === 3 && <State3Active           switchTab={switchTab} connectedPlatforms={connectedPlatforms} publishedCount={publishedCount} />}
+      {state === 4 && <State4Advanced         switchTab={switchTab} />}
+
+      {/* ══ TODAY'S PRIORITY ═════════════════════════════════════════════════ */}
+      <SectionDivider label="Today's focus" />
+
+      <TodaysPriority
+        intelligenceFeed={intelligenceFeed}
+        connectedPlatforms={connectedPlatforms}
+        switchTab={switchTab}
+      />
 
       {/* ══ INSIGHTS SNAPSHOT ════════════════════════════════════════════════ */}
       <SectionDivider label="What's happening" />
 
       <InsightsSnapshot activeBrand={activeBrand} switchTab={switchTab} />
 
-      {/* ══ PREVIEW WIDGETS ══════════════════════════════════════════════════ */}
-      <SectionDivider label="Platform overview" />
+      {/* ══ PLATFORM STATUS ══════════════════════════════════════════════════ */}
+      <SectionDivider label="Platform health" />
+
+      <PlatformStatus connectedPlatforms={connectedPlatforms} switchTab={switchTab} />
+
+      {/* ══ GROWTH OVERVIEW ══════════════════════════════════════════════════ */}
+      <SectionDivider label="Growth overview" />
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
-        <BrandIntelligencePreview brandIntelligence={brandIntelligence} switchTab={switchTab} />
+        <BrandIntelligencePreview intelligenceFeed={intelligenceFeed} switchTab={switchTab} />
         <GrowthEnginePreview      switchTab={switchTab} />
         <RewardsEnginePreview     growth={growth} switchTab={switchTab} />
       </div>
