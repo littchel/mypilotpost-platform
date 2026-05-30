@@ -282,8 +282,6 @@ function App() {
   const [selectedCampaignId, setSelectedCampaignId] = useState(null);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [isDNAWizardOpen, setIsDNAWizardOpen] = useState(false);
-  const [activeInsight, setActiveInsight] = useState(null);
-  const [isInsightModalOpen, setIsInsightModalOpen] = useState(false);
   const [_brandInsights, _setBrandInsights] = useState([]);
 
   const [_selectedAsset, setSelectedAsset] = useState(null);
@@ -1292,7 +1290,7 @@ function App() {
       />
       <LayoutShell
         activeTab={activeTab}
-        switchTab={setActiveTab}
+        switchTab={switchTab}
         brands={brands}
         activeBrand={activeBrand}
         onSwitchBrand={switchBrand}
@@ -1311,18 +1309,14 @@ function App() {
       >
         {/* Dashboard Tab */}
         <TabContent id="dashboard" activeTab={activeTab}>
-          <DashboardOverview 
-            activeBrand={activeBrand} 
-            switchTab={setActiveTab} 
-            user={user} 
+          <DashboardOverview
+            activeBrand={activeBrand}
+            switchTab={switchTab}
+            user={user}
             growth={growth}
             brandIntelligence={brandIntelligence}
             allContent={allContent}
             connectedPlatforms={connectedPlatforms}
-            onInsightClick={(insight) => {
-              setActiveInsight(insight);
-              setIsInsightModalOpen(true);
-            }}
           />
         </TabContent>
 
@@ -1330,7 +1324,7 @@ function App() {
           <CreatePost
             selectedCampaignId={selectedCampaignId}
             setSelectedCampaignId={setSelectedCampaignId}
-            switchTab={setActiveTab}
+            switchTab={switchTab}
             campaigns={campaignsList}
           />
         </TabContent>
@@ -1371,12 +1365,12 @@ function App() {
 
         {/* Insights Tab — operational event feed */}
         <TabContent id="insights" activeTab={activeTab}>
-          <InsightsFeed activeBrand={activeBrand} switchTab={setActiveTab} />
+          <InsightsFeed activeBrand={activeBrand} switchTab={switchTab} />
         </TabContent>
 
         {/* Brand Intelligence Tab — strategic command center */}
         <TabContent id="brand-intelligence" activeTab={activeTab}>
-          <DashboardInsights activeBrand={activeBrand} switchTab={setActiveTab} />
+          <DashboardInsights activeBrand={activeBrand} switchTab={switchTab} />
         </TabContent>
 
         {/* Content Opportunities Tab */}
@@ -1478,12 +1472,6 @@ function App() {
         onRequestChanges={(id, comment) => updateStatus(id, 'draft', comment)}
       />
 
-      <InsightModal
-        isOpen={isInsightModalOpen}
-        onClose={() => setIsInsightModalOpen(false)}
-        insight={activeInsight}
-        onAction={(tab) => switchTab(tab)}
-      />
 
     </div>
   );
