@@ -262,3 +262,98 @@ Respond with only the JSON object. No markdown. No explanation.`;
 
   return json({ framework, ...result });
 }
+
+// ── Visual Brief Generator ────────────────────────────────────────────────────
+
+// Static search keywords per content idea type — injected with brand industry at runtime
+const IDEA_KEYWORDS = {
+  "Myth vs Reality":       ["misconception truth reveal", "fact vs fiction", "professional clarity"],
+  "Behind The Scenes":     ["behind the scenes authentic", "real process workplace", "team working"],
+  "Mistakes To Avoid":     ["common mistakes warning", "professional advice caution", "avoid errors"],
+  "Before & After":        ["transformation before after", "results improvement comparison", "success journey"],
+  "Customer Story":        ["happy customer testimonial", "client success story", "people smiling service"],
+  "FAQ":                   ["questions answers professional", "help desk support", "FAQ business"],
+  "Industry Prediction":   ["future technology innovation", "industry forecast trend", "bold vision prediction"],
+  "Unpopular Opinion":     ["bold statement contrast", "challenge convention", "strong opinion standout"],
+  "Problem / Solution":    ["problem solving professional", "solution success outcome", "challenge overcome"],
+  "Founder Insight":       ["founder entrepreneur leadership", "business insight professional", "executive portrait"],
+  "Top Tips":              ["tips advice professional", "top list best practices", "expert guidance"],
+  "Checklist":             ["checklist tasks organised", "step by step process", "planning preparation"],
+  "Lessons Learned":       ["lessons wisdom reflection", "experience learning growth", "professional insight"],
+  "Common Questions":      ["FAQ common questions", "helpful guide answers", "customer support"],
+  "Industry Reaction":     ["industry news reaction", "breaking news professional", "market update"],
+  "Case Study":            ["case study results metrics", "business success numbers", "data achievement"],
+  "Trend Analysis":        ["trend analysis data chart", "market trends business", "industry shift"],
+  "Community Question":    ["community conversation engagement", "people talking discussion", "audience interaction"],
+  "Success Story":         ["success milestone celebration", "achievement proud moment", "business growth"],
+  "Quick Win":             ["quick tip action result", "simple solution immediate", "easy win productivity"],
+};
+
+export async function generateVisualBrief(request, env, auth) {
+  if (!auth?.brand_id) return error("Unauthorized", "UNAUTHORIZED", null, 401);
+
+  const body = await request.json();
+  const { idea_name } = body;
+  if (!idea_name) return error("idea_name is required", "BAD_REQUEST", null, 400);
+
+  const db = getDB(env);
+
+  const [brand, profile] = await Promise.all([
+    db.prepare("SELECT name, industry FROM brands WHERE id = ?").bind(auth.brand_id).first(),
+    db.prepare("SELECT industry FROM brand_dna_profiles WHERE brand_id = ?").bind(auth.brand_id).first(),
+  ]);
+
+  const industry = profile?.industry || brand?.industry || "";
+  const baseKeywords = IDEA_KEYWORDS[idea_name] || ["professional business content", "brand marketing"];
+  const industryTerm = industry ? industry.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim() : "";
+
+  // Build 2-3 personalised search queries
+  const queries = baseKeywords.slice(0, 2).map(kw =>
+    industryTerm ? `${industryTerm} ${kw}` : kw
+  );
+
+  // Fetch images from Freepik (graceful no-op if key missing)
+  let images = [];
+  let videos = [];
+
+  if (env.FREEPIK_API_KEY) {
+    try {
+      const imgResults = await Promise.all(
+        queries.map(q =>
+          fetch(
+            `https://api.freepik.com/v1/resources?query=${encodeURIComponent(q)}&limit=2&filters[content_type][photo]=1`,
+            { headers: { "Accept-Language": "en-US", "X-Freepik-API-Key": env.FREEPIK_API_KEY } }
+          ).then(r => r.ok ? r.json() : { data: [] })
+        )
+      );
+      images = imgResults
+        .flatMap(r => r.data || [])
+        .slice(0, 3)
+        .map(item => ({
+          id:    item.id,
+          url:   item.previews?.[0]?.url || item.thumbnail?.url || null,
+          title: item.title || "",
+          link:  item.url || `https://www.freepik.com`,
+        }))
+        .filter(i => i.url);
+    } catch {}
+
+    try {
+      const vidRes = await fetch(
+        `https://api.freepik.com/v1/videos?query=${encodeURIComponent(queries[0])}&limit=2`,
+        { headers: { "Accept-Language": "en-US", "X-Freepik-API-Key": env.FREEPIK_API_KEY } }
+      );
+      if (vidRes.ok) {
+        const vidData = await vidRes.json();
+        videos = (vidData.data || []).slice(0, 2).map(item => ({
+          id:    item.id,
+          url:   item.previews?.[0]?.url || item.thumbnail?.url || null,
+          title: item.title || "",
+          link:  item.url || `https://www.freepik.com`,
+        })).filter(i => i.url);
+      }
+    } catch {}
+  }
+
+  return json({ idea_name, industry: industryTerm, queries, images, videos });
+}

@@ -207,7 +207,7 @@ import {
   detectCampaignPatterns
 } from "./core/campaigns/campaigns.js";
 
-import { generateCampaignPlan, generatePostIdea, generateRecommendation } from "./core/templates/templates.js";
+import { generateCampaignPlan, generatePostIdea, generateRecommendation, generateVisualBrief } from "./core/templates/templates.js";
 
 /* ======================================================
    ADMIN — CAMPAIGNS & EMAILS
@@ -1870,6 +1870,9 @@ export default {
 
         if (method === "POST" && path === "/api/customer/templates/generate-recommendation")
           return withCors(request, generateRecommendation(request, env, auth));
+
+        if (method === "POST" && path === "/api/customer/templates/visual-brief")
+          return withCors(request, generateVisualBrief(request, env, auth));
 
         /* ---------- AI & SEO ---------- */
         if (method === "POST" && path === "/api/customer/ai/generate/social")
