@@ -338,6 +338,7 @@ import {
 import { getAuditReport, getAuditReportPDF, getPublicAuditReport } from "./core/reports/audit_report.js";
 import { handleAdminPricing, handleAdminPricingById, togglePlanStatus, createAdminPricing, getPublicPricing } from "./api/admin/pricing.js";
 import { getSystemEvents } from "./api/admin/observability-api.js";
+import { getIntegrationsDiagnostics } from "./api/admin/integrations-diagnostics.js";
 
 /* ======================================================
    DELIVERY ENGINE
@@ -1031,6 +1032,12 @@ export default {
         if (path === "/api/v1/admin/operations/health") {
           await requireAdminAuth(request, env);
           return getOperationsHealth(env);
+        }
+
+        /* ---------- INTEGRATIONS DIAGNOSTICS ---------- */
+        if (path === "/api/v1/admin/integrations/diagnostics" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return getIntegrationsDiagnostics(env);
         }
 
         /* ---------- BLOG (MARKETING) ---------- */

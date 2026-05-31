@@ -171,6 +171,7 @@ pre{font-size:.72rem;background:#f8fafc;border:1px solid var(--border);padding:.
 
   <div class="nav-section">Operations</div>
   <div class="nav-item" data-section="operations">⚙️ Operations</div>
+  <div class="nav-item" data-section="integrations">🔌 Integrations</div>
   <div class="nav-item" data-section="system">🔍 System Log</div>
   <div class="nav-section">Compliance</div>
   <div class="nav-item" data-section="compliance">🛡️ Compliance</div>
@@ -427,6 +428,29 @@ pre{font-size:.72rem;background:#f8fafc;border:1px solid var(--border);padding:.
   </div>
 </div>
 
+<!-- INTEGRATIONS / PLATFORM OPERATIONS CENTER -->
+<div class="section" id="integrations">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+    <div>
+      <h4 style="font-size:1rem;font-weight:700;margin-bottom:.2rem">Platform Operations Center</h4>
+      <p style="font-size:.78rem;color:var(--muted)">Real connection health, token status, and data flow for every brand and platform.</p>
+    </div>
+    <button onclick="loadIntegrations()" style="padding:.4rem .9rem;border:1px solid var(--border);border-radius:8px;background:var(--panel);cursor:pointer;font-size:.78rem;font-weight:600">Refresh</button>
+  </div>
+
+  <!-- Summary strip -->
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:.75rem;margin-bottom:1.25rem" id="intSummary">
+    <div class="card" style="text-align:center"><div style="font-size:1.4rem;font-weight:800" id="intTotalBrands">—</div><div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">Brands</div></div>
+    <div class="card" style="text-align:center"><div style="font-size:1.4rem;font-weight:800" id="intTotalConns">—</div><div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">Connections</div></div>
+    <div class="card" style="text-align:center"><div style="font-size:1.4rem;font-weight:800;color:var(--good)" id="intActive">—</div><div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">Active</div></div>
+    <div class="card" style="text-align:center"><div style="font-size:1.4rem;font-weight:800;color:var(--warn)" id="intExpiring">—</div><div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">Expiring Soon</div></div>
+    <div class="card" style="text-align:center"><div style="font-size:1.4rem;font-weight:800;color:var(--bad)" id="intErrored">—</div><div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">Expired / Error</div></div>
+  </div>
+
+  <!-- Per-brand tables -->
+  <div id="intBrandsOut"><div class="empty" style="padding:3rem;text-align:center;color:var(--muted)">Loading...</div></div>
+</div>
+
 <!-- SYSTEM LOG -->
 <div class="section" id="system">
   <div class="card-flat">
@@ -600,8 +624,8 @@ function loadSection(id) {
     overview: loadOverview, customers: loadCustomers, analytics: loadAnalytics,
     billing: loadBilling, pricing: loadPricing, promotions: loadPromotions,
     blog: loadBlog, emails: loadEmails, support: loadSupport,
-    messaging: loadMessaging, operations: loadOperations, system: loadSystem,
-    compliance: loadCompliance
+    messaging: loadMessaging, operations: loadOperations, integrations: loadIntegrations,
+    system: loadSystem, compliance: loadCompliance
   };
   if (map[id]) map[id]();
 }
@@ -1021,6 +1045,106 @@ async function loadOperations() {
     const cls = sys.status === "operational" ? "ok" : "warn";
     document.getElementById("opStatus").innerHTML = `<span class="badge ${cls}">${sys.status}</span>`;
   }
+}
+
+/* INTEGRATIONS — PLATFORM OPERATIONS CENTER */
+async function loadIntegrations() {
+  const out = document.getElementById("intBrandsOut");
+  out.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--muted);font-size:.82rem">Loading...</div>`;
+  const d = await apiFetch("/v1/admin/integrations/diagnostics");
+  if (!d) { out.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--bad)">Failed to load diagnostics.</div>`; return; }
+
+  // Summary strip
+  document.getElementById("intTotalBrands").textContent = fmt(d.summary.total_brands);
+  document.getElementById("intTotalConns").textContent  = fmt(d.summary.total_connections);
+  document.getElementById("intActive").textContent      = fmt(d.summary.active);
+  document.getElementById("intExpiring").textContent    = fmt(d.summary.expiring_soon);
+  document.getElementById("intErrored").textContent     = fmt(d.summary.expired_or_error);
+
+  if (!d.brands?.length) {
+    out.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--muted)">No brands found.</div>`;
+    return;
+  }
+
+  const dot = s => {
+    const c = s === "green" ? "var(--good)" : s === "yellow" ? "var(--warn)" : s === "red" ? "var(--bad)" : "#94a3b8";
+    return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};margin-right:.4rem"></span>`;
+  };
+  const cap = v => v ? `<span style="color:var(--good);font-size:.7rem">✓</span>` : `<span style="color:#cbd5e1;font-size:.7rem">—</span>`;
+  const ago = s => {
+    if (!s) return '<span style="color:#94a3b8">Never</span>';
+    const days = Math.floor((Date.now() - new Date(s)) / 86400000);
+    if (days === 0) return '<span style="color:var(--good)">Today</span>';
+    if (days === 1) return '<span style="color:var(--good)">Yesterday</span>';
+    if (days <= 7)  return `<span style="color:var(--warn)">${days}d ago</span>`;
+    return `<span style="color:var(--bad)">${days}d ago</span>`;
+  };
+  const expiry = s => {
+    if (!s) return '<span style="color:var(--muted)">No expiry</span>';
+    const days = Math.floor((new Date(s) - Date.now()) / 86400000);
+    if (days < 0)   return `<span style="color:var(--bad)">Expired ${Math.abs(days)}d ago</span>`;
+    if (days <= 7)  return `<span style="color:var(--warn)">Expires in ${days}d</span>`;
+    return `<span style="color:var(--good)">Expires in ${days}d</span>`;
+  };
+
+  out.innerHTML = d.brands.map(brand => {
+    if (!brand.platforms.length) return `
+      <div class="card-flat" style="margin-bottom:.75rem">
+        <div style="display:flex;align-items:center;gap:.5rem">
+          ${dot("none")}<strong style="font-size:.85rem">${brand.brand_name}</strong>
+          <span style="font-size:.72rem;color:var(--muted);margin-left:.5rem">No connections</span>
+        </div>
+      </div>`;
+
+    return `
+    <div class="card-flat" style="margin-bottom:1rem">
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem">
+        ${dot(brand.brand_health)}<strong style="font-size:.85rem">${brand.brand_name}</strong>
+        <span style="font-size:.7rem;color:var(--muted);margin-left:.25rem">${brand.platform_count} platform${brand.platform_count !== 1 ? "s" : ""}</span>
+      </div>
+      <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:.75rem">
+        <thead>
+          <tr style="background:#f8fafc">
+            <th style="padding:.45rem .6rem;text-align:left;font-weight:600;border-bottom:1px solid var(--border)">Platform</th>
+            <th style="padding:.45rem .6rem;text-align:left;font-weight:600;border-bottom:1px solid var(--border)">Account</th>
+            <th style="padding:.45rem .6rem;text-align:center;font-weight:600;border-bottom:1px solid var(--border)">Token</th>
+            <th style="padding:.45rem .6rem;text-align:left;font-weight:600;border-bottom:1px solid var(--border)">Expires</th>
+            <th style="padding:.45rem .6rem;text-align:center;font-weight:600;border-bottom:1px solid var(--border)">Pub</th>
+            <th style="padding:.45rem .6rem;text-align:center;font-weight:600;border-bottom:1px solid var(--border)">Analytics</th>
+            <th style="padding:.45rem .6rem;text-align:center;font-weight:600;border-bottom:1px solid var(--border)">Media</th>
+            <th style="padding:.45rem .6rem;text-align:center;font-weight:600;border-bottom:1px solid var(--border)">Refresh</th>
+            <th style="padding:.45rem .6rem;text-align:left;font-weight:600;border-bottom:1px solid var(--border)">Last Post</th>
+            <th style="padding:.45rem .6rem;text-align:left;font-weight:600;border-bottom:1px solid var(--border)">Last Metrics</th>
+            <th style="padding:.45rem .6rem;text-align:right;font-weight:600;border-bottom:1px solid var(--border)">Posts</th>
+            <th style="padding:.45rem .6rem;text-align:right;font-weight:600;border-bottom:1px solid var(--border)">Failed</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${brand.platforms.map(p => `
+          <tr style="border-bottom:1px solid #f1f5f9">
+            <td style="padding:.45rem .6rem;font-weight:600">${dot(p.token_health)}${p.platform}</td>
+            <td style="padding:.45rem .6rem;color:var(--muted)">${p.username || p.account_id || "—"}</td>
+            <td style="padding:.45rem .6rem;text-align:center">
+              <span style="font-size:.68rem;font-weight:700;padding:.15rem .45rem;border-radius:4px;background:${p.token_health==="green"?"#dcfce7":p.token_health==="yellow"?"#fef9c3":"#fee2e2"};color:${p.token_health==="green"?"var(--good)":p.token_health==="yellow"?"var(--warn)":"var(--bad)"}">
+                ${p.status}
+              </span>
+            </td>
+            <td style="padding:.45rem .6rem">${expiry(p.expires_at)}</td>
+            <td style="padding:.45rem .6rem;text-align:center">${cap(p.capabilities.publishing)}</td>
+            <td style="padding:.45rem .6rem;text-align:center">${cap(p.capabilities.analytics)}</td>
+            <td style="padding:.45rem .6rem;text-align:center">${cap(p.capabilities.media)}</td>
+            <td style="padding:.45rem .6rem;text-align:center">${cap(p.capabilities.refresh)}</td>
+            <td style="padding:.45rem .6rem">${ago(p.last_publish)}</td>
+            <td style="padding:.45rem .6rem">${ago(p.last_metrics)}</td>
+            <td style="padding:.45rem .6rem;text-align:right">${fmt(p.delivered)}</td>
+            <td style="padding:.45rem .6rem;text-align:right;color:${p.failed > 0 ? "var(--bad)" : "var(--muted)"}">${fmt(p.failed)}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+      </div>
+    </div>`;
+  }).join("");
 }
 
 /* SYSTEM LOG */
