@@ -2,13 +2,33 @@
  * Meta (Facebook/Instagram) Adaptive Integration
  * Exchanges user token for a long-lived Page access token via /me/accounts.
  */
+
+async function appSecretProof(accessToken, appSecret) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw", enc.encode(appSecret),
+    { name: "HMAC", hash: "SHA-256" },
+    false, ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(accessToken));
+  return Array.from(new Uint8Array(sig))
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 export async function normalize(tokenData, env) {
   const userAccessToken = tokenData.access_token;
 
   console.log(`[META_NORMALIZE] fetching pages with user token (token length=${userAccessToken?.length})`);
 
+  const proof = env.META_CLIENT_SECRET
+    ? await appSecretProof(userAccessToken, env.META_CLIENT_SECRET)
+    : null;
+
+  const proofParam = proof ? `&appsecret_proof=${proof}` : "";
+
   const pagesRes = await fetch(
-    `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,category,tasks,access_token&access_token=${userAccessToken}`
+    `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,category,tasks,access_token&access_token=${userAccessToken}${proofParam}`
   );
   const pagesData = await pagesRes.json();
 
