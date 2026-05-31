@@ -1,3 +1,4 @@
+import { decrypt } from "../../../lib/crypto.js";
 import { fetchLinkedInMetrics } from "./adapters/linkedin.js";
 import { fetchFacebookMetrics } from "./adapters/facebook.js";
 import { fetchXMetrics } from "./adapters/x.js";
@@ -32,17 +33,24 @@ export async function runPerformanceIngestion(env) {
 
     const account = await env.DB.prepare(`
       SELECT access_token, refresh_token
-      FROM connected_accounts
+      FROM social_connections
       WHERE brand_id = ?
         AND platform = ?
+        AND status = 'active'
+      ORDER BY updated_at DESC
       LIMIT 1
     `).bind(row.brand_id, row.platform).first();
 
     if (!account?.access_token) continue;
 
+    let accessToken;
+    try {
+      accessToken = await decrypt(account.access_token, env.ENCRYPTION_SECRET);
+    } catch { continue; }
+
     try {
       const metrics = await adapter({
-        accessToken: account.access_token,
+        accessToken,
         externalPostId: row.external_post_id
       });
 

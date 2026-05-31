@@ -157,7 +157,7 @@ export async function getIntelligenceFeedHandler(request, env, auth) {
 
   // Check connected platform count (gate enforcement)
   const platformRow = await db.prepare(`
-    SELECT COUNT(*) as total FROM connected_accounts
+    SELECT COUNT(*) as total FROM social_connections
     WHERE brand_id = ? AND status = 'active'
   `).bind(brand_id).first();
   const platformCount = platformRow?.total || 0;

@@ -11,7 +11,7 @@
  *   brand_audit_v2:    website_url, overall_score, full_report_json
  *   delivery_jobs:     platform, status, created_at
  *   content_analytics: platform, impressions, engagements, clicks, created_at (no ctr)
- *   connected_accounts: provider (not platform), status, token_expires_at (not expires_at)
+ *   social_connections: platform, status, expires_at
  *   blog_posts:        status, created_at
  *   campaigns:         status
  */
@@ -67,10 +67,9 @@ export async function buildIntelligenceContext(db, brandId) {
       GROUP BY platform
     `).bind(brandId).all(),
 
-    // provider (not platform), token_expires_at (not expires_at)
     db.prepare(`
-      SELECT provider, status, token_expires_at
-      FROM connected_accounts WHERE brand_id = ?
+      SELECT platform AS provider, status, expires_at AS token_expires_at
+      FROM social_connections WHERE brand_id = ?
     `).bind(brandId).all(),
 
     db.prepare(`

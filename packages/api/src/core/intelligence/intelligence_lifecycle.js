@@ -172,8 +172,8 @@ async function expireMaxImpressionItems(db, brandId, now) {
 async function runAutoResolve(db, brandId, now) {
   // ── 1. Platform connections ──────────────────────────────────────────────
   const platformRow = await db.prepare(`
-    SELECT COUNT(DISTINCT provider) as total
-    FROM connected_accounts
+    SELECT COUNT(DISTINCT platform) as total
+    FROM social_connections
     WHERE brand_id = ? AND status = 'active'
   `).bind(brandId).first();
 

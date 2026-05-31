@@ -51,8 +51,8 @@ export async function getBrandIntelligence(request, env, auth) {
 
     // Integrations
     const { results: integrations } = await db.prepare(`
-      SELECT provider 
-      FROM connected_accounts 
+      SELECT platform AS provider
+      FROM social_connections
       WHERE brand_id = ? AND status = 'active'
     `).bind(brandId).all();
 

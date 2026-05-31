@@ -229,7 +229,7 @@ export async function getGrowthEngine(request, env, auth) {
       brand_id),
 
     safeFirst(db,
-      "SELECT COUNT(DISTINCT platform) as count, GROUP_CONCAT(DISTINCT platform) as platforms FROM connected_accounts WHERE brand_id = ? AND status = 'active'",
+      "SELECT COUNT(DISTINCT platform) as count, GROUP_CONCAT(DISTINCT platform) as platforms FROM social_connections WHERE brand_id = ? AND status = 'active'",
       brand_id),
 
     safeCount(db,

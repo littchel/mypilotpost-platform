@@ -371,7 +371,7 @@ export async function generateInsights(env, auth) {
  */
 async function generateAuditData(db, brandId, userId) {
   const postCount = await db.prepare("SELECT COUNT(*) as total FROM delivery_jobs WHERE brand_id = ?").bind(brandId).first();
-  const platformCount = await db.prepare("SELECT COUNT(*) as total FROM connected_accounts WHERE brand_id = ?").bind(brandId).first();
+  const platformCount = await db.prepare("SELECT COUNT(*) as total FROM social_connections WHERE brand_id = ? AND status = 'active'").bind(brandId).first();
   const analytics = await db.prepare("SELECT AVG(engagements) as eng FROM content_analytics WHERE brand_id = ?").bind(brandId).first();
   
   const weaknesses = [];

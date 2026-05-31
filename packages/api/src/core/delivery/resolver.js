@@ -41,18 +41,19 @@ export async function resolveDeliveryData(env, job) {
     ORDER BY l.position ASC
   `).bind(job.content_id, job.brand_id).all();
 
-  // 3. Resolve Connection (Standard table: connected_accounts)
+  // 3. Resolve Connection (canonical table: social_connections)
   const connection = await db.prepare(`
-    SELECT 
-      id, 
-      provider, 
-      provider_account_id, 
-      provider_account_name,
-      access_token_encrypted, 
-      refresh_token_encrypted,
-      metadata
-    FROM connected_accounts
-    WHERE brand_id = ? AND provider = ? AND status = 'active'
+    SELECT
+      id,
+      platform,
+      account_id,
+      platform_username,
+      access_token,
+      refresh_token,
+      meta
+    FROM social_connections
+    WHERE brand_id = ? AND platform = ? AND status = 'active'
+    ORDER BY updated_at DESC
     LIMIT 1
   `).bind(job.brand_id, job.platform).first();
 
@@ -61,16 +62,16 @@ export async function resolveDeliveryData(env, job) {
   // 4. Decrypt Token
   let access_token = null;
   try {
-    access_token = await decrypt(connection.access_token_encrypted, secret);
+    access_token = await decrypt(connection.access_token, secret);
   } catch (err) {
     throw new Error(`TOKEN_DECRYPTION_FAILED: ${err.message}`);
   }
 
   // 5. Parse Metadata
   let metadata = {};
-  if (connection.metadata) {
+  if (connection.meta) {
     try {
-      metadata = JSON.parse(connection.metadata);
+      metadata = JSON.parse(connection.meta);
     } catch (e) {
       metadata = {};
     }
@@ -87,9 +88,9 @@ export async function resolveDeliveryData(env, job) {
     },
     connection: {
       id: connection.id,
-      platform: connection.provider,
-      account_id: connection.provider_account_id,
-      account_name: connection.provider_account_name,
+      platform: connection.platform,
+      account_id: connection.account_id,
+      account_name: connection.platform_username,
       access_token: access_token,
       metadata: metadata
     }
