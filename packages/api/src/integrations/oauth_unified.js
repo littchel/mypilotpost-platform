@@ -223,8 +223,11 @@ export async function handleUnifiedCallback(request, env) {
 
   const tokenData = await tokenRes.json();
   if (!tokenRes.ok) {
-    const errMsg = tokenData.error_description || tokenData.error || "Token exchange failed";
-    console.error(`[OAUTH_TOKEN_EXCHANGE_FAILED] platform=${platform} status=${tokenRes.status} error=${tokenData.error} desc=${tokenData.error_description} redirect_uri=${redirectUri}`);
+    const rawErr = tokenData.error;
+    const errMsg = tokenData.error_description ||
+      (rawErr && typeof rawErr === 'object' ? rawErr.message : rawErr) ||
+      "Token exchange failed";
+    console.error(`[OAUTH_TOKEN_EXCHANGE_FAILED] platform=${platform} status=${tokenRes.status} error=${JSON.stringify(rawErr)} desc=${tokenData.error_description} redirect_uri=${redirectUri}`);
     throw new Error(errMsg);
   }
 
@@ -285,7 +288,7 @@ export async function handleUnifiedCallback(request, env) {
     // Redirect back to dashboard with success (SPA root — tab state handled client-side)
     return Response.redirect(`${env.FRONTEND_URL}?oauth_success=${platform}`, 302);
   } catch (err) {
-    console.error(`[OAUTH_CALLBACK_FAILED] ${platform}:`, err.message);
-    return Response.redirect(`${env.FRONTEND_URL}?oauth_error=${encodeURIComponent(err.message)}`, 302);
+    console.error(`[OAUTH_CALLBACK_FAILED] ${platform}:`, err.message || err);
+    return Response.redirect(`${env.FRONTEND_URL}?oauth_error=${encodeURIComponent(err.message || String(err) || 'OAuth failed')}`, 302);
   }
 }

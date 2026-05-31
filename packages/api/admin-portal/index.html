@@ -532,7 +532,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
   const pass = document.getElementById("loginPass").value;
 
   console.log("[ADMIN] login attempt:", email);
-  const res = await fetch(API + "/v1/auth/login", {
+  const res = await fetch(API + "/admin/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password: pass })
