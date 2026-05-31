@@ -10,7 +10,7 @@ import { json } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
 
 export async function getInsightsFeed(request, env, auth) {
-  const { brand_id } = auth;
+  const { brand_id, user_id } = auth;
   const db = getDB(env);
 
   const [
@@ -36,9 +36,9 @@ export async function getInsightsFeed(request, env, auth) {
       SELECT f.id, f.platform, f.failure_type, f.failure_reason, f.failed_at
       FROM content_delivery_failures f
       INNER JOIN content_delivery_jobs j ON j.id = f.job_id
-      WHERE j.brand_id = ?
+      WHERE j.customer_id = ?
       ORDER BY f.failed_at DESC LIMIT 8
-    `).bind(brand_id).all(),
+    `).bind(user_id).all(),
 
     db.prepare(`
       SELECT id, name, status, objective_type, updated_at
