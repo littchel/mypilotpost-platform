@@ -591,7 +591,7 @@ export default function GrowthEngine({ activeBrand, switchTab }) {
 
   const { data, loading, error } = useApi(
     brandId ? `/api/customer/growth-engine` : null,
-    { deps: [brandId] }
+    [brandId]
   );
 
   if (!brandId) return (

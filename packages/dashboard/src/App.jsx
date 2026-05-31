@@ -39,7 +39,7 @@ import GrowthEngine from "./pages/GrowthEngine";
 import DashboardInsights from "./pages/DashboardInsights";
 import InsightsFeed from "./pages/InsightsFeed";
 import BrandDNA from "./pages/BrandDNA";
-import Templates from "./pages/Templates";
+import AIContentStudio from "./pages/AIContentStudio";
 import BillingTab from "./pages/BillingTab";
 import NotificationsTab from "./pages/NotificationsTab";
 import AssistantModal from "./components/shared/AssistantModal";
@@ -1374,9 +1374,9 @@ function App() {
           <DashboardInsights activeBrand={activeBrand} switchTab={switchTab} />
         </TabContent>
 
-        {/* Content Opportunities Tab */}
+        {/* AI Content Studio Tab */}
         <TabContent id="templates" activeTab={activeTab}>
-          <Templates
+          <AIContentStudio
             activeBrand={activeBrand}
             intelligenceFeed={intelligenceFeed}
             connectedPlatforms={connectedPlatforms}
