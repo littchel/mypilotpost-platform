@@ -3,14 +3,33 @@
  * Exchanges user token for a Page access token and resolves the connected
  * Instagram Business Account ID required for the Content Publishing API.
  */
+
+async function appSecretProof(accessToken, appSecret) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw", enc.encode(appSecret),
+    { name: "HMAC", hash: "SHA-256" },
+    false, ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(accessToken));
+  return Array.from(new Uint8Array(sig))
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 export async function normalize(tokenData, env) {
   const userAccessToken = tokenData.access_token;
 
   console.log(`[META_INSTAGRAM_SCOPES] normalizing instagram token (token_length=${userAccessToken?.length})`);
 
+  const userProof = env.META_CLIENT_SECRET
+    ? await appSecretProof(userAccessToken, env.META_CLIENT_SECRET)
+    : null;
+  const userProofParam = userProof ? `&appsecret_proof=${userProof}` : "";
+
   // Step 1: Fetch connected Facebook Pages (pages_show_list scope)
   const pagesRes = await fetch(
-    `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${userAccessToken}`
+    `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${userAccessToken}${userProofParam}`
   );
   const pagesData = await pagesRes.json();
 
@@ -37,8 +56,13 @@ export async function normalize(tokenData, env) {
   console.log(`[META_INSTAGRAM_SCOPES] ig_account_id=${igAccountId} page_id=${pageWithIg.id} page_name="${pageWithIg.name}"`);
 
   // Step 3: Fetch IG Business Account username/name for display
+  const pageProof = env.META_CLIENT_SECRET
+    ? await appSecretProof(pageWithIg.access_token, env.META_CLIENT_SECRET)
+    : null;
+  const pageProofParam = pageProof ? `&appsecret_proof=${pageProof}` : "";
+
   const igRes = await fetch(
-    `https://graph.facebook.com/v21.0/${igAccountId}?fields=id,name,username&access_token=${pageWithIg.access_token}`
+    `https://graph.facebook.com/v21.0/${igAccountId}?fields=id,name,username&access_token=${pageWithIg.access_token}${pageProofParam}`
   );
   const igData = await igRes.json();
 
