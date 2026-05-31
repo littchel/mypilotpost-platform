@@ -154,6 +154,23 @@ export async function getIntegrationsDiagnostics(env) {
     };
   });
 
+  // Latest backfill run
+  const backfillRes = await db.prepare(`
+    SELECT id, brand_id, platform, status, started_at, completed_at,
+           rows_imported, rows_skipped, rows_failed, date_from, date_to
+    FROM backfill_runs
+    ORDER BY started_at DESC
+    LIMIT 1
+  `).first().catch(() => null);
+
+  const runningRes = await db.prepare(`
+    SELECT COUNT(*) AS n FROM backfill_runs WHERE status = 'running'
+  `).first().catch(() => ({ n: 0 }));
+
+  const totalImported = await db.prepare(`
+    SELECT SUM(rows_imported) AS total FROM backfill_runs WHERE status = 'completed'
+  `).first().catch(() => ({ total: 0 }));
+
   return json({
     generated_at: new Date().toISOString(),
     summary: {
@@ -162,6 +179,11 @@ export async function getIntegrationsDiagnostics(env) {
       active:            activeCount,
       expiring_soon:     allConns.filter(c => tokenHealth(c) === "yellow").length,
       expired_or_error:  expiredCount + errorCount,
+    },
+    backfill: {
+      last_run:        backfillRes || null,
+      running_count:   runningRes?.n  || 0,
+      total_imported:  totalImported?.total || 0,
     },
     brands: brandData,
   });

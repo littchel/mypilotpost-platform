@@ -447,6 +447,55 @@ pre{font-size:.72rem;background:#f8fafc;border:1px solid var(--border);padding:.
     <div class="card" style="text-align:center"><div style="font-size:1.4rem;font-weight:800;color:var(--bad)" id="intErrored">—</div><div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">Expired / Error</div></div>
   </div>
 
+  <!-- Backfill Controls -->
+  <div class="card-flat" style="margin-bottom:1.25rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+      <div>
+        <h5 style="font-size:.82rem;font-weight:700;margin-bottom:.15rem">Historical Analytics Backfill</h5>
+        <p style="font-size:.72rem;color:var(--muted)">Imports up to 90 days of past post performance from each connected platform.</p>
+      </div>
+      <button id="backfillRunBtn" onclick="triggerBackfill()"
+        style="padding:.4rem 1rem;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:700">
+        Run Backfill
+      </button>
+    </div>
+    <!-- Backfill filters -->
+    <div style="display:flex;gap:.6rem;align-items:center;margin-bottom:.9rem;flex-wrap:wrap">
+      <select id="backfillPlatform" style="font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:6px;background:var(--panel)">
+        <option value="">All Platforms</option>
+        <option>instagram</option><option>threads</option><option>facebook</option>
+        <option>linkedin</option><option>x</option><option>pinterest</option>
+        <option>tiktok</option><option>youtube</option>
+      </select>
+      <select id="backfillDays" style="font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:6px;background:var(--panel)">
+        <option value="30">30 days</option>
+        <option value="60">60 days</option>
+        <option value="90" selected>90 days</option>
+      </select>
+    </div>
+    <!-- Backfill stats row -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin-bottom:.9rem" id="backfillStats">
+      <div style="background:#f8fafc;border-radius:8px;padding:.5rem .75rem;text-align:center">
+        <div style="font-size:1.1rem;font-weight:800" id="bfTotalImported">—</div>
+        <div style="font-size:.68rem;color:var(--muted)">Total Imported</div>
+      </div>
+      <div style="background:#f8fafc;border-radius:8px;padding:.5rem .75rem;text-align:center">
+        <div style="font-size:1.1rem;font-weight:800" id="bfLastStatus">—</div>
+        <div style="font-size:.68rem;color:var(--muted)">Last Status</div>
+      </div>
+      <div style="background:#f8fafc;border-radius:8px;padding:.5rem .75rem;text-align:center">
+        <div style="font-size:1.1rem;font-weight:800" id="bfLastRun">—</div>
+        <div style="font-size:.68rem;color:var(--muted)">Last Run</div>
+      </div>
+      <div style="background:#f8fafc;border-radius:8px;padding:.5rem .75rem;text-align:center">
+        <div style="font-size:1.1rem;font-weight:800" id="bfDateRange">—</div>
+        <div style="font-size:.68rem;color:var(--muted)">Range</div>
+      </div>
+    </div>
+    <!-- Recent runs table -->
+    <div id="backfillRunsOut"></div>
+  </div>
+
   <!-- Per-brand tables -->
   <div id="intBrandsOut"><div class="empty" style="padding:3rem;text-align:center;color:var(--muted)">Loading...</div></div>
 </div>
@@ -1061,6 +1110,10 @@ async function loadIntegrations() {
   document.getElementById("intExpiring").textContent    = fmt(d.summary.expiring_soon);
   document.getElementById("intErrored").textContent     = fmt(d.summary.expired_or_error);
 
+  // Backfill stats
+  populateBackfillStats(d.backfill);
+  await loadBackfillRuns();
+
   if (!d.brands?.length) {
     out.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--muted)">No brands found.</div>`;
     return;
@@ -1145,6 +1198,74 @@ async function loadIntegrations() {
       </div>
     </div>`;
   }).join("");
+}
+
+/* BACKFILL */
+function populateBackfillStats(backfill) {
+  if (!backfill) return;
+  const last = backfill.last_run;
+  document.getElementById("bfTotalImported").textContent = fmt(backfill.total_imported || 0);
+  if (last) {
+    const statusColor = last.status === "completed" ? "var(--good)" : last.status === "running" ? "var(--warn)" : "var(--bad)";
+    document.getElementById("bfLastStatus").innerHTML = `<span style="color:${statusColor};font-size:.8rem">${last.status}</span>`;
+    const daysAgo = Math.floor((Date.now() - new Date(last.started_at)) / 86400000);
+    document.getElementById("bfLastRun").textContent = daysAgo === 0 ? "Today" : daysAgo === 1 ? "Yesterday" : `${daysAgo}d ago`;
+    document.getElementById("bfDateRange").textContent = last.date_from && last.date_to
+      ? `${last.date_from} → ${last.date_to}` : "—";
+  }
+  if (backfill.running_count > 0) {
+    document.getElementById("backfillRunBtn").textContent = "Running…";
+    document.getElementById("backfillRunBtn").disabled = true;
+  }
+}
+
+async function loadBackfillRuns() {
+  const runsOut = document.getElementById("backfillRunsOut");
+  const d = await apiFetch("/v1/admin/integrations/backfill/status");
+  if (!d?.runs?.length) { runsOut.innerHTML = ""; return; }
+  const statusBadge = s => {
+    const c = s === "completed" ? "#dcfce7;color:var(--good)" : s === "running" ? "#fef9c3;color:var(--warn)" : "#fee2e2;color:var(--bad)";
+    return `<span style="font-size:.67rem;font-weight:700;padding:.12rem .4rem;border-radius:4px;background:${c}">${s}</span>`;
+  };
+  runsOut.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:.73rem">
+      <thead><tr style="background:#f8fafc">
+        <th style="padding:.4rem .5rem;text-align:left;font-weight:600;border-bottom:1px solid var(--border)">Started</th>
+        <th style="padding:.4rem .5rem;text-align:left;font-weight:600;border-bottom:1px solid var(--border)">Platform</th>
+        <th style="padding:.4rem .5rem;text-align:center;font-weight:600;border-bottom:1px solid var(--border)">Status</th>
+        <th style="padding:.4rem .5rem;text-align:right;font-weight:600;border-bottom:1px solid var(--border)">Imported</th>
+        <th style="padding:.4rem .5rem;text-align:right;font-weight:600;border-bottom:1px solid var(--border)">Skipped</th>
+        <th style="padding:.4rem .5rem;text-align:right;font-weight:600;border-bottom:1px solid var(--border)">Failed</th>
+        <th style="padding:.4rem .5rem;text-align:left;font-weight:600;border-bottom:1px solid var(--border)">Range</th>
+      </tr></thead>
+      <tbody>${d.runs.map(r => `
+        <tr style="border-bottom:1px solid #f1f5f9">
+          <td style="padding:.4rem .5rem;white-space:nowrap">${fmtDate(r.started_at)}</td>
+          <td style="padding:.4rem .5rem;color:var(--muted)">${r.platform || "all"}</td>
+          <td style="padding:.4rem .5rem;text-align:center">${statusBadge(r.status)}</td>
+          <td style="padding:.4rem .5rem;text-align:right;color:var(--good);font-weight:700">${fmt(r.rows_imported)}</td>
+          <td style="padding:.4rem .5rem;text-align:right;color:var(--muted)">${fmt(r.rows_skipped)}</td>
+          <td style="padding:.4rem .5rem;text-align:right;color:${r.rows_failed > 0 ? "var(--bad)" : "var(--muted)"}">${fmt(r.rows_failed)}</td>
+          <td style="padding:.4rem .5rem;color:var(--muted);font-size:.68rem">${r.date_from||""} → ${r.date_to||""}</td>
+        </tr>`).join("")}
+      </tbody>
+    </table>`;
+}
+
+async function triggerBackfill() {
+  const btn = document.getElementById("backfillRunBtn");
+  const platform = document.getElementById("backfillPlatform").value;
+  const daysBack  = parseInt(document.getElementById("backfillDays").value, 10);
+  btn.textContent = "Running…";
+  btn.disabled = true;
+  const body = { days_back: daysBack };
+  if (platform) body.platform = platform;
+  const d = await apiFetch("/v1/admin/integrations/backfill", { method: "POST", body: JSON.stringify(body) });
+  btn.textContent = "Run Backfill";
+  btn.disabled = false;
+  if (!d) { alert("Backfill failed — check console"); return; }
+  alert(`Backfill complete: ${d.rowsImported} imported, ${d.rowsSkipped} skipped, ${d.rowsFailed} failed.`);
+  loadIntegrations();
 }
 
 /* SYSTEM LOG */

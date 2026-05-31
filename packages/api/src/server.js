@@ -339,6 +339,7 @@ import { getAuditReport, getAuditReportPDF, getPublicAuditReport } from "./core/
 import { handleAdminPricing, handleAdminPricingById, togglePlanStatus, createAdminPricing, getPublicPricing } from "./api/admin/pricing.js";
 import { getSystemEvents } from "./api/admin/observability-api.js";
 import { getIntegrationsDiagnostics } from "./api/admin/integrations-diagnostics.js";
+import { runBackfill, getBackfillStatus } from "./core/delivery/performance/backfill/engine.js";
 
 /* ======================================================
    DELIVERY ENGINE
@@ -1038,6 +1039,26 @@ export default {
         if (path === "/api/v1/admin/integrations/diagnostics" && method === "GET") {
           await requireAdminAuth(request, env);
           return getIntegrationsDiagnostics(env);
+        }
+
+        /* ---------- HISTORICAL ANALYTICS BACKFILL ---------- */
+        if (path === "/api/v1/admin/integrations/backfill" && method === "POST") {
+          await requireAdminAuth(request, env);
+          const body = await request.json().catch(() => ({}));
+          const result = await runBackfill(env, {
+            brandId:  body.brand_id  || undefined,
+            platform: body.platform  || undefined,
+            daysBack: body.days_back || 90,
+          });
+          return json(result);
+        }
+
+        if (path === "/api/v1/admin/integrations/backfill/status" && method === "GET") {
+          await requireAdminAuth(request, env);
+          const url = new URL(request.url);
+          const brandId = url.searchParams.get("brand_id") || undefined;
+          const runs = await getBackfillStatus(env, { brandId });
+          return json({ runs });
         }
 
         /* ---------- BLOG (MARKETING) ---------- */
