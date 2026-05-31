@@ -123,6 +123,7 @@ export const PROVIDERS = {
     type: "publishing",
     capabilities: ["publish_social"],
     auth: "oauth2",
+    client_id_param: "client_key",  // TikTok uses client_key instead of client_id
     scopes: "user.info.basic,video.upload,video.list",
     endpoints: {
       auth: "https://www.tiktok.com/v2/auth/authorize/",

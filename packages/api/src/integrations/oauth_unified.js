@@ -106,7 +106,7 @@ export async function startUnifiedOAuth(request, env, userContext) {
   }
 
   const authUrl = new URL(provider.endpoints.auth);
-  authUrl.searchParams.set("client_id", client_id);
+  authUrl.searchParams.set(provider.client_id_param || "client_id", client_id);
   authUrl.searchParams.set("redirect_uri", redirectUri);
   authUrl.searchParams.set("response_type", "code");
   authUrl.searchParams.set("state", state);
@@ -196,11 +196,12 @@ export async function handleUnifiedCallback(request, env) {
   // X (Twitter) and Pinterest require HTTP Basic auth; credentials must NOT appear in body
   const useBasicAuth = platform === 'x' || platform === 'pinterest';
 
+  const clientIdParamName = provider.client_id_param || "client_id";
   const tokenParams = new URLSearchParams({
     grant_type: "authorization_code",
     code,
     redirect_uri: redirectUri,
-    ...(useBasicAuth ? {} : { client_id, client_secret })
+    ...(useBasicAuth ? {} : { [clientIdParamName]: client_id, client_secret })
   });
 
   if (code_verifier) {
