@@ -35,6 +35,7 @@ import CreatePost from "./pages/CreatePost";
 import ContentManagement from "./pages/ContentManagement";
 import Teams from "./pages/Teams";
 import Growth from "./pages/Growth";
+import GrowthEngine from "./pages/GrowthEngine";
 import DashboardInsights from "./pages/DashboardInsights";
 import InsightsFeed from "./pages/InsightsFeed";
 import BrandDNA from "./pages/BrandDNA";
@@ -1353,6 +1354,10 @@ function App() {
         </TabContent>
         <TabContent id="growth" activeTab={activeTab}>
           <Growth brandId={activeBrand?.id} />
+        </TabContent>
+
+        <TabContent id="growth-engine" activeTab={activeTab}>
+          <GrowthEngine activeBrand={activeBrand} switchTab={switchTab} />
         </TabContent>
 
         <TabContent id="reporting" activeTab={activeTab}>

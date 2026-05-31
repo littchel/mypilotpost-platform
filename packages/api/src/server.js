@@ -85,13 +85,14 @@ import { createInvite, getInvites, getTeam, acceptInvite } from "./core/teams/ha
 import { submitForApproval, getApprovalRequests } from "./core/approvals/handlers.js";
 import { createReport, getReports, shareReport } from "./core/reporting/handlers.js";
 import { approveSocialAssetsBulk } from "./core/content/social.js";
-import { 
-  getGrowthSummary, 
-  getGrowthActivity, 
-  getGrowthRewards, 
-  processGrowthAction, 
-  registerReferral as registerGrowthReferral 
+import {
+  getGrowthSummary,
+  getGrowthActivity,
+  getGrowthRewards,
+  processGrowthAction,
+  registerReferral as registerGrowthReferral
 } from "./core/growth/handlers.js";
+import { getGrowthEngine } from "./core/growth/growth_engine.js";
 import {
   listInsights, resolveInsight, listAudits, getFullAudit,
   getIntelligenceFeedHandler, dismissIntelligenceHandler, forceRefreshIntelligence,
@@ -1257,6 +1258,9 @@ export default {
 
          if (method === "POST" && path === "/api/customer/growth/referral")
            return withCors(request, registerGrowthReferral(request, env, auth));
+
+         if (method === "GET" && path === "/api/customer/growth-engine")
+           return withCors(request, getGrowthEngine(request, env, auth));
 
 
                    if (method === "GET" && path === "/api/customer/analytics/executive")

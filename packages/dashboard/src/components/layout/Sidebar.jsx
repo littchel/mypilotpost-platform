@@ -40,11 +40,12 @@ const Sidebar = ({ activeTab, switchTab, brands, activeBrand, onSwitchBrand }) =
       {/* ── COMMAND TOWER ── */}
       <div className="nav-group-title">Command Tower</div>
       <nav aria-label="Command Tower">
-        <NavLink tab="dashboard"           activeTab={activeTab} switchTab={switchTab} icon="fas fa-tachometer-alt" label="Dashboard" />
-        <NavLink tab="insights"            activeTab={activeTab} switchTab={switchTab} icon="fas fa-stream"         label="Insights" />
-        <NavLink tab="brand-intelligence"  activeTab={activeTab} switchTab={switchTab} icon="fas fa-brain"          label="Brand Intelligence" />
-        <NavLink tab="templates"           activeTab={activeTab} switchTab={switchTab} icon="fas fa-layer-group"    label="Templates" />
-        <NavLink tab="brand-dna"           activeTab={activeTab} switchTab={switchTab} icon="fas fa-dna"            label="Brand DNA" />
+        <NavLink tab="dashboard"           activeTab={activeTab} switchTab={switchTab} icon="fas fa-tachometer-alt"  label="Dashboard" />
+        <NavLink tab="growth-engine"       activeTab={activeTab} switchTab={switchTab} icon="fas fa-rocket"          label="Growth Engine" />
+        <NavLink tab="insights"            activeTab={activeTab} switchTab={switchTab} icon="fas fa-stream"          label="Insights" />
+        <NavLink tab="brand-intelligence"  activeTab={activeTab} switchTab={switchTab} icon="fas fa-brain"           label="Brand Intelligence" />
+        <NavLink tab="templates"           activeTab={activeTab} switchTab={switchTab} icon="fas fa-layer-group"     label="Templates" />
+        <NavLink tab="brand-dna"           activeTab={activeTab} switchTab={switchTab} icon="fas fa-dna"             label="Brand DNA" />
       </nav>
 
       {/* ── CREATE ── */}
