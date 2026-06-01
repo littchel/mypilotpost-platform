@@ -23,8 +23,9 @@ INSERT INTO delivery_jobs (
   platform,
   scheduled_at,
   status,
+  campaign_id,
   created_at
-) VALUES (?, ?, ?, ?, ?, 'scheduled', datetime('now'))
+) VALUES (?, ?, ?, ?, ?, 'scheduled', ?, datetime('now'))
 `;
 
 export const conflictCheck = `

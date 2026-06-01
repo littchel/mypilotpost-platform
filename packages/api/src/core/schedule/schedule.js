@@ -197,6 +197,13 @@ export async function createSchedule(request, env, auth) {
     const hashtags = metadata?.hashtags || [];
     const jobId = crypto.randomUUID();
 
+    // Resolve campaign_id from content so attribution flows through delivery
+    const contentTable = content_type === 'blog' ? 'blog_posts' : 'social_assets';
+    const contentRow = await db.prepare(
+      `SELECT campaign_id FROM ${contentTable} WHERE id = ? LIMIT 1`
+    ).bind(content_id).first().catch(() => null);
+    const campaignId = contentRow?.campaign_id || null;
+
     const result = await db
       .prepare(`
         INSERT INTO delivery_jobs (
@@ -207,9 +214,10 @@ export async function createSchedule(request, env, auth) {
           platform,
           scheduled_at,
           status,
+          campaign_id,
           metadata,
           created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, 'scheduled', ?, CURRENT_TIMESTAMP)
+        ) VALUES (?, ?, ?, ?, ?, ?, 'scheduled', ?, ?, CURRENT_TIMESTAMP)
       `)
       .bind(
         jobId,
@@ -218,6 +226,7 @@ export async function createSchedule(request, env, auth) {
         content_id,
         platform,
         normalized,
+        campaignId,
         JSON.stringify({ hashtags })
       )
       .run();

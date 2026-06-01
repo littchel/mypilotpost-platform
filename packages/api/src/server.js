@@ -340,6 +340,7 @@ import { handleAdminPricing, handleAdminPricingById, togglePlanStatus, createAdm
 import { getSystemEvents } from "./api/admin/observability-api.js";
 import { getIntegrationsDiagnostics } from "./api/admin/integrations-diagnostics.js";
 import { runBackfill, getBackfillStatus } from "./core/delivery/performance/backfill/engine.js";
+import { getAttributionDiagnostics } from "./api/admin/attribution-diagnostics.js";
 
 /* ======================================================
    DELIVERY ENGINE
@@ -1059,6 +1060,12 @@ export default {
           const brandId = url.searchParams.get("brand_id") || undefined;
           const runs = await getBackfillStatus(env, { brandId });
           return json({ runs });
+        }
+
+        /* ---------- ATTRIBUTION DIAGNOSTICS ---------- */
+        if (path === "/api/v1/admin/attribution/diagnostics" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return getAttributionDiagnostics(env);
         }
 
         /* ---------- BLOG (MARKETING) ---------- */

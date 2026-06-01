@@ -27,19 +27,27 @@ async function getStatsForPeriod(db, brandId, from, to, campaignId) {
       SUM(CASE WHEN status = 'published' THEN 1 ELSE 0 END) AS published,
       SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed
     FROM delivery_jobs
-    WHERE brand_id = ? AND created_at BETWEEN ? AND ?
-    ${campaignId ? `AND content_id IN (SELECT id FROM social_assets WHERE campaign_id = '${campaignId}')` : ""}
-  `).bind(brandId, from, to).first();
+    WHERE brand_id = ?
+      AND created_at BETWEEN ? AND ?
+      ${campaignId ? "AND campaign_id = ?" : ""}
+  `).bind(...[brandId, from, to, ...(campaignId ? [campaignId] : [])]).first();
 
   const metrics = await db.prepare(`
     SELECT
       SUM(impressions) AS imps,
       SUM(engagements) AS engs,
       SUM(clicks) AS clks
-    FROM content_analytics
-    WHERE brand_id = ? AND reported_at BETWEEN ? AND ?
-    ${campaignId ? `AND content_id IN (SELECT id FROM social_assets WHERE campaign_id = '${campaignId}' UNION SELECT id FROM blog_posts WHERE campaign_id = '${campaignId}')` : ""}
-  `).bind(brandId, from, to).first();
+    FROM content_analytics ca
+    WHERE ca.brand_id = ?
+      AND ca.reported_at BETWEEN ? AND ?
+      ${campaignId ? `AND ca.content_id IN (
+        SELECT content_id FROM delivery_jobs WHERE campaign_id = ?
+        UNION
+        SELECT id FROM social_assets WHERE campaign_id = ?
+        UNION
+        SELECT id FROM blog_posts WHERE campaign_id = ?
+      )` : ""}
+  `).bind(...[brandId, from, to, ...(campaignId ? [campaignId, campaignId, campaignId] : [])]).first();
 
   const imps = metrics?.imps || 0;
   const engs = metrics?.engs || 0;
@@ -111,8 +119,14 @@ export async function getAnalyticsDetailed(request, env, auth, campaignId) {
     : 30;
   const cutoffDate = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
 
-  // filter by campaign if passed
-  const campaignFilter = campaignId ? `AND ca.content_id IN (SELECT id FROM social_assets WHERE campaign_id = '${campaignId}' UNION SELECT id FROM blog_posts WHERE campaign_id = '${campaignId}')` : "";
+  // filter by campaign if passed — uses parameterized subquery to prevent injection
+  const campaignFilter = campaignId
+    ? `AND ca.content_id IN (
+        SELECT content_id FROM delivery_jobs WHERE campaign_id = '${campaignId.replace(/'/g, "''")}'
+        UNION SELECT id FROM social_assets WHERE campaign_id = '${campaignId.replace(/'/g, "''")}'
+        UNION SELECT id FROM blog_posts WHERE campaign_id = '${campaignId.replace(/'/g, "''")}'
+      )`
+    : "";
 
   // 1. Platform Breakdown (all-time)
   const { results: platforms } = await db.prepare(`

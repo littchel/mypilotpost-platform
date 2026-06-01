@@ -109,14 +109,10 @@ async function emitCampaignOutcome(db, outcome) {
     .prepare(
       `
       INSERT INTO campaign_outcomes (
-        id,
-        campaign_id,
-        content_id,
-        platform,
-        outcome_type,
-        value,
-        occurred_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        id, campaign_id, content_id, platform,
+        metric, outcome_type, value, source,
+        observed_at, occurred_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'analytics', ?, ?)
       `
     )
     .bind(
@@ -124,9 +120,11 @@ async function emitCampaignOutcome(db, outcome) {
       campaign_id,
       content_id,
       platform,
-      type,
+      type,        // metric (original column)
+      type,        // outcome_type (new column from migration 110)
       value,
-      occurred_at
+      occurred_at, // observed_at (original column)
+      occurred_at, // occurred_at (new column from migration 110)
     )
     .run();
 }

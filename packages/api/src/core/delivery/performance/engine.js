@@ -26,7 +26,7 @@ export async function runPerformanceIngestion(env) {
   const delivered = await env.DB.prepare(`
     SELECT id, brand_id, content_id, platform, external_post_id
     FROM delivery_jobs
-    WHERE status = 'completed'
+    WHERE status = 'published'
       AND external_post_id IS NOT NULL
   `).all();
 

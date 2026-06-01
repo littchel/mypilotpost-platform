@@ -172,16 +172,24 @@ export async function refreshPerformanceCache(db, campaignId) {
   // Aggregate all metrics for campaign content
   // Note: Simplified for D1 limits, ideally we'd join on content_engagement_metrics
   const metrics = await db.prepare(`
-    SELECT 
+    SELECT
       (SELECT COUNT(*) FROM social_assets WHERE campaign_id = ?) as total_social,
       (SELECT COUNT(*) FROM blog_posts WHERE campaign_id = ?) as total_blog,
-      (SELECT COUNT(*) FROM delivery_jobs dj 
-       JOIN social_assets sa ON dj.content_id = sa.id 
-       WHERE sa.campaign_id = ? AND dj.status = 'published') as published_count,
-      (SELECT COUNT(*) FROM delivery_jobs dj 
-       JOIN social_assets sa ON dj.content_id = sa.id 
-       WHERE sa.campaign_id = ? AND dj.status = 'failed') as failed_count
-  `).bind(campaignId, campaignId, campaignId, campaignId).first();
+      (SELECT COUNT(*) FROM delivery_jobs WHERE campaign_id = ? AND status = 'published') as published_count,
+      (SELECT COUNT(*) FROM delivery_jobs WHERE campaign_id = ? AND status = 'failed') as failed_count,
+      (SELECT COALESCE(SUM(ca.impressions), 0)
+       FROM content_analytics ca
+       JOIN social_assets sa ON ca.content_id = sa.id
+       WHERE sa.campaign_id = ?) as total_impressions,
+      (SELECT COALESCE(SUM(ca.engagements), 0)
+       FROM content_analytics ca
+       JOIN social_assets sa ON ca.content_id = sa.id
+       WHERE sa.campaign_id = ?) as total_engagements,
+      (SELECT COALESCE(SUM(ca.clicks), 0)
+       FROM content_analytics ca
+       JOIN social_assets sa ON ca.content_id = sa.id
+       WHERE sa.campaign_id = ?) as total_clicks
+  `).bind(campaignId, campaignId, campaignId, campaignId, campaignId, campaignId, campaignId).first();
 
   await db.prepare(`
     INSERT INTO campaign_metrics_cache (campaign_id, metrics_json, last_updated, score)

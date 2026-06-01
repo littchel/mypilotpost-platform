@@ -92,7 +92,7 @@ export async function runBackfill(env, { brandId, platform, daysBack = 90 } = {}
       try {
         // Look up content_id from delivery_jobs if this post came through our platform
         const djRow = await db.prepare(`
-          SELECT content_id FROM delivery_jobs
+          SELECT content_id, campaign_id FROM delivery_jobs
           WHERE external_post_id = ? AND brand_id = ? LIMIT 1
         `).bind(post.externalPostId, conn.brand_id).first();
 

@@ -172,6 +172,7 @@ pre{font-size:.72rem;background:#f8fafc;border:1px solid var(--border);padding:.
   <div class="nav-section">Operations</div>
   <div class="nav-item" data-section="operations">⚙️ Operations</div>
   <div class="nav-item" data-section="integrations">🔌 Integrations</div>
+  <div class="nav-item" data-section="attribution">🎯 Attribution</div>
   <div class="nav-item" data-section="system">🔍 System Log</div>
   <div class="nav-section">Compliance</div>
   <div class="nav-item" data-section="compliance">🛡️ Compliance</div>
@@ -500,6 +501,36 @@ pre{font-size:.72rem;background:#f8fafc;border:1px solid var(--border);padding:.
   <div id="intBrandsOut"><div class="empty" style="padding:3rem;text-align:center;color:var(--muted)">Loading...</div></div>
 </div>
 
+<!-- ATTRIBUTION DIAGNOSTICS -->
+<div class="section" id="attribution">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+    <div>
+      <h4 style="font-size:1rem;font-weight:700;margin-bottom:.2rem">Attribution Diagnostics</h4>
+      <p style="font-size:.78rem;color:var(--muted)">End-to-end campaign → content → delivery → analytics chain verification.</p>
+    </div>
+    <button onclick="loadAttribution()" style="padding:.4rem .9rem;border:1px solid var(--border);border-radius:8px;background:var(--panel);cursor:pointer;font-size:.78rem;font-weight:600">Refresh</button>
+  </div>
+
+  <!-- Pipeline summary strip -->
+  <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:.65rem;margin-bottom:1.25rem">
+    <div class="card" style="text-align:center"><div style="font-size:1.2rem;font-weight:800" id="attrTotalCampaigns">—</div><div style="font-size:.68rem;color:var(--muted);margin-top:.2rem">Campaigns</div></div>
+    <div class="card" style="text-align:center"><div style="font-size:1.2rem;font-weight:800;color:var(--good)" id="attrGreen">—</div><div style="font-size:.68rem;color:var(--muted);margin-top:.2rem">Attributed</div></div>
+    <div class="card" style="text-align:center"><div style="font-size:1.2rem;font-weight:800;color:var(--warn)" id="attrYellow">—</div><div style="font-size:.68rem;color:var(--muted);margin-top:.2rem">Partial</div></div>
+    <div class="card" style="text-align:center"><div style="font-size:1.2rem;font-weight:800;color:var(--bad)" id="attrRed">—</div><div style="font-size:.68rem;color:var(--muted);margin-top:.2rem">Unlinked</div></div>
+    <div class="card" style="text-align:center"><div style="font-size:1.2rem;font-weight:800" id="attrPublished">—</div><div style="font-size:.68rem;color:var(--muted);margin-top:.2rem">Published</div></div>
+    <div class="card" style="text-align:center"><div style="font-size:1.2rem;font-weight:800" id="attrAnalytics">—</div><div style="font-size:.68rem;color:var(--muted);margin-top:.2rem">Analytics Rows</div></div>
+  </div>
+
+  <!-- Pipeline health bar -->
+  <div class="card-flat" style="margin-bottom:1.25rem">
+    <h5 style="font-size:.78rem;font-weight:700;margin-bottom:.75rem">Delivery Pipeline</h5>
+    <div id="attrPipelineOut" style="font-size:.78rem;color:var(--muted)">Loading...</div>
+  </div>
+
+  <!-- Per-brand campaign tables -->
+  <div id="attrBrandsOut"><div style="padding:2rem;text-align:center;color:var(--muted);font-size:.82rem">Loading...</div></div>
+</div>
+
 <!-- SYSTEM LOG -->
 <div class="section" id="system">
   <div class="card-flat">
@@ -674,7 +705,7 @@ function loadSection(id) {
     billing: loadBilling, pricing: loadPricing, promotions: loadPromotions,
     blog: loadBlog, emails: loadEmails, support: loadSupport,
     messaging: loadMessaging, operations: loadOperations, integrations: loadIntegrations,
-    system: loadSystem, compliance: loadCompliance
+    attribution: loadAttribution, system: loadSystem, compliance: loadCompliance
   };
   if (map[id]) map[id]();
 }
@@ -1266,6 +1297,107 @@ async function triggerBackfill() {
   if (!d) { alert("Backfill failed — check console"); return; }
   alert(`Backfill complete: ${d.rowsImported} imported, ${d.rowsSkipped} skipped, ${d.rowsFailed} failed.`);
   loadIntegrations();
+}
+
+/* ATTRIBUTION DIAGNOSTICS */
+async function loadAttribution() {
+  const brandsOut = document.getElementById("attrBrandsOut");
+  const pipelineOut = document.getElementById("attrPipelineOut");
+  brandsOut.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--muted);font-size:.82rem">Loading...</div>`;
+  const d = await apiFetch("/v1/admin/attribution/diagnostics");
+  if (!d) { brandsOut.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--bad)">Failed to load.</div>`; return; }
+
+  // Summary strip
+  document.getElementById("attrTotalCampaigns").textContent = fmt(d.summary.total_campaigns);
+  document.getElementById("attrGreen").textContent   = fmt(d.summary.attribution_green);
+  document.getElementById("attrYellow").textContent  = fmt(d.summary.attribution_yellow);
+  document.getElementById("attrRed").textContent     = fmt(d.summary.attribution_red);
+  document.getElementById("attrPublished").textContent = fmt(d.pipeline?.published || 0);
+  document.getElementById("attrAnalytics").textContent = fmt(d.analytics_coverage?.total_rows || 0);
+
+  // Pipeline health
+  const p = d.pipeline || {};
+  const pctAttributed = p.total_jobs > 0 ? Math.round(p.with_campaign_id / p.total_jobs * 100) : 0;
+  const pctExternal   = p.total_jobs > 0 ? Math.round(p.with_external_id / p.total_jobs * 100) : 0;
+  const barColor = pctAttributed >= 90 ? "var(--good)" : pctAttributed >= 50 ? "var(--warn)" : "var(--bad)";
+  pipelineOut.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:.5rem;margin-bottom:.75rem">
+      ${[
+        ["Total Jobs",     p.total_jobs,        ""],
+        ["Published",      p.published,          "var(--good)"],
+        ["Failed",         p.failed,             p.failed > 0 ? "var(--bad)" : ""],
+        ["Pending",        p.pending,            "var(--warn)"],
+        ["Campaign Linked",p.with_campaign_id,   barColor],
+      ].map(([label, val, color]) => `
+        <div style="background:#f8fafc;border-radius:8px;padding:.4rem .6rem;text-align:center">
+          <div style="font-size:1rem;font-weight:800;${color ? `color:${color}` : ''}">${fmt(val)}</div>
+          <div style="font-size:.65rem;color:var(--muted)">${label}</div>
+        </div>
+      `).join("")}
+    </div>
+    <div style="background:#f1f5f9;border-radius:6px;height:8px;overflow:hidden;margin-bottom:.4rem">
+      <div style="height:100%;width:${pctAttributed}%;background:${barColor};transition:width .4s"></div>
+    </div>
+    <div style="font-size:.72rem;color:var(--muted)">${pctAttributed}% of jobs have campaign attribution · ${pctExternal}% have external post ID</div>
+    <div style="font-size:.72rem;color:var(--muted);margin-top:.2rem">Analytics: ${fmt(d.analytics_coverage?.total_rows)} rows · ${fmt(d.analytics_coverage?.unique_content)} unique content · ${fmt(d.analytics_coverage?.orphaned_rows)} orphaned</div>`;
+
+  if (!d.brands?.length) { brandsOut.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--muted)">No brands found.</div>`; return; }
+
+  const dot = s => {
+    const c = s === "green" ? "var(--good)" : s === "yellow" ? "var(--warn)" : s === "red" ? "var(--bad)" : "#94a3b8";
+    return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};margin-right:.35rem"></span>`;
+  };
+  const badge = (health) => {
+    const cfg = { green: ["#dcfce7","var(--good)","Attributed"], yellow: ["#fef9c3","var(--warn)","Partial"], red: ["#fee2e2","var(--bad)","Unlinked"], none: ["#f1f5f9","#94a3b8","No Campaigns"] };
+    const [bg, color, label] = cfg[health] || cfg.none;
+    return `<span style="font-size:.65rem;font-weight:700;padding:.12rem .45rem;border-radius:4px;background:${bg};color:${color}">${label}</span>`;
+  };
+
+  brandsOut.innerHTML = d.brands.map(brand => {
+    if (!brand.campaigns.length) return `
+      <div class="card-flat" style="margin-bottom:.75rem">
+        ${dot("none")}<strong style="font-size:.85rem">${brand.brand_name}</strong>
+        <span style="font-size:.72rem;color:var(--muted);margin-left:.5rem">No campaigns</span>
+      </div>`;
+    return `
+    <div class="card-flat" style="margin-bottom:1rem">
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem">
+        ${dot(brand.brand_health)}<strong style="font-size:.85rem">${brand.brand_name}</strong>
+        <span style="font-size:.7rem;color:var(--muted);margin-left:.25rem">${brand.campaign_count} campaign${brand.campaign_count !== 1 ? "s" : ""}</span>
+      </div>
+      <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:.74rem">
+        <thead><tr style="background:#f8fafc">
+          <th style="padding:.4rem .6rem;text-align:left;font-weight:600;border-bottom:1px solid var(--border)">Campaign</th>
+          <th style="padding:.4rem .6rem;text-align:center;font-weight:600;border-bottom:1px solid var(--border)">Health</th>
+          <th style="padding:.4rem .6rem;text-align:right;font-weight:600;border-bottom:1px solid var(--border)">Linked</th>
+          <th style="padding:.4rem .6rem;text-align:right;font-weight:600;border-bottom:1px solid var(--border)">Published</th>
+          <th style="padding:.4rem .6rem;text-align:right;font-weight:600;border-bottom:1px solid var(--border)">Attributed</th>
+          <th style="padding:.4rem .6rem;text-align:right;font-weight:600;border-bottom:1px solid var(--border)">Unlinked</th>
+          <th style="padding:.4rem .6rem;text-align:right;font-weight:600;border-bottom:1px solid var(--border)">Analytics</th>
+          <th style="padding:.4rem .6rem;text-align:right;font-weight:600;border-bottom:1px solid var(--border)">Missing</th>
+          <th style="padding:.4rem .6rem;text-align:right;font-weight:600;border-bottom:1px solid var(--border)">Impressions</th>
+          <th style="padding:.4rem .6rem;text-align:right;font-weight:600;border-bottom:1px solid var(--border)">Engagements</th>
+        </tr></thead>
+        <tbody>
+          ${brand.campaigns.map(c => `
+          <tr style="border-bottom:1px solid #f1f5f9">
+            <td style="padding:.4rem .6rem;font-weight:600">${dot(c.health)}${c.campaign_name}</td>
+            <td style="padding:.4rem .6rem;text-align:center">${badge(c.health)}</td>
+            <td style="padding:.4rem .6rem;text-align:right">${fmt(c.linked_content)}</td>
+            <td style="padding:.4rem .6rem;text-align:right;color:${c.published_posts > 0 ? "var(--good)" : "var(--muted)"}">${fmt(c.published_posts)}</td>
+            <td style="padding:.4rem .6rem;text-align:right">${fmt(c.attributed_jobs)}</td>
+            <td style="padding:.4rem .6rem;text-align:right;color:${c.unlinked_jobs > 0 ? "var(--warn)" : "var(--muted)"}">${fmt(c.unlinked_jobs)}</td>
+            <td style="padding:.4rem .6rem;text-align:right;color:${c.posts_with_analytics > 0 ? "var(--good)" : "var(--muted)"}">${fmt(c.posts_with_analytics)}</td>
+            <td style="padding:.4rem .6rem;text-align:right;color:${c.missing_analytics > 0 ? "var(--bad)" : "var(--muted)"}">${fmt(c.missing_analytics)}</td>
+            <td style="padding:.4rem .6rem;text-align:right">${fmt(c.impressions)}</td>
+            <td style="padding:.4rem .6rem;text-align:right">${fmt(c.engagements)}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+      </div>
+    </div>`;
+  }).join("");
 }
 
 /* SYSTEM LOG */

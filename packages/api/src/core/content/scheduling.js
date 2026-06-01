@@ -43,16 +43,18 @@ export async function scheduleContent(request, env, auth) {
 
   // 3. Status Validation
   const contentTable = content_type === 'blog' ? 'blog_posts' : 'social_assets';
-  const asset = await db.prepare(`SELECT status FROM ${contentTable} WHERE id = ? AND brand_id = ?`).bind(content_id, brand_id).first();
-  
+  const asset = await db.prepare(`SELECT status, campaign_id FROM ${contentTable} WHERE id = ? AND brand_id = ?`).bind(content_id, brand_id).first();
+
   if (!asset) return error("Content not found", "NOT_FOUND", null, 404);
-  
+
   // Blog statuses: draft, structured, reviewed, published
   // Social statuses: draft, approval, approved, scheduled, published
   const approvedStates = content_type === 'blog' ? ['structured', 'reviewed'] : ['approved', 'scheduled'];
   if (!approvedStates.includes(asset.status)) {
     return error(`Content in state '${asset.status}' cannot be scheduled.`, "BAD_REQUEST", null, 400);
   }
+
+  const campaignId = asset.campaign_id || null;
 
   // 4. Atomic Job Creation
   const batch = [];
@@ -63,9 +65,9 @@ export async function scheduleContent(request, env, auth) {
 
      const jobId = crypto.randomUUID();
      batch.push(db.prepare(`
-       INSERT INTO delivery_jobs (id, brand_id, content_type, content_id, platform, scheduled_at, status)
-       VALUES (?, ?, ?, ?, ?, ?, 'scheduled')
-     `).bind(jobId, brand_id, content_type, content_id, platform, normalized));
+       INSERT INTO delivery_jobs (id, brand_id, content_type, content_id, platform, scheduled_at, status, campaign_id)
+       VALUES (?, ?, ?, ?, ?, ?, 'scheduled', ?)
+     `).bind(jobId, brand_id, content_type, content_id, platform, normalized, campaignId));
   }
 
   if (batch.length === 0) return error("All platform slots are conflicted or already scheduled.", "CONFLICT", null, 409);
