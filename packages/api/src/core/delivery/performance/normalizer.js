@@ -159,8 +159,29 @@ const NORMALIZERS = {
   },
 
   "google-analytics"(raw) {
-    // GA returns session/user data, not post-level metrics — skip
-    return null;
+    return null; // real-time adapter — no post-level normalisation needed
+  },
+
+  google_analytics(raw) {
+    return {
+      impressions: int(raw?.sessions),
+      engagements: int(raw?.engagedSessions),
+      clicks:      int(raw?.pageViews),
+      comments:    0,
+      shares:      0,
+      saves:       0,
+    };
+  },
+
+  google_search_console(raw) {
+    return {
+      impressions: int(raw?.impressions),
+      engagements: 0,
+      clicks:      int(raw?.clicks),
+      comments:    0,
+      shares:      0,
+      saves:       0,
+    };
   },
 };
 

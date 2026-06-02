@@ -1,24 +1,28 @@
 import { decrypt } from "../../../../lib/crypto.js";
 import { normalizeMetrics } from "../normalizer.js";
 
-import { fetchInstagramHistorical } from "./adapters/instagram.js";
-import { fetchThreadsHistorical }   from "./adapters/threads.js";
-import { fetchFacebookHistorical }  from "./adapters/facebook.js";
-import { fetchLinkedInHistorical }  from "./adapters/linkedin.js";
-import { fetchXHistorical }         from "./adapters/x.js";
-import { fetchPinterestHistorical } from "./adapters/pinterest.js";
-import { fetchTikTokHistorical }    from "./adapters/tiktok.js";
-import { fetchYouTubeHistorical }   from "./adapters/youtube.js";
+import { fetchInstagramHistorical }           from "./adapters/instagram.js";
+import { fetchThreadsHistorical }             from "./adapters/threads.js";
+import { fetchFacebookHistorical }            from "./adapters/facebook.js";
+import { fetchLinkedInHistorical }            from "./adapters/linkedin.js";
+import { fetchXHistorical }                   from "./adapters/x.js";
+import { fetchPinterestHistorical }           from "./adapters/pinterest.js";
+import { fetchTikTokHistorical }              from "./adapters/tiktok.js";
+import { fetchYouTubeHistorical }             from "./adapters/youtube.js";
+import { fetchGoogleAnalyticsHistorical }     from "./adapters/google-analytics.js";
+import { fetchGoogleSearchConsoleHistorical } from "./adapters/google-search-console.js";
 
 const ADAPTERS = {
-  instagram: fetchInstagramHistorical,
-  threads:   fetchThreadsHistorical,
-  facebook:  fetchFacebookHistorical,
-  linkedin:  fetchLinkedInHistorical,
-  x:         fetchXHistorical,
-  pinterest: fetchPinterestHistorical,
-  tiktok:    fetchTikTokHistorical,
-  youtube:   fetchYouTubeHistorical,
+  instagram:              fetchInstagramHistorical,
+  threads:                fetchThreadsHistorical,
+  facebook:               fetchFacebookHistorical,
+  linkedin:               fetchLinkedInHistorical,
+  x:                      fetchXHistorical,
+  pinterest:              fetchPinterestHistorical,
+  tiktok:                 fetchTikTokHistorical,
+  youtube:                fetchYouTubeHistorical,
+  google_analytics:       fetchGoogleAnalyticsHistorical,
+  google_search_console:  fetchGoogleSearchConsoleHistorical,
 };
 
 /**
@@ -76,7 +80,8 @@ export async function runBackfill(env, { brandId, platform, daysBack = 90 } = {}
     try {
       posts = await adapter({
         accessToken,
-        accountId: conn.account_id,
+        accountId:          conn.account_id,
+        selectedResourceId: conn.selected_resource_id,
         since,
         until,
         env,
@@ -138,30 +143,29 @@ export async function runBackfill(env, { brandId, platform, daysBack = 90 } = {}
           normalized.clicks,
         ).run();
 
-        // Write content_analytics only for posts tracked in delivery_jobs
-        if (djRow?.content_id) {
-          await db.prepare(`
-            INSERT INTO content_analytics
-              (id, brand_id, content_type, content_id, platform,
-               impressions, engagements, clicks, comments, shares, saves,
-               reported_at, updated_at)
-            VALUES (?, ?, 'social', ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-            ON CONFLICT(content_type, content_id) DO UPDATE SET
-              impressions = excluded.impressions,
-              engagements = excluded.engagements,
-              clicks      = excluded.clicks,
-              comments    = excluded.comments,
-              shares      = excluded.shares,
-              saves       = excluded.saves,
-              reported_at = excluded.reported_at,
-              updated_at  = CURRENT_TIMESTAMP
-          `).bind(
-            crypto.randomUUID(), conn.brand_id, djRow.content_id, conn.platform,
-            normalized.impressions, normalized.engagements, normalized.clicks,
-            normalized.comments, normalized.shares, normalized.saves,
-            day,
-          ).run();
-        }
+        // Write content_analytics for every backfilled post.
+        // contentId is the delivery_job's content_id when we have one, else the platform post ID.
+        await db.prepare(`
+          INSERT INTO content_analytics
+            (id, brand_id, content_type, content_id, platform,
+             impressions, engagements, clicks, comments, shares, saves,
+             reported_at, updated_at)
+          VALUES (?, ?, 'social', ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          ON CONFLICT(content_type, content_id) DO UPDATE SET
+            impressions = excluded.impressions,
+            engagements = excluded.engagements,
+            clicks      = excluded.clicks,
+            comments    = excluded.comments,
+            shares      = excluded.shares,
+            saves       = excluded.saves,
+            reported_at = excluded.reported_at,
+            updated_at  = CURRENT_TIMESTAMP
+        `).bind(
+          crypto.randomUUID(), conn.brand_id, contentId, conn.platform,
+          normalized.impressions, normalized.engagements, normalized.clicks,
+          normalized.comments, normalized.shares, normalized.saves,
+          day,
+        ).run();
 
       } catch (postErr) {
         rowsFailed++;
