@@ -17,30 +17,30 @@ export async function hardenedRunLLM(env, brand, prompt, options = {}) {
   const isFirstRun = !brand.first_ai_run_at;
   
   // 2. Success Memory Logic (24H Reset)
-  let primaryModel = "llama3-70b-8192";
+  let primaryModel = "llama-3.3-70b-versatile";
   const lastSuccess = brand.last_ai_success_at ? new Date(brand.last_ai_success_at) : null;
   const isMemoryValid = lastSuccess && (now - lastSuccess < 24 * 60 * 60 * 1000);
-  
-  if (!isFirstRun && isMemoryValid && brand.last_ai_model === "llama3-8b-8192") {
-    primaryModel = "llama3-8b-8192"; // Prioritize last successful model
+
+  if (!isFirstRun && isMemoryValid && brand.last_ai_model === "llama-3.1-8b-instant") {
+    primaryModel = "llama-3.1-8b-instant";
   }
 
   // Override if mode is 'fast' (Dashboard)
-  if (mode === 'fast') primaryModel = "llama3-8b-8192";
+  if (mode === 'fast') primaryModel = "llama-3.1-8b-instant";
 
   // 3. Execution Cascade
   let result = null;
   let usedModel = null;
   let path = [];
 
-  // TIER 1: Primary Model (70B at 2.7s OR Success Memory)
+  // TIER 1: Primary Model (70B OR Success Memory)
   path.push(primaryModel);
   result = await triggerModelWithTimeout(env, primaryModel, prompt, 2700);
-  
-  // TIER 2: Secondary / Fallback Model (8B at 1.2s)
-  if (!result && primaryModel === "llama3-70b-8192") {
-    path.push("llama3-8b-8192 (retry)");
-    result = await triggerModelWithTimeout(env, "llama3-8b-8192", prompt, 1200);
+
+  // TIER 2: Fast fallback
+  if (!result && primaryModel === "llama-3.3-70b-versatile") {
+    path.push("llama-3.1-8b-instant (retry)");
+    result = await triggerModelWithTimeout(env, "llama-3.1-8b-instant", prompt, 1200);
   }
 
   // 4. Recovery & Normalization
@@ -52,7 +52,7 @@ export async function hardenedRunLLM(env, brand, prompt, options = {}) {
       return {
         ...healed,
         source: "ai",
-        confidence: usedModel.includes('70b') ? "high" : "medium",
+        confidence: usedModel.includes('70b') || usedModel.includes('3.3') ? "high" : "medium",
         _performance: { model: usedModel, path, latency: result.latency }
       };
     }
