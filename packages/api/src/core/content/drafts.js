@@ -43,19 +43,26 @@ export async function listDrafts(request, env, auth) {
   const db = getDB(env);
   const { brand_id, user_id } = auth;
   const url = new URL(request.url);
-  const type = url.searchParams.get("type"); // social | blog
+  const type   = url.searchParams.get("type");   // social | blog
+  const status = url.searchParams.get("status"); // draft | scheduled | pending_approval | approved
 
-  let results;
-  if (type === 'social') {
-    results = await db.prepare(`
-      SELECT * FROM social_assets WHERE brand_id = ? AND user_id = ? ORDER BY updated_at DESC
-    `).bind(brand_id, user_id).all();
+  let q, params;
+  if (status) {
+    const statusList = status === "scheduled"
+      ? ["scheduled", "approved", "queued", "delivering"]
+      : [status];
+    const placeholders = statusList.map(() => "?").join(",");
+    q      = `SELECT * FROM social_assets WHERE brand_id = ? AND user_id = ? AND lifecycle_status IN (${placeholders}) ORDER BY updated_at DESC`;
+    params = [brand_id, user_id, ...statusList];
+  } else if (type === 'social') {
+    q      = `SELECT * FROM social_assets WHERE brand_id = ? AND user_id = ? ORDER BY updated_at DESC`;
+    params = [brand_id, user_id];
   } else {
-    results = await db.prepare(`
-      SELECT * FROM blog_posts WHERE brand_id = ? AND user_id = ? ORDER BY updated_at DESC
-    `).bind(brand_id, user_id).all();
+    q      = `SELECT * FROM blog_posts WHERE brand_id = ? AND user_id = ? ORDER BY updated_at DESC`;
+    params = [brand_id, user_id];
   }
 
+  const results = await db.prepare(q).bind(...params).all();
   return json({ success: true, data: results.results || [] });
 }
 

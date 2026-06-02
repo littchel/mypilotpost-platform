@@ -26,6 +26,12 @@ import {
   handleUnifiedCallback
 } from "./integrations/oauth_unified.js";
 
+import {
+  getAccountResources,
+  selectResource,
+  getGMBLocations
+} from "./integrations/google-accounts.js";
+
 import { requireAuth, requirePermission, requireAdmin, requireBrandContext } from "./auth/middleware.js";
 import { hasPermission } from "./auth/permissions.js";
 import { logAdminAction } from "./lib/admin_logger.js";
@@ -168,7 +174,8 @@ import {
   registerFreepikMedia,
   getAttachedMedia,
   uploadMedia,
-  serveMediaFile
+  serveMediaFile,
+  servePublicMediaFile
 } from "./core/media/media.js";
 
 import { getMediaSuggestions } from "./core/media/intelligence/index.js";
@@ -341,6 +348,20 @@ import { getSystemEvents } from "./api/admin/observability-api.js";
 import { getIntegrationsDiagnostics } from "./api/admin/integrations-diagnostics.js";
 import { runBackfill, getBackfillStatus } from "./core/delivery/performance/backfill/engine.js";
 import { getAttributionDiagnostics } from "./api/admin/attribution-diagnostics.js";
+
+/* ======================================================
+   PLATFORM SANDBOX
+====================================================== */
+import { runPlatformTest, listTestableConnections } from "./api/admin/platform-test.js";
+
+/* ======================================================
+   CERTIFICATION
+====================================================== */
+import {
+  getCertificationMatrix,
+  validateMediaUrl,
+  getPlatformDeliveryHistory,
+} from "./api/customer/certification.js";
 
 /* ======================================================
    DELIVERY ENGINE
@@ -669,6 +690,10 @@ export default {
       /* ================= HEALTH ================= */
       if (path === "/api/health") return withCors(request, Promise.resolve(json({ status: "ok", version: "1.1.1" })));
 
+      /* ================= PUBLIC MEDIA (no auth — UUID-keyed R2 assets for platform adapters) ================= */
+      if ((method === "GET" || method === "HEAD") && path.startsWith("/api/media/file/"))
+        return withCors(request, servePublicMediaFile(request, env));
+
       /* ================= SUPPORT (SSE & MESSAGES) ================= */
       if (path.startsWith("/api/v1/support")) {
         const supportRes = await supportRoutes.fetch(request, env);
@@ -875,6 +900,20 @@ export default {
         return withCors(request, startUnifiedOAuth(request, env, auth));
       }
 
+      /* ---------- RESOURCE SELECTION (PROTECTED) ---------- */
+      if (method === "GET" && path.startsWith("/api/oauth/") && path.endsWith("/accounts")) {
+        const auth = await requireAuth(request, env);
+        return withCors(request, getAccountResources(request, env, auth));
+      }
+      if (method === "POST" && path.startsWith("/api/oauth/") && path.endsWith("/select")) {
+        const auth = await requireAuth(request, env);
+        return withCors(request, selectResource(request, env, auth));
+      }
+      if (method === "GET" && path === "/api/oauth/google_business/locations") {
+        const auth = await requireAuth(request, env);
+        return withCors(request, getGMBLocations(request, env, auth));
+      }
+
       /* ================= ADMIN AUTH (SEPARATE FROM CUSTOMER) ================= */
       if (path === "/api/admin/login" && method === "POST") {
         const limited = await rateLimit(request, env, "auth");
@@ -1066,6 +1105,30 @@ export default {
         if (path === "/api/v1/admin/attribution/diagnostics" && method === "GET") {
           await requireAdminAuth(request, env);
           return getAttributionDiagnostics(env);
+        }
+
+        /* ---------- PLATFORM CERTIFICATION ---------- */
+        if (path.startsWith("/api/v1/admin/certification")) {
+          await requireAdminAuth(request, env);
+          const brand_id = url.searchParams.get("brand_id");
+          if (!brand_id) return withCors(request, Promise.resolve(new Response(JSON.stringify({ error: "brand_id required" }), { status: 400, headers: { "Content-Type": "application/json" } })));
+          const certAuth = { brand_id };
+          if (path === "/api/v1/admin/certification/matrix" && method === "GET")
+            return withCors(request, getCertificationMatrix(request, env, certAuth));
+          if (path === "/api/v1/admin/certification/delivery-history" && method === "GET")
+            return withCors(request, getPlatformDeliveryHistory(request, env, certAuth));
+          if (path === "/api/v1/admin/certification/validate-media" && method === "POST")
+            return withCors(request, validateMediaUrl(request, env, certAuth));
+        }
+
+        /* ---------- PLATFORM SANDBOX ---------- */
+        if (path === "/api/v1/admin/platform-test" && method === "POST") {
+          await requireAdminAuth(request, env);
+          return withCors(request, runPlatformTest(request, env));
+        }
+        if (path === "/api/v1/admin/platform-test/connections" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return withCors(request, listTestableConnections(request, env));
         }
 
         /* ---------- BLOG (MARKETING) ---------- */
@@ -1921,6 +1984,14 @@ export default {
 
         if (method === "POST" && path === "/api/customer/ai/hashtags")
           return withCors(request, generateHashtags(request, env, auth));
+
+        /* ─── CERTIFICATION ─── */
+        if (method === "GET"  && path === "/api/customer/certification/matrix")
+          return withCors(request, getCertificationMatrix(request, env, auth));
+        if (method === "POST" && path === "/api/customer/certification/validate-media")
+          return withCors(request, validateMediaUrl(request, env, auth));
+        if (method === "GET"  && path === "/api/customer/certification/delivery-history")
+          return withCors(request, getPlatformDeliveryHistory(request, env, auth));
       }
 
 

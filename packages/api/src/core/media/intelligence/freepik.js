@@ -1,6 +1,6 @@
-import { error } from "../../../lib/json.js";
-
 export async function searchFreepik({ query, limit = 12 }, env) {
+  if (!env.FREEPIK_API_KEY) return [];
+
   const res = await fetch(
     `https://api.freepik.com/v1/resources?query=${encodeURIComponent(query)}&limit=${limit}`,
     {
@@ -11,9 +11,7 @@ export async function searchFreepik({ query, limit = 12 }, env) {
     }
   );
 
-  if (!res.ok) {
-    throw error("FREEPIK_SEARCH_FAILED", 502);
-  }
+  if (!res.ok) throw new Error(`Freepik API error ${res.status}`);
 
   const data = await res.json();
   return data.data || [];

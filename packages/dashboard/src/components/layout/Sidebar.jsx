@@ -76,8 +76,8 @@ const Sidebar = ({ activeTab, switchTab, brands, activeBrand, onSwitchBrand }) =
       {/* ── SYSTEM ── */}
       <div className="nav-group-title">System</div>
       <nav aria-label="System">
-        <NavLink tab="integrations" activeTab={activeTab} switchTab={switchTab} icon="fas fa-plug"  label="Integrations" />
-        <NavLink tab="teams"        activeTab={activeTab} switchTab={switchTab} icon="fas fa-users" label="Team & Clients" />
+        <NavLink tab="integrations"  activeTab={activeTab} switchTab={switchTab} icon="fas fa-plug"             label="Integrations" />
+        <NavLink tab="teams"         activeTab={activeTab} switchTab={switchTab} icon="fas fa-users"            label="Team & Clients" />
       </nav>
     </aside>
   );

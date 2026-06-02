@@ -173,6 +173,7 @@ pre{font-size:.72rem;background:#f8fafc;border:1px solid var(--border);padding:.
   <div class="nav-item" data-section="operations">⚙️ Operations</div>
   <div class="nav-item" data-section="integrations">🔌 Integrations</div>
   <div class="nav-item" data-section="attribution">🎯 Attribution</div>
+  <div class="nav-item" data-section="certification">📋 Platform Certification</div>
   <div class="nav-item" data-section="system">🔍 System Log</div>
   <div class="nav-section">Compliance</div>
   <div class="nav-item" data-section="compliance">🛡️ Compliance</div>
@@ -531,6 +532,36 @@ pre{font-size:.72rem;background:#f8fafc;border:1px solid var(--border);padding:.
   <div id="attrBrandsOut"><div style="padding:2rem;text-align:center;color:var(--muted);font-size:.82rem">Loading...</div></div>
 </div>
 
+<!-- PLATFORM CERTIFICATION -->
+<div class="section" id="certification">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+    <div>
+      <h4 style="font-size:1rem;font-weight:700;margin-bottom:.2rem">Platform Certification</h4>
+      <p style="font-size:.78rem;color:var(--muted)">Real publish + analytics verification per platform per brand. No mocked status.</p>
+    </div>
+    <button onclick="loadCertification()" style="padding:.4rem .9rem;border:1px solid var(--border);border-radius:8px;background:var(--panel);cursor:pointer;font-size:.78rem;font-weight:600">Refresh</button>
+  </div>
+
+  <!-- Brand selector -->
+  <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem">
+    <label style="font-size:.78rem;font-weight:600;color:var(--muted)">Brand:</label>
+    <select id="certBrandSelect" onchange="loadCertificationForBrand()" style="font-size:.78rem;padding:.35rem .6rem;border:1px solid var(--border);border-radius:6px;background:var(--panel);min-width:220px">
+      <option value="">— select a brand —</option>
+    </select>
+  </div>
+
+  <!-- Summary strip -->
+  <div id="certSummary" style="display:none;grid-template-columns:repeat(5,1fr);gap:.75rem;margin-bottom:1.25rem">
+    <div class="card" style="text-align:center"><div style="font-size:1.4rem;font-weight:800;color:var(--good)" id="certCertified">—</div><div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">Certified</div></div>
+    <div class="card" style="text-align:center"><div style="font-size:1.4rem;font-weight:800;color:var(--warn)" id="certWarn">—</div><div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">Warn</div></div>
+    <div class="card" style="text-align:center"><div style="font-size:1.4rem;font-weight:800;color:var(--accent)" id="certPending">—</div><div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">Pending</div></div>
+    <div class="card" style="text-align:center"><div style="font-size:1.4rem;font-weight:800" id="certUntested">—</div><div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">Untested</div></div>
+    <div class="card" style="text-align:center"><div style="font-size:1.4rem;font-weight:800" id="certTotal">—</div><div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">Total</div></div>
+  </div>
+
+  <div id="certOut"><div style="padding:3rem;text-align:center;color:var(--muted);font-size:.82rem">Select a brand to view certification status.</div></div>
+</div>
+
 <!-- SYSTEM LOG -->
 <div class="section" id="system">
   <div class="card-flat">
@@ -705,7 +736,7 @@ function loadSection(id) {
     billing: loadBilling, pricing: loadPricing, promotions: loadPromotions,
     blog: loadBlog, emails: loadEmails, support: loadSupport,
     messaging: loadMessaging, operations: loadOperations, integrations: loadIntegrations,
-    attribution: loadAttribution, system: loadSystem, compliance: loadCompliance
+    attribution: loadAttribution, certification: loadCertification, system: loadSystem, compliance: loadCompliance
   };
   if (map[id]) map[id]();
 }
@@ -1300,6 +1331,152 @@ async function triggerBackfill() {
 }
 
 /* ATTRIBUTION DIAGNOSTICS */
+/* ── PLATFORM CERTIFICATION ── */
+let certBrands = [];
+
+async function loadCertification() {
+  const sel = document.getElementById("certBrandSelect");
+  if (certBrands.length === 0) {
+    const d = await apiFetch("/v1/admin/integrations/diagnostics");
+    if (d?.brands?.length) {
+      certBrands = d.brands;
+      sel.innerHTML = '<option value="">— select a brand —</option>' +
+        certBrands.map(b => `<option value="${b.brand_id}">${b.brand_name}</option>`).join("");
+    }
+  }
+  const brand_id = sel.value;
+  if (brand_id) loadCertificationForBrand();
+}
+
+async function loadCertificationForBrand() {
+  const brand_id = document.getElementById("certBrandSelect").value;
+  const out = document.getElementById("certOut");
+  if (!brand_id) { out.innerHTML = `<div style="padding:3rem;text-align:center;color:var(--muted);font-size:.82rem">Select a brand to view certification status.</div>`; return; }
+
+  out.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--muted);font-size:.82rem">Loading...</div>`;
+  const d = await apiFetch(`/v1/admin/certification/matrix?brand_id=${brand_id}`);
+  if (!d?.matrix) { out.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--bad)">Failed to load certification matrix.</div>`; return; }
+
+  // Summary
+  const sum = d.summary || {};
+  document.getElementById("certCertified").textContent = fmt(sum.certified);
+  document.getElementById("certWarn").textContent = fmt(sum.warned);
+  document.getElementById("certPending").textContent = fmt(sum.pending);
+  document.getElementById("certUntested").textContent = fmt(sum.untested);
+  document.getElementById("certTotal").textContent = fmt(sum.total);
+  document.getElementById("certSummary").style.display = "grid";
+
+  const COLS = ["publish","image","video","carousel","analytics","backfill","attribution","health"];
+  const colIcon = s => {
+    if (s === "pass")     return `<span style="color:var(--good)">✓</span>`;
+    if (s === "warn")     return `<span style="color:var(--warn)">⚠</span>`;
+    if (s === "fail")     return `<span style="color:var(--bad)">✗</span>`;
+    return `<span style="color:#cbd5e1">—</span>`;
+  };
+  const statusPill = s => {
+    const cfg = { certified:"#dcfce7;color:#15803d", warn:"#fef9c3;color:#854d0e", pending:"#dbeafe;color:#1d4ed8", untested:"#f1f5f9;color:#64748b", fail:"#fee2e2;color:#dc2626" };
+    const c = cfg[s] || cfg.untested;
+    return `<span style="font-size:.68rem;font-weight:700;padding:.15rem .5rem;border-radius:10px;background:${c.split(";")[0]};${c.split(";")[1]}">${s.toUpperCase()}</span>`;
+  };
+  const PLAT_ICONS = { facebook:"#1877f2", instagram:"#e1306c", linkedin:"#0a66c2", x:"#000", threads:"#000", pinterest:"#e60023", tiktok:"#010101", youtube:"#ff0000", wordpress:"#21759b", google_business:"#4285f4" };
+
+  out.innerHTML = `
+    <div class="card-flat" style="overflow-x:auto;margin-bottom:1rem">
+      <table style="width:100%;border-collapse:collapse;font-size:.75rem">
+        <thead>
+          <tr style="background:#f8fafc;border-bottom:2px solid var(--border)">
+            <th style="padding:.6rem .75rem;text-align:left;font-weight:700">Platform</th>
+            <th style="padding:.6rem .5rem;text-align:center;font-weight:700">Connected</th>
+            ${COLS.map(c => `<th style="padding:.6rem .5rem;text-align:center;font-weight:600;font-size:.68rem;color:var(--muted);text-transform:uppercase">${c}</th>`).join("")}
+            <th style="padding:.6rem .5rem;text-align:center;font-weight:700">Last Verified</th>
+            <th style="padding:.6rem .5rem;text-align:center;font-weight:700">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${d.matrix.map(row => {
+            const clr = PLAT_ICONS[row.platform] || "#94a3b8";
+            return `
+            <tr style="border-bottom:1px solid #f1f5f9">
+              <td style="padding:.55rem .75rem;font-weight:700;color:${clr}">${row.platform}</td>
+              <td style="padding:.55rem .5rem;text-align:center">${row.connected ? `<span style="color:var(--good)">✓</span>` : `<span style="color:#d1d5db">✗</span>`}</td>
+              ${COLS.map(c => `<td style="padding:.55rem .5rem;text-align:center">${colIcon(row[c])}</td>`).join("")}
+              <td style="padding:.55rem .5rem;text-align:center;color:var(--muted);font-size:.72rem">${row.last_verified ? new Date(row.last_verified).toLocaleDateString() : "—"}</td>
+              <td style="padding:.55rem .5rem;text-align:center">${statusPill(row.status)}</td>
+            </tr>
+            ${row.recent_errors?.length ? `<tr><td colspan="${COLS.length + 4}" style="padding:.3rem .75rem .6rem">
+              ${row.recent_errors.map(e => `<span style="font-size:.68rem;background:#fef2f2;border:1px solid #fecaca;border-radius:4px;padding:.1rem .4rem;color:var(--bad);margin-right:.3rem;font-family:monospace">${e.message} ×${e.count}</span>`).join("")}
+            </td></tr>` : ""}`;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>
+    <div id="certHistoryOut"></div>
+    <div id="certMediaValidator" style="margin-top:1rem">
+      <div class="card-flat">
+        <div style="font-size:.82rem;font-weight:700;margin-bottom:.75rem">Media Delivery Validator</div>
+        <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
+          <input id="certMediaUrl" type="url" placeholder="https://api.mypilotpost.com/api/media/file/..."
+            style="flex:1;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.75rem;font-family:monospace"
+            onkeydown="if(event.key==='Enter')certValidateMedia()" />
+          <button onclick="certValidateMedia()" style="padding:.4rem .9rem;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:.75rem;font-weight:700;cursor:pointer">Validate</button>
+        </div>
+        <div id="certMediaResult"></div>
+      </div>
+    </div>`;
+
+  // Load delivery history
+  const hist = await apiFetch(`/v1/admin/certification/delivery-history?brand_id=${brand_id}&limit=15`);
+  const histOut = document.getElementById("certHistoryOut");
+  if (histOut && hist?.jobs?.length) {
+    histOut.innerHTML = `<div class="card-flat"><div style="font-size:.82rem;font-weight:700;margin-bottom:.75rem">Recent Delivery Jobs</div><div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:.72rem">
+        <thead><tr style="background:#f8fafc">
+          <th style="padding:.4rem .6rem;text-align:left">Platform</th>
+          <th style="padding:.4rem .6rem;text-align:left">Status</th>
+          <th style="padding:.4rem .6rem;text-align:center">Media</th>
+          <th style="padding:.4rem .6rem;text-align:center">Attempts</th>
+          <th style="padding:.4rem .6rem;text-align:left">External ID</th>
+          <th style="padding:.4rem .6rem;text-align:left">Published At</th>
+          <th style="padding:.4rem .6rem;text-align:left">Errors</th>
+        </tr></thead>
+        <tbody>
+          ${hist.jobs.map(j => {
+            const sc = j.status === "published" ? "var(--good)" : j.status === "failed" ? "var(--bad)" : "var(--warn)";
+            return `<tr style="border-bottom:1px solid #f1f5f9">
+              <td style="padding:.4rem .6rem;font-weight:600">${j.platform}</td>
+              <td style="padding:.4rem .6rem"><span style="color:${sc};font-weight:700">${j.status?.toUpperCase()}</span></td>
+              <td style="padding:.4rem .6rem;text-align:center;color:var(--muted)">${j.media_count > 0 ? j.media_count + " file(s)" : "text"}</td>
+              <td style="padding:.4rem .6rem;text-align:center">${j.delivery_attempts || 1}</td>
+              <td style="padding:.4rem .6rem;font-family:monospace;font-size:.68rem;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis">${j.external_post_id || "—"}</td>
+              <td style="padding:.4rem .6rem;color:var(--muted)">${j.published_at ? new Date(j.published_at).toLocaleString() : "—"}</td>
+              <td style="padding:.4rem .6rem;color:var(--bad);max-width:180px;overflow:hidden;text-overflow:ellipsis">${j.error_trail || j.last_error || "—"}</td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table></div></div>`;
+  }
+}
+
+async function certValidateMedia() {
+  const url = document.getElementById("certMediaUrl")?.value?.trim();
+  const out = document.getElementById("certMediaResult");
+  const brand_id = document.getElementById("certBrandSelect").value;
+  if (!url || !brand_id || !out) return;
+  out.innerHTML = `<div style="font-size:.75rem;color:var(--muted)">Checking…</div>`;
+  const res = await apiFetch(`/v1/admin/certification/validate-media?brand_id=${brand_id}`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url })
+  });
+  if (!res) { out.innerHTML = `<div style="font-size:.75rem;color:var(--bad)">Request failed.</div>`; return; }
+  const bg = res.ok ? "#f0fdf4" : "#fef2f2";
+  const bc = res.ok ? "#bbf7d0" : "#fecaca";
+  out.innerHTML = `<div style="background:${bg};border:1px solid ${bc};border-radius:6px;padding:.75rem;font-size:.75rem">
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:${res.issues?.length ? ".5rem" : "0"}">
+      ${[["Status", res.status_code ? "HTTP " + res.status_code : "No response"],["Public", res.is_public ? "Yes" : "No"],["Content-Type", res.content_type || "—"],["Size", res.size_mb != null ? res.size_mb + " MB" : "—"]].map(([k,v]) => `<div><div style="font-size:.65rem;color:#94a3b8;font-weight:700;text-transform:uppercase">${k}</div><div style="font-weight:700">${v}</div></div>`).join("")}
+    </div>
+    ${res.issues?.length ? `<ul style="margin:0;padding-left:1rem;color:var(--bad)">${res.issues.map(i => `<li style="font-size:.72rem">${i}</li>`).join("")}</ul>` : ""}
+  </div>`;
+}
+
 async function loadAttribution() {
   const brandsOut = document.getElementById("attrBrandsOut");
   const pipelineOut = document.getElementById("attrPipelineOut");

@@ -294,6 +294,7 @@ function App() {
   const [_analyticsSubTab, _setAnalyticsSubTab] = useState('overview');
   const [_contentSubTab, setContentSubTab] = useState('draft-content');
   const [listVersion, setListVersion] = useState(0);
+  const [googlePickerState, setGooglePickerState] = useState(null); // { platform, connId, accounts, loading, error }
   const [articleTitle, setArticleTitle] = useState("");
   const [articleBody, setArticleBody] = useState("");
   const [_currentArticle, _setCurrentArticle] = useState(null);
@@ -955,13 +956,27 @@ function App() {
 
     const oauthSuccess = url.searchParams.get("oauth_success");
     if (oauthSuccess) {
+      const needsSelection = url.searchParams.get("needs_selection") === "1";
+      const connId = url.searchParams.get("conn_id");
       url.searchParams.delete("oauth_success");
+      url.searchParams.delete("needs_selection");
+      url.searchParams.delete("conn_id");
       window.history.replaceState({}, document.title, url.pathname);
-      // Defer tab switch until after auth + onboarding checks complete
-      setTimeout(() => {
-        setActiveTab("integrations");
-        setListVersion(v => v + 1);
-      }, 500);
+
+      if (needsSelection && connId) {
+        // Google analytics platform — fetch available accounts then show picker
+        const platform = oauthSuccess;
+        setGooglePickerState({ platform, connId, accounts: [], loading: true, error: null });
+        setTimeout(() => setActiveTab("integrations"), 300);
+        apiRequest(`/api/oauth/${platform}/accounts?conn_id=${connId}`, "GET")
+          .then(data => setGooglePickerState(s => ({ ...s, accounts: data.accounts || [], loading: false })))
+          .catch(err => setGooglePickerState(s => ({ ...s, loading: false, error: err.message || "Failed to load accounts" })));
+      } else {
+        setTimeout(() => {
+          setActiveTab("integrations");
+          setListVersion(v => v + 1);
+        }, 500);
+      }
     }
 
     const oauthError = url.searchParams.get("oauth_error");
@@ -1323,6 +1338,9 @@ function App() {
             setSelectedCampaignId={setSelectedCampaignId}
             switchTab={switchTab}
             campaigns={campaignsList}
+            connections={connectionsData?.connections || []}
+            brandName={activeBrand?.name || companyName || "Your Brand"}
+            brandTimezone={activeBrand?.timezone || null}
           />
         </TabContent>
 
@@ -1452,6 +1470,7 @@ function App() {
             }}
           />
         </TabContent>
+
       </LayoutShell>
 
       <AssistantModal 
@@ -1478,6 +1497,63 @@ function App() {
         onRequestChanges={(id, comment) => updateStatus(id, 'draft', comment)}
       />
 
+
+      {/* Google Account / Property Picker */}
+      {googlePickerState && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 32, width: 480, maxWidth: "90vw", maxHeight: "80vh", display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
+                Select {googlePickerState.platform === "google_analytics" ? "GA4 Property" :
+                        googlePickerState.platform === "google_search_console" ? "Search Console Site" :
+                        "Business Profile Account"}
+              </h3>
+              <button
+                onClick={() => { setGooglePickerState(null); setListVersion(v => v + 1); }}
+                style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#666" }}
+              >×</button>
+            </div>
+            <p style={{ margin: 0, color: "#666", fontSize: 14 }}>
+              Choose which account to connect to this brand.
+            </p>
+            {googlePickerState.loading && <p style={{ color: "#888", textAlign: "center" }}>Loading accounts…</p>}
+            {googlePickerState.error && <p style={{ color: "#c00", fontSize: 13 }}>{googlePickerState.error}</p>}
+            {!googlePickerState.loading && !googlePickerState.error && googlePickerState.accounts.length === 0 && (
+              <p style={{ color: "#888", fontSize: 14 }}>No accounts found for this Google profile.</p>
+            )}
+            <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
+              {googlePickerState.accounts.map(acc => (
+                <button
+                  key={acc.id}
+                  onClick={async () => {
+                    try {
+                      await apiRequest(`/api/oauth/${googlePickerState.platform}/select`, "POST", {
+                        conn_id: googlePickerState.connId,
+                        account_id: acc.id,
+                        account_name: acc.name
+                      });
+                      setGooglePickerState(null);
+                      setListVersion(v => v + 1);
+                      setActiveTab("integrations");
+                    } catch (e) {
+                      setGooglePickerState(s => ({ ...s, error: e.message || "Selection failed" }));
+                    }
+                  }}
+                  style={{
+                    background: "#f8f9fa", border: "1px solid #e0e0e0", borderRadius: 8,
+                    padding: "12px 16px", textAlign: "left", cursor: "pointer",
+                    display: "flex", flexDirection: "column", gap: 2
+                  }}
+                >
+                  <span style={{ fontWeight: 600, fontSize: 14 }}>{acc.name}</span>
+                  {acc.extra && <span style={{ fontSize: 12, color: "#888" }}>{acc.extra}</span>}
+                  <span style={{ fontSize: 11, color: "#aaa", fontFamily: "monospace" }}>{acc.id}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
