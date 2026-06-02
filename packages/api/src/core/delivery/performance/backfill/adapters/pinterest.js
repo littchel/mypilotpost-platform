@@ -16,7 +16,11 @@ export async function fetchPinterestHistorical({ accessToken, since, until }) {
     const res = await fetch(url.toString(), {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    if (!res.ok) break;
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => res.status);
+      if (page === 0) throw new Error(`Pinterest API ${res.status}: ${errBody}`);
+      break;
+    }
     const body = await res.json();
     if (!Array.isArray(body.items)) break;
 

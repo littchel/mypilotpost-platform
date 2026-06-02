@@ -29,9 +29,11 @@ const ADAPTERS = {
   instagram,
   facebook,
   linkedin,
+  linkedin_personal: linkedin, // personal profile — same adapter, split at OAuth level
   tiktok,
   x,
   google,
+  youtube: google, // delivery_jobs use platform='youtube'; adapter lives in google.js
   pinterest,
   wordpress,
   threads,
@@ -67,20 +69,47 @@ export async function executeDeliveryJob(env, job) {
   if (lock.meta.changes === 0) return;
 
   try {
-    // 3️⃣ Resolve Unified Data (LOCKED CONTRACT)
+    // 3️⃣ Idempotency: if already published (external_post_id set), skip adapter call
+    const jobState = await db.prepare('SELECT external_post_id FROM delivery_jobs WHERE id = ?').bind(job.id).first();
+    if (jobState?.external_post_id) {
+      console.log(`POSTER: ${job.platform} already published (${jobState.external_post_id}) — skipping adapter`);
+      await syncContentStatusWithJobs(db, job, 'success', null, jobState.external_post_id);
+      return;
+    }
+
+    // 4️⃣ Resolve Unified Data (LOCKED CONTRACT)
     const { content, connection } = await resolveDeliveryData(env, job);
 
-    // 4️⃣ Execute via Standardized Adapter
+    // 5️⃣ Execute via Standardized Adapter
     const adapter = ADAPTERS[job.platform];
     if (!adapter) throw new Error(`UNSUPPORTED_PLATFORM: ${job.platform}`);
 
     console.log(`POSTER: Executing ${job.platform} delivery`, { job_id: job.id, content_id: job.content_id });
+
+    const deliveryStart = Date.now();
+    let adapterResult = null;
 
     // Race against timeout
     const result = await Promise.race([
       adapter.publish({ content, connection, env }),
       new Promise((_, reject) => setTimeout(() => reject(new Error("TIMEOUT")), DELIVERY_TIMEOUT_MS))
     ]);
+    adapterResult = result;
+    const duration_ms = Date.now() - deliveryStart;
+
+    // Log successful delivery
+    db.prepare(`
+      INSERT INTO delivery_logs (job_id, brand_id, platform, attempt_number, media_url,
+        resolver_summary, adapter_response, external_id, duration_ms, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'success', CURRENT_TIMESTAMP)
+    `).bind(
+      job.id, job.brand_id, job.platform, job.delivery_attempts + 1,
+      content.media?.[0]?.preview_url || null,
+      JSON.stringify({ content_id: content.id, media_count: content.media?.length || 0, text_len: content.text?.length || 0 }),
+      JSON.stringify({ external_id: result.external_id }),
+      result.external_id || null,
+      duration_ms,
+    ).run().catch(() => {});
 
     // 5️⃣ Success Path
     await recordAttempt(db, job, job.delivery_attempts + 1, "success");
@@ -99,6 +128,12 @@ export async function executeDeliveryJob(env, job) {
     
     console.error(`POSTER: ${job.platform} delivery failed`, { job_id: job.id, error: err.message });
 
+    // Log failed delivery
+    db.prepare(`
+      INSERT INTO delivery_logs (job_id, brand_id, platform, attempt_number, status, error_message, created_at)
+      VALUES (?, ?, ?, ?, 'failed', ?, CURRENT_TIMESTAMP)
+    `).bind(job.id, job.brand_id, job.platform, job.delivery_attempts + 1, err.message).run().catch(() => {});
+
     await recordAttempt(db, job, job.delivery_attempts + 1, "failed", errorCode, err.message);
     await syncContentStatusWithJobs(db, job, 'failed', errorCode);
     
@@ -114,19 +149,19 @@ export async function executeDeliveryJob(env, job) {
 async function syncContentStatusWithJobs(db, job, platformStatus, errorType = null, externalId = null) {
   const contentTable = job.content_type === 'blog' ? 'blog_posts' : 'social_assets';
   
-  // 1. Update this specific job
+  // 1. Update this specific job — COALESCE preserves external_post_id if already set (prevents retry wipe)
   await db.prepare(`
     UPDATE delivery_jobs
-    SET status = ?, 
+    SET status = ?,
         last_error = ?,
-        external_post_id = ?,
-        published_at = ?,
+        external_post_id = COALESCE(?, external_post_id),
+        published_at = COALESCE(?, published_at),
         updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
   `).bind(
     platformStatus === 'success' ? 'published' : 'failed',
     errorType,
-    externalId,
+    externalId || null,
     platformStatus === 'success' ? new Date().toISOString() : null,
     job.id
   ).run();
@@ -143,7 +178,7 @@ async function syncContentStatusWithJobs(db, job, platformStatus, errorType = nu
   if (publishedCount + failedCount >= totalCount) {
     if (publishedCount === totalCount) aggregateStatus = 'published';
     else if (failedCount === totalCount) aggregateStatus = 'failed';
-    else aggregateStatus = 'partial_failure';
+    else aggregateStatus = 'failed'; // mixed results — stays failed so retries can target specific platforms
   }
 
   // 3. Sync Asset & Drafts
@@ -157,9 +192,9 @@ async function syncContentStatusWithJobs(db, job, platformStatus, errorType = nu
     await insertExperienceNotification(db, job.brand_id, "success", `Published to ${job.platform}`, "Post is live 🚀");
     
     // Growth Engine Integration
-    await emitEvent(env, 'content_published', { 
-      brand_id: job.brand_id, 
-      user_id: job.user_id, // Ensure user_id is available in job
+    await emitEvent(globalThis.__ENV__, 'content_published', {
+      brand_id: job.brand_id,
+      user_id: job.user_id,
       content_id: job.content_id,
       meta: { platform: job.platform }
     });

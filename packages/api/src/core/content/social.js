@@ -64,18 +64,18 @@ export async function createSocialAsset(request, env, auth) {
       `).bind(contextId, brand_id, user_id));
     }
 
-    // Upsert Social Asset
+    // Upsert Social Asset — keep status in sync with lifecycle_status so scheduleContent can read it
     if (existing) {
       batchStmts.push(db.prepare(`
-        UPDATE social_assets 
-        SET title = ?, text = ?, campaign_id = ?, lifecycle_status = ?, updated_at = CURRENT_TIMESTAMP 
+        UPDATE social_assets
+        SET title = ?, text = ?, campaign_id = ?, lifecycle_status = ?, status = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ? AND brand_id = ? AND user_id = ?
-      `).bind(title, text, campaign_id, lifecycle_status, assetId, brand_id, user_id));
+      `).bind(title, text, campaign_id, lifecycle_status, lifecycle_status, assetId, brand_id, user_id));
     } else {
       batchStmts.push(db.prepare(`
-        INSERT INTO social_assets (id, brand_id, user_id, context_id, title, text, campaign_id, lifecycle_status) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(assetId, brand_id, user_id, contextId, title, text, campaign_id, lifecycle_status));
+        INSERT INTO social_assets (id, brand_id, user_id, context_id, title, text, campaign_id, lifecycle_status, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(assetId, brand_id, user_id, contextId, title, text, campaign_id, lifecycle_status, lifecycle_status));
     }
 
     // Map Variants (Single Source of Truth)

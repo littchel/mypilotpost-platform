@@ -10,7 +10,10 @@ export async function fetchYouTubeHistorical({ accessToken, accountId, since, un
     `https://www.googleapis.com/youtube/v3/channels` +
     `?part=contentDetails&id=${accountId}&access_token=${accessToken}`
   );
-  if (!chRes.ok) return [];
+  if (!chRes.ok) {
+    const errBody = await chRes.text().catch(() => chRes.status);
+    throw new Error(`YouTube API ${chRes.status}: ${errBody}`);
+  }
   const chBody = await chRes.json();
   const uploadsPlaylistId = chBody.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
   if (!uploadsPlaylistId) return [];

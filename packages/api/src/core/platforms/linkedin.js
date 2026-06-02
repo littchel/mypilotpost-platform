@@ -3,7 +3,7 @@
  * Standardized Contract V1
  */
 
-import { fetchRemoteAsset } from "../../lib/media_utils.js";
+import { fetchMediaAsset } from "../../lib/media_utils.js";
 
 export async function publish({ content, connection, env }) {
   const { text, media } = content;
@@ -11,7 +11,11 @@ export async function publish({ content, connection, env }) {
 
   // 1. Get Author URN
   const profileRes = await fetch("https://api.linkedin.com/v2/me", {
-    headers: { Authorization: `Bearer ${access_token}` }
+    headers: {
+      Authorization: `Bearer ${access_token}`,
+      "LinkedIn-Version": "202306",
+      "X-Restli-Protocol-Version": "2.0.0"
+    }
   });
 
   if (!profileRes.ok) {
@@ -27,7 +31,7 @@ export async function publish({ content, connection, env }) {
 
   if (primaryMedia) {
     try {
-      const asset = await fetchRemoteAsset(primaryMedia.preview_url);
+      const asset = await fetchMediaAsset(primaryMedia, env);
 
       // Register
       const regRes = await fetch("https://api.linkedin.com/v2/assets?action=registerUpload", {

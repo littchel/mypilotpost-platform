@@ -43,6 +43,12 @@ export async function startUnifiedOAuth(request, env, userContext) {
     });
   }
 
+  if (provider.disabled) {
+    return new Response(JSON.stringify({
+      error: `${provider.name || platform} is not yet available. Approval in progress.`
+    }), { status: 403, headers: { "Content-Type": "application/json" } });
+  }
+
   const state = crypto.randomUUID();
   const stateData = {
     brand_id,
@@ -268,7 +274,11 @@ export async function handleUnifiedCallback(request, env) {
       refresh_token = COALESCE(excluded.refresh_token, social_connections.refresh_token),
       expires_at = excluded.expires_at,
       scopes = excluded.scopes,
-      status = 'active',
+      status = CASE
+        WHEN social_connections.status IN ('CONNECTED_NEEDS_RESOURCE', 'pending')
+        THEN social_connections.status
+        ELSE 'active'
+        END,
       meta = excluded.meta,
       updated_at = CURRENT_TIMESTAMP,
       last_refreshed_at = CURRENT_TIMESTAMP
@@ -286,7 +296,29 @@ export async function handleUnifiedCallback(request, env) {
     JSON.stringify(normalized.meta || {})
   ).run();
 
-    // Redirect back to dashboard with success (SPA root — tab state handled client-side)
+    // Platforms that require resource selection before becoming usable.
+    // linkedin_personal publishes as the authenticated member — no picker needed.
+    // linkedin_pages selects a company page once the Community Management API is approved.
+    // UPSERT conflict path keeps the original row id — query by unique key to get it.
+    const NEEDS_SELECTION = ["google_analytics", "google_search_console", "google_business", "linkedin_pages"];
+    if (NEEDS_SELECTION.includes(platform)) {
+      const actual = await db.prepare(
+        `SELECT id, selected_resource_id FROM social_connections
+         WHERE brand_id = ? AND platform = ? AND account_id = ?`
+      ).bind(brand_id, platform, normalized.account_id).first();
+      const actual_id = actual?.id || connection_id;
+
+      if (!actual?.selected_resource_id) {
+        await db.prepare(
+          `UPDATE social_connections SET status = 'CONNECTED_NEEDS_RESOURCE' WHERE id = ?`
+        ).bind(actual_id).run();
+        return Response.redirect(
+          `${env.FRONTEND_URL}?oauth_success=${platform}&needs_selection=1&conn_id=${actual_id}`,
+          302
+        );
+      }
+    }
+
     return Response.redirect(`${env.FRONTEND_URL}?oauth_success=${platform}`, 302);
   } catch (err) {
     console.error(`[OAUTH_CALLBACK_FAILED] ${platform}:`, err.message || err);

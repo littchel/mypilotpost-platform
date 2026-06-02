@@ -3,7 +3,7 @@
  * Standardized Contract V1
  */
 
-import { fetchRemoteAsset } from "../../lib/media_utils.js";
+import { fetchMediaAsset } from "../../lib/media_utils.js";
 
 export async function publish({ content, connection, env }) {
   const { text, media } = content;
@@ -15,7 +15,7 @@ export async function publish({ content, connection, env }) {
   const primaryMedia = media.find(m => m.role === 'primary' || m.position === 0);
   if (primaryMedia) {
     try {
-      const asset = await fetchRemoteAsset(primaryMedia.preview_url);
+      const asset = await fetchMediaAsset(primaryMedia, env);
       
       const formData = new FormData();
       formData.append("media", new Blob([asset.data], { type: asset.mimeType }));

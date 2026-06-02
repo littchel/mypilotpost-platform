@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import WorkspaceCard from "../components/shared/WorkspaceCard";
 import PilotButton from "../components/shared/PilotButton";
-import { RefreshCw, Trash2, ExternalLink, ShieldCheck, AlertCircle } from "lucide-react";
+import { RefreshCw, Trash2, ExternalLink, ShieldCheck, AlertCircle, ChevronRight, X, Check, Loader } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { apiRequest } from "../lib/api/client";
 
@@ -88,6 +88,8 @@ const PlatformIcon = ({ id }) => {
     ),
   };
 
+  if (id === "linkedin_personal" || id === "linkedin_pages") return icons.linkedin;
+
   return icons[id] || (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
       <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4zm-1 9h2v2h-2z"/>
@@ -96,38 +98,185 @@ const PlatformIcon = ({ id }) => {
 };
 
 const PROVIDERS = [
-  { id: "instagram",       name: "Instagram",              color: "#E4405F", bgColor: "#E4405F",         description: "Schedule visual content, stories, and reels." },
-  { id: "facebook",        name: "Facebook",               color: "#1877F2", bgColor: "#1877F2",         description: "Publish to Facebook Pages and manage engagement." },
-  { id: "linkedin",        name: "LinkedIn",               color: "#0A66C2", bgColor: "#0A66C2",         description: "Publish posts and track company page engagement." },
-  { id: "x",              name: "X (Twitter)",            color: "#000000", bgColor: "#14171A",         description: "Post updates to X with secure OAuth 2.0 PKCE." },
-  { id: "tiktok",         name: "TikTok",                 color: "#010101", bgColor: "#010101",         description: "Connect your TikTok account for video sharing." },
-  { id: "threads",        name: "Threads",                color: "#1C1C1C", bgColor: "#1C1C1C",         description: "Publish to your Threads audience directly." },
-  { id: "youtube",        name: "YouTube",                color: "#FF0000", bgColor: "#FF0000",         description: "Schedule and publish video content to your channel." },
-  { id: "pinterest",      name: "Pinterest",              color: "#BD081C", bgColor: "#BD081C",         description: "Pin your latest content to boards automatically." },
-  { id: "wordpress",      name: "WordPress",              color: "#21759B", bgColor: "#21759B",         description: "Publish blog articles directly to your WordPress site." },
-  { id: "canva",          name: "Canva",                  color: "#00C4CC", bgColor: "#00C4CC",         description: "Design graphics and import them directly into posts." },
-  { id: "dropbox",        name: "Dropbox",                color: "#0061FF", bgColor: "#0061FF",         description: "Import and sync media assets from your Dropbox." },
-  { id: "google",         name: "Google Drive",           color: "#4285F4", bgColor: "#4285F4",         description: "Import images and documents from Google Drive." },
-  { id: "google_analytics",      name: "Google Analytics",      color: "#E37400", bgColor: "#E37400", description: "Connect GA4 to see content performance insights." },
-  { id: "google_business",       name: "Google Business",       color: "#34A853", bgColor: "#34A853", description: "Manage your Google Business Profile posts." },
-  { id: "google_search_console", name: "Google Search Console", color: "#4285F4", bgColor: "#4285F4", description: "Track search queries, clicks, impressions, and page rankings." },
+  { id: "instagram",             name: "Instagram",              color: "#E4405F", bgColor: "#E4405F",   description: "Schedule visual content, stories, and reels." },
+  { id: "facebook",              name: "Facebook",               color: "#1877F2", bgColor: "#1877F2",   description: "Publish to Facebook Pages and manage engagement." },
+  // LinkedIn — personal live now; pages awaiting Community Management API approval
+  { id: "linkedin_personal",     name: "LinkedIn",               color: "#0A66C2", bgColor: "#0A66C2",   description: "Publish posts to your personal LinkedIn profile.", linkedinSplit: true },
+  { id: "x",                    name: "X (Twitter)",            color: "#000000", bgColor: "#14171A",   description: "Post updates to X with secure OAuth 2.0 PKCE." },
+  { id: "tiktok",               name: "TikTok",                 color: "#010101", bgColor: "#010101",   description: "Connect your TikTok account for video sharing." },
+  { id: "threads",              name: "Threads",                color: "#1C1C1C", bgColor: "#1C1C1C",   description: "Publish to your Threads audience directly." },
+  { id: "youtube",              name: "YouTube",                color: "#FF0000", bgColor: "#FF0000",   description: "Schedule and publish video content to your channel." },
+  { id: "pinterest",            name: "Pinterest",              color: "#BD081C", bgColor: "#BD081C",   description: "Pin your latest content to boards automatically." },
+  { id: "wordpress",            name: "WordPress",              color: "#21759B", bgColor: "#21759B",   description: "Publish blog articles directly to your WordPress site." },
+  { id: "canva",                name: "Canva",                  color: "#00C4CC", bgColor: "#00C4CC",   description: "Design graphics and import them directly into posts." },
+  { id: "dropbox",              name: "Dropbox",                color: "#0061FF", bgColor: "#0061FF",   description: "Import and sync media assets from your Dropbox." },
+  { id: "google",               name: "Google Drive",           color: "#4285F4", bgColor: "#4285F4",   description: "Import images and documents from Google Drive." },
+  { id: "google_analytics",     name: "Google Analytics",       color: "#E37400", bgColor: "#E37400",   description: "Connect GA4 to see content performance insights.", requiresResource: true, resourceLabel: "Property" },
+  { id: "google_business",      name: "Google Business",        color: "#34A853", bgColor: "#34A853",   description: "Manage your Google Business Profile posts.", requiresResource: true, resourceLabel: "Location" },
+  { id: "google_search_console",name: "Google Search Console",  color: "#4285F4", bgColor: "#4285F4",   description: "Track search queries, clicks, impressions, and page rankings.", requiresResource: true, resourceLabel: "Site" },
 ];
+
+const NEEDS_RESOURCE = ["google_analytics", "google_search_console", "google_business", "linkedin_pages"];
+
+/* ── Resource Picker Modal ── */
+function ResourcePickerModal({ platform, connId, onConfirm, onCancel }) {
+  const [resources,     setResources]     = useState([]);
+  const [loading,       setLoading]       = useState(true);
+  const [error,         setError]         = useState(null);
+  const [selected,      setSelected]      = useState(null);
+  const [saving,        setSaving]        = useState(false);
+
+  // For Google Business: two-step (account → location)
+  const [gbmStep,       setGbmStep]       = useState("account"); // "account" | "location"
+  const [gbmAccountId,  setGbmAccountId]  = useState(null);
+  const [gbmAccountName,setGbmAccountName]= useState(null);
+
+  const fetchResources = useCallback(async (accountId) => {
+    setLoading(true);
+    setError(null);
+    setSelected(null);
+    try {
+      const qs = accountId ? `?conn_id=${connId}&account_id=${encodeURIComponent(accountId)}` : `?conn_id=${connId}`;
+      const url = platform === "google_business" && accountId
+        ? `/api/oauth/google_business/locations${qs}`
+        : `/api/oauth/${platform}/accounts${qs}`;
+      const data = await apiRequest(url);
+      setResources(data?.resources || data?.locations || []);
+    } catch (e) {
+      setError(e.message || "Failed to load resources");
+    } finally {
+      setLoading(false);
+    }
+  }, [platform, connId]);
+
+  useEffect(() => { fetchResources(null); }, [fetchResources]);
+
+  const handleSelect = (resource) => {
+    if (platform === "google_business" && gbmStep === "account") {
+      setGbmAccountId(resource.id);
+      setGbmAccountName(resource.name);
+      setGbmStep("location");
+      fetchResources(resource.id);
+      return;
+    }
+    setSelected(resource);
+  };
+
+  const handleConfirm = async () => {
+    if (!selected) return;
+    setSaving(true);
+    try {
+      await apiRequest(`/api/oauth/${platform}/select`, {
+        method: "POST",
+        body: JSON.stringify({
+          conn_id:       connId,
+          resource_id:   selected.id,
+          resource_name: selected.name,
+          resource_type: selected.resource_type
+        })
+      });
+      onConfirm(selected);
+    } catch (e) {
+      setError(e.message || "Failed to save selection");
+      setSaving(false);
+    }
+  };
+
+  const stepLabel = platform === "google_business"
+    ? (gbmStep === "account" ? "Select Business Account" : `Select Location — ${gbmAccountName}`)
+    : platform === "linkedin"     ? "Select Publishing Destination"
+    : platform === "google_analytics" ? "Select GA4 Property"
+    : platform === "google_search_console" ? "Select Site"
+    : "Select Resource";
+
+  return (
+    <div className="rp-overlay">
+      <div className="rp-modal">
+        <div className="rp-header">
+          <h3>{stepLabel}</h3>
+          <button className="rp-close" onClick={onCancel}><X size={18} /></button>
+        </div>
+
+        {loading && (
+          <div className="rp-state">
+            <Loader size={20} className="spin" />
+            <span>Loading…</span>
+          </div>
+        )}
+
+        {error && (
+          <div className="rp-error">
+            <AlertCircle size={15} />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {!loading && !error && resources.length === 0 && (
+          <div className="rp-state rp-empty">
+            <AlertCircle size={20} />
+            <span>No resources found. Make sure you have the right permissions.</span>
+          </div>
+        )}
+
+        {!loading && resources.length > 0 && (
+          <ul className="rp-list">
+            {resources.map(r => (
+              <li
+                key={r.id}
+                className={`rp-item${selected?.id === r.id ? " rp-item--selected" : ""}`}
+                onClick={() => handleSelect(r)}
+              >
+                <div className="rp-item-body">
+                  <div className="rp-item-name">{r.name}</div>
+                  {r.extra && <div className="rp-item-extra">{r.extra}</div>}
+                </div>
+                <div className="rp-item-right">
+                  {(platform === "google_business" && gbmStep === "account")
+                    ? <ChevronRight size={16} className="rp-chevron" />
+                    : selected?.id === r.id
+                      ? <Check size={16} className="rp-check" />
+                      : null
+                  }
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="rp-footer">
+          <PilotButton type="outline" size="sm" onClick={onCancel}>Cancel</PilotButton>
+          {!(platform === "google_business" && gbmStep === "account") && (
+            <PilotButton
+              type="primary"
+              size="sm"
+              onClick={handleConfirm}
+              disabled={!selected || saving}
+            >
+              {saving ? "Saving…" : "Confirm"}
+            </PilotButton>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const IntegrationsManager = () => {
   const { token } = useAuth();
   const [integrations, setIntegrations] = useState([]);
   const [loading, setLoading]           = useState(true);
-  const [error, setError]               = useState(null);
+  const [fetchError, setFetchError]     = useState(null);
+  const [picker, setPicker]             = useState(null); // { platform, connId }
 
   const fetchIntegrations = useCallback(async () => {
     setLoading(true);
-    setError(null);
+    setFetchError(null);
     try {
       const data = await apiRequest("/api/customer/social-connections");
       setIntegrations(data?.connections || []);
     } catch (e) {
       console.error("Failed to fetch integrations", e);
-      setError("Unable to load integration status. Please try again.");
+      setFetchError("Unable to load integration status. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -137,13 +286,28 @@ const IntegrationsManager = () => {
     if (token) fetchIntegrations();
   }, [token, fetchIntegrations]);
 
+  // Auto-open picker if redirected back from OAuth with needs_selection=1
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const needsSel = params.get("needs_selection");
+    const connId   = params.get("conn_id");
+    const platform = params.get("oauth_success");
+    if (needsSel === "1" && connId && platform) {
+      // Clean URL
+      const clean = window.location.pathname;
+      window.history.replaceState({}, "", clean);
+      // Small delay so integrations list has loaded
+      setTimeout(() => setPicker({ platform, connId }), 800);
+    }
+  }, []);
+
   const handleConnect = async (provider) => {
     try {
       const data = await apiRequest(`/api/oauth/${provider}/connect`);
       if (data?.url) window.location.assign(data.url);
       else throw new Error("No OAuth URL returned");
     } catch (e) {
-      alert(`Failed to start ${provider} OAuth: ${e.message || 'Unknown error'}`);
+      alert(`Failed to start ${provider} OAuth: ${e.message || "Unknown error"}`);
     }
   };
 
@@ -157,8 +321,30 @@ const IntegrationsManager = () => {
     }
   };
 
+  const openPicker = (platform, connId) => setPicker({ platform, connId });
+  const closePicker = () => setPicker(null);
+
+  const handlePickerConfirm = (resource) => {
+    // Update local state with selected resource
+    setIntegrations(prev => prev.map(c =>
+      c.id === picker.connId
+        ? { ...c, status: "active", selected_resource_id: resource.id, selected_resource_name: resource.name, resource_type: resource.resource_type }
+        : c
+    ));
+    setPicker(null);
+  };
+
   return (
     <>
+      {picker && (
+        <ResourcePickerModal
+          platform={picker.platform}
+          connId={picker.connId}
+          onConfirm={handlePickerConfirm}
+          onCancel={closePicker}
+        />
+      )}
+
       <div className="integrations-manager">
         <header className="integrations-header">
           <div>
@@ -166,14 +352,14 @@ const IntegrationsManager = () => {
             <p>Connect your social media, publishing, and storage accounts.</p>
           </div>
           <PilotButton type="outline" icon={RefreshCw} onClick={fetchIntegrations} disabled={loading}>
-            {loading ? 'Refreshing…' : 'Refresh Status'}
+            {loading ? "Refreshing…" : "Refresh Status"}
           </PilotButton>
         </header>
 
-        {error && (
-          <div className="d-flex align-items-center gap-2 p-3 rounded-3 mb-2" style={{ background: '#fee2e2', color: '#991b1b', fontSize: '0.875rem' }}>
+        {fetchError && (
+          <div className="d-flex align-items-center gap-2 p-3 rounded-3 mb-2" style={{ background: "#fee2e2", color: "#991b1b", fontSize: "0.875rem" }}>
             <AlertCircle size={16} />
-            {error}
+            {fetchError}
           </div>
         )}
 
@@ -187,12 +373,18 @@ const IntegrationsManager = () => {
         {!loading && (
           <div className="integrations-grid">
             {PROVIDERS.map(p => {
-              const connected = integrations.find(i => i.platform === p.id);
-              const isActive  = connected?.status === 'active';
-              const isExpired = connected && !isActive;
+              // linkedin_personal also shows existing legacy linkedin connections
+              const connected      = integrations.find(i =>
+                i.platform === p.id || (p.id === "linkedin_personal" && i.platform === "linkedin")
+              );
+              const isActive       = connected?.status === "active";
+              const needsResource  = connected && (connected.status === "pending" || connected.status === "CONNECTED_NEEDS_RESOURCE");
+              const isExpired      = connected && !isActive && !needsResource;
+              const hasResource    = connected?.selected_resource_name;
+              const providerMeta   = PROVIDERS.find(x => x.id === p.id);
 
               return (
-                <WorkspaceCard key={p.id} className={`integration-card${connected ? ' integration-card--connected' : ''}`}>
+                <WorkspaceCard key={p.id} className={`integration-card${connected ? " integration-card--connected" : ""}${needsResource ? " integration-card--needs-resource" : ""}`}>
                   <div className="card-top">
                     <div className="platform-icon" style={{ background: p.bgColor }}>
                       <PlatformIcon id={p.id} />
@@ -203,9 +395,13 @@ const IntegrationsManager = () => {
                           <span className="status-badge status-badge--active">
                             <ShieldCheck size={11} /> Connected
                           </span>
+                        ) : needsResource ? (
+                          <span className="status-badge status-badge--warn">
+                            <AlertCircle size={11} /> Select Resource
+                          </span>
                         ) : (
                           <span className="status-badge status-badge--error">
-                            <AlertCircle size={11} /> {connected.status?.toUpperCase() || 'ERROR'}
+                            <AlertCircle size={11} /> {connected.status?.toUpperCase() || "ERROR"}
                           </span>
                         )
                       ) : (
@@ -223,8 +419,20 @@ const IntegrationsManager = () => {
                     <div className="connection-info">
                       <div className="info-row">
                         <strong>Account</strong>
-                        <span>{connected.platform_username || connected.account_name || 'Linked'}</span>
+                        <span>{connected.platform_username || "Linked"}</span>
                       </div>
+                      {isActive && hasResource && (
+                        <div className="info-row">
+                          <strong>{providerMeta?.resourceLabel || "Resource"}</strong>
+                          <span className="resource-name">{connected.selected_resource_name}</span>
+                        </div>
+                      )}
+                      {needsResource && (
+                        <div className="needs-resource-banner">
+                          <AlertCircle size={13} />
+                          Select a {providerMeta?.resourceLabel?.toLowerCase() || "resource"} to activate
+                        </div>
+                      )}
                       {isExpired && (
                         <div className="status-warning-ui">
                           <AlertCircle size={13} />
@@ -234,17 +442,66 @@ const IntegrationsManager = () => {
                     </div>
                   )}
 
+                  {p.linkedinSplit && (
+                    <div className="linkedin-pages-notice">
+                      <span className="status-badge status-badge--warn" style={{ fontSize: "0.68rem" }}>
+                        <AlertCircle size={10} /> Company Pages — Awaiting Approval
+                      </span>
+                    </div>
+                  )}
+
                   <div className="card-bottom">
-                    {connected ? (
-                      <div className="d-flex gap-2 w-100">
-                        <PilotButton type="danger" size="sm" icon={Trash2} onClick={() => handleDisconnect(connected.id)}>
-                          Disconnect
-                        </PilotButton>
+                    {p.linkedinSplit ? (
+                      <div className="d-flex flex-column gap-2 w-100">
+                        {connected ? (
+                          <div className="d-flex gap-2 w-100 flex-wrap">
+                            {isExpired && (
+                              <PilotButton type="primary" size="sm" icon={RefreshCw} onClick={() => handleConnect(p.id)}>
+                                Reconnect Personal
+                              </PilotButton>
+                            )}
+                            <PilotButton type="danger" size="sm" icon={Trash2} onClick={() => handleDisconnect(connected.id)}>
+                              Disconnect
+                            </PilotButton>
+                          </div>
+                        ) : (
+                          <PilotButton type="primary" size="sm" icon={ExternalLink} onClick={() => handleConnect(p.id)}>
+                            Connect Personal Profile
+                          </PilotButton>
+                        )}
+                        <button className="btn-linkedin-pages-disabled" disabled>
+                          Company Pages — Awaiting Approval
+                        </button>
+                      </div>
+                    ) : connected ? (
+                      <div className="d-flex gap-2 w-100 flex-wrap">
+                        {needsResource && (
+                          <PilotButton
+                            type="primary"
+                            size="sm"
+                            icon={ChevronRight}
+                            onClick={() => openPicker(p.id, connected.id)}
+                          >
+                            Select {providerMeta?.resourceLabel || "Resource"}
+                          </PilotButton>
+                        )}
+                        {isActive && hasResource && (
+                          <PilotButton
+                            type="outline"
+                            size="sm"
+                            onClick={() => openPicker(p.id, connected.id)}
+                          >
+                            Change
+                          </PilotButton>
+                        )}
                         {isExpired && (
                           <PilotButton type="primary" size="sm" icon={RefreshCw} onClick={() => handleConnect(p.id)}>
                             Reconnect
                           </PilotButton>
                         )}
+                        <PilotButton type="danger" size="sm" icon={Trash2} onClick={() => handleDisconnect(connected.id)}>
+                          Disconnect
+                        </PilotButton>
                       </div>
                     ) : (
                       <PilotButton type="primary" size="sm" icon={ExternalLink} onClick={() => handleConnect(p.id)}>
@@ -265,6 +522,7 @@ const IntegrationsManager = () => {
       </div>
 
       <style>{`
+        /* ── Layout ── */
         .integrations-manager { display: flex; flex-direction: column; gap: 28px; }
         .integrations-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
         .integrations-header h2 { font-size: 1.4rem; font-weight: 800; color: var(--text-dark); margin-bottom: 4px; }
@@ -272,22 +530,53 @@ const IntegrationsManager = () => {
         .integrations-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 20px; }
         .integration-card { display: flex; flex-direction: column; height: 100%; }
         .integration-card--connected { border-color: #bbf7d0 !important; }
+        .integration-card--needs-resource { border-color: #fde68a !important; }
+        /* ── Card parts ── */
         .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
         .platform-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .status-badge { font-size: 0.7rem; font-weight: 700; padding: 3px 8px; border-radius: 4px; display: flex; align-items: center; gap: 3px; }
         .status-badge--active   { background: #dcfce7; color: #166534; }
         .status-badge--inactive { background: #f1f5f9; color: var(--text-gray); }
         .status-badge--error    { background: #fee2e2; color: #991b1b; }
+        .status-badge--warn     { background: #fef3c7; color: #92400e; }
         .card-middle h3 { font-size: 1rem; font-weight: 800; margin-bottom: 6px; color: var(--text-dark); }
         .card-middle p { font-size: 0.82rem; color: var(--text-gray); line-height: 1.4; margin-bottom: 16px; }
         .card-bottom { margin-top: auto; }
         .connection-info { background: var(--bg-body); padding: 10px 12px; border-radius: 8px; margin-bottom: 14px; }
         .info-row { display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 2px; }
         .info-row strong { color: var(--text-gray); }
-        .info-row span { font-weight: 600; color: var(--text-dark); }
+        .info-row span { font-weight: 600; color: var(--text-dark); max-width: 160px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .resource-name { color: #1d4ed8 !important; }
+        .needs-resource-banner { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #92400e; margin-top: 6px; background: #fef3c7; padding: 5px 8px; border-radius: 6px; }
         .status-warning-ui { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #b45309; margin-top: 6px; background: #fef3c7; padding: 5px 8px; border-radius: 6px; }
+        .linkedin-pages-notice { margin-bottom: 10px; }
+        .btn-linkedin-pages-disabled { width: 100%; padding: 6px 12px; border-radius: 8px; border: 1px dashed #cbd5e1; background: #f8fafc; color: #94a3b8; font-size: 0.78rem; font-weight: 600; cursor: not-allowed; text-align: center; }
         .security-notice { display: flex; align-items: flex-start; gap: 12px; background: #f8fafc; border: 1px solid var(--border-subtle); padding: 16px; border-radius: var(--radius-lg); color: var(--text-gray); font-size: 0.875rem; }
         .security-notice p { margin: 0; line-height: 1.5; }
+
+        /* ── Resource Picker Modal ── */
+        .rp-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1200; display: flex; align-items: center; justify-content: center; padding: 24px; }
+        .rp-modal { background: #fff; border-radius: 16px; width: 100%; max-width: 480px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.18); }
+        .rp-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px 16px; border-bottom: 1px solid #e5e7eb; }
+        .rp-header h3 { font-size: 1rem; font-weight: 700; margin: 0; color: var(--text-dark); }
+        .rp-close { background: none; border: none; cursor: pointer; color: var(--text-gray); padding: 4px; border-radius: 6px; display: flex; }
+        .rp-close:hover { background: #f1f5f9; }
+        .rp-state { display: flex; align-items: center; gap: 10px; padding: 32px 24px; color: var(--text-gray); font-size: 0.875rem; }
+        .rp-empty { flex-direction: column; text-align: center; }
+        .rp-error { display: flex; align-items: center; gap: 8px; margin: 16px 24px 0; padding: 10px 14px; background: #fee2e2; color: #991b1b; font-size: 0.8rem; border-radius: 8px; }
+        .rp-list { list-style: none; margin: 0; padding: 8px 0; overflow-y: auto; flex: 1; }
+        .rp-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; cursor: pointer; transition: background 0.1s; }
+        .rp-item:hover { background: #f8fafc; }
+        .rp-item--selected { background: #eff6ff; }
+        .rp-item-body { flex: 1; min-width: 0; }
+        .rp-item-name { font-size: 0.875rem; font-weight: 600; color: var(--text-dark); }
+        .rp-item-extra { font-size: 0.75rem; color: var(--text-gray); margin-top: 2px; }
+        .rp-item-right { flex-shrink: 0; margin-left: 12px; }
+        .rp-chevron { color: #9ca3af; }
+        .rp-check { color: #1d4ed8; }
+        .rp-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; border-top: 1px solid #e5e7eb; }
+        .spin { animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
     </>
   );

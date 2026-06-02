@@ -3,6 +3,7 @@
  */
 
 import * as linkedin from "./linkedin.js";
+import * as linkedin_personal from "./linkedin_personal.js";
 import * as meta from "./facebook.js";
 import * as instagram from "./instagram.js";
 import * as google from "./google.js";
@@ -17,6 +18,8 @@ import * as threads from "./threads.js";
 
 export const ADAPTERS = {
   linkedin,
+  linkedin_personal,       // personal profile — normalize via /v2/userinfo, no org endpoints
+  linkedin_pages: linkedin, // placeholder — same normalize; disabled in registry until approved
   meta,                     // Facebook Pages adapter (backward compat)
   facebook: meta,           // Facebook Pages — Page token + /me/accounts
   instagram,                // Instagram Business — IG account discovery via connected Page

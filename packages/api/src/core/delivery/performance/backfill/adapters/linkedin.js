@@ -1,29 +1,36 @@
 /**
  * LinkedIn Historical Backfill Adapter
- * Lists UGC posts for the author URN and fetches socialActions metrics for each.
- * account_id = LinkedIn person URN or organization URN (e.g. urn:li:person:xxx)
+ * Uses the legacy v2 ugcPosts endpoint (unversioned).
+ * The newer /rest/posts requires a LinkedIn-Version header with a specific active date
+ * that may not match app permissions — v2/ugcPosts works without versioning.
+ * account_id = LinkedIn member URN or numeric member ID
  */
 
 export async function fetchLinkedInHistorical({ accessToken, accountId, since, until }) {
   const headers = {
     Authorization: `Bearer ${accessToken}`,
     "X-Restli-Protocol-Version": "2.0.0",
-    "LinkedIn-Version": "202401",
   };
 
-  const authorUrn = accountId.startsWith("urn:") ? accountId : `urn:li:person:${accountId}`;
-  const encodedAuthor = encodeURIComponent(`List(${encodeURIComponent(authorUrn)})`);
+  const authorUrn = accountId.startsWith("urn:li:") ? accountId : `urn:li:person:${accountId}`;
 
   const posts = [];
   let start = 0;
   const count = 50;
 
   for (let page = 0; page < 5; page++) {
-    const res = await fetch(
-      `https://api.linkedin.com/v2/ugcPosts?q=authors&authors=${encodedAuthor}&count=${count}&start=${start}`,
-      { headers }
-    );
-    if (!res.ok) break;
+    const url = new URL("https://api.linkedin.com/v2/ugcPosts");
+    url.searchParams.set("q", "authors");
+    url.searchParams.set("authors", `List(${encodeURIComponent(authorUrn)})`);
+    url.searchParams.set("count", String(count));
+    url.searchParams.set("start", String(start));
+
+    const res = await fetch(url.toString(), { headers });
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => res.status);
+      if (page === 0) throw new Error(`LinkedIn API ${res.status}: ${errBody}`);
+      break;
+    }
     const body = await res.json();
     const items = body.elements || [];
     if (!items.length) break;

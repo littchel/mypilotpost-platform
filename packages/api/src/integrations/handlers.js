@@ -27,7 +27,7 @@ export async function startOAuth(request, env, auth) {
     authUrl.searchParams.set("response_type", "code");
     
     // Add default scopes based on type
-    if (providerKey === "linkedin") authUrl.searchParams.set("scope", "r_liteprofile r_emailaddress w_member_social");
+    if (providerKey === "linkedin") authUrl.searchParams.set("scope", "openid profile email w_member_social r_organization_social");
     if (providerKey === "facebook") authUrl.searchParams.set("scope", "pages_show_list,pages_read_engagement,pages_manage_posts");
 
     return json({ url: authUrl.toString() });
@@ -146,6 +146,9 @@ export async function listSocialConnections(request, env, auth) {
       last_refreshed_at,
       scopes,
       meta,
+      selected_resource_id,
+      selected_resource_name,
+      resource_type,
       created_at
     FROM social_connections
     WHERE brand_id = ? AND status != 'disconnected'
@@ -159,7 +162,10 @@ export async function listSocialConnections(request, env, auth) {
     status: row.status,
     expires_at: row.expires_at,
     last_refreshed_at: row.last_refreshed_at,
-    meta: row.meta ? JSON.parse(row.meta) : {}
+    meta: row.meta ? JSON.parse(row.meta) : {},
+    selected_resource_id:   row.selected_resource_id   || null,
+    selected_resource_name: row.selected_resource_name || null,
+    resource_type:          row.resource_type          || null
   }));
 
   return json({ connections });
@@ -176,7 +182,9 @@ export async function getSocialConnectionById(request, env, auth) {
   const db = getDB(env);
   const row = await db.prepare(`
     SELECT id, platform, platform_username, account_id, status,
-           expires_at, last_refreshed_at, scopes, meta, created_at
+           expires_at, last_refreshed_at, scopes, meta,
+           selected_resource_id, selected_resource_name, resource_type,
+           created_at
     FROM social_connections
     WHERE id = ? AND brand_id = ? AND status != 'disconnected'
   `).bind(id, auth.brand_id).first();
@@ -190,7 +198,10 @@ export async function getSocialConnectionById(request, env, auth) {
     status: row.status,
     expires_at: row.expires_at,
     last_refreshed_at: row.last_refreshed_at,
-    meta: row.meta ? JSON.parse(row.meta) : {}
+    meta: row.meta ? JSON.parse(row.meta) : {},
+    selected_resource_id:   row.selected_resource_id   || null,
+    selected_resource_name: row.selected_resource_name || null,
+    resource_type:          row.resource_type          || null
   });
 }
 

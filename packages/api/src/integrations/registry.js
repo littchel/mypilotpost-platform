@@ -43,11 +43,44 @@ export const PROVIDERS = {
   },
 
   // --- SOCIAL / PUBLISHING ---
-  linkedin: {
-    name: "LinkedIn",
+
+  // linkedin_personal — personal profile publishing (live, no approval needed)
+  linkedin_personal: {
+    name: "LinkedIn Personal",
+    type: "publishing",
+    capabilities: ["publish_social"],
+    auth: "oauth2",
+    credential_key: "LINKEDIN",
+    scopes: "openid profile email w_member_social",
+    endpoints: {
+      auth: "https://www.linkedin.com/oauth/v2/authorization",
+      token: "https://www.linkedin.com/oauth/v2/accessToken"
+    }
+  },
+
+  // linkedin_pages — company page publishing (disabled until Community Management API approved)
+  // App: myPilotPost Pages  Client ID: 77gdg78b866jfb
+  linkedin_pages: {
+    name: "LinkedIn Pages",
     type: "publishing",
     capabilities: ["publish_social", "sync_analytics"],
     auth: "oauth2",
+    disabled: true,
+    credential_key: "LINKEDIN_PAGES",
+    scopes: "openid profile email rw_organization_admin w_organization_social r_organization_social",
+    endpoints: {
+      auth: "https://www.linkedin.com/oauth/v2/authorization",
+      token: "https://www.linkedin.com/oauth/v2/accessToken"
+    }
+  },
+
+  // linkedin — backward compat alias for existing connections stored as platform='linkedin'
+  linkedin: {
+    name: "LinkedIn",
+    type: "publishing",
+    capabilities: ["publish_social"],
+    auth: "oauth2",
+    credential_key: "LINKEDIN",
     scopes: "openid profile email w_member_social",
     endpoints: {
       auth: "https://www.linkedin.com/oauth/v2/authorization",

@@ -32,8 +32,13 @@ export async function fetchInstagramHistorical({ accessToken, accountId, since, 
   // Paginate through all media in the date window (max 5 pages = 250 posts)
   for (let page = 0; page < 5 && nextUrl; page++) {
     const res = await fetch(nextUrl);
-    if (!res.ok) break;
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => res.status);
+      if (page === 0) throw new Error(`Instagram API ${res.status}: ${errBody}`);
+      break;
+    }
     const body = await res.json();
+    if (body.error) throw new Error(`Instagram API error ${body.error.code}: ${body.error.message}`);
     if (!Array.isArray(body.data)) break;
     posts.push(...body.data);
     nextUrl = body.paging?.next || null;

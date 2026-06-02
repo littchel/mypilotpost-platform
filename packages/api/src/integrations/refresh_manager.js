@@ -58,16 +58,22 @@ export async function refreshSocialConnection(db, connection, env) {
       ? new Date(Date.now() + data.expires_in * 1000).toISOString()
       : connection.expires_at;
 
+    // Preserve CONNECTED_NEEDS_RESOURCE — a successful token refresh must not
+    // silently promote the connection to active before the user picks a resource.
+    const nextStatus = connection.status === 'CONNECTED_NEEDS_RESOURCE'
+      ? 'CONNECTED_NEEDS_RESOURCE'
+      : 'active';
+
     await db.prepare(`
-      UPDATE social_connections SET 
+      UPDATE social_connections SET
         access_token = ?,
         refresh_token = ?,
         expires_at = ?,
-        status = 'active',
+        status = ?,
         last_refreshed_at = CURRENT_TIMESTAMP,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `).bind(access_enc, refresh_enc, expires_at, connection.id).run();
+    `).bind(access_enc, refresh_enc, expires_at, nextStatus, connection.id).run();
 
     return { success: true };
   } catch (err) {
@@ -85,11 +91,14 @@ export async function refreshSocialConnection(db, connection, env) {
 export async function runBackgroundRefresh(env) {
   const db = getDB(env);
   
-  // Find tokens expiring within the next 8 hours OR already expired but active
+  // Find tokens with a known expiry that are expiring within the next 8 hours.
+  // Connections with expires_at IS NULL (e.g. Meta long-lived tokens) are skipped —
+  // they don't support standard refresh_token grant and will self-expire after ~60 days.
   const { results } = await db.prepare(`
-    SELECT * FROM social_connections 
-    WHERE status = 'active'
-    AND (expires_at IS NULL OR expires_at < DATETIME('now', '+8 hours'))
+    SELECT * FROM social_connections
+    WHERE status IN ('active', 'CONNECTED_NEEDS_RESOURCE')
+    AND expires_at IS NOT NULL
+    AND expires_at < DATETIME('now', '+8 hours')
   `).all();
 
   console.log(`[REFRESH_MANAGER] Checking ${results.length} connections...`);

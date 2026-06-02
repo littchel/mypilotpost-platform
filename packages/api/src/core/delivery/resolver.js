@@ -11,6 +11,43 @@
 import { getDB } from "../../lib/db.js";
 import { decrypt } from "../../lib/crypto.js";
 
+async function validateAndLogMedia(db, brand_id, mediaItems) {
+  if (!mediaItems || mediaItems.length === 0) return mediaItems;
+
+  return Promise.all(mediaItems.map(async (item) => {
+    if (!item.preview_url) return item;
+    try {
+      const res = await fetch(item.preview_url, {
+        method: 'HEAD',
+        headers: { 'User-Agent': 'facebookexternalhit/1.1' },
+        signal: AbortSignal.timeout(8000),
+      });
+      const validation_status = res.ok ? 'valid' : `http_${res.status}`;
+      // Log to media_validations table (fire-and-forget)
+      db.prepare(`
+        INSERT INTO media_validations (media_id, brand_id, url, status_code, content_type, content_length, is_public, validated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      `).bind(
+        item.id || null, brand_id, item.preview_url, res.status,
+        res.headers.get('content-type') || null,
+        parseInt(res.headers.get('content-length') || '0') || null,
+        res.ok ? 1 : 0,
+      ).run().catch(() => {});
+
+      if (res.status >= 400 && res.status < 500) {
+        console.warn(`RESOLVER: Media URL returned ${res.status} — ${item.preview_url}`);
+        throw new Error(`MEDIA_URL_INACCESSIBLE: ${item.preview_url} returned HTTP ${res.status}`);
+      }
+      return { ...item, validation_status };
+    } catch (err) {
+      if (err.message.startsWith('MEDIA_URL_INACCESSIBLE')) throw err;
+      // Network errors are transient — log and continue
+      console.warn(`RESOLVER: Media validation failed (transient) — ${err.message}`);
+      return { ...item, validation_status: 'validation_failed' };
+    }
+  }));
+}
+
 /**
  * Resolves all data needed for an adapter to publish.
  * Returns: { content, connection }
@@ -34,7 +71,7 @@ export async function resolveDeliveryData(env, job) {
 
   // 2. Resolve Media
   const { results: media } = await db.prepare(`
-    SELECT ma.id, ma.preview_url, ma.provider, ma.mime_type, l.position, l.role
+    SELECT ma.id, ma.preview_url, ma.provider, ma.mime_type, ma.external_id, l.position, l.role
     FROM content_media_links l
     JOIN media_assets ma ON ma.id = l.media_id
     WHERE l.content_id = ? AND l.brand_id = ?
@@ -77,13 +114,24 @@ export async function resolveDeliveryData(env, job) {
     }
   }
 
+  // Mark first item as primary so adapters can find it regardless of role/position values
+  // Expose r2_key for direct assets so adapters can read from R2 without HTTP loopback
+  const resolvedMedia = (media || []).map((m, i) => ({
+    ...m,
+    r2_key: m.provider === 'direct' ? m.external_id : null,
+    role: m.role || (i === 0 ? 'primary' : 'secondary'),
+  }));
+
+  // Validate media URLs are publicly accessible before handing to adapters
+  const validatedMedia = await validateAndLogMedia(db, job.brand_id, resolvedMedia);
+
   return {
     content: {
       id: asset.id,
       text: asset.caption || asset.text, // Platform variant takes priority
       title: asset.title,
       hashtags: asset.hashtags,
-      media: media || [],
+      media: validatedMedia,
       type: job.content_type
     },
     connection: {
