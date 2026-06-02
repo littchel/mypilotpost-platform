@@ -563,10 +563,6 @@ function App() {
   const { data: mediaListData } = useApi(brandId ? "/api/customer/media/library" : null, [brandId, listVersion]);
   const _mediaItems = mediaListData?.data || [];
 
-  const { data: seoData } = useApi(brandId ? "/api/customer/seo/analyze" : null, [brandId, listVersion]);
-  const seoProfile = seoData || { metrics: { organicTraffic: '0', keywords: '0', health: '0%' }, keywords: [] };
-  const _seoMetrics = seoProfile?.metrics || { organicTraffic: '0', keywords: '0', health: '0%' };
-  const _seoKeywords = seoProfile?.keywords || [];
 
   const { data: brandDnaData } = useApi(brandId ? "/api/customer/brand-dna" : null, [brandId]);
   const brandDnaCompletionPct = brandDnaData?.completeness ?? 0;
