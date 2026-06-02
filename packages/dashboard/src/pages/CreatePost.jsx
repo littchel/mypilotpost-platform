@@ -133,8 +133,8 @@ function MediaCard({ item, index, onReplace, onRemove, onMoveLeft, onMoveRight, 
 
 const btnStyle = { border: "none", background: "#f1f5f9", borderRadius: 3, width: 17, height: 17, fontSize: 8, cursor: "pointer", color: "#64748b" };
 
-// ── Freepik suggested card ──────────────────────────────────────────────────────
-function FreepikCard({ item, onUse, loading }) {
+// ── Pexels suggested card ──────────────────────────────────────────────────────
+function PexelsCard({ item, onUse, loading }) {
   const orient = item.width && item.height
     ? (item.width > item.height ? "landscape" : item.width < item.height ? "portrait" : "square")
     : null;
@@ -151,7 +151,7 @@ function FreepikCard({ item, onUse, loading }) {
           </div>
         )}
         <div style={{ position: "absolute", bottom: 2, right: 2, background: "rgba(0,0,0,0.55)", borderRadius: 3, padding: "1px 4px" }}>
-          <span style={{ fontSize: 7, color: "#fff", fontWeight: 700, textTransform: "uppercase" }}>Freepik</span>
+          <span style={{ fontSize: 7, color: "#fff", fontWeight: 700, textTransform: "uppercase" }}>Pexels</span>
         </div>
         {orient && (
           <div style={{ position: "absolute", top: 2, left: 2, background: "rgba(0,0,0,0.45)", borderRadius: 3, padding: "1px 4px" }}>
@@ -215,7 +215,7 @@ function LibraryModal({ open, onClose, onSelect }) {
           ) : items.length === 0 ? (
             <div style={{ textAlign: "center", padding: 40, color: "#94a3b8" }}>
               <i className="fas fa-photo-video" style={{ fontSize: 30, marginBottom: 10 }}></i>
-              <div style={{ fontSize: 13 }}>No media yet. Upload or use Freepik.</div>
+              <div style={{ fontSize: 13 }}>No media yet. Upload or use Pexels.</div>
             </div>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
@@ -486,11 +486,11 @@ export default function CreatePost({
   const [overrides, setOverrides]           = useState({});
   const [selectedPlatforms, setSelectedPlatforms] = useState([]);
   const [mediaItems, setMediaItems]         = useState([]);
-  const [freepikItems, setFreepikItems]     = useState([]);
-  const [freepikLoading, setFreepikLoading] = useState(false);
-  const [freepikUsing, setFreepikUsing]     = useState(null);
-  const [freepikError, setFreepikError]     = useState(false);
-  const [freepikQuery, setFreepikQuery]     = useState("");
+  const [pexelsItems, setPexelsItems]     = useState([]);
+  const [pexelsLoading, setPexelsLoading] = useState(false);
+  const [pexelsUsing, setPexelsUsing]     = useState(null);
+  const [pexelsError, setPexelsError]     = useState(false);
+  const [pexelsQuery, setPexelsQuery]     = useState("");
   const [showSuggested, setShowSuggested]   = useState(false);
   const [libraryOpen, setLibraryOpen]       = useState(false);
   const [campaignId, setCampaignId]         = useState(propCampaignId || "");
@@ -640,36 +640,36 @@ export default function CreatePost({
     }
   };
 
-  // ── Freepik suggestions ──────────────────────────────────────────────────
-  const fetchFreepikSuggestions = async (query) => {
-    setFreepikLoading(true);
-    setFreepikError(false);
-    setFreepikQuery(query);
+  // ── Pexels suggestions ──────────────────────────────────────────────────
+  const fetchPexelsSuggestions = async (query) => {
+    setPexelsLoading(true);
+    setPexelsError(false);
+    setPexelsQuery(query);
     try {
       const data = await apiJSON("/api/customer/media/suggestions", "POST", { query });
       const items = data?.items || [];
-      setFreepikItems(items);
-      if (items.length === 0) setFreepikError(true);
+      setPexelsItems(items);
+      if (items.length === 0) setPexelsError(true);
     } catch {
-      setFreepikError(true);
+      setPexelsError(true);
     } finally {
-      setFreepikLoading(false);
+      setPexelsLoading(false);
     }
   };
 
   const handleSuggestedToggle = async () => {
     const next = !showSuggested;
     setShowSuggested(next);
-    if (!next || freepikItems.length > 0) return;
+    if (!next || pexelsItems.length > 0) return;
 
     const query = content.trim().split(/\s+/).slice(0, 6).join(" ") || brandName || "social media content";
-    fetchFreepikSuggestions(query);
+    fetchPexelsSuggestions(query);
   };
 
-  const handleFreepikUse = async (item) => {
-    setFreepikUsing(item.external_id);
+  const handlePexelsUse = async (item) => {
+    setPexelsUsing(item.external_id);
     try {
-      const saved = await apiJSON("/api/customer/media/from-freepik", "POST", {
+      const saved = await apiJSON("/api/customer/media/from-pexels", "POST", {
         external_id: item.external_id,
         preview_url: item.preview_url,
         type: item.type || "image",
@@ -678,15 +678,15 @@ export default function CreatePost({
         id: crypto.randomUUID(),
         url: item.preview_url,
         type: item.type || "image",
-        label: "Freepik",
+        label: "Pexels",
         external_id: item.external_id,
         asset_id: saved?.media_id,   // needed for content_media_links
       }]);
-      showToast("Freepik image added");
+      showToast("Pexels image added");
     } catch {
       showToast("Could not add image", "error");
     } finally {
-      setFreepikUsing(null);
+      setPexelsUsing(null);
     }
   };
 
@@ -710,9 +710,9 @@ export default function CreatePost({
     if (result.platforms?.length) setSelectedPlatforms(result.platforms);
     if (result.mediaRecommendations?.length) {
       setShowSuggested(true);
-      setFreepikItems([]);
+      setPexelsItems([]);
       const q = result.mediaRecommendations[0]?.query || result.mediaQuery || brandName || "social media content";
-      fetchFreepikSuggestions(q);
+      fetchPexelsSuggestions(q);
     }
     setAssistantOpen(false);
     setTimeout(() => editorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 200);
@@ -1066,40 +1066,40 @@ export default function CreatePost({
                 )}
               </div>
 
-              {/* Freepik suggestions panel */}
+              {/* Pexels suggestions panel */}
               {showSuggested && (
                 <div style={{ marginTop: 10 }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: "#0ea5e9", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>
-                    <i className="fas fa-magic me-1"></i>AI Suggested · Freepik
+                    <i className="fas fa-magic me-1"></i>AI Suggested · Pexels
                   </div>
-                  {freepikLoading ? (
+                  {pexelsLoading ? (
                     <div style={{ textAlign: "center", padding: "12px 0", color: "#94a3b8", fontSize: 12 }}>
                       <span className="spinner-border spinner-border-sm" style={{ color: "#0ea5e9", width: 14, height: 14, borderWidth: 2, marginRight: 6 }}></span>
                       Finding images…
                     </div>
-                  ) : freepikError ? (
+                  ) : pexelsError ? (
                     <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "#fef2f2", borderRadius: 6, border: "1px solid #fecaca" }}>
                       <i className="fas fa-exclamation-circle" style={{ color: "#ef4444", fontSize: 12 }}></i>
                       <span style={{ fontSize: 11, color: "#64748b", flex: 1 }}>Could not load image suggestions.</span>
                       <button
-                        onClick={() => fetchFreepikSuggestions(freepikQuery || content.trim().split(/\s+/).slice(0, 6).join(" ") || "social media content")}
+                        onClick={() => fetchPexelsSuggestions(pexelsQuery || content.trim().split(/\s+/).slice(0, 6).join(" ") || "social media content")}
                         style={{ background: "none", border: "1px solid #e2e8f0", borderRadius: 4, padding: "2px 8px", fontSize: 10, color: "#475569", cursor: "pointer", whiteSpace: "nowrap" }}
                       >
                         Retry
                       </button>
                     </div>
-                  ) : freepikItems.length === 0 ? (
+                  ) : pexelsItems.length === 0 ? (
                     <div style={{ fontSize: 12, color: "#94a3b8", padding: "8px 0" }}>
                       Generate content first — suggestions load from your post topic.
                     </div>
                   ) : (
                     <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
-                      {freepikItems.slice(0, 10).map((item) => (
-                        <FreepikCard
+                      {pexelsItems.slice(0, 10).map((item) => (
+                        <PexelsCard
                           key={item.external_id}
                           item={item}
-                          onUse={handleFreepikUse}
-                          loading={freepikUsing === item.external_id}
+                          onUse={handlePexelsUse}
+                          loading={pexelsUsing === item.external_id}
                         />
                       ))}
                     </div>

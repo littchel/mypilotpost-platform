@@ -171,7 +171,7 @@ import {
   listMediaLibrary,
   attachMedia,
   detachMedia,
-  registerFreepikMedia,
+  registerPexelsMedia,
   getAttachedMedia,
   uploadMedia,
   serveMediaFile,
@@ -1806,8 +1806,8 @@ export default {
         if (method === "POST" && path === "/api/customer/media/suggestions")
           return withCors(request, getMediaSuggestions(request, env, auth));
 
-        if (method === "POST" && path === "/api/customer/media/from-freepik")
-          return withCors(request, registerFreepikMedia(request, env, auth));
+        if (method === "POST" && path === "/api/customer/media/from-pexels")
+          return withCors(request, registerPexelsMedia(request, env, auth));
 
         if (method === "POST" && path === "/api/customer/media/attach")
           return withCors(request, attachMedia(request, env, auth));

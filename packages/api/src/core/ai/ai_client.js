@@ -88,7 +88,7 @@ async function triggerModelWithTimeout(env, model, prompt, ms) {
           { role: "user", content: prompt }
         ],
         temperature: 0.6,
-        max_tokens: 1000
+        max_tokens: 2048
       }),
     });
 

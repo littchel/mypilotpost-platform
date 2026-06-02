@@ -60,9 +60,9 @@ export async function registerMedia({
 }
 
 /* ======================================================
-   POST /api/customer/media/from-freepik
+   POST /api/customer/media/from-pexels
  ====================================================== */
-export async function registerFreepikMedia(req, env, auth) {
+export async function registerPexelsMedia(req, env, auth) {
   if (!auth?.brand_id) return error("Unauthorized", 401);
 
   const { external_id, preview_url, type = "image" } = await req.json().catch(() => ({}));
@@ -74,7 +74,7 @@ export async function registerFreepikMedia(req, env, auth) {
   const { id } = await registerMedia({
     env,
     brandId: auth.brand_id,
-    provider: "freepik",
+    provider: "pexels",
     externalId: external_id,
     previewUrl: preview_url,
     mimeType: type,
@@ -252,17 +252,21 @@ export async function uploadMedia(req, env, auth) {
   const mimeType = file.type || "application/octet-stream";
   const r2Key = buildR2Key({ brandId: auth.brand_id, assetId, filename });
 
-  await env.MEDIA_BUCKET.put(r2Key, file.stream(), {
+  const buffer = await file.arrayBuffer();
+  await env.MEDIA_BUCKET.put(r2Key, buffer, {
     httpMetadata: { contentType: mimeType }
   });
+
+  // Store absolute public URL so platform adapters (Instagram, etc.) can fetch it without auth
+  const publicUrl = `${env.BASE_URL || "https://api.mypilotpost.com"}/api/media/file/${encodeURIComponent(r2Key)}`;
 
   const db = getDB(env);
   await db.prepare(`
     INSERT INTO media_assets (id, brand_id, provider, external_id, preview_url, mime_type, created_at)
     VALUES (?, ?, 'direct', ?, ?, ?, CURRENT_TIMESTAMP)
-  `).bind(assetId, auth.brand_id, r2Key, `/api/customer/media/file/${encodeURIComponent(r2Key)}`, mimeType).run();
+  `).bind(assetId, auth.brand_id, r2Key, publicUrl, mimeType).run();
 
-  return json({ id: assetId, filename, mime_type: mimeType });
+  return json({ id: assetId, filename, mime_type: mimeType, preview_url: publicUrl });
 }
 
 /* ======================================================
@@ -286,6 +290,32 @@ export async function serveMediaFile(req, env, auth) {
       "Content-Type": object.httpMetadata?.contentType || "application/octet-stream",
       "Cache-Control": "public, max-age=31536000",
       "Access-Control-Allow-Origin": "*"
+    }
+  });
+}
+
+/* ======================================================
+   GET /api/media/file/*key  (PUBLIC — no auth required)
+   Security: R2 keys contain two UUIDs, unguessable without the key.
+   Used by platform adapters (Instagram, etc.) to fetch media.
+ ====================================================== */
+export async function servePublicMediaFile(req, env) {
+  const url = new URL(req.url);
+  const r2Key = decodeURIComponent(url.pathname.replace("/api/media/file/", ""));
+
+  if (!r2Key || r2Key === "/") return new Response("Not found", { status: 404 });
+
+  const isHead = req.method === "HEAD";
+  const object = isHead
+    ? await env.MEDIA_BUCKET.head(r2Key)
+    : await env.MEDIA_BUCKET.get(r2Key);
+  if (!object) return new Response("Not found", { status: 404 });
+
+  return new Response(isHead ? null : object.body, {
+    headers: {
+      "Content-Type": object.httpMetadata?.contentType || "application/octet-stream",
+      "Cache-Control": "public, max-age=86400",
+      "Access-Control-Allow-Origin": "*",
     }
   });
 }
