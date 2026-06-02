@@ -259,7 +259,7 @@ export default function SocialAssistantModal({ isOpen, onClose, onComplete, conn
     setGenError(null);
     const ctaObj = CTAS.find(c => c.id === cta);
     try {
-      const data = await apiFetch("/api/customer/ai/social/generate", {
+      const data = await apiFetch("/api/customer/ai/generate/social", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ intention, platforms, tone, cta: ctaObj?.label || cta || "Learn More", count: 1 }),

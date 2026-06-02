@@ -1942,8 +1942,9 @@ export default {
 
         switch (path) {
           case "/api/customer/campaigns/comparison": return withCors(request, getCampaignComparison(request, env, auth));
-          case "/api/customer/seo/analyze": return withCors(request, analyzeContentSEO(request, env, auth));
         }
+        if (method === "POST" && path === "/api/customer/seo/analyze")
+          return withCors(request, analyzeContentSEO(request, env, auth));
 
         if (method === "GET" && path === "/api/customer/campaigns/patterns")
           return withCors(request, detectCampaignPatterns(request, env, auth));

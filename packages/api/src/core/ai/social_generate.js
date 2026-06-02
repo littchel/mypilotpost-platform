@@ -43,7 +43,7 @@ const GENERIC_BANNED = [
 ====================================================== */
 async function fetchBrandDNA(db, brand_id) {
   const [brand, profile, voice, audience, pillars] = await Promise.all([
-    db.prepare("SELECT id, name, industry, website FROM brands WHERE id = ?").bind(brand_id).first(),
+    db.prepare("SELECT id, name, industry FROM brands WHERE id = ?").bind(brand_id).first(),
     db.prepare("SELECT mission, vision, positioning, value_proposition, brand_personality, differentiators FROM brand_dna_profiles WHERE brand_id = ?").bind(brand_id).first(),
     db.prepare("SELECT voice_traits, forbidden_language, cta_style, messaging_style FROM brand_dna_voice WHERE brand_id = ?").bind(brand_id).first(),
     db.prepare("SELECT icp_name, pain_points, desires FROM brand_dna_audience WHERE brand_id = ?").bind(brand_id).first(),
