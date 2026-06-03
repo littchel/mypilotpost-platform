@@ -515,6 +515,7 @@ export default function CreatePost({
   const [vaultItems, setVaultItems]         = useState([]);
   const [vaultLoading, setVaultLoading]     = useState(false);
   const [actionLoading, setActionLoading]   = useState(false);
+  const [selectedVaultItem, setSelectedVaultItem] = useState(null);
   const [assistantOpen, setAssistantOpen]   = useState(false);
   const [verificationOpen, setVerificationOpen] = useState(false);
   const [publishPhase, setPublishPhase]     = useState("idle"); // idle|creating|linking|scheduling|queued|failed
@@ -736,6 +737,7 @@ export default function CreatePost({
   // ── Vault lifecycle panel ────────────────────────────────────────────────
   const loadVault = useCallback(async (tab) => {
     setActiveTopTab(tab);
+    setSelectedVaultItem(null);
     setVaultLoading(true);
     setVaultItems([]);
     try {
@@ -758,6 +760,7 @@ export default function CreatePost({
       ? (Array.isArray(item.platforms) ? item.platforms : JSON.parse(item.platforms || "[]"))
       : [];
     if (platforms.length) setSelectedPlatforms(platforms);
+    setSelectedVaultItem(item);
     editorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
@@ -933,6 +936,34 @@ export default function CreatePost({
   };
 
   const canPublish = content.trim().length > 0 && selectedPlatforms.length > 0;
+
+  // ── P1: preview priority chain ────────────────────────────────────────────
+  const VAULT_STATUS_META = {
+    draft:              { label: "Draft",       color: "#64748b", bg: "#f1f5f9" },
+    ready:              { label: "Ready",       color: "#2563eb", bg: "#eff6ff" },
+    approval_requested: { label: "In Review",   color: "#d97706", bg: "#fffbeb" },
+    approved:           { label: "Approved",    color: "#059669", bg: "#ecfdf5" },
+    scheduled:          { label: "Scheduled",   color: "#2563eb", bg: "#eff6ff" },
+    queued:             { label: "Queued",      color: "#7c3aed", bg: "#f5f3ff" },
+    publishing:         { label: "Publishing",  color: "#7c3aed", bg: "#f5f3ff" },
+    published:          { label: "Published",   color: "#059669", bg: "#ecfdf5" },
+    failed:             { label: "Failed",      color: "#dc2626", bg: "#fef2f2" },
+  };
+
+  const previewPlatforms = (() => {
+    if (!selectedVaultItem) return selectedPlatforms;
+    const arr = Array.isArray(selectedVaultItem.platforms)
+      ? selectedVaultItem.platforms
+      : JSON.parse(selectedVaultItem.platforms || "[]");
+    const valid = arr.filter(p => PLATFORM_META[p]);
+    return valid.length ? valid : selectedPlatforms;
+  })();
+  const previewContent  = selectedVaultItem ? (selectedVaultItem.body || "") : content;
+  const previewOverrides = selectedVaultItem ? {} : overrides;
+  const previewMedia    = selectedVaultItem ? null : (mediaItems.length > 0 ? { image: mediaItems[0]?.url } : null);
+  const vaultStatusMeta = selectedVaultItem
+    ? (VAULT_STATUS_META[selectedVaultItem.lifecycle_status] || { label: selectedVaultItem.lifecycle_status, color: "#64748b", bg: "#f1f5f9" })
+    : null;
 
   const TOP_TABS = [
     { id: "drafts",    label: "Drafts",    icon: "fas fa-file-alt"   },
@@ -1186,14 +1217,52 @@ export default function CreatePost({
           </div>
         </div>
 
-        {/* RIGHT 55% — Live Platform Rendering */}
-        <div style={{ width: "55%", display: "flex", flexDirection: "column", minHeight: 0 }}>
+        {/* RIGHT 55% — Platform Rendering */}
+        <div style={{ width: "55%", display: "flex", flexDirection: "column", minHeight: 0, gap: 8 }}>
+
+          {/* Lifecycle status banner — appears when a vault item is selected */}
+          {selectedVaultItem && vaultStatusMeta && (
+            <div style={{
+              background: vaultStatusMeta.bg,
+              border: `1px solid ${vaultStatusMeta.color}44`,
+              borderRadius: 8, padding: "8px 14px", flexShrink: 0,
+              display: "flex", alignItems: "center", gap: 10,
+            }}>
+              <span style={{
+                fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em",
+                color: vaultStatusMeta.color, background: "#fff",
+                border: `1px solid ${vaultStatusMeta.color}55`,
+                padding: "2px 8px", borderRadius: 20,
+              }}>
+                {vaultStatusMeta.label}
+              </span>
+              {selectedVaultItem.scheduled_at && (
+                <span style={{ fontSize: 11, color: "#64748b", display: "flex", alignItems: "center", gap: 5 }}>
+                  <i className="fas fa-clock" style={{ fontSize: 10 }}></i>
+                  {new Date(selectedVaultItem.scheduled_at).toLocaleString("en-GB", {
+                    weekday: "short", day: "numeric", month: "short",
+                    hour: "2-digit", minute: "2-digit",
+                  })}
+                </span>
+              )}
+              <span style={{ flex: 1, fontSize: 11, color: "#94a3b8", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {(selectedVaultItem.title || selectedVaultItem.body || "").slice(0, 60)}
+              </span>
+              <button
+                onClick={() => setSelectedVaultItem(null)}
+                title="Back to live editor"
+                style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "0 2px" }}
+              >×</button>
+            </div>
+          )}
+
           <PlatformPreviewPanel
-            platforms={selectedPlatforms}
-            content={content}
-            overrides={overrides}
-            media={mediaItems.length > 0 ? { image: mediaItems[0]?.url } : null}
+            platforms={previewPlatforms.length ? previewPlatforms : (selectedPlatforms.length ? selectedPlatforms : [])}
+            content={previewContent}
+            overrides={previewOverrides}
+            media={previewMedia}
             brandName={brandName}
+            isLiveEditor={!selectedVaultItem}
           />
         </div>
       </div>
@@ -1304,10 +1373,19 @@ export default function CreatePost({
               const platforms = item.platforms ? (Array.isArray(item.platforms) ? item.platforms : JSON.parse(item.platforms || "[]")) : [];
               const date = item.updated_at ? new Date(item.updated_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "—";
 
+              const isSelected = selectedVaultItem?.id === item.id;
               return (
                 <div
                   key={item.id || i}
-                  style={{ padding: "10px 16px", borderBottom: "1px solid #f8fafc", display: "flex", alignItems: "center", gap: 10 }}
+                  onClick={() => setSelectedVaultItem(isSelected ? null : item)}
+                  style={{
+                    padding: "10px 16px", borderBottom: "1px solid #f8fafc",
+                    display: "flex", alignItems: "center", gap: 10,
+                    cursor: "pointer",
+                    background: isSelected ? "#eff6ff" : "#fff",
+                    borderLeft: `3px solid ${isSelected ? "#2563eb" : "transparent"}`,
+                    transition: "background 0.1s",
+                  }}
                 >
                   {/* Platform icons */}
                   {platforms.length > 0 && (

@@ -355,12 +355,9 @@ const PLABELS = {
 };
 
 // ── Main Panel ─────────────────────────────────────────────────────────────────
-export default function PlatformPreviewPanel({ platforms = [], content = "", overrides = {}, media = null, brandName = "Your Brand" }) {
+export default function PlatformPreviewPanel({ platforms = [], content = "", overrides = {}, media = null, brandName = "Your Brand", isLiveEditor = true }) {
   const [activeTab, setActiveTab] = useState(platforms[0] || "facebook");
 
-  if (platforms.length > 0 && !platforms.includes(activeTab)) {
-    // Sync without triggering infinite loop
-  }
   const safeTab = platforms.includes(activeTab) ? activeTab : (platforms[0] || "facebook");
 
   const currentContent = overrides[safeTab] || content;
@@ -374,9 +371,16 @@ export default function PlatformPreviewPanel({ platforms = [], content = "", ove
       <div style={{ padding: "12px 16px", borderBottom: "1px solid #e2e8f0", background: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           <span className="extra-small fw-bold text-muted text-uppercase" style={{ letterSpacing: 1 }}>
-            Live Platform Rendering Engine
+            {isLiveEditor ? "Live Platform Rendering Engine" : "Saved Content Preview"}
           </span>
-          <span style={{ fontSize: 10, color: "#94a3b8" }}>Updates instantly</span>
+          <span style={{
+            fontSize: 10, fontWeight: 600,
+            color: isLiveEditor ? "#94a3b8" : "#2563eb",
+            background: isLiveEditor ? "transparent" : "#eff6ff",
+            padding: isLiveEditor ? 0 : "2px 8px", borderRadius: 20,
+          }}>
+            {isLiveEditor ? "Updates instantly" : "Viewing saved content"}
+          </span>
         </div>
 
         {/* Platform tabs */}
