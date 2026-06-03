@@ -272,7 +272,7 @@ function PostChip({ item, onSelect, isDragging, onDragStart, onDragEnd }) {
 const CELL_H = 160;
 const MAX_PER_CELL = 3;
 
-function MonthGrid({ pivot, items, holidays, onSelect, onDayStack, onSlotClick, dragItem, onDropCell }) {
+function MonthGrid({ pivot, items, holidays, onSelect, onDayStack, dragItem, onDropCell }) {
   const days = useMemo(() => monthDays(pivot), [pivot]);
   const today = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d; }, []);
   const curMonth = pivot.getMonth();
@@ -389,13 +389,6 @@ function MonthGrid({ pivot, items, holidays, onSelect, onDayStack, onSlotClick, 
               </button>
             )}
 
-            {/* Empty slot click */}
-            {dayItems.length === 0 && !dragItem && (
-              <button
-                onClick={() => onSlotClick?.(date)}
-                style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", border: "none", background: "transparent" }}
-              />
-            )}
           </div>
         );
       })}
@@ -1110,7 +1103,6 @@ const CalendarSchedule = ({ activeBrand, onScheduleNew }) => {
                 setStackDay(date); setStackItems(dayItems); setStackHolidays(dayHolidays || []);
                 track("scheduler_day_expanded");
               }}
-              onSlotClick={onScheduleNew}
               dragItem={dragItem}
               onDropCell={handleDropCell}
             />
