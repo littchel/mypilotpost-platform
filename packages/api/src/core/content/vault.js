@@ -53,7 +53,11 @@ export async function listVault(request, env, auth) {
   if (status === "scheduled") {
     q += ` AND lifecycle_status IN ('scheduled','queued','publishing')`;
   } else if (status === "pending") {
-    q += ` AND lifecycle_status IN ('approval_requested','ready')`;
+    // Only show items actively waiting for review — not approved ones
+    q += ` AND lifecycle_status = 'approval_requested'`;
+  } else if (status === "draft") {
+    // Include approved items so creators can schedule them after approval
+    q += ` AND lifecycle_status IN ('draft','approved')`;
   } else if (status) {
     q += ` AND lifecycle_status = ?`;
     params.push(status);

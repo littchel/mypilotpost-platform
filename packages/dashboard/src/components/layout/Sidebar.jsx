@@ -40,29 +40,26 @@ const Sidebar = ({ activeTab, switchTab, brands, activeBrand, onSwitchBrand }) =
       {/* ── COMMAND TOWER ── */}
       <div className="nav-group-title">Command Tower</div>
       <nav aria-label="Command Tower">
-        <NavLink tab="dashboard"           activeTab={activeTab} switchTab={switchTab} icon="fas fa-tachometer-alt"  label="Dashboard" />
-        <NavLink tab="growth-engine"       activeTab={activeTab} switchTab={switchTab} icon="fas fa-rocket"          label="Growth Engine" />
-        <NavLink tab="insights"            activeTab={activeTab} switchTab={switchTab} icon="fas fa-stream"          label="Insights" />
-        <NavLink tab="brand-intelligence"  activeTab={activeTab} switchTab={switchTab} icon="fas fa-brain"           label="Brand Intelligence" />
-        <NavLink tab="templates"           activeTab={activeTab} switchTab={switchTab} icon="fas fa-magic"          label="AI Content Studio" />
-        <NavLink tab="brand-dna"           activeTab={activeTab} switchTab={switchTab} icon="fas fa-dna"             label="Brand DNA" />
+        <NavLink tab="dashboard"          activeTab={activeTab} switchTab={switchTab} icon="fas fa-tachometer-alt" label="Dashboard" />
+        <NavLink tab="brand-intelligence" activeTab={activeTab} switchTab={switchTab} icon="fas fa-brain"          label="Brand Intelligence" />
+        <NavLink tab="brand-dna"          activeTab={activeTab} switchTab={switchTab} icon="fas fa-dna"            label="Brand DNA" />
       </nav>
 
       {/* ── CREATE ── */}
       <div className="nav-group-title">Create</div>
       <nav aria-label="Create">
-        <NavLink tab="social"   activeTab={activeTab} switchTab={switchTab} icon="fas fa-edit"     label="Create Social Post" />
-        <NavLink tab="blog"     activeTab={activeTab} switchTab={switchTab} icon="fas fa-file-alt" label="Create Article" />
-        <NavLink tab="campaign" activeTab={activeTab} switchTab={switchTab} icon="fas fa-bullhorn" label="Campaigns" />
-        <NavLink tab="hashtags" activeTab={activeTab} switchTab={switchTab} icon="fas fa-hashtag"  label="Hashtag Manager" />
+        <NavLink tab="social"    activeTab={activeTab} switchTab={switchTab} icon="fas fa-edit"     label="Create Social Post" />
+        <NavLink tab="blog"      activeTab={activeTab} switchTab={switchTab} icon="fas fa-file-alt" label="Create Article" />
+        <NavLink tab="templates" activeTab={activeTab} switchTab={switchTab} icon="fas fa-magic"    label="AI Content Studio" />
+        <NavLink tab="campaign"  activeTab={activeTab} switchTab={switchTab} icon="fas fa-bullhorn" label="Campaigns" />
       </nav>
 
       {/* ── MISSION LAUNCH PAD ── */}
       <div className="nav-group-title">Mission Launch Pad</div>
       <nav aria-label="Mission Launch Pad">
-        <NavLink tab="content"  activeTab={activeTab} switchTab={switchTab} icon="fas fa-layer-group"   label="Content Management" />
-        <NavLink tab="schedule" activeTab={activeTab} switchTab={switchTab} icon="fas fa-calendar-alt" label="Scheduler" />
-        <NavLink tab="media"    activeTab={activeTab} switchTab={switchTab} icon="fas fa-photo-video"  label="Media Library" />
+        <NavLink tab="schedule"      activeTab={activeTab} switchTab={switchTab} icon="fas fa-calendar-alt" label="Scheduler" />
+        <NavLink tab="growth-engine" activeTab={activeTab} switchTab={switchTab} icon="fas fa-rocket"       label="Growth Engine" />
+        <NavLink tab="content"       activeTab={activeTab} switchTab={switchTab} icon="fas fa-layer-group"  label="Content Management" />
       </nav>
 
       {/* ── MISSION ANALYTICS ── */}

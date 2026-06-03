@@ -1090,7 +1090,12 @@ export default function CreatePost({
                       <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 1 }}>{date}</div>
                     </div>
                     <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                      {activeTopTab === "drafts" && (<>
+                      {activeTopTab === "drafts" && item.lifecycle_status === "approved" && (<>
+                        <VaultActionBtn color="#059669" onClick={() => handleVaultEdit(item)}>Schedule</VaultActionBtn>
+                        <VaultActionBtn color="#2563eb" onClick={() => handleVaultEdit(item)}>Edit</VaultActionBtn>
+                        <VaultActionBtn color="#ef4444" onClick={() => handleVaultDelete(item)}>Delete</VaultActionBtn>
+                      </>)}
+                      {activeTopTab === "drafts" && item.lifecycle_status !== "approved" && (<>
                         <VaultActionBtn color="#2563eb" onClick={() => handleVaultEdit(item)}>Edit</VaultActionBtn>
                         <VaultActionBtn color="#10b981" onClick={() => handleVaultSendApproval(item)}>Send for Approval</VaultActionBtn>
                         <VaultActionBtn color="#ef4444" onClick={() => handleVaultDelete(item)}>Delete</VaultActionBtn>
@@ -1101,9 +1106,6 @@ export default function CreatePost({
                         <VaultActionBtn color="#ef4444" onClick={() => handleVaultCancel(item)}>Cancel</VaultActionBtn>
                       </>)}
                       {activeTopTab === "approvals" && (<>
-                        <VaultActionBtn color="#2563eb" onClick={() => handleVaultEdit(item)}>Edit</VaultActionBtn>
-                        <VaultActionBtn color="#10b981" onClick={() => handleVaultPublishNow(item)}>Publish</VaultActionBtn>
-                        <VaultActionBtn color="#7c3aed" onClick={() => handleVaultDuplicate(item)}>Duplicate</VaultActionBtn>
                         <VaultActionBtn color="#64748b" onClick={() => handleVaultWithdraw(item)}>Withdraw</VaultActionBtn>
                       </>)}
                     </div>
