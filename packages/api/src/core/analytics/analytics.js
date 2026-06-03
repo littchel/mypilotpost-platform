@@ -21,11 +21,19 @@ import { getAIAnalysis } from "../ai/ai_intelligence.js";
 ====================================================== */
 
 async function getStatsForPeriod(db, brandId, from, to, campaignId) {
+  // Count content items created — never multiply by platform fan-out
+  const contentRow = await db.prepare(`
+    SELECT COUNT(*) AS total
+    FROM content_vault
+    WHERE brand_id = ? AND created_at BETWEEN ? AND ?
+    ${campaignId ? "AND campaign_id = ?" : ""}
+  `).bind(...[brandId, from, to, ...(campaignId ? [campaignId] : [])]).first();
+
+  // Published/failed: DISTINCT content_id so 1 post → 3 platforms = 1, not 3
   const delivery = await db.prepare(`
     SELECT
-      COUNT(*) AS total_posts,
-      SUM(CASE WHEN status = 'published' THEN 1 ELSE 0 END) AS published,
-      SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed
+      COUNT(DISTINCT CASE WHEN status = 'published' THEN content_id END) AS published,
+      COUNT(DISTINCT CASE WHEN status = 'failed'    THEN content_id END) AS failed
     FROM delivery_jobs
     WHERE brand_id = ?
       AND created_at BETWEEN ? AND ?
@@ -54,7 +62,7 @@ async function getStatsForPeriod(db, brandId, from, to, campaignId) {
   const er = imps > 0 ? (engs / imps) : 0;
 
   return {
-    posts: delivery?.total_posts || 0,
+    posts: contentRow?.total || 0,
     published: delivery?.published || 0,
     failed: delivery?.failed || 0,
     reach: imps,
