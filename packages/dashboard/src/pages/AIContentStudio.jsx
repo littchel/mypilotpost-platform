@@ -687,7 +687,28 @@ function PostModal({ idea, brandId, onClose, onSaved }) {
       incPostCount(brandId);
       setResult(data);
       setStep("success");
-      onSaved({ type: "post", framework: idea.name, content: data });
+
+      // Save to vault as draft — AI Studio output must always land in vault first
+      let vaultId = null;
+      try {
+        const body = [
+          data.suggested_hook,
+          (data.post_structure || []).join("\n"),
+          data.suggested_cta,
+        ].filter(Boolean).join("\n\n");
+        const saved = await apiRequest("/api/customer/vault", {
+          method: "POST",
+          body: JSON.stringify({
+            content_type: "social",
+            title: `${idea.name} — ${(data.suggested_hook || "").slice(0, 60)}`,
+            body,
+            lifecycle_status: "draft",
+          }),
+        });
+        vaultId = saved?.content_id || null;
+      } catch { /* vault save is non-blocking */ }
+
+      onSaved({ type: "post", framework: idea.name, content: data, content_id: vaultId });
     } catch (e) {
       if (e.status === 429) setStep("limit_reached");
       else { setErr(e.message || "Failed. Please try again."); setStep("error"); }
@@ -779,7 +800,10 @@ function PostModal({ idea, brandId, onClose, onSaved }) {
               <>
                 <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10, padding: "10px 16px", marginBottom: 24, display: "flex", gap: 8, alignItems: "center" }}>
                   <span style={{ color: "#16a34a", fontSize: 18 }}>✓</span>
-                  <span style={{ fontSize: 14, color: "#15803d", fontWeight: 600 }}>Saved to your Library</span>
+                  <div>
+                    <div style={{ fontSize: 14, color: "#15803d", fontWeight: 600 }}>Saved as draft in Content Vault</div>
+                    <div style={{ fontSize: 12, color: "#16a34a" }}>Open the Create Post editor to edit and publish</div>
+                  </div>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
                   {[
@@ -1197,6 +1221,11 @@ function LibraryView({ items, onRemove, switchTab }) {
                   <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: ts.bg, color: ts.text, textTransform: "uppercase", letterSpacing: 0.5 }}>
                     {ts.label}
                   </span>
+                  {item.content_id && (
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0" }}>
+                      In Vault
+                    </span>
+                  )}
                   <span style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>{label}</span>
                 </div>
                 <button type="button" onClick={() => onRemove(item.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#d1d5db", fontSize: 20, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>
@@ -1204,7 +1233,12 @@ function LibraryView({ items, onRemove, switchTab }) {
               <div style={{ fontSize: 13, color: "#374151", lineHeight: 1.6, marginBottom: 10 }}>{snippet}</div>
               {dateLabel && <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 12 }}>{dateLabel}</div>}
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {item.type === "post" && (
+                {item.type === "post" && item.content_id && (
+                  <button type="button" onClick={() => switchTab("social")} style={{ padding: "6px 12px", borderRadius: 6, border: "1px solid #bbf7d0", background: "#f0fdf4", color: "#15803d", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                    Open Draft
+                  </button>
+                )}
+                {item.type === "post" && !item.content_id && (
                   <button type="button" onClick={() => switchTab("social")} style={{ padding: "6px 12px", borderRadius: 6, border: "1px solid #e5e7eb", background: "#f9fafb", color: "#374151", fontWeight: 600, fontSize: 12, cursor: "pointer" }}>Create Post</button>
                 )}
                 {item.type === "pack" && (
