@@ -378,6 +378,31 @@ export async function vaultSchedule(request, env, auth) {
 }
 
 /* ============================================================
+   POST /api/customer/vault/:id/cancel
+   Cancel a scheduled post — deletes delivery_jobs, reverts to draft.
+   ============================================================ */
+export async function vaultCancel(request, env, auth) {
+  if (!auth?.brand_id) return error("Unauthorized", "UNAUTHORIZED", null, 401);
+  const { brand_id } = auth;
+  const id = request.params?.id || new URL(request.url).pathname.split("/").slice(-2)[0];
+
+  const db   = getDB(env);
+  const item = await fetchVaultItem(db, id, brand_id);
+  if (!item) return error("Content not found", "NOT_FOUND", null, 404);
+  if (!['scheduled', 'queued'].includes(item.lifecycle_status)) {
+    return error("Only scheduled or queued content can be cancelled", "CONFLICT", null, 409);
+  }
+
+  await db.batch([
+    db.prepare(`DELETE FROM delivery_jobs WHERE content_id = ? AND brand_id = ? AND status IN ('scheduled','pending')`).bind(id, brand_id),
+    db.prepare(`UPDATE content_vault SET lifecycle_status = 'draft', scheduled_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
+    db.prepare(`UPDATE social_assets SET lifecycle_status = 'draft', status = 'draft', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
+  ]);
+
+  return json({ success: true, status: "draft" });
+}
+
+/* ============================================================
    POST /api/customer/vault/:id/publish-now
    Immediate publish — creates a delivery job scheduled NOW.
    ============================================================ */

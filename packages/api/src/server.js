@@ -91,7 +91,7 @@ import { createInvite, getInvites, getTeam, acceptInvite } from "./core/teams/ha
 import { submitForApproval, getApprovalRequests } from "./core/approvals/handlers.js";
 import {
   listVault, saveToVault, getVaultItem, deleteVaultItem,
-  vaultApproval, vaultSchedule, vaultPublishNow,
+  vaultApproval, vaultSchedule, vaultPublishNow, vaultCancel,
 } from "./core/content/vault.js";
 import { createReport, getReports, shareReport } from "./core/reporting/handlers.js";
 import { approveSocialAssetsBulk } from "./core/content/social.js";
@@ -1718,6 +1718,7 @@ export default {
             if (method === "POST"   && tail === "approval")    return withCors(request, vaultApproval(request, env, auth));
             if (method === "POST"   && tail === "schedule")    return withCors(request, vaultSchedule(request, env, auth));
             if (method === "POST"   && tail === "publish-now") return withCors(request, vaultPublishNow(request, env, auth));
+            if (method === "POST"   && tail === "cancel")      return withCors(request, vaultCancel(request, env, auth));
           }
         }
 

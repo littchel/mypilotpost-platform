@@ -474,6 +474,21 @@ const sectionLabel = { fontSize: 10, fontWeight: 700, color: "#94a3b8", textTran
 const ghostBtn = { flex: 1, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "9px", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#475569" };
 const mediaBtn = { border: "1px solid #e2e8f0", background: "#fff", color: "#475569", borderRadius: 6, padding: "4px 9px", fontSize: 10, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 };
 
+function VaultActionBtn({ color, onClick, children }) {
+  return (
+    <button
+      onClick={e => { e.stopPropagation(); onClick(); }}
+      style={{
+        background: "none", border: `1px solid ${color}33`, borderRadius: 5,
+        padding: "3px 8px", fontSize: 10, fontWeight: 600, color, cursor: "pointer",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function CreatePost({
   selectedCampaignId: propCampaignId,
@@ -497,9 +512,9 @@ export default function CreatePost({
   const [scheduledTime, setScheduledTime]   = useState("");
   const [timezone, setTimezone]             = useState(brandTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
   const [activeTopTab, setActiveTopTab]     = useState("drafts");
-  const [historyOpen, setHistoryOpen]       = useState(false);
-  const [historyItems, setHistoryItems]     = useState([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
+  const [vaultItems, setVaultItems]         = useState([]);
+  const [vaultLoading, setVaultLoading]     = useState(false);
+  const [actionLoading, setActionLoading]   = useState(false);
   const [assistantOpen, setAssistantOpen]   = useState(false);
   const [verificationOpen, setVerificationOpen] = useState(false);
   const [publishPhase, setPublishPhase]     = useState("idle"); // idle|creating|linking|scheduling|queued|failed
@@ -718,39 +733,100 @@ export default function CreatePost({
     setTimeout(() => editorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 200);
   };
 
-  // ── History ──────────────────────────────────────────────────────────────
-  const loadHistory = async (tab) => {
+  // ── Vault lifecycle panel ────────────────────────────────────────────────
+  const loadVault = useCallback(async (tab) => {
     setActiveTopTab(tab);
-    setHistoryLoading(true);
-    setHistoryItems([]);
+    setVaultLoading(true);
+    setVaultItems([]);
     try {
-      let data;
-      if (tab === "approvals") {
-        data = await apiFetch("/api/customer/approvals");
-        setHistoryItems(data?.data || []);
-      } else {
-        const status = tab === "scheduled" ? "scheduled" : "draft";
-        data = await apiFetch(`/api/customer/content?type=social&status=${status}`);
-        setHistoryItems(data?.data || []);
-      }
+      const statusMap = { drafts: "draft", scheduled: "scheduled", approvals: "pending" };
+      const status = statusMap[tab] || "draft";
+      const data = await apiFetch(`/api/customer/vault?status=${status}&limit=50`);
+      setVaultItems(data?.data || []);
     } catch {
-      setHistoryItems([]);
+      setVaultItems([]);
     } finally {
-      setHistoryLoading(false);
+      setVaultLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadVault("drafts"); }, [loadVault]);
+
+  const handleVaultEdit = (item) => {
+    setContent(item.body || item.text || "");
+    const platforms = item.platforms
+      ? (Array.isArray(item.platforms) ? item.platforms : JSON.parse(item.platforms || "[]"))
+      : [];
+    if (platforms.length) setSelectedPlatforms(platforms);
+    editorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  const handleVaultDelete = async (item) => {
+    if (!window.confirm("Delete this draft? This cannot be undone.")) return;
+    try {
+      await apiFetch(`/api/customer/vault/${item.id}`, { method: "DELETE" });
+      setVaultItems(prev => prev.filter(i => i.id !== item.id));
+      showToast("Deleted");
+    } catch {
+      showToast("Delete failed", "error");
     }
   };
 
-  const handleHistoryToggle = () => {
-    const next = !historyOpen;
-    setHistoryOpen(next);
-    if (next) loadHistory(activeTopTab);
+  const handleVaultSendApproval = async (item) => {
+    try {
+      await apiJSON(`/api/customer/vault/${item.id}/approval`, "POST", { action: "submit" });
+      setVaultItems(prev => prev.filter(i => i.id !== item.id));
+      showToast("Sent for approval");
+    } catch (e) {
+      showToast(e.message || "Failed", "error");
+    }
   };
 
-  const openHistoryItem = (item) => {
-    if (item.text) setContent(item.text);
-    if (item.title) setContent(item.text || item.title);
-    setHistoryOpen(false);
-    editorRef.current?.scrollIntoView({ behavior: "smooth" });
+  const handleVaultPublishNow = async (item) => {
+    if (!window.confirm("Publish this now?")) return;
+    try {
+      await apiFetch(`/api/customer/vault/${item.id}/publish-now`, { method: "POST" });
+      setVaultItems(prev => prev.filter(i => i.id !== item.id));
+      showToast("Queued for delivery");
+    } catch (e) {
+      showToast(e.message || "Failed", "error");
+    }
+  };
+
+  const handleVaultCancel = async (item) => {
+    if (!window.confirm("Cancel this scheduled post? It will return to drafts.")) return;
+    try {
+      await apiFetch(`/api/customer/vault/${item.id}/cancel`, { method: "POST" });
+      setVaultItems(prev => prev.filter(i => i.id !== item.id));
+      showToast("Moved back to drafts");
+    } catch {
+      showToast("Failed to cancel", "error");
+    }
+  };
+
+  const handleVaultWithdraw = async (item) => {
+    try {
+      await apiJSON(`/api/customer/vault/${item.id}`, "PATCH", {
+        content_id: item.id, body: item.body || " ", platforms: item.platforms, lifecycle_status: "draft",
+      });
+      setVaultItems(prev => prev.filter(i => i.id !== item.id));
+      showToast("Withdrawn to drafts");
+    } catch {
+      showToast("Failed", "error");
+    }
+  };
+
+  const handleVaultDuplicate = async (item) => {
+    try {
+      const platforms = Array.isArray(item.platforms) ? item.platforms : JSON.parse(item.platforms || "[]");
+      await apiJSON("/api/customer/vault", "POST", {
+        body: item.body || " ", platforms, lifecycle_status: "draft", content_type: "social",
+      });
+      showToast("Duplicated to drafts");
+      if (activeTopTab === "drafts") loadVault("drafts");
+    } catch {
+      showToast("Failed to duplicate", "error");
+    }
   };
 
   // ── Link media items to a content_id via content_media_links ───────────
@@ -779,33 +855,32 @@ export default function CreatePost({
 
   const handleDraft = async () => {
     if (!content.trim()) { showToast("Write something first", "error"); return; }
-    setIsPublishing(true);
+    setActionLoading(true);
     try {
       await saveDraft();
       showToast("Draft saved");
       setVerificationOpen(false);
+      loadVault("drafts");
     } catch (e) {
       showToast(e.message || "Could not save draft", "error");
     } finally {
-      setIsPublishing(false);
+      setActionLoading(false);
     }
   };
 
   // ── Send for approval ────────────────────────────────────────────────────
   const handleApproval = async () => {
     if (!content.trim()) { showToast("Write something first", "error"); return; }
-    setIsPublishing(true);
+    setActionLoading(true);
     try {
       const content_id = await saveDraft();
-      await apiJSON("/api/customer/approvals", "POST", {
-        content_id,
-        content_type: "social",
-      });
-      showToast("Sent for approval — share link ready");
+      await apiJSON(`/api/customer/vault/${content_id}/approval`, "POST", { action: "submit" });
+      showToast("Sent for approval");
+      loadVault("approvals");
     } catch (e) {
       showToast(e.message || "Approval request failed", "error");
     } finally {
-      setIsPublishing(false);
+      setActionLoading(false);
     }
   };
 
@@ -842,6 +917,7 @@ export default function CreatePost({
       setPublishPhase("queued");
       setPublishResult({ content_id: asset.content_id, platforms: selectedPlatforms, scheduled_at });
       showToast(scheduledTime ? "Post scheduled" : "Post queued for delivery");
+      loadVault(scheduledTime ? "scheduled" : "drafts");
     } catch (e) {
       setPublishPhase("failed");
       showToast(e.message || "Publish failed", "error");
@@ -1189,111 +1265,89 @@ export default function CreatePost({
         </button>
       </div>
 
-      {/* ── HISTORY PANEL ────────────────────────────────────────────────── */}
+      {/* ── LIFECYCLE PANEL ──────────────────────────────────────────────── */}
       <div style={{ marginTop: 8, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, flexShrink: 0, overflow: "hidden" }}>
-        <button
-          onClick={handleHistoryToggle}
-          style={{ width: "100%", background: "none", border: "none", padding: "9px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", textAlign: "left" }}
-        >
-          <span style={{ fontSize: 12, fontWeight: 700, color: "#475569", display: "flex", alignItems: "center", gap: 7 }}>
-            <i className="fas fa-history" style={{ color: "#94a3b8" }}></i> Post History
-          </span>
-          <i className={`fas fa-chevron-${historyOpen ? "up" : "down"}`} style={{ fontSize: 10, color: "#94a3b8" }}></i>
-        </button>
+        {/* Tab bar — always visible */}
+        <div style={{ display: "flex", borderBottom: "1px solid #e2e8f0", background: "#f8fafc" }}>
+          {TOP_TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => loadVault(tab.id)}
+              style={{
+                flex: 1, background: "none", border: "none",
+                borderBottom: activeTopTab === tab.id ? "2px solid #2563eb" : "2px solid transparent",
+                padding: "9px 0", fontSize: 11, fontWeight: activeTopTab === tab.id ? 700 : 500,
+                color: activeTopTab === tab.id ? "#2563eb" : "#64748b", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              }}
+            >
+              <i className={tab.icon}></i> {tab.label}
+            </button>
+          ))}
+        </div>
 
-        {historyOpen && (
-          <div style={{ borderTop: "1px solid #f1f5f9" }}>
-            {/* Tab bar */}
-            <div style={{ display: "flex", borderBottom: "1px solid #f1f5f9", background: "#f8fafc" }}>
-              {[
-                { id: "drafts",    label: "Drafts",    icon: "fas fa-file-alt"   },
-                { id: "scheduled", label: "Scheduled", icon: "fas fa-clock"      },
-                { id: "approvals", label: "Approvals", icon: "fas fa-user-check" },
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => loadHistory(tab.id)}
-                  style={{
-                    flex: 1, background: "none", border: "none", borderBottom: activeTopTab === tab.id ? "2px solid #2563eb" : "2px solid transparent",
-                    padding: "8px 0", fontSize: 11, fontWeight: activeTopTab === tab.id ? 700 : 500,
-                    color: activeTopTab === tab.id ? "#2563eb" : "#64748b", cursor: "pointer",
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                  }}
+        {/* Rows */}
+        <div style={{ maxHeight: 260, overflowY: "auto" }}>
+          {vaultLoading ? (
+            <div style={{ textAlign: "center", padding: "20px 0", color: "#94a3b8", fontSize: 12 }}>
+              <span className="spinner-border spinner-border-sm" style={{ color: "#2563eb", width: 14, height: 14, borderWidth: 2, marginRight: 6 }}></span>
+              Loading…
+            </div>
+          ) : vaultItems.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "20px 0", color: "#cbd5e1", fontSize: 12 }}>
+              <i className="fas fa-inbox" style={{ fontSize: 22, display: "block", marginBottom: 6 }}></i>
+              No {activeTopTab} yet
+            </div>
+          ) : (
+            vaultItems.map((item, i) => {
+              const preview = item.body || item.title || "—";
+              const platforms = item.platforms ? (Array.isArray(item.platforms) ? item.platforms : JSON.parse(item.platforms || "[]")) : [];
+              const date = item.updated_at ? new Date(item.updated_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "—";
+
+              return (
+                <div
+                  key={item.id || i}
+                  style={{ padding: "10px 16px", borderBottom: "1px solid #f8fafc", display: "flex", alignItems: "center", gap: 10 }}
                 >
-                  <i className={tab.icon}></i> {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* History rows */}
-            <div style={{ maxHeight: 260, overflowY: "auto" }}>
-              {historyLoading ? (
-                <div style={{ textAlign: "center", padding: "20px 0", color: "#94a3b8", fontSize: 12 }}>
-                  <span className="spinner-border spinner-border-sm" style={{ color: "#2563eb", width: 14, height: 14, borderWidth: 2, marginRight: 6 }}></span>
-                  Loading…
-                </div>
-              ) : historyItems.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "20px 0", color: "#cbd5e1", fontSize: 12 }}>
-                  <i className="fas fa-inbox" style={{ fontSize: 22, display: "block", marginBottom: 6 }}></i>
-                  No {activeTopTab} yet
-                </div>
-              ) : (
-                historyItems.map((item, i) => {
-                  const status = item.lifecycle_status || item.status || "draft";
-                  const statusColors = {
-                    draft: { bg: "#f8fafc", text: "#64748b", label: "Draft" },
-                    scheduled: { bg: "#fefce8", text: "#ca8a04", label: "Scheduled" },
-                    pending_approval: { bg: "#fff7ed", text: "#ea580c", label: "Awaiting" },
-                    approved: { bg: "#f0fdf4", text: "#16a34a", label: "Approved" },
-                    rejected: { bg: "#fef2f2", text: "#dc2626", label: "Rejected" },
-                    published: { bg: "#eff6ff", text: "#2563eb", label: "Published" },
-                  };
-                  const sc = statusColors[status] || statusColors.draft;
-                  const date = item.updated_at || item.created_at;
-                  const dateStr = date ? new Date(date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—";
-                  const preview = item.text || item.content || item.title || item.subject || "—";
-                  const platforms = item.platforms ? (Array.isArray(item.platforms) ? item.platforms : JSON.parse(item.platforms || "[]")) : [];
-
-                  return (
-                    <div
-                      key={item.id || i}
-                      style={{ padding: "10px 16px", borderBottom: "1px solid #f8fafc", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}
-                      onClick={() => openHistoryItem(item)}
-                    >
-                      {/* Status badge */}
-                      <span style={{ fontSize: 9, fontWeight: 700, background: sc.bg, color: sc.text, borderRadius: 4, padding: "2px 7px", flexShrink: 0, textTransform: "uppercase", border: `1px solid ${sc.text}30` }}>{sc.label}</span>
-
-                      {/* Platform icons */}
-                      {platforms.length > 0 && (
-                        <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                          {platforms.slice(0, 4).map(p => <PlatformIcon key={p} platform={p} size={13} />)}
-                        </div>
-                      )}
-
-                      {/* Content preview */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 500, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
-                          {preview.slice(0, 100)}
-                        </div>
-                      </div>
-
-                      {/* Date */}
-                      <span style={{ fontSize: 10, color: "#94a3b8", flexShrink: 0 }}>{dateStr}</span>
-
-                      {/* Action: Edit */}
-                      <button
-                        onClick={e => { e.stopPropagation(); openHistoryItem(item); }}
-                        style={{ background: "none", border: "1px solid #e2e8f0", borderRadius: 6, padding: "3px 8px", fontSize: 10, color: "#475569", cursor: "pointer", flexShrink: 0 }}
-                      >
-                        Edit
-                      </button>
+                  {/* Platform icons */}
+                  {platforms.length > 0 && (
+                    <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                      {platforms.slice(0, 3).map(p => <PlatformIcon key={p} platform={p} size={13} />)}
                     </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        )}
+                  )}
+
+                  {/* Content preview */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 500, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                      {preview.slice(0, 90)}
+                    </div>
+                    <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 1 }}>{date}</div>
+                  </div>
+
+                  {/* Per-status actions */}
+                  <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
+                    {activeTopTab === "drafts" && (<>
+                      <VaultActionBtn color="#2563eb" onClick={() => handleVaultEdit(item)}>Edit</VaultActionBtn>
+                      <VaultActionBtn color="#10b981" onClick={() => handleVaultSendApproval(item)}>Send for Approval</VaultActionBtn>
+                      <VaultActionBtn color="#ef4444" onClick={() => handleVaultDelete(item)}>Delete</VaultActionBtn>
+                    </>)}
+                    {activeTopTab === "scheduled" && (<>
+                      <VaultActionBtn color="#2563eb" onClick={() => handleVaultEdit(item)}>Edit</VaultActionBtn>
+                      <VaultActionBtn color="#10b981" onClick={() => handleVaultPublishNow(item)}>Publish Now</VaultActionBtn>
+                      <VaultActionBtn color="#ef4444" onClick={() => handleVaultCancel(item)}>Cancel</VaultActionBtn>
+                    </>)}
+                    {activeTopTab === "approvals" && (<>
+                      <VaultActionBtn color="#2563eb" onClick={() => handleVaultEdit(item)}>Edit</VaultActionBtn>
+                      <VaultActionBtn color="#10b981" onClick={() => handleVaultPublishNow(item)}>Publish</VaultActionBtn>
+                      <VaultActionBtn color="#7c3aed" onClick={() => handleVaultDuplicate(item)}>Duplicate</VaultActionBtn>
+                      <VaultActionBtn color="#64748b" onClick={() => handleVaultWithdraw(item)}>Withdraw</VaultActionBtn>
+                    </>)}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
 
       {/* ── MODALS ────────────────────────────────────────────────────────── */}
