@@ -60,7 +60,7 @@ const Sidebar = ({ activeTab, switchTab, brands, activeBrand, onSwitchBrand }) =
       {/* ── MISSION LAUNCH PAD ── */}
       <div className="nav-group-title">Mission Launch Pad</div>
       <nav aria-label="Mission Launch Pad">
-        <NavLink tab="content"  activeTab={activeTab} switchTab={switchTab} icon="fas fa-layer-group"   label="Content Vault" />
+        <NavLink tab="content"  activeTab={activeTab} switchTab={switchTab} icon="fas fa-layer-group"   label="Content Management" />
         <NavLink tab="schedule" activeTab={activeTab} switchTab={switchTab} icon="fas fa-calendar-alt" label="Schedule" />
         <NavLink tab="media"    activeTab={activeTab} switchTab={switchTab} icon="fas fa-photo-video"  label="Media Library" />
       </nav>

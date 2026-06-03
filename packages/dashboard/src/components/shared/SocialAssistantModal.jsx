@@ -237,6 +237,9 @@ export default function SocialAssistantModal({ isOpen, onClose, onComplete, conn
   const [tone,       setTone]       = useState(null);
   const [cta,        setCta]        = useState(null);
   const [ctaSearch,  setCtaSearch]  = useState("");
+  const [mode,       setMode]       = useState(null);   // null=choose, "generate"|"improve"
+  const [postIdea,   setPostIdea]   = useState("");
+  const [result,     setResult]     = useState(null);
 
   if (!isOpen) return null;
 
@@ -259,32 +262,35 @@ export default function SocialAssistantModal({ isOpen, onClose, onComplete, conn
     setGenError(null);
     const ctaObj = CTAS.find(c => c.id === cta);
     try {
+      const payload = mode === "improve"
+        ? { intention: "awareness", platforms: platforms.length ? platforms : ["instagram"], tone: "founder", cta: "Learn More", idea: postIdea, count: 1 }
+        : { intention, platforms, tone, cta: ctaObj?.label || cta || "Learn More", count: 1 };
+
       const data = await apiFetch("/api/customer/ai/generate/social", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ intention, platforms, tone, cta: ctaObj?.label || cta || "Learn More", count: 1 }),
+        body: JSON.stringify(payload),
       });
       const post = data?.posts?.[0];
       if (!post) throw new Error("No content generated — try again.");
-      const result = {
+      const generated = {
         baseCaption: post.baseCaption || [post.hook, post.value, post.social_proof, post.cta, (post.hashtags || []).join(" ")].filter(Boolean).join("\n\n"),
         platformVariants: post.platformVariants || {},
-        platforms,
+        platforms: platforms.length ? platforms : ["instagram"],
         mediaRecommendations: [
-          { type: "image",    label: "Brand visual",  query: `${intention} professional brand visual` },
-          { type: "carousel", label: "Carousel post", query: `${intention} steps infographic` },
-          { type: "video",    label: "Short clip",    query: `${intention} motion background` },
+          { type: "image",    label: "Brand visual",  query: `${intention || "brand"} professional visual` },
+          { type: "carousel", label: "Carousel post", query: `${intention || "brand"} steps infographic` },
+          { type: "video",    label: "Short clip",    query: `${intention || "brand"} motion` },
         ],
-        mediaQuery: `${intention} ${tone} brand`,
+        mediaQuery: `${intention || postIdea.slice(0, 30)} brand`,
       };
-      setStep(1); setIntention(null); setPlatforms([]); setTone(null); setCta(null); setCtaSearch(""); setGenError(null);
       setGenerating(false);
-      onComplete(result);
+      setResult(generated);
     } catch (err) {
       setGenError(err.message || "Generation failed — please try again.");
       setGenerating(false);
     }
-  }, [intention, platforms, tone, cta, onComplete]);
+  }, [intention, platforms, tone, cta, mode, postIdea, onComplete]);
 
   const filteredCtas = ctaSearch
     ? CTAS.filter(c => c.label.toLowerCase().includes(ctaSearch.toLowerCase()))
@@ -316,10 +322,13 @@ export default function SocialAssistantModal({ isOpen, onClose, onComplete, conn
             </div>
 
             {/* Step nav */}
-            {!generating && (
+            {!generating && mode === "generate" && (
               <div style={{ flex: 1, overflowY: "auto" }}>
                 <StepNav step={step} intention={intention} platforms={platforms} tone={tone} cta={cta} />
               </div>
+            )}
+            {!generating && mode !== "generate" && (
+              <div style={{ flex: 1 }} />
             )}
 
             {generating && (
@@ -342,8 +351,22 @@ export default function SocialAssistantModal({ isOpen, onClose, onComplete, conn
           {/* ── RIGHT PANEL ── */}
           <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
-            {/* Right panel header */}
-            {!generating && (
+            {/* Right panel header — improve mode header */}
+            {mode === "improve" && !result && !generating && (
+              <div style={{ padding: "20px 28px 16px", borderBottom: "1px solid #f1f5f9", flexShrink: 0 }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: DARK, lineHeight: 1.2, marginBottom: 4 }}>Improve my idea</div>
+                <div style={{ fontSize: 12, color: MUTED }}>Paste or describe your post — the assistant rewrites it with Brand DNA applied.</div>
+              </div>
+            )}
+            {/* Right panel header — result review header */}
+            {result && !generating && (
+              <div style={{ padding: "20px 28px 16px", borderBottom: "1px solid #f1f5f9", flexShrink: 0 }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: DARK, lineHeight: 1.2, marginBottom: 4 }}>Review & insert</div>
+                <div style={{ fontSize: 12, color: MUTED }}>Edit the content below, then click Insert to add it to your editor.</div>
+              </div>
+            )}
+            {/* Right panel header — generate wizard */}
+            {!generating && mode === "generate" && !result && (
               <div style={{ padding: "20px 28px 16px", borderBottom: "1px solid #f1f5f9", flexShrink: 0 }}>
                 {/* Horizontal step pills */}
                 <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
@@ -390,8 +413,162 @@ export default function SocialAssistantModal({ isOpen, onClose, onComplete, conn
 
               {generating && <GeneratingScreen platforms={platforms} />}
 
+              {/* ── MODE SELECTOR ── */}
+              {mode === null && !generating && !result && (
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "40px 28px" }}>
+                  <div style={{ marginBottom: 32, textAlign: "center" }}>
+                    <div style={{ width: 52, height: 52, borderRadius: 14, background: BLUE_BG, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                      <i className="fas fa-robot" style={{ fontSize: 24, color: BLUE }} />
+                    </div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: DARK, marginBottom: 6 }}>myPilotPost Assistant</div>
+                    <div style={{ fontSize: 14, color: MUTED }}>How would you like to work today?</div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 480, margin: "0 auto", width: "100%" }}>
+                    <button onClick={() => setMode("generate")} style={{
+                      border: `2px solid ${BLUE}`, background: BLUE_BG, borderRadius: 14, padding: "20px 24px",
+                      display: "flex", alignItems: "flex-start", gap: 16, cursor: "pointer", textAlign: "left",
+                      transition: "all 0.15s",
+                    }}>
+                      <div style={{ width: 40, height: 40, borderRadius: 10, background: BLUE, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
+                        <i className="fas fa-magic" style={{ color: "#fff", fontSize: 17 }} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: BLUE, marginBottom: 4 }}>Generate for me</div>
+                        <div style={{ fontSize: 13, color: MUTED, lineHeight: 1.5 }}>Tell the assistant your goal, platforms, tone, and CTA — it builds the full post from scratch using your Brand DNA.</div>
+                      </div>
+                    </button>
+                    <button onClick={() => setMode("improve")} style={{
+                      border: "2px solid #e5e7eb", background: "#fff", borderRadius: 14, padding: "20px 24px",
+                      display: "flex", alignItems: "flex-start", gap: 16, cursor: "pointer", textAlign: "left",
+                      transition: "all 0.15s",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = "#6366f1"; e.currentTarget.style.background = "#f5f3ff"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = "#e5e7eb"; e.currentTarget.style.background = "#fff"; }}
+                    >
+                      <div style={{ width: 40, height: 40, borderRadius: 10, background: "#f5f3ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
+                        <i className="fas fa-pencil-alt" style={{ color: "#6366f1", fontSize: 17 }} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: "#4f46e5", marginBottom: 4 }}>Improve my idea</div>
+                        <div style={{ fontSize: 13, color: MUTED, lineHeight: 1.5 }}>Paste or describe your post idea — the assistant rewrites it with a better hook, structure, CTA, and platform variants.</div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── IMPROVE MY IDEA FORM ── */}
+              {mode === "improve" && !generating && !result && (
+                <div style={{ flex: 1, overflowY: "auto", padding: "28px 28px" }}>
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: DARK, marginBottom: 6 }}>Describe or paste your post idea</div>
+                    <div style={{ fontSize: 13, color: MUTED }}>The assistant will rewrite it with a stronger hook, structure, and CTA — keeping your voice.</div>
+                  </div>
+                  <textarea
+                    value={postIdea}
+                    onChange={e => setPostIdea(e.target.value)}
+                    placeholder="e.g. 'We just launched a new product for small business owners — write something that builds excitement' or paste your draft..."
+                    style={{
+                      width: "100%", minHeight: 140, border: "1px solid #e5e7eb", borderRadius: 10,
+                      padding: "14px 16px", fontSize: 13, lineHeight: 1.7, resize: "vertical",
+                      outline: "none", fontFamily: "inherit", boxSizing: "border-box", marginBottom: 16,
+                      color: DARK,
+                    }}
+                  />
+                  <div style={{ marginBottom: 8 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: MUTED, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 10 }}>Platforms</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {connections.filter(c => c.status === "active").map(conn => {
+                        const m = PLATFORM_META[conn.platform];
+                        if (!m) return null;
+                        const sel = platforms.includes(conn.platform);
+                        return (
+                          <button key={conn.platform} onClick={() => togglePlatform(conn.platform)} style={{
+                            border: `2px solid ${sel ? m.color : "#e5e7eb"}`,
+                            background: sel ? m.bg : "#fff",
+                            borderRadius: 8, padding: "7px 14px",
+                            display: "flex", alignItems: "center", gap: 8, cursor: "pointer",
+                          }}>
+                            <PlatformIcon platform={conn.platform} size={16} />
+                            <span style={{ fontSize: 12, fontWeight: 700, color: sel ? m.color : DARK }}>{m.label}</span>
+                            {sel && <i className="fas fa-check" style={{ color: m.color, fontSize: 10 }} />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── RESULT REVIEW ── */}
+              {result && !generating && (
+                <div style={{ padding: "0 28px 28px" }}>
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981" }} />
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#10b981", textTransform: "uppercase", letterSpacing: 0.6 }}>Generated</span>
+                    </div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: DARK }}>Review your post</div>
+                    <div style={{ fontSize: 13, color: MUTED, marginTop: 2 }}>Edit below if needed, then insert into the editor.</div>
+                  </div>
+
+                  {/* Main caption */}
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: MUTED, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6 }}>Caption</div>
+                    <textarea
+                      value={result.baseCaption || ""}
+                      onChange={e => setResult(r => ({ ...r, baseCaption: e.target.value }))}
+                      style={{
+                        width: "100%", minHeight: 140, border: "1px solid #e5e7eb", borderRadius: 10,
+                        padding: "12px 14px", fontSize: 13, lineHeight: 1.7, resize: "vertical",
+                        outline: "none", fontFamily: "inherit", boxSizing: "border-box", color: DARK,
+                      }}
+                    />
+                  </div>
+
+                  {/* Platform variants */}
+                  {result.platformVariants && Object.keys(result.platformVariants).length > 0 && (
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: MUTED, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>Platform variants</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {Object.entries(result.platformVariants).map(([p, caption]) => {
+                          const m = PLATFORM_META[p];
+                          return (
+                            <div key={p} style={{ border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden" }}>
+                              <div style={{ padding: "6px 12px", background: m ? m.bg : "#f8fafc", borderBottom: "1px solid #e5e7eb", display: "flex", alignItems: "center", gap: 6 }}>
+                                <PlatformIcon platform={p} size={13} />
+                                <span style={{ fontSize: 11, fontWeight: 700, color: m ? m.color : MUTED }}>{m?.label || p}</span>
+                              </div>
+                              <textarea
+                                value={caption || ""}
+                                onChange={e => setResult(r => ({ ...r, platformVariants: { ...r.platformVariants, [p]: e.target.value } }))}
+                                style={{ width: "100%", border: "none", padding: "10px 12px", fontSize: 12, lineHeight: 1.6, resize: "vertical", outline: "none", fontFamily: "inherit", boxSizing: "border-box", minHeight: 70 }}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Media recommendations */}
+                  {result.mediaRecommendations?.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: MUTED, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6 }}>Media ideas</div>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {result.mediaRecommendations.map((m, i) => (
+                          <div key={i} style={{ background: LIGHT, border: "1px solid #e5e7eb", borderRadius: 8, padding: "6px 12px" }}>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: DARK }}>{m.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* ── STEP 1: Intention ── */}
-              {!generating && step === 1 && (
+              {!generating && step === 1 && mode === "generate" && (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   {INTENTIONS.map(opt => (
                     <SelectCard key={opt.id} selected={intention === opt.id} onClick={() => setIntention(opt.id)} icon={opt.icon} label={opt.label} desc={opt.desc} />
@@ -400,7 +577,7 @@ export default function SocialAssistantModal({ isOpen, onClose, onComplete, conn
               )}
 
               {/* ── STEP 2: Platforms ── */}
-              {!generating && step === 2 && (
+              {!generating && step === 2 && mode === "generate" && (
                 <div>
                   {active.length === 0 && (
                     <div style={{ textAlign: "center", padding: "40px 16px", color: "#94a3b8", border: "1px dashed #e5e7eb", borderRadius: 12, marginBottom: 16 }}>
@@ -463,14 +640,14 @@ export default function SocialAssistantModal({ isOpen, onClose, onComplete, conn
               )}
 
               {/* ── STEP 3: Tone ── */}
-              {!generating && step === 3 && (
+              {!generating && step === 3 && mode === "generate" && (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
                   {TONES.map(t => <ToneTile key={t.id} selected={tone === t.id} onClick={() => setTone(t.id)} icon={t.icon} label={t.label} desc={t.desc} />)}
                 </div>
               )}
 
               {/* ── STEP 4: CTA ── */}
-              {!generating && step === 4 && (
+              {!generating && step === 4 && mode === "generate" && (
                 <div>
                   <input
                     type="text"
@@ -503,7 +680,7 @@ export default function SocialAssistantModal({ isOpen, onClose, onComplete, conn
               )}
 
               {/* ── STEP 5: Summary ── */}
-              {!generating && step === 5 && (
+              {!generating && step === 5 && mode === "generate" && (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
                   {/* Left: Brief summary */}
                   <div>
@@ -577,27 +754,68 @@ export default function SocialAssistantModal({ isOpen, onClose, onComplete, conn
                   </div>
                 )}
                 <div style={{ padding: "16px 28px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <button
-                    onClick={step === 1 ? onClose : () => setStep(s => s - 1)}
-                    style={{ border: "1px solid #e5e7eb", background: "#fff", color: "#475569", borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
-                  >
-                    {step === 1 ? "Cancel" : "← Back"}
-                  </button>
-                  {step < TOTAL ? (
-                    <button
-                      onClick={() => setStep(s => s + 1)}
-                      disabled={!canNext()}
-                      style={{ border: "none", background: canNext() ? BLUE : "#e5e7eb", color: canNext() ? "#fff" : "#94a3b8", borderRadius: 8, padding: "10px 24px", fontSize: 13, fontWeight: 700, cursor: canNext() ? "pointer" : "not-allowed", transition: "background 0.15s" }}
-                    >
-                      Continue →
+                  {/* Result screen */}
+                  {result && (
+                    <>
+                      <button
+                        onClick={() => { setResult(null); setMode(null); setPostIdea(""); setStep(1); setIntention(null); setPlatforms([]); setTone(null); setCta(null); }}
+                        style={{ border: "1px solid #e5e7eb", background: "#fff", color: "#475569", borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                      >
+                        ← Start Over
+                      </button>
+                      <button
+                        onClick={() => { onComplete(result); setResult(null); setMode(null); setPostIdea(""); setStep(1); setIntention(null); setPlatforms([]); setTone(null); setCta(null); setGenError(null); setGenerating(false); }}
+                        style={{ border: "none", background: "#10b981", color: "#fff", borderRadius: 8, padding: "11px 28px", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 9, boxShadow: "0 4px 14px rgba(16,185,129,0.35)" }}
+                      >
+                        <i className="fas fa-arrow-right"></i> Insert into Editor
+                      </button>
+                    </>
+                  )}
+                  {/* Mode selector screen */}
+                  {!result && mode === null && (
+                    <button onClick={onClose} style={{ border: "1px solid #e5e7eb", background: "#fff", color: "#475569", borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                      Cancel
                     </button>
-                  ) : (
-                    <button
-                      onClick={generate}
-                      style={{ border: "none", background: BLUE, color: "#fff", borderRadius: 8, padding: "11px 28px", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 9, boxShadow: "0 4px 14px rgba(37,99,235,0.35)" }}
-                    >
-                      <i className="fas fa-magic"></i> Generate with AI
-                    </button>
+                  )}
+                  {/* Improve mode */}
+                  {!result && mode === "improve" && (
+                    <>
+                      <button onClick={() => setMode(null)} style={{ border: "1px solid #e5e7eb", background: "#fff", color: "#475569", borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>← Back</button>
+                      <button
+                        onClick={generate}
+                        disabled={!postIdea.trim()}
+                        style={{ border: "none", background: postIdea.trim() ? "#6366f1" : "#e5e7eb", color: postIdea.trim() ? "#fff" : "#94a3b8", borderRadius: 8, padding: "11px 28px", fontSize: 14, fontWeight: 700, cursor: postIdea.trim() ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 9 }}
+                      >
+                        <i className="fas fa-magic"></i> Improve with AI
+                      </button>
+                    </>
+                  )}
+                  {/* Generate wizard mode */}
+                  {!result && mode === "generate" && (
+                    <>
+                      <button
+                        onClick={step === 1 ? () => setMode(null) : () => setStep(s => s - 1)}
+                        style={{ border: "1px solid #e5e7eb", background: "#fff", color: "#475569", borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                      >
+                        {step === 1 ? "← Back" : "← Back"}
+                      </button>
+                      {step < TOTAL ? (
+                        <button
+                          onClick={() => setStep(s => s + 1)}
+                          disabled={!canNext()}
+                          style={{ border: "none", background: canNext() ? BLUE : "#e5e7eb", color: canNext() ? "#fff" : "#94a3b8", borderRadius: 8, padding: "10px 24px", fontSize: 13, fontWeight: 700, cursor: canNext() ? "pointer" : "not-allowed", transition: "background 0.15s" }}
+                        >
+                          Continue →
+                        </button>
+                      ) : (
+                        <button
+                          onClick={generate}
+                          style={{ border: "none", background: BLUE, color: "#fff", borderRadius: 8, padding: "11px 28px", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 9, boxShadow: "0 4px 14px rgba(37,99,235,0.35)" }}
+                        >
+                          <i className="fas fa-magic"></i> Generate with AI
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

@@ -31,13 +31,10 @@ const STATUS_META = {
 const TYPE_ICON = { social: "fa-comments", blog: "fa-file-alt", campaign: "fa-bullhorn" };
 
 const TABS = [
-  { id: "",                   label: "All" },
-  { id: "draft",              label: "Drafts" },
-  { id: "pending",            label: "In Review" },
-  { id: "approved",           label: "Approved" },
-  { id: "scheduled",          label: "Scheduled" },
-  { id: "published",          label: "Published" },
-  { id: "failed",             label: "Failed" },
+  { id: "",          label: "All" },
+  { id: "published", label: "Published" },
+  { id: "archived",  label: "Archived" },
+  { id: "shared",    label: "Shared" },
 ];
 
 /* ─── Status Badge ─────────────────────────────────────────── */
@@ -145,9 +142,9 @@ function EmptyVault({ onCreateSocial }) {
   return (
     <div style={{ padding: "64px 32px", textAlign: "center" }}>
       <div style={{ fontSize: 48, marginBottom: 16 }}>📦</div>
-      <div style={{ fontSize: 18, fontWeight: 700, color: C.slate, marginBottom: 8 }}>Content Vault is empty</div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: C.slate, marginBottom: 8 }}>No content here yet</div>
       <div style={{ fontSize: 14, color: C.muted, marginBottom: 24, maxWidth: 360, margin: "0 auto 24px" }}>
-        Create your first piece of content from the AI Content Studio or the Create Social Post editor.
+        Published, archived, and shared content appears here. Use Create Social Post to get started.
       </div>
       <button
         onClick={onCreateSocial}
@@ -178,8 +175,9 @@ export default function ContentVault({ activeBrand, switchTab }) {
     setLoading(true);
     setError(null);
     try {
+      const statusParam = activeStatus === "shared" ? "pending" : activeStatus;
       const params = new URLSearchParams();
-      if (activeStatus) params.set("status", activeStatus);
+      if (statusParam) params.set("status", statusParam);
       params.set("limit", "100");
       const data = await apiFetch(`/api/customer/vault?${params}`);
       setItems(data?.data || []);
@@ -216,7 +214,7 @@ export default function ContentVault({ activeBrand, switchTab }) {
   if (!brandId) {
     return (
       <div style={{ padding: 48, textAlign: "center", color: C.muted, fontSize: 14 }}>
-        Select a brand to view your Content Vault.
+        Select a brand to view Content Management.
       </div>
     );
   }
@@ -226,9 +224,9 @@ export default function ContentVault({ activeBrand, switchTab }) {
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
-          <h2 style={{ fontSize: 22, fontWeight: 800, color: C.slate, margin: 0 }}>Content Vault</h2>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: C.slate, margin: 0 }}>Content Management</h2>
           <p style={{ color: C.muted, fontSize: 13, marginTop: 3, marginBottom: 0 }}>
-            Single source of truth for all content — social, blog, campaigns.
+            Approval Hub · Review Hub · Client Collaboration
           </p>
         </div>
         <button
