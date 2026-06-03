@@ -846,11 +846,13 @@ export default function CreatePost({
 
   // ── Save draft ──────────────────────────────────────────────────────────
   const saveDraft = async () => {
-    const data = await apiJSON("/api/customer/content/social", "POST", {
-      text: content,
+    const data = await apiJSON("/api/customer/vault", "POST", {
+      body: content,
       platforms: selectedPlatforms,
+      platform_variants: overrides,
       campaign_id: campaignId || null,
       lifecycle_status: "draft",
+      content_type: "social",
     });
     if (data?.content_id) await linkMedia(data.content_id);
     return data?.content_id;
@@ -892,33 +894,35 @@ export default function CreatePost({
     setPublishPhase("creating");
     setPublishResult(null);
     try {
-      // Step 1: create asset in approved state
-      const asset = await apiJSON("/api/customer/content/social", "POST", {
-        text: content,
+      // Step 1: write to vault (single source of truth)
+      const asset = await apiJSON("/api/customer/vault", "POST", {
+        body: content,
         platforms: selectedPlatforms,
+        platform_variants: overrides,
         campaign_id: campaignId || null,
-        lifecycle_status: "approved",
+        lifecycle_status: "draft",
+        content_type: "social",
       });
 
-      // Step 2: link media so adapters can fetch it
+      // Step 2: link media
       setPublishPhase("linking");
       await linkMedia(asset.content_id);
 
-      // Step 3: schedule (immediate = 90s from now to clear the future-only guard)
+      // Step 3: schedule via vault or publish immediately
       setPublishPhase("scheduling");
-      const scheduled_at = scheduledTime
-        ? new Date(scheduledTime).toISOString()
-        : new Date(Date.now() + 90_000).toISOString();
-
-      await apiJSON("/api/customer/content/schedule", "POST", {
-        content_id: asset.content_id,
-        content_type: "social",
-        platforms: selectedPlatforms,
-        scheduled_at,
-      });
+      if (scheduledTime) {
+        await apiJSON(`/api/customer/vault/${asset.content_id}/schedule`, "POST", {
+          platforms: selectedPlatforms,
+          scheduled_at: new Date(scheduledTime).toISOString(),
+        });
+      } else {
+        await apiJSON(`/api/customer/vault/${asset.content_id}/publish-now`, "POST", {
+          platforms: selectedPlatforms,
+        });
+      }
 
       setPublishPhase("queued");
-      setPublishResult({ content_id: asset.content_id, platforms: selectedPlatforms, scheduled_at });
+      setPublishResult({ content_id: asset.content_id, platforms: selectedPlatforms });
       showToast(scheduledTime ? "Post scheduled" : "Post queued for delivery");
       loadVault(scheduledTime ? "scheduled" : "drafts");
     } catch (e) {

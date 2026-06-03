@@ -218,18 +218,20 @@ const ArticleCreator = ({ activeBrandOverride, initialArticle, onSaveSuccess, on
     if (!activeBrand?.id) return alert("Please select a brand first.");
     setLoading(true);
     try {
-      const method  = articleId ? "PATCH" : "POST";
-      const url     = articleId ? `/api/customer/content/blog/${articleId}` : "/api/customer/content/blog";
-
-      const resp = await apiRequest(url, {
-        method,
-        body: JSON.stringify({ 
-          title, body: content, localization, keyword, 
-          campaign_id: selectedCampaignId || null, status: "draft" 
-        })
+      const resp = await apiRequest("/api/customer/vault", {
+        method: "POST",
+        body: JSON.stringify({
+          ...(articleId ? { content_id: articleId } : {}),
+          content_type: "blog",
+          title,
+          body: content,
+          metadata: JSON.stringify({ localization, keyword }),
+          campaign_id: selectedCampaignId || null,
+          lifecycle_status: "draft",
+        }),
       });
 
-      const newId = resp.draft_id || resp.id;
+      const newId = resp.content_id;
       if (!articleId && newId) setArticleId(newId);
       alert("Article draft saved!");
       onSaveSuccess?.();
@@ -240,15 +242,37 @@ const ArticleCreator = ({ activeBrandOverride, initialArticle, onSaveSuccess, on
   };
 
   const handleSendForApproval = async () => {
-    if (!articleId) {
+    if (!activeBrand?.id) return alert("Please select a brand first.");
+    let id = articleId;
+    if (!id) {
       if (!window.confirm("Save draft before sending for approval?")) return;
-      await handleSaveDraft();
+      setLoading(true);
+      try {
+        const resp = await apiRequest("/api/customer/vault", {
+          method: "POST",
+          body: JSON.stringify({
+            content_type: "blog",
+            title,
+            body: content,
+            metadata: JSON.stringify({ localization, keyword }),
+            campaign_id: selectedCampaignId || null,
+            lifecycle_status: "draft",
+          }),
+        });
+        id = resp.content_id;
+        if (id) setArticleId(id);
+      } catch (e) {
+        alert("Failed to save draft: " + (e.message || "Unknown error"));
+        setLoading(false);
+        return;
+      }
+      setLoading(false);
     }
     setLoading(true);
     try {
-      await apiRequest(`/api/customer/content/${articleId}/status`, {
-        method: "PATCH",
-        body: JSON.stringify({ status: "approval" })
+      await apiRequest(`/api/customer/vault/${id}/approval`, {
+        method: "POST",
+        body: JSON.stringify({ action: "submit" }),
       });
       alert("Article sent for approval!");
       onSaveSuccess?.();

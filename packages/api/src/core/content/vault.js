@@ -188,6 +188,30 @@ export async function saveToVault(request, env, auth) {
     } catch { /* mirror writes must not block vault write */ }
   }
 
+  // Mirror write to blog_posts for delivery engine backward compat
+  if (content_type === 'blog') {
+    try {
+      if (existing) {
+        await db.prepare(`
+          UPDATE blog_posts
+          SET title = ?, body = ?, lifecycle_status = ?, status = ?, campaign_id = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ? AND brand_id = ?
+        `).bind(derivedTitle, bodyText, lifecycle_status, lifecycle_status, campaign_id || null, id, brand_id).run();
+      } else {
+        const ctxId = crypto.randomUUID();
+        await db.batch([
+          db.prepare(`INSERT OR IGNORE INTO content_context (id, brand_id, user_id, locale) VALUES (?, ?, ?, 'en')`)
+            .bind(ctxId, brand_id, user_id || ''),
+          db.prepare(`
+            INSERT OR IGNORE INTO blog_posts
+              (id, brand_id, user_id, context_id, title, body, campaign_id, lifecycle_status, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).bind(id, brand_id, user_id || '', ctxId, derivedTitle, bodyText, campaign_id || null, lifecycle_status, lifecycle_status),
+        ]);
+      }
+    } catch { /* mirror writes must not block vault write */ }
+  }
+
   return json({ success: true, content_id: id, version, lifecycle_status });
 }
 
