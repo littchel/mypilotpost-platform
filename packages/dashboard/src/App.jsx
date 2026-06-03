@@ -33,7 +33,6 @@ import Integrations from "./pages/IntegrationsManager";
 import DashboardOverview from "./pages/DashboardOverview";
 import SocialComposer from "./pages/SocialComposer"; // DEPRECATED: Keep for safe migration reference
 import CreatePost from "./pages/CreatePost";
-import ContentManagement from "./pages/ContentManagement";
 import Teams from "./pages/Teams";
 import Growth from "./pages/Growth";
 import GrowthEngine from "./pages/GrowthEngine";
@@ -1426,16 +1425,8 @@ function App() {
         </TabContent>
 
         {/* PROTECTED: Content Management Tab */}
-        <TabContent id="vault" activeTab={activeTab}>
-          <ContentVault activeBrand={activeBrand} switchTab={(tab, opts) => { setActiveTab(tab); }} />
-        </TabContent>
-
         <TabContent id="content" activeTab={activeTab}>
-          <ContentManagement
-            allContent={allContent}
-            onUpdateStatus={handleUpdateContentStatus}
-            onBulkAction={handleBulkContentAction}
-          />
+          <ContentVault activeBrand={activeBrand} switchTab={(tab, _opts) => setActiveTab(tab)} />
         </TabContent>
 
         {/* Schedule Tab */}

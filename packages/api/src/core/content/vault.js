@@ -11,6 +11,7 @@ import { isValidUUID, isValidISO8601 } from "../../lib/validation.js";
 import { normalizeForSQLite, hasConflict } from "../schedule/schedule.js";
 import { completeReferral } from "../promotions/promotions.js";
 import { insertExperienceNotification } from "../notifications/utils.js";
+import { sendEmail } from "../email/send-email.js";
 
 const LOCKED_STATUSES = new Set(['scheduled', 'queued', 'publishing', 'published']);
 
@@ -278,10 +279,13 @@ export async function vaultApproval(request, env, auth) {
   try { body = await request.json(); }
   catch { return error("Invalid JSON body", "INVALID_JSON", null, 400); }
 
-  const { action, notes, reviewer_type = "client" } = body;
+  const {
+    action, notes, reviewer_type = "client", reviewer_email, channel = "dashboard",
+    reviewer_name, reviewer_phone, delivery_channels, expiry,
+  } = body;
 
-  if (!["submit", "approve", "reject"].includes(action)) {
-    return error("action must be: submit | approve | reject", "BAD_REQUEST", null, 400);
+  if (!["submit", "approve", "reject", "request_changes"].includes(action)) {
+    return error("action must be: submit | approve | reject | request_changes", "BAD_REQUEST", null, 400);
   }
 
   const db = getDB(env);
@@ -289,7 +293,6 @@ export async function vaultApproval(request, env, auth) {
   if (!item) return error("Content not found", "NOT_FOUND", null, 404);
 
   if (action === "submit") {
-    // Lock check
     if (item.lifecycle_status === 'approval_requested') {
       return error("Already submitted for approval", "CONFLICT", null, 409);
     }
@@ -297,30 +300,58 @@ export async function vaultApproval(request, env, auth) {
     const approvalId = crypto.randomUUID();
     let share_url = null;
 
-    // Generate client share link if reviewer_type = client
-    if (reviewer_type === "client") {
-      const token  = crypto.randomUUID().replace(/-/g, '');
-      const shareId = crypto.randomUUID();
-      const expires = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
-      const msgUint8 = new TextEncoder().encode(token);
-      const hashBuf  = await crypto.subtle.digest("SHA-256", msgUint8);
-      const tokenHash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    // Always generate a share link for approval
+    const token    = crypto.randomUUID().replace(/-/g, '');
+    const shareId  = crypto.randomUUID();
+    const expires  = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+    const msgUint8 = new TextEncoder().encode(token);
+    const hashBuf  = await crypto.subtle.digest("SHA-256", msgUint8);
+    const tokenHash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
 
-      await db.prepare(
-        `INSERT INTO content_shares (id, brand_id, content_id, share_type, access_token_hash, expires_at) VALUES (?, ?, ?, 'client_review', ?, ?)`
-      ).bind(shareId, brand_id, id, tokenHash, expires).run();
+    await db.prepare(
+      `INSERT INTO content_shares (id, brand_id, content_id, share_type, access_token_hash, expires_at) VALUES (?, ?, ?, 'client_review', ?, ?)`
+    ).bind(shareId, brand_id, id, tokenHash, expires).run();
 
-      share_url = `https://app.mypilotpost.com/approve/${token}`;
-    }
+    share_url = `https://app.mypilotpost.com/approve/${token}`;
+
+    const nowStr = new Date().toISOString();
+
+    // Calculate expiry datetime
+    let expires_at = null;
+    const expiryDays = { "24h": 1, "72h": 3, "7d": 7 }[expiry];
+    if (expiryDays) expires_at = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000).toISOString();
+
+    const deliveryChannelsStr = JSON.stringify(
+      Array.isArray(delivery_channels) && delivery_channels.length ? delivery_channels : ["email"]
+    );
 
     await db.batch([
-      db.prepare(`UPDATE content_vault SET lifecycle_status = 'approval_requested', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
+      db.prepare(`UPDATE content_vault SET lifecycle_status = 'approval_requested', share_for_approval = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
       db.prepare(`UPDATE social_assets SET lifecycle_status = 'pending_approval', status = 'pending_approval', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
-      db.prepare(`INSERT INTO approval_requests (id, brand_id, content_id, content_type, requested_by, reviewer_type, review_notes) VALUES (?, ?, ?, ?, ?, ?, ?)`)
-        .bind(approvalId, brand_id, id, item.content_type, user_id, reviewer_type, notes || null),
+      db.prepare(`INSERT INTO approval_requests (id, brand_id, content_id, content_type, requested_by, reviewer_type, review_notes, reviewer_email, channel, reviewer_name, reviewer_phone, delivery_channels, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .bind(approvalId, brand_id, id, item.content_type, user_id, reviewer_type, notes || null, reviewer_email || null, channel, reviewer_name || null, reviewer_phone || null, deliveryChannelsStr, expires_at),
     ]);
 
-    await insertExperienceNotification(db, brand_id, "approval", "Approval Requested", "Content locked pending review.");
+    // Send approval email when reviewer_email provided
+    if (reviewer_email && share_url) {
+      const brand  = await db.prepare(`SELECT name FROM brands WHERE id = ? LIMIT 1`).bind(brand_id).first();
+      const preview = (item.body || item.title || '').slice(0, 200);
+      const emailHtml = buildApprovalEmail({
+        brandName: brand?.name || 'myPilotPost',
+        title:     item.title || 'Content for Review',
+        preview,
+        shareUrl:  share_url,
+        notes
+      });
+      try {
+        await sendEmail({ to: reviewer_email, subject: `You have content to review — ${brand?.name || 'myPilotPost'}`, html: emailHtml, env });
+        await db.prepare(`UPDATE approval_requests SET email_sent_at = ? WHERE id = ?`).bind(nowStr, approvalId).run();
+      } catch (emailErr) {
+        console.error('[APPROVAL EMAIL]', emailErr.message);
+      }
+    }
+
+    await insertExperienceNotification(db, brand_id, "approval", "Approval Requested", "Content sent for review.");
     return json({ success: true, status: "approval_requested", share_url });
   }
 
@@ -334,13 +365,101 @@ export async function vaultApproval(request, env, auth) {
   }
 
   if (action === "reject") {
+    // Reject → archive so it disappears from both draft and approval views
+    await db.batch([
+      db.prepare(`UPDATE content_vault SET lifecycle_status = 'archived', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
+      db.prepare(`UPDATE social_assets SET lifecycle_status = 'archived', status = 'archived', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
+      db.prepare(`UPDATE approval_requests SET rejected_by = ?, rejection_reason = ? WHERE content_id = ? AND brand_id = ? AND approved_at IS NULL`).bind(user_id, notes || null, id, brand_id),
+    ]);
+    return json({ success: true, status: "archived" });
+  }
+
+  if (action === "request_changes") {
+    // Request changes → back to draft so creator can edit and resubmit
     await db.batch([
       db.prepare(`UPDATE content_vault SET lifecycle_status = 'draft', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
-      db.prepare(`UPDATE social_assets SET lifecycle_status = 'rejected', status = 'rejected', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
-      db.prepare(`UPDATE approval_requests SET rejected_by = ?, rejection_reason = ? WHERE content_id = ? AND brand_id = ? AND approved_at IS NULL`).bind(user_id, notes || null, id, brand_id),
+      db.prepare(`UPDATE social_assets SET lifecycle_status = 'draft', status = 'draft', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
+      db.prepare(`UPDATE approval_requests SET rejection_reason = ? WHERE content_id = ? AND brand_id = ? AND approved_at IS NULL`).bind(notes || null, id, brand_id),
     ]);
     return json({ success: true, status: "draft" });
   }
+}
+
+/* ============================================================
+   GET /api/customer/vault/approvals
+   Content items currently in approval workflow, joined with
+   their latest approval_request record.
+   ============================================================ */
+export async function getApprovalItems(request, env, auth) {
+  if (!auth?.brand_id) return error("Unauthorized", "UNAUTHORIZED", null, 401);
+  const { brand_id } = auth;
+  const db = getDB(env);
+
+  const rows = await db.prepare(`
+    SELECT
+      cv.id, cv.title, cv.body, cv.content_type, cv.platforms,
+      cv.lifecycle_status, cv.share_for_approval,
+      cv.created_at AS content_created_at,
+      cv.updated_at, cv.created_by, cv.updated_by,
+      cv.campaign_objective, cv.objective,
+      ar.id           AS ar_id,
+      ar.requested_by, ar.reviewer_type,
+      ar.review_notes, ar.reviewer_email,
+      ar.reviewer_name, ar.reviewer_phone,
+      ar.channel, ar.delivery_channels,
+      ar.created_at   AS submitted_at,
+      ar.expires_at,
+      ar.approved_at, ar.approved_by,
+      ar.rejected_by, ar.rejection_reason,
+      ar.email_sent_at
+    FROM content_vault cv
+    LEFT JOIN approval_requests ar ON ar.id = (
+      SELECT id FROM approval_requests
+      WHERE content_id = cv.id
+      ORDER BY created_at DESC LIMIT 1
+    )
+    WHERE cv.brand_id = ?
+      AND cv.share_for_approval = 1
+      AND cv.lifecycle_status IN ('approval_requested', 'changes_requested', 'approved')
+    ORDER BY cv.updated_at DESC
+    LIMIT 100
+  `).bind(brand_id).all();
+
+  const data = (rows.results || []).map(row => ({
+    id: row.id,
+    title: row.title,
+    body: row.body,
+    content_type: row.content_type,
+    platforms: row.platforms,
+    lifecycle_status: row.lifecycle_status,
+    share_for_approval: row.share_for_approval,
+    content_created_at: row.content_created_at,
+    updated_at: row.updated_at,
+    created_by: row.created_by,
+    updated_by: row.updated_by,
+    campaign_objective: row.campaign_objective,
+    objective: row.objective,
+    _approval: {
+      id: row.ar_id,
+      requested_by: row.requested_by,
+      reviewer_type: row.reviewer_type,
+      review_notes: row.review_notes,
+      reviewer_email: row.reviewer_email,
+      reviewer_name: row.reviewer_name,
+      reviewer_phone: row.reviewer_phone,
+      channel: row.channel,
+      delivery_channels: row.delivery_channels,
+      submitted_at: row.submitted_at,
+      expires_at: row.expires_at,
+      approved_at: row.approved_at,
+      approved_by: row.approved_by,
+      rejected_by: row.rejected_by,
+      rejection_reason: row.rejection_reason,
+      email_sent_at: row.email_sent_at,
+    },
+  }));
+
+  return json({ success: true, data });
 }
 
 /* ============================================================
@@ -476,4 +595,36 @@ export async function vaultPublishNow(request, env, auth) {
   }
 
   return json({ success: true, jobs_created: created });
+}
+
+/* ============================================================
+   EMAIL TEMPLATE — approval request
+   ============================================================ */
+function buildApprovalEmail({ brandName, title, preview, shareUrl, notes }) {
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:560px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+    <div style="background:#2563eb;padding:28px 32px;">
+      <div style="font-size:13px;color:rgba(255,255,255,0.7);font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Content Review</div>
+      <div style="font-size:22px;font-weight:800;color:#fff;">${brandName}</div>
+    </div>
+    <div style="padding:32px;">
+      <p style="margin:0 0 6px;font-size:14px;color:#64748b;">You've been asked to review:</p>
+      <h2 style="margin:0 0 16px;font-size:18px;font-weight:700;color:#0f172a;">${title}</h2>
+      ${preview ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;margin-bottom:20px;font-size:14px;color:#374151;line-height:1.6;">${preview.replace(/\n/g,'<br>')}${preview.length >= 200 ? '…' : ''}</div>` : ''}
+      ${notes ? `<div style="background:#fffbeb;border:1px solid #fef08a;border-radius:8px;padding:12px 14px;margin-bottom:20px;font-size:13px;color:#92400e;"><strong>Note:</strong> ${notes}</div>` : ''}
+      <div style="display:flex;gap:12px;margin-bottom:28px;">
+        <a href="${shareUrl}?decision=approved" style="flex:1;display:block;text-align:center;background:#059669;color:#fff;padding:14px;border-radius:8px;font-weight:700;font-size:15px;text-decoration:none;">✓ Approve</a>
+        <a href="${shareUrl}?decision=rejected" style="flex:1;display:block;text-align:center;background:#f8fafc;color:#64748b;padding:14px;border-radius:8px;font-weight:700;font-size:15px;text-decoration:none;border:1px solid #e2e8f0;">✗ Reject</a>
+      </div>
+      <a href="${shareUrl}" style="display:block;text-align:center;color:#2563eb;font-size:13px;font-weight:600;text-decoration:none;">View full content →</a>
+    </div>
+    <div style="padding:20px 32px;border-top:1px solid #f1f5f9;font-size:12px;color:#94a3b8;text-align:center;">
+      Sent via myPilotPost · <a href="https://app.mypilotpost.com" style="color:#94a3b8;">Open Dashboard</a>
+    </div>
+  </div>
+</body>
+</html>`;
 }

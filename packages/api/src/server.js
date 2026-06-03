@@ -92,6 +92,7 @@ import { submitForApproval, getApprovalRequests } from "./core/approvals/handler
 import {
   listVault, saveToVault, getVaultItem, deleteVaultItem,
   vaultApproval, vaultSchedule, vaultPublishNow, vaultCancel,
+  getApprovalItems,
 } from "./core/content/vault.js";
 import { createReport, getReports, shareReport } from "./core/reporting/handlers.js";
 import { approveSocialAssetsBulk } from "./core/content/social.js";
@@ -290,6 +291,7 @@ import {
 ====================================================== */
 import {
   getAnalyticsOverview,
+  getAnalyticsTimeseries,
   getAnalyticsDetailed,
   generateReport,
   saveReportSnapshot as updateReport,
@@ -299,7 +301,7 @@ import {
   getContentAnalytics
 } from "./core/analytics/analytics.js";
 import { getExecutiveAnalytics } from "./core/analytics/executive.js";
-import { analyzeContentSEO } from "./core/seo/seo.js";
+import { analyzeContentSEO, getSEOSummary, getSEOKeywords } from "./core/seo/seo.js";
 import {
   syncSearchConsoleData,
   getSearchConsoleProperties,
@@ -1713,6 +1715,9 @@ export default {
         if (method === "POST" && path === "/api/customer/vault")
           return withCors(request, saveToVault(request, env, auth));
 
+        if (method === "GET"  && path === "/api/customer/vault/approvals")
+          return withCors(request, getApprovalItems(request, env, auth));
+
         if (path.startsWith("/api/customer/vault/")) {
           const vaultId = path.split("/")[4];
           if (!vaultId) { /* fall through */ }
@@ -1887,6 +1892,9 @@ export default {
         if (method === "GET" && path === "/api/customer/analytics/overview")
           return withCors(request, getAnalyticsOverview(request, env, auth));
 
+        if (method === "GET" && path === "/api/customer/analytics/timeseries")
+          return withCors(request, getAnalyticsTimeseries(request, env, auth));
+
         switch (path) {
           case "/api/customer/analytics/detailed": return withCors(request, getAnalyticsDetailed(request, env, auth));
           case "/api/customer/analytics/content": return withCors(request, getContentAnalytics(request, env, auth));
@@ -1986,6 +1994,12 @@ export default {
         }
         if (method === "POST" && path === "/api/customer/seo/analyze")
           return withCors(request, analyzeContentSEO(request, env, auth));
+
+        if (method === "GET" && path === "/api/customer/seo/summary")
+          return withCors(request, getSEOSummary(request, env, auth));
+
+        if (method === "GET" && path === "/api/customer/seo/keywords")
+          return withCors(request, getSEOKeywords(request, env, auth));
 
         if (method === "GET" && path === "/api/customer/campaigns/patterns")
           return withCors(request, detectCampaignPatterns(request, env, auth));

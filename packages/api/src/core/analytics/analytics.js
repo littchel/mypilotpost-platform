@@ -72,11 +72,9 @@ export async function getAnalyticsOverview(_req, env, auth, campaignId) {
   const db = getDB(env);
   const brandId = auth.brand_id;
 
-  // Periods: Current (last 7 days) vs Previous (7 days before that)
   const now = new Date();
   const week1From = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const week1To = now.toISOString();
-  
   const week2From = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString();
   const week2To = week1From;
 
@@ -85,10 +83,45 @@ export async function getAnalyticsOverview(_req, env, auth, campaignId) {
 
   const calculateGrowth = (curr, prev) => {
     if (prev === 0) return null;
-    return (((curr - prev) / prev) * 100).toFixed(1);
+    return parseFloat((((curr - prev) / prev) * 100).toFixed(1));
   };
 
+  const PLATFORM_COLORS = { instagram: '#E4405F', linkedin: '#0A66C2', facebook: '#1877F2', twitter: '#1DA1F2', x: '#000000', tiktok: '#010101' };
+  const { results: platformRows } = await db.prepare(`
+    SELECT platform, SUM(impressions) AS value
+    FROM content_analytics
+    WHERE brand_id = ? AND platform IS NOT NULL
+    GROUP BY platform ORDER BY value DESC LIMIT 6
+  `).bind(brandId).all();
+
+  const platformShare = (platformRows || []).map(r => ({
+    name: r.platform || 'Other',
+    value: r.value || 0,
+    color: PLATFORM_COLORS[r.platform?.toLowerCase()] || '#64748b'
+  }));
+
+  const topPlatform = platformShare[0];
+  const topInsight = topPlatform
+    ? `${topPlatform.name} drives the most impressions. Post consistently there for maximum reach.`
+    : 'Publish your first post to start tracking performance patterns.';
+  const topOpportunity = current.reach === 0
+    ? 'Connect your social accounts and publish content to unlock analytics.'
+    : 'Schedule posts 3× per week to maintain consistent growth momentum.';
+
   return json({
+    // Dashboard UI fields
+    totalReach: current.reach,
+    totalEngagement: current.engagement,
+    totalClicks: 0,
+    totalConversions: 0,
+    reachChange: calculateGrowth(current.reach, previous.reach),
+    engagementChange: calculateGrowth(current.engagement, previous.engagement),
+    clicksChange: null,
+    conversionChange: null,
+    topInsight,
+    topOpportunity,
+    platformShare,
+    // Report compatibility fields
     summary: {
       posts: current.posts,
       published: current.published,
@@ -102,6 +135,34 @@ export async function getAnalyticsOverview(_req, env, auth, campaignId) {
       engagement_rate: calculateGrowth(current.engagement_rate, previous.engagement_rate)
     }
   });
+}
+
+/* ======================================================
+   ANALYTICS TIMESERIES — DAILY TREND
+====================================================== */
+export async function getAnalyticsTimeseries(request, env, auth) {
+  if (!auth?.brand_id) return error("Unauthorized", 401);
+
+  const db = getDB(env);
+  const brandId = auth.brand_id;
+  const url = new URL(request.url);
+  const range = url.searchParams.get('range') || '7d';
+  const days = range === '90d' ? 90 : range === '30d' ? 30 : 7;
+  const cutoff = new Date(Date.now() - days * 86400000).toISOString();
+
+  const { results } = await db.prepare(`
+    SELECT
+      strftime('%m/%d', reported_at) AS name,
+      strftime('%Y-%m-%d', reported_at) AS date,
+      SUM(impressions) AS reach,
+      SUM(engagements) AS engagement
+    FROM content_analytics
+    WHERE brand_id = ? AND reported_at >= ?
+    GROUP BY strftime('%Y-%m-%d', reported_at)
+    ORDER BY date ASC
+  `).bind(brandId, cutoff).all();
+
+  return json(results || []);
 }
 
 /* ======================================================
@@ -400,37 +461,42 @@ export async function getSEOOverview(request, env, auth) {
 
 /**
  * getContentAnalytics
- * Standardized contract fix for Phase 4
+ * Returns per-post analytics rows for the dashboard content table.
  */
 export async function getContentAnalytics(request, env, auth) {
   if (!auth?.brand_id) return error("Unauthorized", 401);
 
   const db = getDB(env);
   const brandId = auth.brand_id;
+  const url = new URL(request.url);
+  const range = url.searchParams.get('range') || '30d';
+  const platform = url.searchParams.get('platform') || 'all';
+  const days = range === '90d' ? 90 : range === '30d' ? 30 : 7;
+  const cutoff = new Date(Date.now() - days * 86400000).toISOString();
 
-  // 1. Fetch lifecycle counts from content_vault (source of truth)
-  const vaultCounts = await db.prepare(`
+  const platformClause = platform !== 'all' ? 'AND COALESCE(ca.platform, dj.platform) = ?' : '';
+  const bindArgs = platform !== 'all'
+    ? [brandId, cutoff, cutoff, platform]
+    : [brandId, cutoff, cutoff];
+
+  const { results } = await db.prepare(`
     SELECT
-      COUNT(CASE WHEN lifecycle_status = 'draft' THEN 1 END)   as draft,
-      COUNT(CASE WHEN lifecycle_status = 'ready' THEN 1 END)   as ready,
-      COUNT(CASE WHEN lifecycle_status IN ('scheduled','queued') THEN 1 END) as scheduled,
-      COUNT(CASE WHEN lifecycle_status = 'published' THEN 1 END) as delivered,
-      COUNT(CASE WHEN lifecycle_status = 'failed' THEN 1 END)  as failed
-    FROM content_vault
-    WHERE brand_id = ?
-  `).bind(brandId).first();
+      COALESCE(cv.title, dj.content_type, 'Untitled') AS title,
+      COALESCE(ca.platform, dj.platform, 'unknown')   AS platform,
+      COALESCE(dj.status, 'published')                AS status,
+      ca.impressions                                   AS reach,
+      ca.engagements                                   AS engagement,
+      ca.clicks,
+      strftime('%Y-%m-%d', COALESCE(dj.scheduled_at, ca.reported_at, ca.created_at)) AS date
+    FROM content_analytics ca
+    LEFT JOIN delivery_jobs dj ON dj.content_id = ca.content_id AND dj.brand_id = ca.brand_id
+    LEFT JOIN content_vault  cv ON cv.id = ca.content_id
+    WHERE ca.brand_id = ?
+      AND (ca.reported_at >= ? OR (ca.reported_at IS NULL AND ca.created_at >= ?))
+      ${platformClause}
+    ORDER BY ca.engagements DESC, ca.impressions DESC
+    LIMIT 50
+  `).bind(...bindArgs).all();
 
-  const totals = {
-    all: (vaultCounts?.draft || 0) + (vaultCounts?.ready || 0) + (vaultCounts?.scheduled || 0) + (vaultCounts?.delivered || 0) + (vaultCounts?.failed || 0),
-    draft: vaultCounts?.draft || 0,
-    ready: vaultCounts?.ready || 0,
-    scheduled: vaultCounts?.scheduled || 0,
-    delivered: vaultCounts?.delivered || 0,
-    failed: vaultCounts?.failed || 0
-  };
-
-  return json({
-    brand_id: brandId,
-    totals
-  });
+  return json(results || []);
 }
