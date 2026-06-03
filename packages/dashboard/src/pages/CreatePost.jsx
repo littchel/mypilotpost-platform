@@ -754,7 +754,6 @@ export default function CreatePost({
   }, []);
 
   const loadTabCounts = useCallback(async () => {
-    if (!activeBrand?.id) return;
     try {
       const [d, s, a] = await Promise.all([
         apiFetch("/api/customer/vault?status=draft&limit=50"),
@@ -767,7 +766,7 @@ export default function CreatePost({
         approvals: (a?.data || []).length,
       });
     } catch {}
-  }, [activeBrand?.id]);
+  }, []);
 
   useEffect(() => { loadVault("drafts"); loadTabCounts(); }, [loadVault, loadTabCounts]);
 
