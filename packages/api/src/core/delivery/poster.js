@@ -181,10 +181,11 @@ async function syncContentStatusWithJobs(db, job, platformStatus, errorType = nu
     else aggregateStatus = 'failed'; // mixed results — stays failed so retries can target specific platforms
   }
 
-  // 3. Sync Asset & Drafts
+  // 3. Sync Asset, Drafts, and Content Vault
   await db.batch([
     db.prepare(`UPDATE ${contentTable} SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(aggregateStatus, job.content_id),
-    db.prepare(`UPDATE content_drafts SET state = ?, updated_at = CURRENT_TIMESTAMP WHERE content_id = ?`).bind(aggregateStatus, job.content_id)
+    db.prepare(`UPDATE content_drafts SET state = ?, updated_at = CURRENT_TIMESTAMP WHERE content_id = ?`).bind(aggregateStatus, job.content_id),
+    db.prepare(`UPDATE content_vault SET lifecycle_status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(aggregateStatus, job.content_id),
   ]);
 
   // 4. Notifications

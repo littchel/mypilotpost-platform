@@ -19,6 +19,7 @@ import ModeStep from "./components/onboarding/steps/ModeStep";
 import ImportStep from "./components/onboarding/steps/ImportStep";
 import ActivationStep from "./components/onboarding/steps/ActivationStep";
 import BrandAuditPage from "./pages/BrandAuditPage";
+import ContentVault from "./pages/ContentVault";
 import CalendarSchedule from "./pages/CalendarSchedule";
 import ArticleComposer from "./pages/ArticleComposer";
 import Campaigns from "./pages/Campaigns";
@@ -1425,8 +1426,12 @@ function App() {
         </TabContent>
 
         {/* PROTECTED: Content Management Tab */}
+        <TabContent id="vault" activeTab={activeTab}>
+          <ContentVault activeBrand={activeBrand} switchTab={(tab, opts) => { setActiveTab(tab); }} />
+        </TabContent>
+
         <TabContent id="content" activeTab={activeTab}>
-          <ContentManagement 
+          <ContentManagement
             allContent={allContent}
             onUpdateStatus={handleUpdateContentStatus}
             onBulkAction={handleBulkContentAction}

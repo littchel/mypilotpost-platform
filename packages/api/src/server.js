@@ -89,6 +89,10 @@ import { generateWeeklyPlan, getWeeklyPlan } from "./core/intelligence/weekly_pl
 ====================================================== */
 import { createInvite, getInvites, getTeam, acceptInvite } from "./core/teams/handlers.js";
 import { submitForApproval, getApprovalRequests } from "./core/approvals/handlers.js";
+import {
+  listVault, saveToVault, getVaultItem, deleteVaultItem,
+  vaultApproval, vaultSchedule, vaultPublishNow,
+} from "./core/content/vault.js";
 import { createReport, getReports, shareReport } from "./core/reporting/handlers.js";
 import { approveSocialAssetsBulk } from "./core/content/social.js";
 import {
@@ -1687,6 +1691,34 @@ export default {
         if (method === "DELETE" && path.startsWith("/api/customer/marketing/blog/")) {
           const id = path.split("/")[5];
           return withCors(request, deleteMarketingPost(request, env, auth, id));
+        }
+
+        /* ══════════════════════════════════════════════
+           CONTENT VAULT — UNIFIED PIPELINE (CANONICAL)
+           Single entry for all content types.
+           All editors, AI Studio, and approvals route here.
+           ══════════════════════════════════════════════ */
+
+        if (method === "GET"  && path === "/api/customer/vault")
+          return withCors(request, listVault(request, env, auth));
+
+        if (method === "POST" && path === "/api/customer/vault")
+          return withCors(request, saveToVault(request, env, auth));
+
+        if (path.startsWith("/api/customer/vault/")) {
+          const vaultId = path.split("/")[4];
+          if (!vaultId) { /* fall through */ }
+          else {
+            request.params = { id: vaultId };
+            const tail = path.split("/").slice(5).join("/");
+
+            if (method === "GET"    && !tail) return withCors(request, getVaultItem(request, env, auth));
+            if (method === "PATCH"  && !tail) return withCors(request, saveToVault(request, env, auth));
+            if (method === "DELETE" && !tail) return withCors(request, deleteVaultItem(request, env, auth));
+            if (method === "POST"   && tail === "approval")    return withCors(request, vaultApproval(request, env, auth));
+            if (method === "POST"   && tail === "schedule")    return withCors(request, vaultSchedule(request, env, auth));
+            if (method === "POST"   && tail === "publish-now") return withCors(request, vaultPublishNow(request, env, auth));
+          }
         }
 
         /* ---------- COLLABORATION & APPROVAL ---------- */
