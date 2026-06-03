@@ -1,511 +1,501 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+/**
+ * Scheduler — Calendar-First Scheduling UI
+ * Fixed grid · Click-to-expand · No drafts · Drag to reschedule
+ */
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
-  ChevronLeft, ChevronRight, RefreshCw, Plus,
-  Calendar, List, Clock, Zap, TrendingUp,
-  X, ArrowRight, BarChart2,
-  Send, FileText, Layers, LayoutGrid
+  ChevronLeft, ChevronRight, Plus, RefreshCw,
+  Calendar, List, Clock, LayoutGrid, ChevronDown,
+  X, Edit2, Copy, AlertCircle, Check, Image as ImageIcon,
+  Globe, Zap, Send, FileText, Layers, MoreHorizontal
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { apiRequest } from "../lib/api/client";
 
-// ─── Holidays & Marketing Events ─────────────────────────────────────────────
+// ─── Analytics ───────────────────────────────────────────────────────────────
+function track(event, props = {}) {
+  try { window.dispatchEvent(new CustomEvent("scheduler_track", { detail: { event, ...props } })); }
+  catch (_) {}
+}
 
-const HOLIDAYS = [
-  // US National
-  { md: "01-01", name: "New Year's Day",           type: "national",   color: "#6366f1", score: 82, reach: "Very High", competition: "High",   formats: ["photo","video","story"], platforms: ["instagram","facebook","twitter"] },
-  { md: "01-15", name: "MLK Day",                  type: "national",   color: "#0ea5e9", score: 60, reach: "Medium",    competition: "Medium", formats: ["quote","photo"],         platforms: ["instagram","linkedin","twitter"] },
-  { md: "02-02", name: "Groundhog Day",             type: "fun",        color: "#f59e0b", score: 45, reach: "Low",       competition: "Low",    formats: ["meme","story"],           platforms: ["instagram","twitter"] },
-  { md: "02-14", name: "Valentine's Day",           type: "marketing",  color: "#ec4899", score: 95, reach: "Very High", competition: "Very High", formats: ["photo","video","reel"], platforms: ["instagram","facebook","tiktok"] },
-  { md: "03-08", name: "International Women's Day", type: "global",     color: "#8b5cf6", score: 88, reach: "Very High", competition: "High",   formats: ["photo","story","video"], platforms: ["instagram","linkedin","twitter"] },
-  { md: "03-17", name: "St. Patrick's Day",         type: "marketing",  color: "#22c55e", score: 72, reach: "High",      competition: "High",   formats: ["photo","story","reel"],  platforms: ["instagram","facebook","tiktok"] },
-  { md: "03-20", name: "First Day of Spring",       type: "seasonal",   color: "#84cc16", score: 68, reach: "High",      competition: "Medium", formats: ["photo","video","blog"],   platforms: ["instagram","facebook","pinterest"] },
-  { md: "04-01", name: "April Fools' Day",          type: "fun",        color: "#f59e0b", score: 65, reach: "High",      competition: "Medium", formats: ["video","meme","story"],   platforms: ["twitter","tiktok","instagram"] },
-  { md: "04-22", name: "Earth Day",                 type: "global",     color: "#16a34a", score: 80, reach: "High",      competition: "Medium", formats: ["photo","blog","story"],   platforms: ["instagram","linkedin","facebook"] },
-  { md: "05-04", name: "Star Wars Day",             type: "fun",        color: "#1e293b", score: 55, reach: "Medium",    competition: "Medium", formats: ["meme","video","photo"],   platforms: ["twitter","instagram","tiktok"] },
-  { md: "05-05", name: "Cinco de Mayo",             type: "marketing",  color: "#ef4444", score: 75, reach: "High",      competition: "High",   formats: ["photo","video","story"],  platforms: ["instagram","facebook","tiktok"] },
-  { md: "05-12", name: "Mother's Day",              type: "national",   color: "#f472b6", score: 93, reach: "Very High", competition: "Very High", formats: ["photo","video","reel"], platforms: ["instagram","facebook","tiktok"] },
-  { md: "05-27", name: "Memorial Day",              type: "national",   color: "#ef4444", score: 70, reach: "High",      competition: "High",   formats: ["photo","story"],          platforms: ["facebook","instagram","twitter"] },
-  { md: "06-01", name: "Pride Month Begins",        type: "global",     color: "#a855f7", score: 85, reach: "Very High", competition: "High",   formats: ["photo","video","story"],  platforms: ["instagram","twitter","linkedin"] },
-  { md: "06-19", name: "Juneteenth",                type: "national",   color: "#dc2626", score: 72, reach: "High",      competition: "Medium", formats: ["photo","blog","story"],   platforms: ["instagram","facebook","twitter"] },
-  { md: "06-21", name: "Father's Day",              type: "national",   color: "#3b82f6", score: 88, reach: "Very High", competition: "High",   formats: ["photo","video","reel"],   platforms: ["instagram","facebook","tiktok"] },
-  { md: "07-04", name: "Independence Day",          type: "national",   color: "#ef4444", score: 85, reach: "Very High", competition: "High",   formats: ["photo","story","video"],  platforms: ["instagram","facebook","twitter"] },
-  { md: "08-26", name: "Women's Equality Day",      type: "global",     color: "#8b5cf6", score: 68, reach: "High",      competition: "Medium", formats: ["quote","photo","blog"],   platforms: ["linkedin","instagram","twitter"] },
-  { md: "09-02", name: "Labor Day",                 type: "national",   color: "#0ea5e9", score: 72, reach: "High",      competition: "Medium", formats: ["photo","story"],          platforms: ["facebook","instagram","twitter"] },
-  { md: "09-22", name: "First Day of Fall",         type: "seasonal",   color: "#f97316", score: 70, reach: "High",      competition: "Medium", formats: ["photo","blog","reel"],    platforms: ["instagram","pinterest","tiktok"] },
-  { md: "10-10", name: "World Mental Health Day",   type: "global",     color: "#06b6d4", score: 75, reach: "High",      competition: "Medium", formats: ["quote","blog","story"],   platforms: ["instagram","linkedin","facebook"] },
-  { md: "10-31", name: "Halloween",                 type: "marketing",  color: "#f97316", score: 90, reach: "Very High", competition: "Very High", formats: ["photo","video","reel"], platforms: ["instagram","tiktok","facebook"] },
-  { md: "11-11", name: "Veterans Day",              type: "national",   color: "#1e293b", score: 65, reach: "High",      competition: "Medium", formats: ["photo","story"],          platforms: ["facebook","instagram","twitter"] },
-  { md: "11-28", name: "Thanksgiving",              type: "national",   color: "#b45309", score: 88, reach: "Very High", competition: "High",   formats: ["photo","video","story"],  platforms: ["instagram","facebook","tiktok"] },
-  { md: "11-29", name: "Black Friday",              type: "ecommerce",  color: "#1e293b", score: 98, reach: "Very High", competition: "Very High", formats: ["photo","video","reel"], platforms: ["instagram","facebook","tiktok"] },
-  { md: "12-02", name: "Cyber Monday",              type: "ecommerce",  color: "#7c3aed", score: 96, reach: "Very High", competition: "Very High", formats: ["photo","video","story"], platforms: ["instagram","facebook","twitter"] },
-  { md: "12-21", name: "First Day of Winter",       type: "seasonal",   color: "#0ea5e9", score: 65, reach: "High",      competition: "Medium", formats: ["photo","blog","story"],   platforms: ["instagram","facebook","pinterest"] },
-  { md: "12-24", name: "Christmas Eve",             type: "national",   color: "#dc2626", score: 88, reach: "Very High", competition: "High",   formats: ["photo","story","video"],  platforms: ["instagram","facebook","tiktok"] },
-  { md: "12-25", name: "Christmas Day",             type: "national",   color: "#dc2626", score: 92, reach: "Very High", competition: "Very High", formats: ["photo","video","story"], platforms: ["instagram","facebook","tiktok"] },
-  { md: "12-31", name: "New Year's Eve",            type: "marketing",  color: "#6366f1", score: 85, reach: "Very High", competition: "High",   formats: ["video","story","reel"],   platforms: ["instagram","tiktok","facebook"] },
-  // Global / Marketing
-  { md: "01-27", name: "International Holocaust Remembrance Day", type: "global", color: "#64748b", score: 40, reach: "Medium", competition: "Low", formats: ["quote","blog"], platforms: ["linkedin","twitter"] },
-  { md: "02-04", name: "World Cancer Day",          type: "global",     color: "#f43f5e", score: 60, reach: "Medium",    competition: "Low",    formats: ["quote","blog","photo"],   platforms: ["instagram","linkedin","facebook"] },
-  { md: "03-22", name: "World Water Day",           type: "global",     color: "#0ea5e9", score: 62, reach: "Medium",    competition: "Low",    formats: ["photo","blog","story"],   platforms: ["instagram","linkedin","twitter"] },
-  { md: "04-07", name: "World Health Day",          type: "global",     color: "#22c55e", score: 65, reach: "High",      competition: "Low",    formats: ["photo","blog","story"],   platforms: ["instagram","linkedin","facebook"] },
-  { md: "05-25", name: "Africa Day",                type: "global",     color: "#f59e0b", score: 55, reach: "Medium",    competition: "Low",    formats: ["photo","blog"],           platforms: ["instagram","twitter","facebook"] },
-  { md: "11-13", name: "World Kindness Day",        type: "global",     color: "#f472b6", score: 65, reach: "High",      competition: "Low",    formats: ["quote","photo","story"],  platforms: ["instagram","facebook","twitter"] },
-  { md: "12-10", name: "Human Rights Day",          type: "global",     color: "#8b5cf6", score: 58, reach: "Medium",    competition: "Low",    formats: ["quote","blog","photo"],   platforms: ["linkedin","twitter","instagram"] },
+// ─── Constants ────────────────────────────────────────────────────────────────
+const STATUS_COLOR = {
+  scheduled:       "#3b82f6",
+  published:       "#22c55e",
+  failed:          "#94a3b8",
+  partial_failure: "#f59e0b",
+};
+
+const PLATFORM_ICON = {
+  instagram: "📸", facebook: "📘", linkedin: "💼",
+  twitter: "🐦", x: "✖", youtube: "▶", tiktok: "🎵",
+};
+
+const PLATFORM_COLOR = {
+  instagram: "#e1306c", facebook: "#1877f2", linkedin: "#0a66c2",
+  twitter: "#000", x: "#000", youtube: "#ff0000", tiktok: "#010101",
+};
+
+// ─── Holidays ─────────────────────────────────────────────────────────────────
+const INTL_HOLIDAYS = [
+  { md:"01-01", name:"New Year's Day",            color:"#6366f1", score:82 },
+  { md:"02-14", name:"Valentine's Day",            color:"#ec4899", score:95 },
+  { md:"03-08", name:"International Women's Day",  color:"#8b5cf6", score:88 },
+  { md:"03-17", name:"St. Patrick's Day",          color:"#22c55e", score:72 },
+  { md:"03-20", name:"First Day of Spring",        color:"#84cc16", score:68 },
+  { md:"04-01", name:"April Fools' Day",           color:"#f59e0b", score:65 },
+  { md:"04-22", name:"Earth Day",                  color:"#16a34a", score:80 },
+  { md:"05-12", name:"Mother's Day",               color:"#f472b6", score:93 },
+  { md:"06-01", name:"Pride Month Begins",         color:"#a855f7", score:85 },
+  { md:"06-21", name:"Father's Day",               color:"#3b82f6", score:88 },
+  { md:"07-04", name:"US Independence Day",        color:"#ef4444", score:85, countries:["US","ZW"] },
+  { md:"09-22", name:"First Day of Fall",          color:"#f97316", score:70 },
+  { md:"10-10", name:"World Mental Health Day",    color:"#06b6d4", score:75 },
+  { md:"10-31", name:"Halloween",                  color:"#f97316", score:90 },
+  { md:"11-28", name:"Thanksgiving",               color:"#b45309", score:88, countries:["US"] },
+  { md:"11-29", name:"Black Friday",               color:"#1e293b", score:98 },
+  { md:"12-02", name:"Cyber Monday",               color:"#7c3aed", score:96 },
+  { md:"12-25", name:"Christmas Day",              color:"#dc2626", score:92 },
+  { md:"12-31", name:"New Year's Eve",             color:"#6366f1", score:85 },
 ];
 
-function getHolidaysForRange(from, to) {
-  const start = new Date(from);
-  const end = new Date(to);
-  const result = [];
+const COUNTRY_HOLIDAYS = {
+  ZW: [
+    { md:"04-18", name:"Zimbabwe Independence Day", color:"#22c55e", score:78 },
+    { md:"05-25", name:"Africa Day",                color:"#f59e0b", score:60 },
+    { md:"08-11", name:"Heroes Day (ZW)",           color:"#22c55e", score:65 },
+    { md:"08-12", name:"Defence Forces Day (ZW)",   color:"#22c55e", score:58 },
+  ],
+  ZA: [
+    { md:"09-24", name:"Heritage Day (SA)",         color:"#22c55e", score:72 },
+    { md:"06-16", name:"Youth Day (SA)",            color:"#f59e0b", score:68 },
+    { md:"04-27", name:"Freedom Day (SA)",          color:"#22c55e", score:70 },
+  ],
+  GB: [
+    { md:"08-26", name:"Late Summer Bank Holiday",  color:"#0ea5e9", score:58 },
+    { md:"05-06", name:"Early May Bank Holiday",    color:"#0ea5e9", score:55 },
+  ],
+  NG: [
+    { md:"10-01", name:"Nigeria Independence Day",  color:"#22c55e", score:78 },
+    { md:"06-12", name:"Democracy Day (NG)",        color:"#22c55e", score:65 },
+  ],
+};
 
+function getHolidaysInRange(from, to, countryCode = null) {
+  const start = new Date(from); start.setHours(0,0,0,0);
+  const end   = new Date(to);   end.setHours(23,59,59,999);
+  const country = (countryCode || "").toUpperCase();
+
+  const base = [
+    ...INTL_HOLIDAYS.filter(h => !h.countries || h.countries.includes(country) || !countryCode),
+    ...(COUNTRY_HOLIDAYS[country] || []),
+  ];
+
+  const result = [];
   for (let y = start.getFullYear(); y <= end.getFullYear(); y++) {
-    for (const h of HOLIDAYS) {
+    for (const h of base) {
       const [mm, dd] = h.md.split("-");
-      const d = new Date(y, parseInt(mm) - 1, parseInt(dd));
-      if (d >= start && d <= end) {
-        result.push({ ...h, date: d.toISOString().slice(0, 10), year: y });
-      }
+      const d = new Date(y, +mm - 1, +dd);
+      if (d >= start && d <= end) result.push({ ...h, date: d.toISOString().slice(0,10) });
     }
   }
   return result;
 }
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+// ─── Date helpers ─────────────────────────────────────────────────────────────
+const isoDate  = d => new Date(d).toISOString().slice(0,10);
+const addDays  = (d, n) => { const r = new Date(d); r.setDate(r.getDate() + n); return r; };
+const fmtTime  = d => new Date(d).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit", hour12:false });
+const fmtDay   = d => new Date(d).toLocaleDateString("en-US", { weekday:"short", month:"short", day:"numeric" });
 
-const KIND_COLORS = {
-  scheduled: "#8b5cf6",
-  published: "#22c55e",
-  approval:  "#f59e0b",
-  approved:  "#3b82f6",
-  content:   "#94a3b8",
-};
-
-const KIND_LABELS = {
-  scheduled: "Scheduled",
-  published: "Published",
-  approval:  "In Review",
-  approved:  "Approved",
-  content:   "Content",
-};
-
-const PLATFORM_ICONS = {
-  facebook: "📘", instagram: "📸", linkedin: "💼",
-  twitter: "🐦", x: "✖", youtube: "▶", tiktok: "🎵",
-};
-
-const TYPE_ICONS = {
-  social: "📲", blog: "📝", article: "📄", campaign: "🎯",
-};
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function isoDate(d) {
-  return new Date(d).toISOString().slice(0, 10);
-}
-
-function formatTime(dateStr) {
-  return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
-}
-
-function formatDateLabel(dateStr) {
-  return new Date(dateStr).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-}
-
-function addDays(d, n) {
-  const r = new Date(d); r.setDate(r.getDate() + n); return r;
-}
-
-function startOfWeek(d) {
-  const r = new Date(d);
+function weekStart(d) {
+  const r = new Date(d); r.setHours(0,0,0,0);
   const day = r.getDay();
   r.setDate(r.getDate() - (day === 0 ? 6 : day - 1));
-  r.setHours(0, 0, 0, 0);
   return r;
 }
 
-function startOfMonth(d) {
-  return new Date(d.getFullYear(), d.getMonth(), 1);
+function monthDays(pivot) {
+  const y = pivot.getFullYear(), m = pivot.getMonth();
+  const first = new Date(y, m, 1), last = new Date(y, m+1, 0);
+  const startOff = (first.getDay() + 6) % 7;
+  const start = addDays(first, -startOff);
+  const endOff = (7 - last.getDay()) % 7;
+  const end = addDays(last, endOff === 7 ? 0 : endOff);
+  const days = [];
+  let cur = new Date(start);
+  while (cur <= end) { days.push(new Date(cur)); cur = addDays(cur, 1); }
+  return days;
 }
 
-function getRangeForView(view, pivot) {
+function rangeForView(view, pivot) {
   if (view === "month") {
-    const first = startOfMonth(pivot);
-    const last = new Date(pivot.getFullYear(), pivot.getMonth() + 1, 0);
-    const from = addDays(first, -7);
-    const to = addDays(last, 7);
-    return { from, to };
+    const y = pivot.getFullYear(), m = pivot.getMonth();
+    return { from: new Date(y, m, 1), to: new Date(y, m+1, 0) };
   }
   if (view === "week") {
-    const from = startOfWeek(pivot);
-    const to = addDays(from, 6);
-    return { from, to };
+    const ws = weekStart(pivot);
+    return { from: ws, to: addDays(ws, 6) };
   }
-  if (view === "day") {
-    return { from: pivot, to: pivot };
-  }
-  // agenda: 60 days forward
-  return { from: addDays(pivot, -3), to: addDays(pivot, 60) };
+  if (view === "day") return { from: pivot, to: pivot };
+  return { from: addDays(pivot, -1), to: addDays(pivot, 90) };
 }
 
-// ─── Content Opportunity Panel ───────────────────────────────────────────────
+// ─── Platform Preview ─────────────────────────────────────────────────────────
+function PlatformPreview({ platform, caption, brandName, hasMedia }) {
+  const p = (platform || "").toLowerCase();
+  const text = caption || "No caption";
+  const name = brandName || "Your Brand";
 
-function OpportunityPanel({ holiday, onClose, onCreatePost, onCreateArticle, onBuildCampaign }) {
-  const daysUntil = Math.ceil((new Date(holiday.date) - new Date()) / 86400000);
-  const urgency = daysUntil <= 3 ? "red" : daysUntil <= 7 ? "orange" : daysUntil <= 14 ? "amber" : "green";
-  const urgencyLabel = daysUntil <= 0 ? "Today!" : daysUntil === 1 ? "Tomorrow" : `${daysUntil} days away`;
+  const mediaPlaceholder = hasMedia ? (
+    <div style={{ width:"100%", height:"220px", background:"linear-gradient(135deg,#e2e8f0,#cbd5e1)", borderRadius:"4px", display:"flex", alignItems:"center", justifyContent:"center", color:"#94a3b8" }}>
+      <ImageIcon size={32} />
+    </div>
+  ) : null;
 
-  return (
-    <div style={{
-      position: "fixed", right: 0, top: 0, bottom: 0, width: "360px",
-      background: "var(--surface-primary)", borderLeft: "1px solid var(--border-subtle)",
-      boxShadow: "-8px 0 32px rgba(0,0,0,0.08)", zIndex: 200, overflowY: "auto",
-      display: "flex", flexDirection: "column"
-    }}>
-      {/* Header */}
-      <div style={{ padding: "24px 24px 0", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
-            <span style={{ width: "12px", height: "12px", borderRadius: "50%", background: holiday.color, display: "inline-block", flexShrink: 0 }} />
-            <span style={{ fontSize: "0.65rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>
-              {holiday.type}
-            </span>
-          </div>
-          <h3 style={{ fontWeight: 900, fontSize: "1.1rem", margin: 0, color: "var(--text-main)" }}>{holiday.name}</h3>
-          <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "4px" }}>
-            {new Date(holiday.date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
-          </div>
-        </div>
-        <button onClick={onClose} style={{ border: "none", background: "transparent", cursor: "pointer", color: "var(--text-muted)", padding: "4px" }}>
-          <X size={18} />
-        </button>
+  if (p === "instagram") return (
+    <div style={{ fontFamily:"-apple-system,sans-serif", border:"1px solid #dbdbdb", borderRadius:"8px", overflow:"hidden", background:"#fff", maxWidth:"400px" }}>
+      <div style={{ padding:"12px 14px", display:"flex", alignItems:"center", gap:"10px", borderBottom:"1px solid #dbdbdb" }}>
+        <div style={{ width:"32px", height:"32px", borderRadius:"50%", background:"linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:"0.7rem", fontWeight:900 }}>{name[0]}</div>
+        <span style={{ fontWeight:700, fontSize:"0.85rem" }}>{name.toLowerCase().replace(/\s/g,"_")}</span>
+        <span style={{ marginLeft:"auto", color:"#8e8e8e" }}>•••</span>
       </div>
-
-      <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: "20px", flex: 1 }}>
-
-        {/* Urgency */}
-        <div style={{
-          background: urgency === "red" ? "#fef2f2" : urgency === "orange" ? "#fff7ed" : urgency === "amber" ? "#fffbeb" : "#f0fdf4",
-          borderRadius: "12px", padding: "12px 16px",
-          border: `1px solid ${urgency === "red" ? "#fecaca" : urgency === "orange" ? "#fed7aa" : urgency === "amber" ? "#fde68a" : "#bbf7d0"}`,
-          display: "flex", alignItems: "center", gap: "10px"
-        }}>
-          <Clock size={16} style={{ color: urgency === "red" ? "#ef4444" : urgency === "orange" ? "#f97316" : urgency === "amber" ? "#f59e0b" : "#22c55e", flexShrink: 0 }} />
-          <span style={{ fontWeight: 800, fontSize: "0.85rem", color: urgency === "red" ? "#b91c1c" : urgency === "orange" ? "#c2410c" : urgency === "amber" ? "#92400e" : "#15803d" }}>
-            {urgencyLabel}
-          </span>
-        </div>
-
-        {/* Opportunity Score */}
-        <div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-            <span style={{ fontWeight: 800, fontSize: "0.8rem", color: "var(--text-main)" }}>Opportunity Score</span>
-            <span style={{ fontWeight: 900, fontSize: "1.1rem", color: holiday.score >= 80 ? "#22c55e" : holiday.score >= 60 ? "#f59e0b" : "#94a3b8" }}>
-              {holiday.score}/100
-            </span>
-          </div>
-          <div style={{ height: "8px", background: "var(--surface-secondary)", borderRadius: "4px", overflow: "hidden" }}>
-            <div style={{ width: `${holiday.score}%`, height: "100%", background: holiday.score >= 80 ? "#22c55e" : holiday.score >= 60 ? "#f59e0b" : "#94a3b8", borderRadius: "4px", transition: "width 0.6s ease" }} />
-          </div>
-        </div>
-
-        {/* Metrics Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-          {[
-            { label: "Expected Reach", value: holiday.reach, icon: <TrendingUp size={14} /> },
-            { label: "Competition", value: holiday.competition, icon: <BarChart2 size={14} /> },
-          ].map(m => (
-            <div key={m.label} style={{ background: "var(--surface-secondary)", borderRadius: "10px", padding: "12px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-muted)", marginBottom: "6px" }}>
-                {m.icon}
-                <span style={{ fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>{m.label}</span>
-              </div>
-              <div style={{ fontWeight: 900, fontSize: "0.9rem", color: "var(--text-main)" }}>{m.value}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Suggested Formats */}
-        <div>
-          <div style={{ fontSize: "0.75rem", fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "10px" }}>Best Formats</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-            {holiday.formats.map(f => (
-              <span key={f} style={{ background: holiday.color + "18", color: holiday.color, border: `1px solid ${holiday.color}35`, borderRadius: "6px", padding: "3px 10px", fontSize: "0.75rem", fontWeight: 700, textTransform: "capitalize" }}>
-                {f}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* Best Platforms */}
-        <div>
-          <div style={{ fontSize: "0.75rem", fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "10px" }}>Best Platforms</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-            {holiday.platforms.map(p => (
-              <span key={p} style={{ background: "var(--surface-secondary)", borderRadius: "6px", padding: "4px 10px", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-main)", textTransform: "capitalize" }}>
-                {PLATFORM_ICONS[p] || "📌"} {p}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* CTAs */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "4px" }}>
-          <div style={{ fontSize: "0.75rem", fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Create Content</div>
-          {[
-            { label: "Generate Social Post", icon: <Send size={14} />, color: "#6366f1", action: onCreatePost },
-            { label: "Write Article / Blog", icon: <FileText size={14} />, color: "#0ea5e9", action: onCreateArticle },
-            { label: "Build Campaign",        icon: <Layers size={14} />, color: "#22c55e", action: onBuildCampaign },
-          ].map(btn => (
-            <button key={btn.label} onClick={btn.action} style={{
-              display: "flex", alignItems: "center", gap: "10px", padding: "12px 16px",
-              borderRadius: "10px", border: `1px solid ${btn.color}40`,
-              background: btn.color + "10", color: btn.color,
-              fontWeight: 800, fontSize: "0.85rem", cursor: "pointer", textAlign: "left",
-              transition: "all 0.15s ease"
-            }}
-              onMouseEnter={e => { e.currentTarget.style.background = btn.color + "20"; e.currentTarget.style.transform = "translateX(2px)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = btn.color + "10"; e.currentTarget.style.transform = "none"; }}
-            >
-              {btn.icon}
-              {btn.label}
-              <ArrowRight size={12} style={{ marginLeft: "auto" }} />
-            </button>
-          ))}
-        </div>
-
-        {/* Advance Planning Tips */}
-        {daysUntil > 0 && (
-          <div style={{ background: "var(--surface-secondary)", borderRadius: "12px", padding: "14px 16px" }}>
-            <div style={{ fontWeight: 800, fontSize: "0.75rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "10px" }}>Content Timeline</div>
-            {[30, 14, 7, 3, 1].filter(d => d <= daysUntil + 1).map(d => (
-              <div key={d} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px", opacity: daysUntil <= d ? 1 : 0.4 }}>
-                <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: daysUntil <= d ? "#22c55e" : "var(--text-muted)", flexShrink: 0 }} />
-                <span style={{ fontSize: "0.75rem", color: "var(--text-main)", fontWeight: 600 }}>
-                  {d === 30 ? "30 days out — Brand awareness + teaser" :
-                   d === 14 ? "2 weeks out — Campaign + media" :
-                   d === 7  ? "1 week out — Engagement + contest" :
-                   d === 3  ? "3 days out — Final push + stories" :
-                              "Day before — Countdown content"}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+      {mediaPlaceholder && <div style={{ padding:"0" }}>{mediaPlaceholder}</div>}
+      <div style={{ padding:"10px 14px" }}>
+        <div style={{ display:"flex", gap:"16px", marginBottom:"8px", fontSize:"1.1rem" }}>❤️ 💬 📤 <span style={{ marginLeft:"auto" }}>🔖</span></div>
+        <div style={{ fontSize:"0.82rem", marginBottom:"4px" }}><strong>{name.toLowerCase().replace(/\s/g,"_")}</strong> {text}</div>
+        <div style={{ fontSize:"0.75rem", color:"#8e8e8e" }}>Scheduled · View insights</div>
       </div>
     </div>
   );
-}
 
-// ─── Calendar Item Chip ───────────────────────────────────────────────────────
-
-function ItemChip({ item, compact = false, onClick }) {
-  const color = KIND_COLORS[item.kind] || "#94a3b8";
-  return (
-    <div
-      onClick={() => onClick?.(item)}
-      title={item.title}
-      style={{
-        background: color + "18",
-        borderLeft: `3px solid ${color}`,
-        borderRadius: compact ? "4px" : "6px",
-        padding: compact ? "2px 6px" : "4px 8px",
-        marginBottom: "3px",
-        cursor: "pointer",
-        fontSize: compact ? "0.65rem" : "0.72rem",
-        fontWeight: 700,
-        color: "var(--text-main)",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-        transition: "opacity 0.15s",
-        maxWidth: "100%",
-      }}
-      onMouseEnter={e => e.currentTarget.style.opacity = "0.75"}
-      onMouseLeave={e => e.currentTarget.style.opacity = "1"}
-    >
-      {TYPE_ICONS[item.content_type] || "📌"} {item.title}
-    </div>
-  );
-}
-
-function HolidayChip({ holiday, compact = false, onClick }) {
-  return (
-    <div
-      onClick={() => onClick?.(holiday)}
-      title={holiday.name}
-      style={{
-        background: holiday.color + "18",
-        border: `1px solid ${holiday.color}40`,
-        borderRadius: compact ? "4px" : "6px",
-        padding: compact ? "2px 6px" : "3px 8px",
-        marginBottom: "3px",
-        cursor: "pointer",
-        fontSize: compact ? "0.6rem" : "0.68rem",
-        fontWeight: 800,
-        color: holiday.color,
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-        maxWidth: "100%",
-      }}
-    >
-      🎉 {holiday.name}
-    </div>
-  );
-}
-
-// ─── Month View ───────────────────────────────────────────────────────────────
-
-function MonthView({ pivot, items, holidays, activeFilters, onItemClick, onHolidayClick }) {
-  const year = pivot.getFullYear();
-  const month = pivot.getMonth();
-
-  const days = useMemo(() => {
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const startOffset = (firstDay.getDay() + 6) % 7;
-    const start = addDays(firstDay, -startOffset);
-    const endOffset = (7 - lastDay.getDay()) % 7;
-    const end = addDays(lastDay, endOffset === 7 ? 0 : endOffset);
-    const result = [];
-    let cur = new Date(start);
-    while (cur <= end) { result.push(new Date(cur)); cur = addDays(cur, 1); }
-    return result;
-  }, [year, month]);
-
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-
-  const itemsByDate = useMemo(() => {
-    const map = {};
-    for (const item of items) {
-      if (activeFilters.length > 0 && !activeFilters.includes(item.kind) && !activeFilters.includes(item.content_type)) continue;
-      const key = isoDate(item.date);
-      if (!map[key]) map[key] = [];
-      map[key].push(item);
-    }
-    return map;
-  }, [items, activeFilters]);
-
-  const holidaysByDate = useMemo(() => {
-    const map = {};
-    for (const h of holidays) {
-      if (!map[h.date]) map[h.date] = [];
-      map[h.date].push(h);
-    }
-    return map;
-  }, [holidays]);
-
-  return (
-    <div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "1px", background: "var(--border-subtle)" }}>
-        {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d => (
-          <div key={d} style={{ background: "var(--surface-secondary)", padding: "10px", textAlign: "center", fontSize: "0.65rem", fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            {d}
-          </div>
+  if (p === "linkedin") return (
+    <div style={{ fontFamily:"-apple-system,sans-serif", border:"1px solid #e5e7eb", borderRadius:"8px", overflow:"hidden", background:"#fff", maxWidth:"400px" }}>
+      <div style={{ padding:"12px 14px", display:"flex", alignItems:"flex-start", gap:"10px" }}>
+        <div style={{ width:"40px", height:"40px", borderRadius:"4px", background:"#0a66c2", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontWeight:900, fontSize:"1rem", flexShrink:0 }}>{name[0]}</div>
+        <div>
+          <div style={{ fontWeight:700, fontSize:"0.85rem" }}>{name}</div>
+          <div style={{ fontSize:"0.72rem", color:"#666" }}>Company · Scheduled</div>
+          <div style={{ fontSize:"0.72rem", color:"#666" }}>🌐 Anyone</div>
+        </div>
+      </div>
+      <div style={{ padding:"0 14px 12px", fontSize:"0.85rem", lineHeight:"1.5", color:"#000", whiteSpace:"pre-line" }}>{text}</div>
+      {mediaPlaceholder && <div style={{ padding:"0 14px 12px" }}>{mediaPlaceholder}</div>}
+      <div style={{ padding:"8px 14px", borderTop:"1px solid #e5e7eb", display:"flex", gap:"4px" }}>
+        {["👍 Like","💬 Comment","🔁 Repost","📤 Send"].map(a => (
+          <span key={a} style={{ fontSize:"0.72rem", fontWeight:700, color:"#666", padding:"6px 8px", borderRadius:"4px", cursor:"pointer" }}>{a}</span>
         ))}
-        {days.map((date, idx) => {
-          const key = isoDate(date);
-          const dayItems = itemsByDate[key] || [];
-          const dayHolidays = holidaysByDate[key] || [];
-          const isCurrentMonth = date.getMonth() === month;
-          const isToday = date.getTime() === today.getTime();
-          return (
-            <div key={idx} style={{
-              background: isToday ? "#eff6ff" : "var(--surface-primary)",
-              minHeight: "120px", padding: "8px",
-              opacity: isCurrentMonth ? 1 : 0.35,
-              border: isToday ? "1px solid #bfdbfe" : "none",
-              display: "flex", flexDirection: "column"
-            }}>
-              <div style={{ fontSize: "0.8rem", fontWeight: isToday ? 900 : 700, color: isToday ? "#2563eb" : "var(--text-main)", textAlign: "right", marginBottom: "6px" }}>
-                {date.getDate()}
-              </div>
-              <div style={{ flex: 1, overflowY: "auto" }}>
-                {dayHolidays.map(h => (
-                  <HolidayChip key={h.date + h.name} holiday={h} compact onClick={onHolidayClick} />
-                ))}
-                {dayItems.slice(0, 3).map(item => (
-                  <ItemChip key={item.id} item={item} compact onClick={onItemClick} />
-                ))}
-                {dayItems.length > 3 && (
-                  <div style={{ fontSize: "0.6rem", fontWeight: 700, color: "var(--text-muted)", textAlign: "center", paddingTop: "2px" }}>
-                    +{dayItems.length - 3} more
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
+      </div>
+    </div>
+  );
+
+  if (p === "facebook") return (
+    <div style={{ fontFamily:"-apple-system,sans-serif", border:"1px solid #e5e7eb", borderRadius:"8px", overflow:"hidden", background:"#fff", maxWidth:"400px" }}>
+      <div style={{ padding:"12px 14px", display:"flex", alignItems:"center", gap:"10px" }}>
+        <div style={{ width:"36px", height:"36px", borderRadius:"50%", background:"#1877f2", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontWeight:900 }}>{name[0]}</div>
+        <div>
+          <div style={{ fontWeight:700, fontSize:"0.85rem" }}>{name}</div>
+          <div style={{ fontSize:"0.72rem", color:"#8e8e8e" }}>Scheduled · 🌐</div>
+        </div>
+        <span style={{ marginLeft:"auto", color:"#8e8e8e" }}>•••</span>
+      </div>
+      <div style={{ padding:"0 14px 12px", fontSize:"0.85rem", lineHeight:"1.6", whiteSpace:"pre-line" }}>{text}</div>
+      {mediaPlaceholder && <div>{mediaPlaceholder}</div>}
+      <div style={{ padding:"8px 14px", borderTop:"1px solid #e5e7eb", display:"flex", justifyContent:"space-around" }}>
+        {["👍 Like","💬 Comment","🔁 Share"].map(a => (
+          <span key={a} style={{ fontSize:"0.78rem", fontWeight:700, color:"#65676b", padding:"6px", cursor:"pointer" }}>{a}</span>
+        ))}
+      </div>
+    </div>
+  );
+
+  // Twitter / X / default
+  return (
+    <div style={{ fontFamily:"-apple-system,sans-serif", border:"1px solid #e5e7eb", borderRadius:"12px", overflow:"hidden", background:"#fff", maxWidth:"400px", padding:"12px 14px" }}>
+      <div style={{ display:"flex", gap:"10px" }}>
+        <div style={{ width:"40px", height:"40px", borderRadius:"50%", background:"#000", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontWeight:900, flexShrink:0 }}>{name[0]}</div>
+        <div style={{ flex:1 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:"6px" }}>
+            <span style={{ fontWeight:700, fontSize:"0.85rem" }}>{name}</span>
+            <span style={{ fontSize:"0.75rem", color:"#536471" }}>@{name.toLowerCase().replace(/\s/g,"_")}</span>
+          </div>
+          <div style={{ fontSize:"0.9rem", marginTop:"4px", lineHeight:"1.5", whiteSpace:"pre-line" }}>{text}</div>
+          {mediaPlaceholder && <div style={{ marginTop:"8px", borderRadius:"12px", overflow:"hidden" }}>{mediaPlaceholder}</div>}
+          <div style={{ display:"flex", gap:"20px", marginTop:"10px", color:"#536471", fontSize:"0.8rem" }}>
+            <span>💬 0</span><span>🔁 0</span><span>❤️ 0</span><span>📊</span><span>📤</span>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Week View ────────────────────────────────────────────────────────────────
+// ─── Post Preview Cell (inside month/week cells) ──────────────────────────────
+function PostChip({ item, onSelect, isDragging, onDragStart, onDragEnd }) {
+  const color = STATUS_COLOR[item.status] || "#94a3b8";
+  const canDrag = item.status === "scheduled";
+  return (
+    <div
+      draggable={canDrag}
+      onDragStart={canDrag ? (e) => { e.dataTransfer.setData("scheduler_item", JSON.stringify(item)); onDragStart?.(item); } : undefined}
+      onDragEnd={onDragEnd}
+      onClick={() => onSelect(item)}
+      title={item.title || "Untitled"}
+      style={{
+        height: "26px", display: "flex", alignItems: "center", gap: "5px",
+        padding: "0 6px", borderRadius: "5px", marginBottom: "3px",
+        background: color + "14", borderLeft: `3px solid ${color}`,
+        cursor: canDrag ? "grab" : "pointer",
+        opacity: isDragging ? 0.4 : 1,
+        transition: "opacity 0.15s",
+        overflow: "hidden",
+        userSelect: "none",
+      }}
+    >
+      {item.has_media ? (
+        <span style={{ width: "14px", height: "14px", borderRadius: "2px", background: color + "40", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <ImageIcon size={8} style={{ color }} />
+        </span>
+      ) : (
+        <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: color, flexShrink: 0 }} />
+      )}
+      <span style={{ flex: 1, fontSize: "0.7rem", fontWeight: 600, color: "var(--text-main)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {item.title || "Untitled"}
+      </span>
+      <span style={{ fontSize: "0.6rem", flexShrink: 0 }}>{PLATFORM_ICON[item.platform] || "📌"}</span>
+      <span style={{ fontSize: "0.6rem", color: "#94a3b8", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{fmtTime(item.date)}</span>
+    </div>
+  );
+}
 
-function WeekView({ pivot, items, holidays, activeFilters, onItemClick, onHolidayClick, onSlotClick }) {
-  const weekStart = useMemo(() => startOfWeek(pivot), [pivot]);
-  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+// ─── Month Grid ───────────────────────────────────────────────────────────────
+const CELL_H = 160;
+const MAX_PER_CELL = 3;
 
-  const today = new Date(); today.setHours(0, 0, 0, 0);
+function MonthGrid({ pivot, items, holidays, onSelect, onDayStack, onSlotClick, dragItem, onDropCell }) {
+  const days = useMemo(() => monthDays(pivot), [pivot]);
+  const today = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d; }, []);
+  const curMonth = pivot.getMonth();
+  const [dropTarget, setDropTarget] = useState(null);
 
-  const itemsByDate = useMemo(() => {
-    const map = {};
-    for (const item of items) {
-      if (activeFilters.length > 0 && !activeFilters.includes(item.kind) && !activeFilters.includes(item.content_type)) continue;
-      const key = isoDate(item.date);
-      if (!map[key]) map[key] = [];
-      map[key].push(item);
+  const byDate = useMemo(() => {
+    const m = {};
+    for (const i of items) {
+      const k = isoDate(i.date);
+      if (!m[k]) m[k] = [];
+      m[k].push(i);
     }
-    return map;
-  }, [items, activeFilters]);
+    return m;
+  }, [items]);
 
   const holidaysByDate = useMemo(() => {
-    const map = {};
+    const m = {};
     for (const h of holidays) {
-      if (!map[h.date]) map[h.date] = [];
-      map[h.date].push(h);
+      if (!m[h.date]) m[h.date] = [];
+      m[h.date].push(h);
     }
-    return map;
+    return m;
   }, [holidays]);
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "1px", background: "var(--border-subtle)", minHeight: "500px" }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", border: "1px solid var(--border-subtle)", borderRadius: "8px", overflow: "hidden" }}>
+      {/* Day headers */}
+      {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d => (
+        <div key={d} style={{ background: "var(--surface-secondary)", padding: "8px 10px", fontSize: "0.65rem", fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "center", borderBottom: "1px solid var(--border-subtle)" }}>
+          {d}
+        </div>
+      ))}
+
+      {/* Cells */}
       {days.map((date, idx) => {
         const key = isoDate(date);
-        const dayItems = itemsByDate[key] || [];
+        const isCurrentMonth = date.getMonth() === curMonth;
+        const isToday = date.getTime() === today.getTime();
+        const dayItems = byDate[key] || [];
+        const dayHolidays = holidaysByDate[key] || [];
+        const overflow = dayItems.length - MAX_PER_CELL;
+        const isDropTarget = dropTarget === key;
+
+        return (
+          <div
+            key={idx}
+            onDragOver={dragItem ? (e) => { e.preventDefault(); setDropTarget(key); } : undefined}
+            onDragLeave={dragItem ? () => setDropTarget(null) : undefined}
+            onDrop={dragItem ? (e) => {
+              e.preventDefault();
+              setDropTarget(null);
+              const raw = e.dataTransfer.getData("scheduler_item");
+              if (raw) onDropCell?.(JSON.parse(raw), date);
+            } : undefined}
+            style={{
+              height: `${CELL_H}px`,
+              background: isDropTarget ? "#eff6ff" : isToday ? "#f8faff" : "var(--surface-primary)",
+              padding: "8px 8px 6px",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              opacity: isCurrentMonth ? 1 : 0.3,
+              borderBottom: "1px solid var(--border-subtle)",
+              borderRight: "1px solid var(--border-subtle)",
+              boxSizing: "border-box",
+              outline: isDropTarget ? "2px solid #3b82f6" : isToday ? "1.5px solid #bfdbfe" : "none",
+              outlineOffset: "-1px",
+              cursor: dragItem ? "copy" : "default",
+              transition: "background 0.1s, outline 0.1s",
+            }}
+          >
+            {/* Day number */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "5px" }}>
+              <div
+                onClick={() => dayItems.length > 0 && onDayStack(date, dayItems, dayHolidays)}
+                style={{
+                  width: "22px", height: "22px", display: "flex", alignItems: "center", justifyContent: "center",
+                  borderRadius: "50%", fontSize: "0.78rem", fontWeight: isToday ? 900 : 700,
+                  color: isToday ? "#fff" : "var(--text-main)",
+                  background: isToday ? "#3b82f6" : "transparent",
+                  cursor: dayItems.length > 0 ? "pointer" : "default",
+                }}
+              >
+                {date.getDate()}
+              </div>
+              {dayHolidays.length > 0 && (
+                <div style={{ fontSize: "0.55rem", fontWeight: 800, color: dayHolidays[0].color, background: dayHolidays[0].color + "18", padding: "1px 5px", borderRadius: "4px", maxWidth: "80px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  🎉 {dayHolidays[0].name}
+                </div>
+              )}
+            </div>
+
+            {/* Post chips */}
+            <div style={{ flex: 1, overflow: "hidden" }}>
+              {dayItems.slice(0, MAX_PER_CELL).map(item => (
+                <PostChip
+                  key={item.id}
+                  item={item}
+                  onSelect={onSelect}
+                  isDragging={dragItem?.id === item.id}
+                  onDragStart={() => {}}
+                  onDragEnd={() => {}}
+                />
+              ))}
+            </div>
+
+            {/* Overflow */}
+            {overflow > 0 && (
+              <button
+                onClick={() => onDayStack(date, dayItems, dayHolidays)}
+                style={{ border: "none", background: "transparent", padding: "0", fontSize: "0.65rem", fontWeight: 800, color: "#3b82f6", cursor: "pointer", textAlign: "left", marginTop: "2px" }}
+              >
+                +{overflow} more
+              </button>
+            )}
+
+            {/* Empty slot click */}
+            {dayItems.length === 0 && !dragItem && (
+              <button
+                onClick={() => onSlotClick?.(date)}
+                style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", border: "none", background: "transparent" }}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Week Grid ────────────────────────────────────────────────────────────────
+function WeekGrid({ pivot, items, holidays, onSelect, onSlotClick, dragItem, onDropCell }) {
+  const ws = useMemo(() => weekStart(pivot), [pivot]);
+  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(ws, i)), [ws]);
+  const today = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d; }, []);
+  const [dropTarget, setDropTarget] = useState(null);
+
+  const byDate = useMemo(() => {
+    const m = {};
+    for (const i of items) {
+      const k = isoDate(i.date);
+      if (!m[k]) m[k] = [];
+      m[k].push(i);
+    }
+    return m;
+  }, [items]);
+
+  const holidaysByDate = useMemo(() => {
+    const m = {};
+    for (const h of holidays) {
+      if (!m[h.date]) m[h.date] = [];
+      m[h.date].push(h);
+    }
+    return m;
+  }, [holidays]);
+
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "1px", background: "var(--border-subtle)", borderRadius: "8px", overflow: "hidden", minHeight: "480px" }}>
+      {days.map((date, idx) => {
+        const key = isoDate(date);
+        const dayItems = byDate[key] || [];
         const dayHolidays = holidaysByDate[key] || [];
         const isToday = date.getTime() === today.getTime();
+        const isDropTarget = dropTarget === key;
         return (
-          <div key={idx}
-            onClick={(e) => { if (e.target === e.currentTarget) onSlotClick?.(date); }}
-            style={{ background: isToday ? "#eff6ff" : "var(--surface-primary)", padding: "12px", display: "flex", flexDirection: "column", gap: "4px", border: isToday ? "1px solid #bfdbfe" : "none" }}>
-            <div style={{ marginBottom: "8px" }}>
+          <div
+            key={idx}
+            onDragOver={dragItem ? (e) => { e.preventDefault(); setDropTarget(key); } : undefined}
+            onDragLeave={dragItem ? () => setDropTarget(null) : undefined}
+            onDrop={dragItem ? (e) => {
+              e.preventDefault();
+              setDropTarget(null);
+              const raw = e.dataTransfer.getData("scheduler_item");
+              if (raw) onDropCell?.(JSON.parse(raw), date);
+            } : undefined}
+            style={{
+              background: isDropTarget ? "#eff6ff" : isToday ? "#f8faff" : "var(--surface-primary)",
+              padding: "10px 8px", display: "flex", flexDirection: "column", gap: "4px",
+              outline: isDropTarget ? "2px inset #3b82f6" : isToday ? "1.5px inset #bfdbfe" : "none",
+              transition: "background 0.1s",
+            }}
+          >
+            <div style={{ marginBottom: "6px" }}>
               <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>
                 {date.toLocaleDateString("en-US", { weekday: "short" })}
               </div>
-              <div style={{ fontSize: "1.1rem", fontWeight: 900, color: isToday ? "#2563eb" : "var(--text-main)" }}>
+              <div style={{
+                width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center",
+                borderRadius: "50%", fontSize: "0.95rem", fontWeight: 900,
+                color: isToday ? "#fff" : "var(--text-main)",
+                background: isToday ? "#3b82f6" : "transparent",
+              }}>
                 {date.getDate()}
               </div>
             </div>
             {dayHolidays.map(h => (
-              <HolidayChip key={h.date + h.name} holiday={h} onClick={onHolidayClick} />
+              <div key={h.name} style={{ fontSize: "0.65rem", fontWeight: 800, color: h.color, background: h.color + "15", padding: "2px 6px", borderRadius: "4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                🎉 {h.name}
+              </div>
             ))}
             {dayItems.map(item => (
-              <ItemChip key={item.id} item={item} onClick={onItemClick} />
+              <PostChip
+                key={item.id}
+                item={item}
+                onSelect={onSelect}
+                isDragging={dragItem?.id === item.id}
+                onDragStart={() => {}}
+                onDragEnd={() => {}}
+              />
             ))}
             {dayItems.length === 0 && dayHolidays.length === 0 && (
-              <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", textAlign: "center", marginTop: "20px", opacity: 0.5 }}>
+              <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", textAlign: "center", marginTop: "16px", opacity: 0.5 }}>
                 Empty
               </div>
             )}
-            <button onClick={() => onSlotClick?.(date)} style={{
-              marginTop: "auto", border: "1px dashed var(--border-subtle)", background: "transparent",
-              borderRadius: "6px", padding: "6px", color: "var(--text-muted)", cursor: "pointer",
-              fontSize: "0.7rem", fontWeight: 700, transition: "all 0.15s"
-            }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = "#6366f1"; e.currentTarget.style.color = "#6366f1"; }}
+            <button
+              onClick={() => onSlotClick?.(date)}
+              style={{ marginTop: "auto", padding: "6px", border: "1px dashed var(--border-subtle)", borderRadius: "6px", background: "transparent", color: "var(--text-muted)", fontSize: "0.7rem", fontWeight: 700, cursor: "pointer" }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "#3b82f6"; e.currentTarget.style.color = "#3b82f6"; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border-subtle)"; e.currentTarget.style.color = "var(--text-muted)"; }}
-            >+ Add</button>
+            >
+              + Schedule
+            </button>
           </div>
         );
       })}
@@ -513,169 +503,118 @@ function WeekView({ pivot, items, holidays, activeFilters, onItemClick, onHolida
   );
 }
 
-// ─── Day View ────────────────────────────────────────────────────────────────
-
-function DayView({ pivot, items, holidays, activeFilters, onItemClick, onHolidayClick }) {
+// ─── Day View ─────────────────────────────────────────────────────────────────
+function DayView({ pivot, items, holidays, onSelect }) {
   const key = isoDate(pivot);
-
-  const dayItems = useMemo(() => items.filter(item => {
-    if (activeFilters.length > 0 && !activeFilters.includes(item.kind) && !activeFilters.includes(item.content_type)) return false;
-    return isoDate(item.date) === key;
-  }).sort((a, b) => new Date(a.date) - new Date(b.date)), [items, activeFilters, key]);
-
+  const dayItems = items.filter(i => isoDate(i.date) === key).sort((a,b) => new Date(a.date) - new Date(b.date));
   const dayHolidays = holidays.filter(h => h.date === key);
 
   return (
-    <div style={{ maxWidth: "700px", margin: "0 auto" }}>
-      <div style={{ marginBottom: "20px", padding: "16px 20px", background: "var(--surface-secondary)", borderRadius: "12px" }}>
-        <div style={{ fontWeight: 900, fontSize: "1.2rem", color: "var(--text-main)" }}>
-          {pivot.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
-        </div>
-        <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "4px" }}>
-          {dayItems.length} item{dayItems.length !== 1 ? "s" : ""} · {dayHolidays.length} event{dayHolidays.length !== 1 ? "s" : ""}
+    <div style={{ maxWidth: "640px", margin: "0 auto" }}>
+      <div style={{ padding: "16px 20px", background: "var(--surface-secondary)", borderRadius: "10px", marginBottom: "20px" }}>
+        <div style={{ fontWeight: 900, fontSize: "1.1rem" }}>{pivot.toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric", year:"numeric" })}</div>
+        <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: "3px" }}>
+          {dayItems.length} post{dayItems.length !== 1 ? "s" : ""} scheduled
         </div>
       </div>
-
       {dayHolidays.map(h => (
-        <div key={h.name} onClick={() => onHolidayClick?.(h)} style={{
-          background: h.color + "12", border: `1px solid ${h.color}40`,
-          borderRadius: "12px", padding: "16px 20px", marginBottom: "12px", cursor: "pointer",
-          display: "flex", alignItems: "center", gap: "14px"
-        }}>
-          <span style={{ fontSize: "1.4rem" }}>🎉</span>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 900, color: h.color }}>{h.name}</div>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Opportunity Score: {h.score}/100 · {h.reach} reach</div>
-          </div>
-          <ArrowRight size={16} style={{ color: h.color }} />
+        <div key={h.name} style={{ background: h.color + "12", border: `1px solid ${h.color}30`, borderRadius: "10px", padding: "12px 16px", marginBottom: "12px", display: "flex", alignItems: "center", gap: "12px" }}>
+          <span style={{ fontSize: "1.2rem" }}>🎉</span>
+          <div><div style={{ fontWeight: 800, color: h.color }}>{h.name}</div><div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Opportunity Score: {h.score}/100</div></div>
         </div>
       ))}
-
       {dayItems.length === 0 && (
         <div style={{ textAlign: "center", padding: "60px 0", color: "var(--text-muted)" }}>
-          <Calendar size={40} style={{ opacity: 0.3, marginBottom: "12px" }} />
-          <div style={{ fontWeight: 700 }}>Nothing scheduled for this day</div>
+          <Calendar size={36} style={{ opacity: 0.3, marginBottom: "10px" }} />
+          <div style={{ fontWeight: 700 }}>Nothing scheduled for this day.</div>
         </div>
       )}
-
-      {dayItems.map(item => (
-        <div key={item.id} onClick={() => onItemClick?.(item)} style={{
-          background: "var(--surface-primary)", borderRadius: "12px", padding: "16px 20px",
-          border: "1px solid var(--border-subtle)", marginBottom: "12px",
-          borderLeft: `4px solid ${KIND_COLORS[item.kind] || "#94a3b8"}`,
-          cursor: "pointer", transition: "all 0.15s",
-          display: "flex", alignItems: "center", gap: "16px"
-        }}
-          onMouseEnter={e => e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.06)"}
-          onMouseLeave={e => e.currentTarget.style.boxShadow = "none"}
-        >
-          <div style={{ fontSize: "1.2rem" }}>{TYPE_ICONS[item.content_type] || "📌"}</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 800, color: "var(--text-main)", marginBottom: "4px" }}>{item.title}</div>
-            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-              <span style={{ fontSize: "0.65rem", fontWeight: 800, textTransform: "uppercase", background: (KIND_COLORS[item.kind] || "#94a3b8") + "18", color: KIND_COLORS[item.kind] || "#94a3b8", padding: "2px 8px", borderRadius: "4px" }}>
-                {KIND_LABELS[item.kind] || item.kind}
-              </span>
-              {item.platform && (
-                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                  {PLATFORM_ICONS[item.platform] || "📌"} {item.platform}
-                </span>
-              )}
-              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{formatTime(item.date)}</span>
+      {dayItems.map(item => {
+        const color = STATUS_COLOR[item.status] || "#94a3b8";
+        return (
+          <div key={item.id} onClick={() => onSelect(item)} style={{ background: "var(--surface-primary)", borderRadius: "10px", padding: "14px 18px", border: "1px solid var(--border-subtle)", borderLeft: `4px solid ${color}`, marginBottom: "10px", cursor: "pointer", display: "flex", alignItems: "center", gap: "14px", transition: "all 0.15s" }}
+            onMouseEnter={e => e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.06)"}
+            onMouseLeave={e => e.currentTarget.style.boxShadow = "none"}
+          >
+            <span style={{ fontSize: "1.1rem" }}>{PLATFORM_ICON[item.platform] || "📌"}</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>{item.title || "Untitled"}</div>
+              <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: "2px" }}>{fmtTime(item.date)} · {item.platform}</div>
             </div>
+            <span style={{ fontSize: "0.65rem", fontWeight: 800, textTransform: "uppercase", background: color + "18", color, padding: "2px 8px", borderRadius: "4px" }}>{item.status}</span>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
-// ─── Agenda View ─────────────────────────────────────────────────────────────
-
-function AgendaView({ items, holidays, activeFilters, onItemClick, onHolidayClick }) {
+// ─── Agenda View ──────────────────────────────────────────────────────────────
+function AgendaView({ items, holidays, onSelect }) {
+  const todayKey = isoDate(new Date());
   const grouped = useMemo(() => {
-    const map = {};
-
-    // Merge items + holidays into date groups
-    for (const item of items) {
-      if (activeFilters.length > 0 && !activeFilters.includes(item.kind) && !activeFilters.includes(item.content_type)) continue;
-      const key = isoDate(item.date);
-      if (!map[key]) map[key] = { items: [], holidays: [] };
-      map[key].items.push(item);
+    const m = {};
+    for (const i of items) {
+      const k = isoDate(i.date);
+      if (!m[k]) m[k] = { items: [], holidays: [] };
+      m[k].items.push(i);
     }
     for (const h of holidays) {
-      if (!map[h.date]) map[h.date] = { items: [], holidays: [] };
-      map[h.date].holidays.push(h);
+      if (!m[h.date]) m[h.date] = { items: [], holidays: [] };
+      m[h.date].holidays.push(h);
     }
+    return Object.entries(m).sort(([a],[b]) => a.localeCompare(b));
+  }, [items, holidays]);
 
-    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
-  }, [items, holidays, activeFilters]);
+  if (!grouped.length) return (
+    <div style={{ textAlign: "center", padding: "80px 0", color: "var(--text-muted)" }}>
+      <List size={36} style={{ opacity: 0.3, marginBottom: "12px" }} />
+      <div style={{ fontWeight: 700 }}>Nothing scheduled yet.</div>
+    </div>
+  );
 
-  if (grouped.length === 0) {
-    return (
-      <div style={{ textAlign: "center", padding: "80px 0", color: "var(--text-muted)" }}>
-        <List size={40} style={{ opacity: 0.3, marginBottom: "12px" }} />
-        <div style={{ fontWeight: 700 }}>No content in this date range</div>
-      </div>
-    );
-  }
-
-  const today = isoDate(new Date());
   return (
-    <div style={{ maxWidth: "720px", margin: "0 auto" }}>
+    <div style={{ maxWidth: "680px", margin: "0 auto" }}>
       {grouped.map(([date, group]) => {
-        const isPast = date < today;
-        const isToday = date === today;
+        const isPast = date < todayKey;
+        const isToday = date === todayKey;
         return (
-          <div key={date} style={{ marginBottom: "24px", opacity: isPast ? 0.65 : 1 }}>
+          <div key={date} style={{ marginBottom: "28px", opacity: isPast ? 0.55 : 1 }}>
             <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "10px" }}>
               <div style={{
-                fontWeight: 900, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.06em",
-                color: isToday ? "#2563eb" : "var(--text-muted)",
+                fontSize: "0.75rem", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.06em",
+                color: isToday ? "#3b82f6" : "var(--text-muted)",
                 background: isToday ? "#eff6ff" : "var(--surface-secondary)",
                 padding: "4px 12px", borderRadius: "6px",
-                border: isToday ? "1px solid #bfdbfe" : "none"
+                border: isToday ? "1px solid #bfdbfe" : "none",
               }}>
-                {isToday ? "Today — " : ""}{formatDateLabel(date + "T12:00:00")}
+                {isToday ? "Today — " : ""}{fmtDay(date + "T12:00:00")}
               </div>
               <div style={{ flex: 1, height: "1px", background: "var(--border-subtle)" }} />
             </div>
             {group.holidays.map(h => (
-              <div key={h.name} onClick={() => onHolidayClick?.(h)} style={{
-                background: h.color + "12", border: `1px solid ${h.color}30`,
-                borderRadius: "10px", padding: "10px 16px", marginBottom: "8px", cursor: "pointer",
-                display: "flex", alignItems: "center", gap: "12px"
-              }}>
+              <div key={h.name} style={{ background: h.color + "12", border: `1px solid ${h.color}25`, borderRadius: "8px", padding: "8px 14px", marginBottom: "8px", display: "flex", alignItems: "center", gap: "10px" }}>
                 <span>🎉</span>
-                <span style={{ fontWeight: 800, color: h.color, fontSize: "0.85rem" }}>{h.name}</span>
-                <span style={{ marginLeft: "auto", fontSize: "0.7rem", color: "var(--text-muted)" }}>Score {h.score}/100</span>
-                <Zap size={12} style={{ color: h.color }} />
+                <span style={{ fontWeight: 800, color: h.color, fontSize: "0.82rem" }}>{h.name}</span>
+                <span style={{ marginLeft: "auto", fontSize: "0.65rem", color: "var(--text-muted)" }}>Score {h.score}/100</span>
               </div>
             ))}
-            {group.items.sort((a, b) => new Date(a.date) - new Date(b.date)).map(item => (
-              <div key={item.id} onClick={() => onItemClick?.(item)} style={{
-                background: "var(--surface-primary)", borderRadius: "10px", padding: "12px 16px",
-                border: "1px solid var(--border-subtle)", marginBottom: "8px",
-                borderLeft: `3px solid ${KIND_COLORS[item.kind] || "#94a3b8"}`,
-                cursor: "pointer", display: "flex", alignItems: "center", gap: "12px",
-                transition: "all 0.15s"
-              }}
-                onMouseEnter={e => e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.05)"}
-                onMouseLeave={e => e.currentTarget.style.boxShadow = "none"}
-              >
-                <span style={{ fontSize: "1rem" }}>{TYPE_ICONS[item.content_type] || "📌"}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: "0.85rem", color: "var(--text-main)" }}>{item.title}</div>
-                  <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: "2px" }}>
-                    {formatTime(item.date)}
-                    {item.platform ? ` · ${PLATFORM_ICONS[item.platform] || ""} ${item.platform}` : ""}
+            {group.items.sort((a,b) => new Date(a.date) - new Date(b.date)).map(item => {
+              const color = STATUS_COLOR[item.status] || "#94a3b8";
+              return (
+                <div key={item.id} onClick={() => onSelect(item)} style={{ background: "var(--surface-primary)", borderRadius: "8px", padding: "10px 14px", border: "1px solid var(--border-subtle)", borderLeft: `3px solid ${color}`, marginBottom: "8px", cursor: "pointer", display: "flex", alignItems: "center", gap: "12px", transition: "all 0.15s" }}
+                  onMouseEnter={e => e.currentTarget.style.background = "var(--surface-secondary)"}
+                  onMouseLeave={e => e.currentTarget.style.background = "var(--surface-primary)"}
+                >
+                  <span style={{ fontSize: "0.9rem" }}>{PLATFORM_ICON[item.platform] || "📌"}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: "0.85rem" }}>{item.title || "Untitled"}</div>
+                    <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: "2px" }}>{fmtTime(item.date)}{item.platform ? ` · ${item.platform}` : ""}</div>
                   </div>
+                  <span style={{ fontSize: "0.6rem", fontWeight: 800, textTransform: "uppercase", background: color + "18", color, padding: "2px 7px", borderRadius: "4px" }}>{item.status}</span>
                 </div>
-                <span style={{ fontSize: "0.65rem", fontWeight: 800, textTransform: "uppercase", background: (KIND_COLORS[item.kind] || "#94a3b8") + "18", color: KIND_COLORS[item.kind] || "#94a3b8", padding: "2px 8px", borderRadius: "4px", flexShrink: 0 }}>
-                  {KIND_LABELS[item.kind] || item.kind}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         );
       })}
@@ -683,52 +622,353 @@ function AgendaView({ items, holidays, activeFilters, onItemClick, onHolidayClic
   );
 }
 
+// ─── Scheduler Drawer ─────────────────────────────────────────────────────────
+function SchedulerDrawer({ item, detail, loading, onClose, onEdit, onReschedule, onDuplicate, brandName }) {
+  const [rescheduleMode, setRescheduleMode] = useState(false);
+  const [newDate, setNewDate] = useState("");
+  const [newTime, setNewTime] = useState("");
+  const [rescheduling, setRescheduling] = useState(false);
+  const [rescheduled, setRescheduled] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (item?.date) {
+      const d = new Date(item.date);
+      setNewDate(d.toISOString().slice(0, 10));
+      setNewTime(d.toTimeString().slice(0, 5));
+    }
+    setRescheduleMode(false);
+    setRescheduled(false);
+    setError(null);
+  }, [item?.id]);
+
+  const handleReschedule = async () => {
+    if (!newDate || !newTime) return;
+    setRescheduling(true);
+    setError(null);
+    try {
+      const dt = new Date(`${newDate}T${newTime}`);
+      await onReschedule(item.id, dt.toISOString());
+      setRescheduled(true);
+      setRescheduleMode(false);
+      track("scheduler_rescheduled", { item_id: item.id, platform: item.platform });
+    } catch (e) {
+      setError(e.message || "Reschedule failed");
+    } finally {
+      setRescheduling(false);
+    }
+  };
+
+  if (!item) return null;
+
+  const color = STATUS_COLOR[item.status] || "#94a3b8";
+  const caption = detail?.data?.body || item.caption || "";
+  const hasMedia = !!(detail?.data?.media_ids && detail.data.media_ids !== "[]");
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: 300 }} />
+      <div style={{
+        position: "fixed", right: 0, top: 0, bottom: 0, width: "560px", maxWidth: "100vw",
+        background: "var(--surface-primary)", borderLeft: "1px solid var(--border-subtle)",
+        boxShadow: "-12px 0 40px rgba(0,0,0,0.1)", zIndex: 301,
+        display: "flex", flexDirection: "column",
+        animation: "drawerIn 0.2s ease-out",
+      }}>
+        {/* Header */}
+        <div style={{ padding: "18px 22px 0", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "14px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span style={{ fontSize: "1rem" }}>{PLATFORM_ICON[item.platform] || "📌"}</span>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: "0.9rem", color: "var(--text-main)" }}>{item.title || "Untitled"}</div>
+              <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>{item.platform} · {fmtTime(item.date)} · {new Date(item.date).toLocaleDateString()}</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+            <span style={{ fontSize: "0.65rem", fontWeight: 800, textTransform: "uppercase", background: color + "18", color, padding: "3px 8px", borderRadius: "4px" }}>{item.status}</span>
+            <button onClick={onClose} style={{ border: "none", background: "transparent", cursor: "pointer", padding: "4px", color: "var(--text-muted)", display: "flex" }}><X size={18} /></button>
+          </div>
+        </div>
+
+        {/* Scroll body */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "20px 22px" }}>
+          {loading ? (
+            <div style={{ textAlign: "center", padding: "60px 0", color: "var(--text-muted)" }}>
+              <RefreshCw size={20} className="spin" style={{ opacity: 0.4 }} />
+            </div>
+          ) : (
+            <>
+              {/* Platform Preview */}
+              <div style={{ marginBottom: "22px" }}>
+                <div style={{ fontSize: "0.65rem", fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "12px" }}>
+                  Preview — {(item.platform || "post").charAt(0).toUpperCase() + (item.platform || "post").slice(1)}
+                </div>
+                <PlatformPreview
+                  platform={item.platform}
+                  caption={caption}
+                  brandName={brandName}
+                  hasMedia={hasMedia || item.has_media}
+                />
+              </div>
+
+              {/* Reschedule */}
+              {item.status === "scheduled" && (
+                <div style={{ marginBottom: "20px", background: "var(--surface-secondary)", borderRadius: "10px", padding: "14px 16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: rescheduleMode ? "12px" : 0 }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: "0.8rem" }}>Scheduled for</div>
+                      <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                        {new Date(item.date).toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric" })} at {fmtTime(item.date)}
+                      </div>
+                    </div>
+                    <button onClick={() => setRescheduleMode(m => !m)} style={{ padding: "6px 12px", border: "1px solid var(--border-subtle)", borderRadius: "6px", background: "var(--surface-primary)", fontSize: "0.75rem", fontWeight: 800, cursor: "pointer", color: "var(--text-main)" }}>
+                      {rescheduleMode ? "Cancel" : "Reschedule"}
+                    </button>
+                  </div>
+                  {rescheduleMode && (
+                    <div>
+                      <div style={{ display: "flex", gap: "8px", marginBottom: "10px" }}>
+                        <input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} style={{ flex: 1, padding: "8px 10px", borderRadius: "6px", border: "1px solid var(--border-subtle)", background: "var(--surface-primary)", fontSize: "0.82rem", color: "var(--text-main)" }} />
+                        <input type="time" value={newTime} onChange={e => setNewTime(e.target.value)} style={{ width: "100px", padding: "8px 10px", borderRadius: "6px", border: "1px solid var(--border-subtle)", background: "var(--surface-primary)", fontSize: "0.82rem", color: "var(--text-main)" }} />
+                      </div>
+                      {error && <div style={{ fontSize: "0.75rem", color: "#ef4444", marginBottom: "8px" }}>{error}</div>}
+                      {rescheduled && <div style={{ fontSize: "0.75rem", color: "#22c55e", marginBottom: "8px", display: "flex", alignItems: "center", gap: "4px" }}><Check size={12} /> Rescheduled successfully</div>}
+                      <button onClick={handleReschedule} disabled={rescheduling} style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "none", background: "#3b82f6", color: "#fff", fontWeight: 800, fontSize: "0.82rem", cursor: "pointer" }}>
+                        {rescheduling ? "Rescheduling…" : "Confirm Reschedule"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Caption */}
+              {caption && (
+                <div style={{ marginBottom: "20px" }}>
+                  <div style={{ fontSize: "0.65rem", fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "8px" }}>Caption</div>
+                  <div style={{ fontSize: "0.85rem", lineHeight: "1.6", color: "var(--text-main)", background: "var(--surface-secondary)", padding: "12px 14px", borderRadius: "8px", whiteSpace: "pre-wrap" }}>
+                    {caption}
+                  </div>
+                </div>
+              )}
+
+              {/* Delivery jobs */}
+              {detail?.data?.delivery_jobs?.length > 0 && (
+                <div style={{ marginBottom: "20px" }}>
+                  <div style={{ fontSize: "0.65rem", fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "8px" }}>Publish History</div>
+                  {detail.data.delivery_jobs.map((job, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "var(--surface-secondary)", borderRadius: "6px", marginBottom: "6px", fontSize: "0.78rem" }}>
+                      <span style={{ fontWeight: 700 }}>{PLATFORM_ICON[job.platform]} {job.platform}</span>
+                      <span style={{ color: "var(--text-muted)" }}>{job.scheduled_at ? new Date(job.scheduled_at).toLocaleDateString() : "—"}</span>
+                      <span style={{ color: STATUS_COLOR[job.status] || "#94a3b8", fontWeight: 700, textTransform: "uppercase", fontSize: "0.65rem" }}>{job.status}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Footer actions */}
+        <div style={{ padding: "14px 22px", borderTop: "1px solid var(--border-subtle)", display: "flex", gap: "8px" }}>
+          <button onClick={() => onEdit?.(item)} style={{ flex: 1, padding: "10px", border: "1px solid var(--border-subtle)", borderRadius: "8px", background: "var(--surface-secondary)", fontSize: "0.8rem", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", color: "var(--text-main)" }}>
+            <Edit2 size={13} /> Edit
+          </button>
+          <button onClick={() => onDuplicate?.(item)} style={{ flex: 1, padding: "10px", border: "1px solid var(--border-subtle)", borderRadius: "8px", background: "var(--surface-secondary)", fontSize: "0.8rem", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", color: "var(--text-main)" }}>
+            <Copy size={13} /> Duplicate
+          </button>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes drawerIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .spin { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      `}</style>
+    </>
+  );
+}
+
+// ─── Day Stack Modal ───────────────────────────────────────────────────────────
+function DayStackModal({ date, items, holidays, onSelect, onClose }) {
+  const [selectedItem, setSelectedItem] = useState(items[0] || null);
+  if (!date) return null;
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", zIndex: 400 }} />
+      <div style={{
+        position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+        width: "800px", maxWidth: "95vw", maxHeight: "80vh",
+        background: "var(--surface-primary)", borderRadius: "16px", boxShadow: "0 24px 60px rgba(0,0,0,0.15)",
+        zIndex: 401, display: "flex", flexDirection: "column", overflow: "hidden",
+        animation: "fadeUp 0.2s ease-out",
+      }}>
+        {/* Header */}
+        <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <div style={{ fontWeight: 900, fontSize: "1rem" }}>{date.toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric" })}</div>
+            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px" }}>{items.length} posts</div>
+          </div>
+          <button onClick={onClose} style={{ border: "none", background: "transparent", cursor: "pointer", color: "var(--text-muted)", display: "flex" }}><X size={18} /></button>
+        </div>
+
+        <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+          {/* Left: post list */}
+          <div style={{ width: "280px", borderRight: "1px solid var(--border-subtle)", overflowY: "auto", padding: "12px" }}>
+            {holidays.map(h => (
+              <div key={h.name} style={{ background: h.color + "12", border: `1px solid ${h.color}25`, borderRadius: "8px", padding: "8px 12px", marginBottom: "8px" }}>
+                <div style={{ fontWeight: 800, color: h.color, fontSize: "0.8rem" }}>🎉 {h.name}</div>
+              </div>
+            ))}
+            {items.map(item => {
+              const color = STATUS_COLOR[item.status] || "#94a3b8";
+              const isSelected = selectedItem?.id === item.id;
+              return (
+                <div key={item.id} onClick={() => setSelectedItem(item)} style={{
+                  padding: "10px 12px", borderRadius: "8px", marginBottom: "6px", cursor: "pointer",
+                  background: isSelected ? "#eff6ff" : "var(--surface-secondary)",
+                  border: isSelected ? "1px solid #bfdbfe" : "1px solid transparent",
+                  transition: "all 0.15s",
+                }}>
+                  <div style={{ fontWeight: 700, fontSize: "0.82rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.title || "Untitled"}</div>
+                  <div style={{ display: "flex", gap: "6px", alignItems: "center", marginTop: "4px" }}>
+                    <span style={{ fontSize: "0.65rem", fontWeight: 800, background: color + "18", color, padding: "1px 6px", borderRadius: "3px" }}>{item.status}</span>
+                    <span style={{ fontSize: "0.65rem", color: "var(--text-muted)" }}>{PLATFORM_ICON[item.platform]} {fmtTime(item.date)}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Right: preview */}
+          <div style={{ flex: 1, overflowY: "auto", padding: "20px 22px" }}>
+            {selectedItem ? (
+              <>
+                <PlatformPreview
+                  platform={selectedItem.platform}
+                  caption={selectedItem.caption || selectedItem.title || ""}
+                  brandName=""
+                  hasMedia={selectedItem.has_media}
+                />
+                <div style={{ marginTop: "16px", display: "flex", gap: "8px" }}>
+                  <button onClick={() => { onSelect(selectedItem); onClose(); }} style={{ flex: 1, padding: "10px", border: "none", borderRadius: "8px", background: "#3b82f6", color: "#fff", fontWeight: 800, fontSize: "0.82rem", cursor: "pointer" }}>
+                    Open in Drawer
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-muted)" }}>Select a post to preview</div>
+            )}
+          </div>
+        </div>
+      </div>
+      <style>{`@keyframes fadeUp { from { transform: translate(-50%,-48%); opacity: 0; } to { transform: translate(-50%,-50%); opacity: 1; } }`}</style>
+    </>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
-
 const VIEWS = [
-  { id: "month",  label: "Month",  icon: <Calendar size={14} /> },
-  { id: "week",   label: "Week",   icon: <LayoutGrid size={14} /> },
-  { id: "day",    label: "Day",    icon: <Clock size={14} /> },
-  { id: "agenda", label: "Agenda", icon: <List size={14} /> },
-];
-
-const FILTER_OPTIONS = [
-  { id: "scheduled", label: "Scheduled", color: KIND_COLORS.scheduled },
-  { id: "published",  label: "Published",  color: KIND_COLORS.published },
-  { id: "approval",   label: "In Review",  color: KIND_COLORS.approval },
-  { id: "blog",       label: "Blogs",      color: "#0ea5e9" },
-  { id: "social",     label: "Social",     color: "#6366f1" },
+  { id: "month",  label: "Month",  icon: <LayoutGrid size={13} /> },
+  { id: "week",   label: "Week",   icon: <Calendar size={13} /> },
+  { id: "day",    label: "Day",    icon: <Clock size={13} /> },
+  { id: "agenda", label: "Agenda", icon: <List size={13} /> },
 ];
 
 const CalendarSchedule = ({ activeBrand, onScheduleNew }) => {
   const { token } = useAuth();
-  const [view, setView] = useState("week");
-  const [pivot, setPivot] = useState(() => { const d = new Date(); d.setHours(0,0,0,0); return d; });
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [activeFilters, setActiveFilters] = useState([]);
-  const [selectedHoliday, setSelectedHoliday] = useState(null);
+  const [view, setView]             = useState("month");
+  const [pivot, setPivot]           = useState(() => { const d = new Date(); d.setHours(0,0,0,0); return d; });
+  const [items, setItems]           = useState([]);
+  const [loading, setLoading]       = useState(false);
+  const [drawerItem, setDrawerItem] = useState(null);
+  const [drawerDetail, setDrawerDetail] = useState(null);
+  const [drawerLoading, setDrawerLoading] = useState(false);
+  const [stackDay, setStackDay]     = useState(null);
+  const [stackItems, setStackItems] = useState([]);
+  const [stackHolidays, setStackHolidays] = useState([]);
+  const [dragItem, setDragItem]     = useState(null);
+  const [conflictMsg, setConflictMsg] = useState(null);
 
-  const range = useMemo(() => getRangeForView(view, pivot), [view, pivot]);
+  const countryCode = activeBrand?.country || activeBrand?.country_code || null;
+  const brandName   = activeBrand?.name || "Your Brand";
 
-  const holidays = useMemo(() => getHolidaysForRange(range.from, range.to), [range.from, range.to]);
+  const range = useMemo(() => rangeForView(view, pivot), [view, pivot]);
+
+  const fetchFrom = useMemo(() => {
+    if (view === "month") {
+      const y = pivot.getFullYear(), m = pivot.getMonth();
+      return { from: new Date(y, m-1, 1), to: new Date(y, m+2, 0) };
+    }
+    return range;
+  }, [view, pivot, range]);
+
+  const holidays = useMemo(() => getHolidaysInRange(fetchFrom.from, fetchFrom.to, countryCode), [fetchFrom.from, fetchFrom.to, countryCode]);
 
   const fetchItems = useCallback(async () => {
     if (!token || !activeBrand?.id) return;
     setLoading(true);
     try {
-      const from = range.from.toISOString();
-      const to = range.to.toISOString();
-      const data = await apiRequest(`/api/customer/calendar?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+      const from = encodeURIComponent(fetchFrom.from.toISOString());
+      const to   = encodeURIComponent(fetchFrom.to.toISOString());
+      const data = await apiRequest(`/api/customer/calendar?from=${from}&to=${to}`);
       setItems(data.items || []);
-    } catch (err) {
-      console.error("Calendar fetch failed", err);
+    } catch (e) {
+      console.error("Scheduler fetch failed", e);
     } finally {
       setLoading(false);
     }
-  }, [token, activeBrand?.id, range.from, range.to]);
+  }, [token, activeBrand?.id, fetchFrom.from, fetchFrom.to]);
 
-  useEffect(() => { fetchItems(); }, [fetchItems]);
+  useEffect(() => {
+    fetchItems();
+    track("scheduler_opened", { view });
+  }, [fetchItems]);
+
+  // Open drawer + lazy-load detail
+  const openDrawer = useCallback(async (item) => {
+    setDrawerItem(item);
+    setDrawerDetail(null);
+    setDrawerLoading(true);
+    track("scheduler_post_opened", { item_id: item.id, platform: item.platform });
+    try {
+      const detail = await apiRequest(`/api/customer/vault/${item.content_id}`);
+      setDrawerDetail(detail);
+    } catch (_) {}
+    finally { setDrawerLoading(false); }
+  }, []);
+
+  // Drag & drop reschedule
+  const handleDropCell = useCallback(async (droppedItem, targetDate) => {
+    if (droppedItem.status !== "scheduled") return;
+    setDragItem(null);
+    const orig = new Date(droppedItem.date);
+    const newDt = new Date(targetDate);
+    newDt.setHours(orig.getHours(), orig.getMinutes(), 0, 0);
+    try {
+      await apiRequest(`/api/customer/schedule/${droppedItem.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ scheduled_at: newDt.toISOString() }),
+      });
+      await fetchItems();
+      track("scheduler_rescheduled", { item_id: droppedItem.id, drag: true });
+    } catch (e) {
+      const msg = e.message || "Failed to reschedule";
+      setConflictMsg(msg.includes("409") || msg.toLowerCase().includes("conflict")
+        ? "This time is already occupied by another post."
+        : msg
+      );
+      setTimeout(() => setConflictMsg(null), 4000);
+    }
+  }, [fetchItems]);
+
+  const handleReschedule = useCallback(async (jobId, newIso) => {
+    await apiRequest(`/api/customer/schedule/${jobId}`, {
+      method: "PUT",
+      body: JSON.stringify({ scheduled_at: newIso }),
+    });
+    await fetchItems();
+  }, [fetchItems]);
 
   const navigate = (dir) => {
     setPivot(prev => {
@@ -743,99 +983,62 @@ const CalendarSchedule = ({ activeBrand, onScheduleNew }) => {
   const pivotLabel = useMemo(() => {
     if (view === "month") return pivot.toLocaleDateString("en-US", { month: "long", year: "numeric" });
     if (view === "week") {
-      const ws = startOfWeek(pivot);
-      const we = addDays(ws, 6);
-      return `${ws.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${we.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+      const ws = weekStart(pivot), we = addDays(ws, 6);
+      return `${ws.toLocaleDateString("en-US", { month:"short", day:"numeric" })} – ${we.toLocaleDateString("en-US", { month:"short", day:"numeric", year:"numeric" })}`;
     }
-    return pivot.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+    return pivot.toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric", year:"numeric" });
   }, [view, pivot]);
 
-  const toggleFilter = (id) => {
-    setActiveFilters(prev => prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]);
-  };
-
-  const upcomingHolidays = useMemo(() => {
-    const today = isoDate(new Date());
-    return getHolidaysForRange(new Date(), addDays(new Date(), 30))
-      .filter(h => h.date > today)
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .slice(0, 3);
-  }, []);
-
-  const handleCreatePost = () => {
-    setSelectedHoliday(null);
-    onScheduleNew?.();
-  };
-
-  const handleCreateArticle = () => {
-    setSelectedHoliday(null);
-    window.dispatchEvent(new CustomEvent("switch-tab", { detail: "article" }));
-  };
-
-  const handleBuildCampaign = () => {
-    setSelectedHoliday(null);
-    window.dispatchEvent(new CustomEvent("switch-tab", { detail: "campaigns" }));
-  };
-
-  const statCounts = useMemo(() => ({
-    scheduled: items.filter(i => i.kind === "scheduled").length,
-    published:  items.filter(i => i.kind === "published").length,
-    approval:   items.filter(i => i.kind === "approval").length,
+  const counts = useMemo(() => ({
+    scheduled: items.filter(i => i.status === "scheduled").length,
+    published:  items.filter(i => i.status === "published").length,
   }), [items]);
+
+  const upcomingHolidays = useMemo(() => getHolidaysInRange(new Date(), addDays(new Date(), 14), countryCode).slice(0, 4), [countryCode]);
 
   return (
     <>
-      <div style={{ display: "flex", flexDirection: "column", height: "100%", gap: "0" }}>
-
-        {/* ── Page Header ── */}
-        <div style={{ padding: "0 0 20px 0", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
+      {/* ── Header ── */}
+      <div style={{ marginBottom: "20px" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
           <div>
-            <h2 style={{ fontWeight: 900, fontSize: "1.4rem", margin: 0, color: "var(--text-main)" }}>Content Command Center</h2>
-            <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "3px" }}>
-              {statCounts.scheduled} scheduled · {statCounts.published} published · {statCounts.approval} in review
+            <h2 style={{ fontWeight: 900, fontSize: "1.5rem", margin: 0, color: "var(--text-main)", letterSpacing: "-0.02em" }}>Scheduler</h2>
+            <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "3px", fontWeight: 600 }}>
+              {counts.scheduled} scheduled · {counts.published} published
             </div>
           </div>
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-            <button onClick={fetchItems} style={{ padding: "8px", border: "1px solid var(--border-subtle)", borderRadius: "8px", background: "var(--surface-secondary)", cursor: "pointer", color: "var(--text-muted)" }}>
-              <RefreshCw size={15} style={{ display: "block" }} className={loading ? "spin" : ""} />
+            <button onClick={fetchItems} style={{ padding: "8px", border: "1px solid var(--border-subtle)", borderRadius: "8px", background: "var(--surface-secondary)", cursor: "pointer", color: "var(--text-muted)", display: "flex" }}>
+              <RefreshCw size={14} className={loading ? "spin" : ""} />
             </button>
-            <button onClick={handleCreatePost} style={{
-              display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px",
-              borderRadius: "8px", background: "#6366f1", color: "#fff",
-              fontWeight: 800, fontSize: "0.85rem", border: "none", cursor: "pointer",
-              transition: "all 0.15s"
+            <button onClick={() => onScheduleNew?.()} style={{
+              display: "flex", alignItems: "center", gap: "6px", padding: "9px 18px",
+              borderRadius: "8px", background: "#3b82f6", color: "#fff",
+              fontWeight: 800, fontSize: "0.82rem", border: "none", cursor: "pointer",
             }}
-              onMouseEnter={e => e.currentTarget.style.background = "#5457e5"}
-              onMouseLeave={e => e.currentTarget.style.background = "#6366f1"}
+              onMouseEnter={e => e.currentTarget.style.background = "#2563eb"}
+              onMouseLeave={e => e.currentTarget.style.background = "#3b82f6"}
             >
-              <Plus size={15} /> Schedule
+              <Plus size={14} /> Schedule
             </button>
           </div>
         </div>
 
-        {/* ── Controls Bar ── */}
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px", flexWrap: "wrap" }}>
-
-          {/* Nav */}
-          <div style={{ display: "flex", alignItems: "center", gap: "4px", background: "var(--surface-secondary)", border: "1px solid var(--border-subtle)", borderRadius: "8px", padding: "2px" }}>
+        {/* Nav bar */}
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "16px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", background: "var(--surface-secondary)", border: "1px solid var(--border-subtle)", borderRadius: "8px", padding: "2px" }}>
             <button onClick={() => navigate(-1)} style={{ border: "none", background: "transparent", cursor: "pointer", padding: "6px 8px", borderRadius: "6px", color: "var(--text-muted)", display: "flex" }}>
               <ChevronLeft size={15} />
             </button>
-            <button onClick={goToday} style={{ border: "none", background: "transparent", cursor: "pointer", padding: "4px 10px", borderRadius: "6px", fontSize: "0.72rem", fontWeight: 800, color: "var(--text-main)", whiteSpace: "nowrap", minWidth: "140px", textAlign: "center" }}>
-              {pivotLabel}
-            </button>
+            <span style={{ padding: "4px 10px", fontSize: "0.78rem", fontWeight: 800, color: "var(--text-main)", minWidth: "150px", textAlign: "center" }}>{pivotLabel}</span>
             <button onClick={() => navigate(1)} style={{ border: "none", background: "transparent", cursor: "pointer", padding: "6px 8px", borderRadius: "6px", color: "var(--text-muted)", display: "flex" }}>
               <ChevronRight size={15} />
             </button>
           </div>
-
-          {/* Today */}
-          <button onClick={goToday} style={{ padding: "6px 12px", border: "1px solid var(--border-subtle)", borderRadius: "8px", background: "var(--surface-secondary)", fontSize: "0.75rem", fontWeight: 800, color: "var(--text-muted)", cursor: "pointer" }}>
+          <button onClick={goToday} style={{ padding: "7px 14px", border: "1px solid var(--border-subtle)", borderRadius: "8px", background: "var(--surface-secondary)", fontSize: "0.75rem", fontWeight: 800, color: "var(--text-muted)", cursor: "pointer" }}>
             Today
           </button>
-
-          {/* View switcher */}
-          <div style={{ display: "flex", background: "var(--surface-secondary)", border: "1px solid var(--border-subtle)", borderRadius: "8px", padding: "2px", gap: "2px", marginLeft: "auto" }}>
+          <div style={{ marginLeft: "auto", display: "flex", background: "var(--surface-secondary)", border: "1px solid var(--border-subtle)", borderRadius: "8px", padding: "2px", gap: "2px" }}>
             {VIEWS.map(v => (
               <button key={v.id} onClick={() => setView(v.id)} style={{
                 display: "flex", alignItems: "center", gap: "5px", padding: "5px 12px",
@@ -844,7 +1047,6 @@ const CalendarSchedule = ({ activeBrand, onScheduleNew }) => {
                 color: view === v.id ? "var(--text-main)" : "var(--text-muted)",
                 fontWeight: 700, fontSize: "0.75rem", cursor: "pointer",
                 boxShadow: view === v.id ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
-                transition: "all 0.15s"
               }}>
                 {v.icon} {v.label}
               </button>
@@ -852,92 +1054,120 @@ const CalendarSchedule = ({ activeBrand, onScheduleNew }) => {
           </div>
         </div>
 
-        {/* ── Filter Chips ── */}
-        <div style={{ display: "flex", gap: "6px", marginBottom: "16px", flexWrap: "wrap", alignItems: "center" }}>
-          <span style={{ fontSize: "0.65rem", fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginRight: "2px" }}>Filter:</span>
-          <button onClick={() => setActiveFilters([])} style={{
-            padding: "4px 10px", borderRadius: "6px", border: `1px solid ${activeFilters.length === 0 ? "#6366f1" : "var(--border-subtle)"}`,
-            background: activeFilters.length === 0 ? "#6366f1" : "transparent",
-            color: activeFilters.length === 0 ? "#fff" : "var(--text-muted)",
-            fontSize: "0.72rem", fontWeight: 800, cursor: "pointer"
-          }}>All</button>
-          {FILTER_OPTIONS.map(f => (
-            <button key={f.id} onClick={() => toggleFilter(f.id)} style={{
-              padding: "4px 10px", borderRadius: "6px",
-              border: `1px solid ${activeFilters.includes(f.id) ? f.color : "var(--border-subtle)"}`,
-              background: activeFilters.includes(f.id) ? f.color + "18" : "transparent",
-              color: activeFilters.includes(f.id) ? f.color : "var(--text-muted)",
-              fontSize: "0.72rem", fontWeight: 800, cursor: "pointer", transition: "all 0.15s"
-            }}>
-              {f.label}
-            </button>
-          ))}
-        </div>
-
-        {/* ── Upcoming Events Banner ── */}
+        {/* Upcoming holidays strip */}
         {upcomingHolidays.length > 0 && (
-          <div style={{ display: "flex", gap: "8px", marginBottom: "16px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "6px", marginTop: "12px", flexWrap: "wrap" }}>
             {upcomingHolidays.map(h => {
               const days = Math.ceil((new Date(h.date) - new Date()) / 86400000);
               return (
-                <button key={h.date + h.name} onClick={() => setSelectedHoliday(h)} style={{
-                  display: "flex", alignItems: "center", gap: "8px", padding: "6px 12px",
-                  borderRadius: "8px", background: h.color + "12", border: `1px solid ${h.color}30`,
-                  color: h.color, fontWeight: 700, fontSize: "0.72rem", cursor: "pointer",
-                  transition: "all 0.15s"
-                }}
-                  onMouseEnter={e => e.currentTarget.style.background = h.color + "22"}
-                  onMouseLeave={e => e.currentTarget.style.background = h.color + "12"}
-                >
-                  <Zap size={11} />
-                  {h.name} — in {days}d
-                  <span style={{ background: h.color + "25", padding: "1px 6px", borderRadius: "4px", fontSize: "0.65rem" }}>Score {h.score}</span>
-                </button>
+                <div key={h.date + h.name} style={{
+                  display: "flex", alignItems: "center", gap: "5px", padding: "4px 10px",
+                  background: h.color + "12", border: `1px solid ${h.color}30`,
+                  borderRadius: "6px", fontSize: "0.7rem", fontWeight: 700, color: h.color,
+                }}>
+                  <Zap size={10} /> {h.name} <span style={{ opacity: 0.7 }}>· {days}d</span>
+                </div>
               );
             })}
           </div>
         )}
+      </div>
 
-        {/* ── Calendar Body ── */}
-        {loading ? (
-          <div style={{ textAlign: "center", padding: "80px 0", color: "var(--text-muted)" }}>
-            <RefreshCw size={24} style={{ opacity: 0.4 }} className="spin" />
-            <div style={{ marginTop: "12px", fontSize: "0.85rem", fontWeight: 700 }}>Loading calendar...</div>
+      {/* ── Legend ── */}
+      <div style={{ display: "flex", gap: "16px", marginBottom: "14px" }}>
+        {[["#3b82f6","Scheduled"],["#22c55e","Published"],["#94a3b8","Failed"]].map(([c,l]) => (
+          <div key={l} style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "0.65rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: c }} /> {l}
           </div>
-        ) : (
-          <div style={{ flex: 1, overflowY: "auto" }}>
-            {view === "month" && (
-              <MonthView pivot={pivot} items={items} holidays={holidays} activeFilters={activeFilters}
-                onItemClick={() => {}} onHolidayClick={setSelectedHoliday} />
-            )}
-            {view === "week" && (
-              <WeekView pivot={pivot} items={items} holidays={holidays} activeFilters={activeFilters}
-                onItemClick={() => {}} onHolidayClick={setSelectedHoliday} onSlotClick={d => { setPivot(d); setView("day"); }} />
-            )}
-            {view === "day" && (
-              <DayView pivot={pivot} items={items} holidays={holidays} activeFilters={activeFilters}
-                onItemClick={() => {}} onHolidayClick={setSelectedHoliday} />
-            )}
-            {view === "agenda" && (
-              <AgendaView items={items} holidays={holidays} activeFilters={activeFilters}
-                onItemClick={() => {}} onHolidayClick={setSelectedHoliday} />
-            )}
+        ))}
+        {dragItem && (
+          <div style={{ marginLeft: "auto", fontSize: "0.72rem", fontWeight: 700, color: "#3b82f6" }}>
+            Drop on a day to reschedule
           </div>
         )}
       </div>
 
-      {/* ── Opportunity Panel ── */}
-      {selectedHoliday && (
+      {/* ── Conflict Toast ── */}
+      {conflictMsg && (
+        <div style={{ marginBottom: "12px", padding: "10px 16px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "8px", display: "flex", alignItems: "center", gap: "8px", fontSize: "0.8rem", fontWeight: 700, color: "#b91c1c" }}>
+          <AlertCircle size={14} /> {conflictMsg}
+        </div>
+      )}
+
+      {/* ── Calendar Body ── */}
+      {loading ? (
+        <div style={{ textAlign: "center", padding: "100px 0", color: "var(--text-muted)" }}>
+          <RefreshCw size={24} style={{ opacity: 0.3 }} className="spin" />
+          <div style={{ marginTop: "12px", fontSize: "0.85rem", fontWeight: 700 }}>Loading…</div>
+        </div>
+      ) : (
         <>
-          <div onClick={() => setSelectedHoliday(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.15)", zIndex: 199 }} />
-          <OpportunityPanel
-            holiday={selectedHoliday}
-            onClose={() => setSelectedHoliday(null)}
-            onCreatePost={handleCreatePost}
-            onCreateArticle={handleCreateArticle}
-            onBuildCampaign={handleBuildCampaign}
-          />
+          {view === "month" && (
+            <MonthGrid
+              pivot={pivot} items={items} holidays={holidays}
+              onSelect={openDrawer}
+              onDayStack={(date, dayItems, dayHolidays) => {
+                setStackDay(date); setStackItems(dayItems); setStackHolidays(dayHolidays || []);
+                track("scheduler_day_expanded");
+              }}
+              onSlotClick={onScheduleNew}
+              dragItem={dragItem}
+              onDropCell={handleDropCell}
+            />
+          )}
+          {view === "week" && (
+            <WeekGrid
+              pivot={pivot} items={items} holidays={holidays}
+              onSelect={openDrawer}
+              onSlotClick={onScheduleNew}
+              dragItem={dragItem}
+              onDropCell={handleDropCell}
+            />
+          )}
+          {view === "day" && (
+            <DayView pivot={pivot} items={items} holidays={holidays} onSelect={openDrawer} />
+          )}
+          {view === "agenda" && (
+            <AgendaView items={items} holidays={holidays} onSelect={openDrawer} />
+          )}
+
+          {/* Month empty state */}
+          {!loading && items.length === 0 && (
+            <div style={{ textAlign: "center", padding: "80px 0" }}>
+              <div style={{ fontSize: "2.5rem", marginBottom: "12px" }}>📅</div>
+              <div style={{ fontWeight: 800, fontSize: "1rem", color: "var(--text-main)", marginBottom: "6px" }}>Nothing scheduled yet.</div>
+              <div style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginBottom: "20px" }}>Schedule approved content to see it here.</div>
+              <button onClick={() => onScheduleNew?.()} style={{ padding: "10px 22px", borderRadius: "8px", background: "#3b82f6", color: "#fff", fontWeight: 800, fontSize: "0.85rem", border: "none", cursor: "pointer" }}>
+                Schedule your first post
+              </button>
+            </div>
+          )}
         </>
+      )}
+
+      {/* ── Drawer ── */}
+      {drawerItem && (
+        <SchedulerDrawer
+          item={drawerItem}
+          detail={drawerDetail}
+          loading={drawerLoading}
+          brandName={brandName}
+          onClose={() => setDrawerItem(null)}
+          onReschedule={handleReschedule}
+          onEdit={(item) => { setDrawerItem(null); onScheduleNew?.(item); }}
+          onDuplicate={() => setDrawerItem(null)}
+        />
+      )}
+
+      {/* ── Day Stack Modal ── */}
+      {stackDay && (
+        <DayStackModal
+          date={stackDay}
+          items={stackItems}
+          holidays={stackHolidays}
+          onSelect={openDrawer}
+          onClose={() => { setStackDay(null); setStackItems([]); setStackHolidays([]); }}
+        />
       )}
 
       <style>{`
