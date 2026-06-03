@@ -29,9 +29,9 @@ export async function saveSocialVariants(request, env, contentId, ctx) {
 
   // 1️⃣ Verify draft exists and is social
   const draft = await db.prepare(`
-    SELECT content_id
-    FROM content_drafts
-    WHERE content_id = ?
+    SELECT id AS content_id
+    FROM content_vault
+    WHERE id = ?
       AND content_type = 'social'
       AND brand_id = ?
   `).bind(contentId, brand_id).first();
@@ -66,12 +66,8 @@ export async function saveSocialVariants(request, env, contentId, ctx) {
     }
   }
 
-  // 4️⃣ Touch draft for ordering
   await db.prepare(`
-    UPDATE content_drafts
-    SET updated_at = CURRENT_TIMESTAMP
-    WHERE content_id = ?
-      AND brand_id = ?
+    UPDATE content_vault SET updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?
   `).bind(contentId, brand_id).run();
 
   return json({ saved: true });
@@ -90,9 +86,9 @@ export async function getSocialVariants(_req, env, contentId, ctx) {
 
   // Verify draft exists
   const draft = await db.prepare(`
-    SELECT content_id
-    FROM content_drafts
-    WHERE content_id = ?
+    SELECT id AS content_id
+    FROM content_vault
+    WHERE id = ?
       AND content_type = 'social'
       AND brand_id = ?
   `).bind(contentId, brand_id).first();

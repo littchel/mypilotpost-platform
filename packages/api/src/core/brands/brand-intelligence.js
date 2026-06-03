@@ -26,19 +26,17 @@ export async function getBrandIntelligence(request, env, auth) {
     
     // Content Stats
     const contentStats = await db.prepare(`
-      SELECT status, COUNT(*) as count 
-      FROM (
-        SELECT status FROM social_assets WHERE brand_id = ?
-        UNION ALL
-        SELECT status FROM blog_posts WHERE brand_id = ?
-      )
-      GROUP BY status
-    `).bind(brandId, brandId).all();
+      SELECT lifecycle_status AS status, COUNT(*) as count
+      FROM content_vault
+      WHERE brand_id = ?
+      GROUP BY lifecycle_status
+    `).bind(brandId).all();
 
     const counts = { draft: 0, ready: 0, scheduled: 0, delivered: 0 };
     for (const row of contentStats.results || []) {
-      const s = row.status.toLowerCase();
-      if (counts.hasOwnProperty(s)) counts[s] = row.count;
+      const s = (row.status || '').toLowerCase();
+      if (s === 'published') counts.delivered += row.count;
+      else if (counts.hasOwnProperty(s)) counts[s] = row.count;
     }
 
     // Publishing Density (Last 7 days)

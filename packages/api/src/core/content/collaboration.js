@@ -22,7 +22,7 @@ export async function addComment(request, env, auth) {
 
   // Verify access (content belongs to brand)
   const draft = await db.prepare(`
-    SELECT content_type FROM content_drafts WHERE content_id = ? AND brand_id = ?
+    SELECT content_type FROM content_vault WHERE id = ? AND brand_id = ?
   `).bind(contentId, auth.brand_id).first();
 
   if (!draft) return error("Content not found or access denied", 404);
@@ -49,7 +49,7 @@ export async function listComments(request, env, auth) {
 
   // Verify access
   const draft = await db.prepare(`
-    SELECT content_type FROM content_drafts WHERE content_id = ? AND brand_id = ?
+    SELECT content_type FROM content_vault WHERE id = ? AND brand_id = ?
   `).bind(contentId, auth.brand_id).first();
 
   if (!draft) return error("Content not found or access denied", 404);
@@ -94,29 +94,28 @@ export async function updateContentStatus(request, env, auth, idFromPath = null)
 
   const db = getDB(env);
 
-  // 1. Verify access and get current status
+  // 1. Verify access and get current status from vault (source of truth)
   const current = await db.prepare(`
-    SELECT content_type, state FROM content_drafts WHERE content_id = ? AND brand_id = ?
+    SELECT content_type, lifecycle_status AS state FROM content_vault WHERE id = ? AND brand_id = ?
   `).bind(contentId, auth.brand_id).first();
 
   if (!current) return error("Content not found or access denied", 404);
 
   // 2. Strict Status Flow Enforcement
-  // (draft -> approval -> approved -> scheduled -> published)
   const allowedTransitions = {
-    'draft': ['approval', 'failed'],
+    'draft': ['approval', 'approval_requested', 'failed'],
+    'approval_requested': ['approved', 'draft', 'failed'],
     'approval': ['approved', 'draft', 'failed'],
     'approved': ['scheduled', 'published', 'draft', 'failed'],
     'scheduled': ['published', 'failed', 'partial_failure', 'draft'],
-    'published': [], 
-    'failed': ['approval', 'draft'],
-    'partial_failure': ['approval', 'draft']
+    'published': [],
+    'failed': ['approval', 'approval_requested', 'draft'],
+    'partial_failure': ['approval', 'approval_requested', 'draft']
   };
 
   if (targetStatus !== current.state && !allowedTransitions[current.state]?.includes(targetStatus)) {
-    // Exception: Allow force-revert to draft from ANY state (hard reset)
     if (targetStatus !== 'draft') {
-       return error(`Invalid transition from ${current.state} to ${targetStatus}`, 400);
+      return error(`Invalid transition from ${current.state} to ${targetStatus}`, 400);
     }
   }
 
@@ -141,31 +140,29 @@ export async function updateContentStatus(request, env, auth, idFromPath = null)
   // Logic: if status is 'approved', track who did it
   const approvedBy = targetStatus === 'approved' ? auth.id : null;
 
-  // Update tables
-  await db.batch([
-    // Update central registry
+  // Update vault (source of truth) + mirror tables
+  const writes = [
     db.prepare(`
-      UPDATE content_drafts SET state = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE content_id = ? AND brand_id = ?
+      UPDATE content_vault SET lifecycle_status = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND brand_id = ?
     `).bind(targetStatus, contentId, auth.brand_id),
-
-    // Update specific table based on type
-    current.content_type === 'social' 
+    current.content_type === 'social'
       ? db.prepare(`
-          UPDATE social_assets 
-          SET status = ?, 
+          UPDATE social_assets
+          SET lifecycle_status = ?, status = ?,
               approved_by = COALESCE(?, approved_by),
-              updated_at = CURRENT_TIMESTAMP 
+              updated_at = CURRENT_TIMESTAMP
           WHERE id = ? AND brand_id = ?
-        `).bind(targetStatus, approvedBy, contentId, auth.brand_id)
+        `).bind(targetStatus, targetStatus, approvedBy, contentId, auth.brand_id)
       : db.prepare(`
-          UPDATE blog_posts 
-          SET status = ?, 
+          UPDATE blog_posts
+          SET lifecycle_status = ?, status = ?,
               approved_by = COALESCE(?, approved_by),
-              updated_at = CURRENT_TIMESTAMP 
+              updated_at = CURRENT_TIMESTAMP
           WHERE id = ? AND brand_id = ?
-        `).bind(targetStatus, approvedBy, contentId, auth.brand_id)
-  ]);
+        `).bind(targetStatus, targetStatus, approvedBy, contentId, auth.brand_id),
+  ];
+  await db.batch(writes);
 
   // If a comment was provided (e.g. Request Changes), save it
   if (comment || action === 'reject' || action === 'request_changes' || status === 'rejected') {

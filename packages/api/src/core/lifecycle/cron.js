@@ -139,8 +139,8 @@ async function runWeeklyDigestEmails(env) {
       // Get brand score and post count for digest data
       const stats = await db.prepare(`
         SELECT COUNT(*) as posts_this_week
-        FROM content_drafts
-        WHERE brand_id = ? AND created_at >= datetime('now', '-7 days') AND status = 'published'
+        FROM content_vault
+        WHERE brand_id = ? AND created_at >= datetime('now', '-7 days') AND lifecycle_status = 'published'
       `).bind(row.brand_id).first();
 
       const result = await triggerLifecycleEmail(env, {

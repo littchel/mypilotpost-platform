@@ -15,20 +15,18 @@ export async function getPublicContent(request, env, contentId) {
 
   const db = getDB(env);
 
-  // Fetch the content draft
+  // Fetch the content from vault (source of truth)
   const draft = await db.prepare(`
-    SELECT cd.content_id, cd.content_type, cd.brand_id,
-           sa.title, sa.status
-    FROM content_drafts cd
-    LEFT JOIN social_assets sa ON sa.id = cd.content_id AND cd.content_type = 'social'
-    WHERE cd.content_id = ?
+    SELECT id AS content_id, content_type, brand_id, title, lifecycle_status AS status
+    FROM content_vault
+    WHERE id = ?
     LIMIT 1
   `).bind(contentId).first();
 
   if (!draft) return error("Content not found", 404);
 
   // Only allow public access for content in approval flow
-  if (!['approval', 'approved', 'rejected'].includes(draft.status)) {
+  if (!['approval_requested', 'approved', 'rejected'].includes(draft.status)) {
     return error("This content is not available for public review", 403);
   }
 
@@ -83,27 +81,38 @@ export async function submitPublicDecision(request, env, contentId) {
 
   const db = getDB(env);
 
-  // Verify content exists and is in approval state
+  // Verify content exists and is in approval state (vault is source of truth)
   const draft = await db.prepare(`
-    SELECT cd.content_type, cd.brand_id, sa.status, sa.user_id
-    FROM content_drafts cd
-    LEFT JOIN social_assets sa ON sa.id = cd.content_id AND cd.content_type = 'social'
-    WHERE cd.content_id = ? LIMIT 1
+    SELECT id AS content_id, content_type, brand_id, lifecycle_status AS status
+    FROM content_vault
+    WHERE id = ? LIMIT 1
   `).bind(contentId).first();
 
   if (!draft) return error("Content not found", 404);
-  if (draft.status !== 'approval') return error("Content is no longer pending approval", 409);
+  if (draft.status !== 'approval_requested') return error("Content is no longer pending approval", 409);
 
-  // Map decision to internal status
+  // Map decision to vault lifecycle status
   const newStatus = status === 'approved' ? 'approved' : 'draft';
 
-  // Update status
-  if (draft.content_type === 'social') {
-    await db.prepare(`
-      UPDATE social_assets SET status = ?, updated_at = CURRENT_TIMESTAMP
+  // Update vault (source of truth) + mirror tables
+  const updates = [
+    db.prepare(`
+      UPDATE content_vault SET lifecycle_status = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `).bind(newStatus, contentId).run();
+    `).bind(newStatus, contentId),
+  ];
+  if (draft.content_type === 'social') {
+    updates.push(db.prepare(`
+      UPDATE social_assets SET lifecycle_status = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(newStatus, newStatus, contentId));
+  } else if (draft.content_type === 'blog') {
+    updates.push(db.prepare(`
+      UPDATE blog_posts SET lifecycle_status = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(newStatus, newStatus, contentId));
   }
+  await db.batch(updates);
 
   // Store the comment (marked as 'external')
   if (comment) {

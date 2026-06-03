@@ -53,7 +53,7 @@ export async function getExperienceSummary(request, env, auth) {
 
 async function getStats(db, brandId) {
   const drafts = await db.prepare(`
-    SELECT COUNT(*) as total FROM content_drafts WHERE brand_id = ?
+    SELECT COUNT(*) as total FROM content_vault WHERE brand_id = ? AND lifecycle_status = 'draft'
   `).bind(brandId).first();
 
   const jobs = await db.prepare(`

@@ -17,8 +17,8 @@ export async function updateContent(request, env, auth) {
 
   const draft = await db.prepare(`
     SELECT content_type
-    FROM content_drafts
-    WHERE content_id = ?
+    FROM content_vault
+    WHERE id = ?
       AND brand_id = ?
   `).bind(contentId, auth.brand_id).first();
 
@@ -56,12 +56,8 @@ export async function updateContent(request, env, auth) {
     ).run();
   }
 
-  // Touch draft index for ordering
   await db.prepare(`
-    UPDATE content_drafts
-    SET updated_at = CURRENT_TIMESTAMP
-    WHERE content_id = ?
-      AND brand_id = ?
+    UPDATE content_vault SET updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?
   `).bind(contentId, auth.brand_id).run();
 
   return json({ success: true });
@@ -77,26 +73,14 @@ export async function listContent(_req, env, auth) {
 
   const { results } = await db.prepare(`
     SELECT
-      cd.content_id        AS id,
-      cd.content_type,
-      cd.updated_at,
-      CASE
-        WHEN cd.content_type = 'social' THEN sa.title
-        WHEN cd.content_type = 'blog'   THEN bp.title
-      END AS title,
-      CASE
-        WHEN cd.content_type = 'social' THEN sa.status
-        WHEN cd.content_type = 'blog'   THEN bp.status
-      END AS status
-    FROM content_drafts cd
-    LEFT JOIN social_assets sa
-      ON cd.content_type = 'social'
-     AND sa.id = cd.content_id
-    LEFT JOIN blog_posts bp
-      ON cd.content_type = 'blog'
-     AND bp.id = cd.content_id
-    WHERE cd.brand_id = ?
-    ORDER BY cd.updated_at DESC
+      cv.id,
+      cv.content_type,
+      cv.updated_at,
+      cv.title,
+      cv.lifecycle_status AS status
+    FROM content_vault cv
+    WHERE cv.brand_id = ?
+    ORDER BY cv.updated_at DESC
   `).bind(auth.brand_id).all();
 
   return json({
@@ -114,12 +98,9 @@ export async function getDrafts(_req, env, auth) {
   const db = getDB(env);
 
   const { results } = await db.prepare(`
-    SELECT
-      content_id AS id,
-      content_type,
-      updated_at
-    FROM content_drafts
-    WHERE brand_id = ?
+    SELECT id, content_type, updated_at, title
+    FROM content_vault
+    WHERE brand_id = ? AND lifecycle_status = 'draft'
     ORDER BY updated_at DESC
   `).bind(auth.brand_id).all();
 

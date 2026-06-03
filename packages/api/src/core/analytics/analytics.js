@@ -408,32 +408,25 @@ export async function getContentAnalytics(request, env, auth) {
   const db = getDB(env);
   const brandId = auth.brand_id;
 
-  // 1. Fetch from content_drafts
-  const drafts = await db.prepare(`
-    SELECT 
-      COUNT(CASE WHEN state = 'draft' THEN 1 END) as draft,
-      COUNT(CASE WHEN state = 'ready' THEN 1 END) as ready
-    FROM content_drafts
-    WHERE brand_id = ?
-  `).bind(brandId).first();
-
-  // 2. Fetch from delivery_jobs
-  const delivery = await db.prepare(`
-    SELECT 
-      COUNT(CASE WHEN status = 'scheduled' THEN 1 END) as scheduled,
-      COUNT(CASE WHEN status = 'published' OR status = 'delivered' THEN 1 END) as delivered,
-      COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed
-    FROM delivery_jobs
+  // 1. Fetch lifecycle counts from content_vault (source of truth)
+  const vaultCounts = await db.prepare(`
+    SELECT
+      COUNT(CASE WHEN lifecycle_status = 'draft' THEN 1 END)   as draft,
+      COUNT(CASE WHEN lifecycle_status = 'ready' THEN 1 END)   as ready,
+      COUNT(CASE WHEN lifecycle_status IN ('scheduled','queued') THEN 1 END) as scheduled,
+      COUNT(CASE WHEN lifecycle_status = 'published' THEN 1 END) as delivered,
+      COUNT(CASE WHEN lifecycle_status = 'failed' THEN 1 END)  as failed
+    FROM content_vault
     WHERE brand_id = ?
   `).bind(brandId).first();
 
   const totals = {
-    all: (drafts?.draft || 0) + (drafts?.ready || 0) + (delivery?.scheduled || 0) + (delivery?.delivered || 0) + (delivery?.failed || 0),
-    draft: drafts?.draft || 0,
-    ready: drafts?.ready || 0,
-    scheduled: delivery?.scheduled || 0,
-    delivered: delivery?.delivered || 0,
-    failed: delivery?.failed || 0
+    all: (vaultCounts?.draft || 0) + (vaultCounts?.ready || 0) + (vaultCounts?.scheduled || 0) + (vaultCounts?.delivered || 0) + (vaultCounts?.failed || 0),
+    draft: vaultCounts?.draft || 0,
+    ready: vaultCounts?.ready || 0,
+    scheduled: vaultCounts?.scheduled || 0,
+    delivered: vaultCounts?.delivered || 0,
+    failed: vaultCounts?.failed || 0
   };
 
   return json({
