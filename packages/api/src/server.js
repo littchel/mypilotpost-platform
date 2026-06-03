@@ -2092,6 +2092,17 @@ export default {
           }
         }
 
+        // Daily 3am: analytics backfill for site-level platforms (GA4, GSC)
+        if (cron === "0 3 * * *") {
+          for (const analyticsPlatform of ["google_analytics", "google_search_console"]) {
+            try {
+              await runBackfill(env, { platform: analyticsPlatform, daysBack: 7 });
+            } catch (err) {
+              console.error(`[CRON] Backfill ${analyticsPlatform} failed:`, err?.message || err);
+            }
+          }
+        }
+
         // Every 4 hours: refresh expiring OAuth tokens
         if (cron === "0 */4 * * *") {
           try {

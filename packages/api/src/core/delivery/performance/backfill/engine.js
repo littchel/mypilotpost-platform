@@ -53,7 +53,7 @@ export async function runBackfill(env, { brandId, platform, daysBack = 90 } = {}
 
   // Collect connections to process
   let query = `
-    SELECT id, brand_id, platform, account_id, access_token
+    SELECT id, brand_id, platform, account_id, access_token, selected_resource_id
     FROM social_connections
     WHERE status = 'active'
   `;
