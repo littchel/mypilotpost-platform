@@ -1,5 +1,6 @@
 import { decrypt } from "../../../../lib/crypto.js";
 import { normalizeMetrics } from "../normalizer.js";
+import { ensureValidConnection } from "../../../../integrations/refresh_manager.js";
 
 import { fetchInstagramHistorical }           from "./adapters/instagram.js";
 import { fetchThreadsHistorical }             from "./adapters/threads.js";
@@ -53,7 +54,7 @@ export async function runBackfill(env, { brandId, platform, daysBack = 90 } = {}
 
   // Collect connections to process
   let query = `
-    SELECT id, brand_id, platform, account_id, access_token, selected_resource_id
+    SELECT *
     FROM social_connections
     WHERE status = 'active'
   `;
@@ -64,9 +65,21 @@ export async function runBackfill(env, { brandId, platform, daysBack = 90 } = {}
   const connsRes = await db.prepare(query).bind(...binds).all();
   const connections = connsRes.results || [];
 
-  for (const conn of connections) {
+  for (let conn of connections) {
     const adapter = ADAPTERS[conn.platform];
     if (!adapter) continue;
+
+    // Refresh token if expired before attempting the backfill
+    try {
+      conn = await ensureValidConnection(db, conn, env);
+    } catch {
+      // Non-fatal — proceed with existing token; adapter will surface the auth error
+    }
+
+    if (conn.status !== 'active') {
+      errors.push({ platform: conn.platform, brand_id: conn.brand_id, message: `Connection status: ${conn.status}` });
+      continue;
+    }
 
     let accessToken;
     try {
