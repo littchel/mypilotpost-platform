@@ -203,6 +203,8 @@ import {
   deleteSchedule
 } from "./core/schedule/schedule.js";
 
+import { getCalendarItems } from "./core/schedule/calendar.js";
+
 /* ======================================================
    CAMPAIGNS V2
    ====================================================== */
@@ -1313,6 +1315,12 @@ export default {
            ];
            return json({ usage }, 200, getCorsHeaders(request));
         }
+         if (method === "GET" && path === "/api/customer/calendar")
+           return withCors(request, getCalendarItems(request, env, auth));
+
+         if (method === "GET" && path === "/api/customer/schedule")
+           return withCors(request, getSchedule(request, env, auth));
+
          if (method === "POST" && path === "/api/customer/schedule")
            return withCors(request, createSchedule(request, env, auth));
 
