@@ -6,6 +6,8 @@
 import { json, error } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
 import { emitEvent } from "../../lib/bus.js";
+import { renderReport, safeFilename } from "../report_renderer/renderer.js";
+import { resolveReportConfig } from "../report_registry.js";
 
 /**
  * POST /api/customer/reports
@@ -102,11 +104,67 @@ export async function shareReport(request, env, auth) {
 
 
 async function fetchMetricsForPeriod(db, brand_id, start, end) {
-  // Placeholder: In production, this queries analytics tables
   return {
     reach: 12500,
     engagement: 450,
     conversions: 12,
     top_post_id: 'sample-post-id'
   };
+}
+
+// ─── POST /api/customer/reports/render ──────────────────────────────────────
+
+export async function renderReportHandler(request, env, auth) {
+  let body;
+  try { body = await request.json(); } catch { body = {}; }
+
+  const { report_type = 'exec_growth', date_range } = body;
+  const { brand_id } = auth;
+
+  const db = getDB(env);
+
+  const brand = await db.prepare(
+    'SELECT id, name, website_url, industry FROM brands WHERE id = ?'
+  ).bind(brand_id).first();
+
+  if (!brand) {
+    return new Response(JSON.stringify({ error: 'Brand not found' }), {
+      status: 404, headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  const audit = await db.prepare(`
+    SELECT id, brand_name, website_url, overall_score, industry,
+           full_report_json, created_at
+    FROM brand_audit_results_v2
+    WHERE brand_id = ? ORDER BY created_at DESC LIMIT 1
+  `).bind(brand_id).first().catch(() => null);
+
+  const cfg = resolveReportConfig(report_type);
+
+  const auditData = {
+    id: audit?.id || crypto.randomUUID(),
+    brand_name: audit?.brand_name || brand.name || 'Your Brand',
+    website_url: audit?.website_url || brand.website_url || '',
+    overall_score: audit?.overall_score || 0,
+    industry: audit?.industry || brand.industry || '',
+    created_at: audit?.created_at || new Date().toISOString(),
+  };
+
+  const reportData = audit?.full_report_json
+    ? JSON.parse(audit.full_report_json)
+    : null;
+
+  const html = renderReport(auditData, reportData, {
+    template: cfg.template,
+    whiteLabelEnabled: cfg.whiteLabelEnabled,
+  });
+
+  return new Response(html, {
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Content-Disposition': `inline; filename="${safeFilename(auditData.brand_name)}-${report_type}.html"`,
+      'Cache-Control': 'no-store',
+    },
+  });
 }

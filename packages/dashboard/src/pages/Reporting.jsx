@@ -1,458 +1,429 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { 
-  FileText, Download, Share2, Calendar, Layout, 
-  ChevronRight, Plus, History, Clock, FileCheck,
-  TrendingUp, BarChart, Settings, CheckCircle2,
-  AlertCircle, ArrowRight, Printer, Copy, Search,
-  ToggleLeft as Toggle, Mail, Link, RefreshCw, Target,
-  MessageSquare, Lock, Edit3
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import {
+  FileText, Download, Share2, Calendar, Layout,
+  Plus, History, Clock, FileCheck,
+  TrendingUp, BarChart, Target,
+  ArrowRight, Copy, Search,
+  Mail, RefreshCw, ExternalLink, Printer,
 } from "lucide-react";
-import { 
-  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip,
-  BarChart as RechartsBarChart, Bar
-} from "recharts";
 
 import { apiSafeFetch } from "../lib/api/client";
 
-/**
- * Agency-Grade Executive Reporting Engine
- */
+// ── Registry (mirrors report_registry.js) ───────────────────────────────────
 
-// ── Shared Constants ─────────────────────────────────────────────────────────
-
-const REPORT_TYPES = [
-  { id: "exec_growth", label: "Executive Growth Report", icon: Target },
-  { id: "social_perf", label: "Social Performance Report", icon: BarChart },
-  { id: "seo_vis", label: "SEO Visibility Report", icon: Search },
-  { id: "comp_bench", label: "Competitive Benchmark Report", icon: TrendingUp },
-  { id: "brand_health", label: "Brand Health Report", icon: FileCheck },
-  { id: "qbr", label: "Quarterly Business Review", icon: Calendar },
-  { id: "content_perf", label: "Content Performance Report", icon: FileText },
-  { id: "audience_intel", label: "Audience Intelligence Report", icon: Share2 },
-  { id: "campaign_impact", label: "Campaign Impact Report", icon: Target },
-  { id: "whitelabel", label: "White-label Client Report", icon: Briefcase },
-  { id: "boardroom", label: "Boardroom Strategic Report", icon: Layout },
-  { id: "agency_perf", label: "Agency Performance Report", icon: BarChart },
-];
-
-function Briefcase(props) {
-  return <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>;
-}
+const REPORT_REGISTRY = {
+  exec_growth:     { template: 'executive',   label: 'Executive Growth Report',        icon: Target },
+  social_perf:     { template: 'agency',      label: 'Social Performance Report',      icon: BarChart },
+  seo_vis:         { template: 'executive',   label: 'SEO Visibility Report',          icon: Search },
+  comp_bench:      { template: 'agency',      label: 'Competitive Benchmark Report',   icon: TrendingUp },
+  brand_health:    { template: 'executive',   label: 'Brand Health Report',            icon: FileCheck },
+  qbr:             { template: 'executive',   label: 'Quarterly Business Review',      icon: Calendar },
+  content_perf:    { template: 'agency',      label: 'Content Performance Report',     icon: FileText },
+  audience_intel:  { template: 'executive',   label: 'Audience Intelligence Report',   icon: Share2 },
+  campaign_impact: { template: 'agency',      label: 'Campaign Impact Report',         icon: Target },
+  whitelabel:      { template: 'white_label', label: 'White-label Client Report',      icon: Layout },
+  boardroom:       { template: 'executive',   label: 'Boardroom Strategic Report',     icon: Layout },
+  agency_perf:     { template: 'agency',      label: 'Agency Performance Report',      icon: BarChart },
+};
 
 const REPORT_MODES = [
-  { id: "snapshot", label: "Quick Snapshot", desc: "1–2 pages. Best for weekly summaries and internal updates." },
-  { id: "executive", label: "Executive Report", desc: "6–15 pages. Best for leadership, agencies, and strategic reviews." },
-  { id: "deck", label: "Strategic Deck", desc: "Presentation style. Best for pitches, QBRs, and boardroom reviews." },
+  { id: 'snapshot',  label: 'Quick Snapshot',   desc: '1–2 pages. Weekly summaries and internal updates.' },
+  { id: 'executive', label: 'Executive Report', desc: '6–15 pages. Leadership, agencies, and strategic reviews.' },
+  { id: 'deck',      label: 'Strategic Deck',   desc: 'Presentation style. QBRs and boardroom reviews.' },
 ];
 
-// ── Components ───────────────────────────────────────────────────────────────
+const DATE_RANGES = ['Last 7 Days', 'Last 30 Days', 'Last 90 Days', 'This Quarter', 'Last Quarter', 'Year to Date'];
 
-const LockedDataBadge = () => (
-  <div className="d-flex align-items-center gap-1 extra-small text-muted fw-bold mb-2">
-    <Lock size={10} /> LOCKED DATA LAYER
-  </div>
-);
+// ── Fetch helper that returns raw HTML ────────────────────────────────────────
 
-const EditableLayerBadge = () => (
-  <div className="d-flex align-items-center gap-1 extra-small text-primary fw-bold mb-2">
-    <Edit3 size={10} /> EDITABLE NARRATIVE LAYER
-  </div>
-);
+async function fetchReportHTML(reportType, brandId) {
+  const token = localStorage.getItem('mpp_token');
+  const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+  const res = await fetch(`${apiBase}/api/customer/reports/render`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': token ? `Bearer ${token}` : '',
+    },
+    body: JSON.stringify({ report_type: reportType, brand_id: brandId }),
+  });
+  if (!res.ok) throw new Error(`Render failed: ${res.status}`);
+  return res.text();
+}
 
-const MetricCard = ({ label, value, delta }) => (
-  <div className="card-workspace p-3 bg-white" style={{ position: 'relative' }}>
-    <div style={{ position: 'absolute', top: 10, right: 10 }}><Lock size={12} className="text-muted opacity-25" /></div>
-    <div className="extra-small fw-bold text-muted text-uppercase mb-1">{label}</div>
-    <div className="h4 fw-bold mb-0 text-main">{value || "0"}</div>
-    {delta !== undefined && (
-      <div className={`extra-small fw-bold mt-1 ${delta >= 0 ? 'text-success' : 'text-danger'}`}>
-        {delta >= 0 ? '↑' : '↓'} {Math.abs(delta)}% vs last period
-      </div>
-    )}
-  </div>
-);
-
-const RichTextEditor = ({ value, onChange, placeholder }) => (
-  <div 
-    className="rich-editor p-3 rounded-lg border"
-    contentEditable
-    suppressContentEditableWarning
-    onBlur={(e) => onChange(e.currentTarget.innerHTML)}
-    placeholder={placeholder}
-    dangerouslySetInnerHTML={{ __html: value }}
-    style={{ minHeight: '120px', outline: 'none', background: '#f8fafc', borderColor: '#e2e8f0', transition: 'border-color 0.2s, background 0.2s' }}
-    onFocus={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#2563eb'; }}
-  />
-);
-
-// ── Main Page Component ──────────────────────────────────────────────────────
+// ── Main Component ────────────────────────────────────────────────────────────
 
 const Reporting = ({ activeBrand }) => {
-  const [view, setView] = useState("history"); // history | builder | preview
+  const [view, setView] = useState('history');
   const [reportsState, setReportsState] = useState({ status: 'loading', data: null });
-  const [reportConfig, setReportConfig] = useState({
-    type: "exec_growth",
-    mode: "executive",
-    dateRange: "Last 30 Days",
-  });
-  
-  const [narrative, setNarrative] = useState({
-    summary: "",
-    insights: "",
-    recommendations: "",
-    roadmap: ""
-  });
-
-  const [analytics, setAnalytics] = useState({
-    summary: { reach: "—", reachDelta: null, engagement: "—", engagementDelta: null, conversions: "—", conversionsDelta: null },
-    timeSeries: []
-  });
+  const [reportConfig, setReportConfig] = useState({ type: 'exec_growth', mode: 'executive', dateRange: 'Last 30 Days' });
+  const [renderState, setRenderState] = useState({ status: 'idle', blobUrl: null, error: null });
+  const [shareCopied, setShareCopied] = useState(false);
+  const iframeRef = useRef(null);
 
   const fetchReports = useCallback(async () => {
-    if (!activeBrand?.id) {
-      setReportsState({ status: "empty", data: [] });
-      return;
-    }
+    if (!activeBrand?.id) { setReportsState({ status: 'empty', data: [] }); return; }
     setReportsState({ status: 'loading', data: null });
-    const [result, overviewRes, timeseriesRes] = await Promise.all([
-      apiSafeFetch(`/api/customer/reports?brandId=${activeBrand.id}`),
-      apiSafeFetch(`/api/customer/analytics/overview?brandId=${activeBrand.id}`),
-      apiSafeFetch(`/api/customer/analytics/timeseries?brandId=${activeBrand.id}&range=30d`)
-    ]);
+    const result = await apiSafeFetch(`/api/customer/reports?brandId=${activeBrand.id}`);
     setReportsState(result);
-    if (overviewRes.status === 'success') {
-      const s = overviewRes.data?.summary || {};
-      const g = overviewRes.data?.growth || {};
-      setAnalytics(prev => ({
-        ...prev,
-        summary: {
-          reach: s.reach ?? "—",
-          reachDelta: g.reach != null ? parseFloat(g.reach) : null,
-          engagement: s.engagement_rate ?? "—",
-          engagementDelta: g.engagement_rate != null ? parseFloat(g.engagement_rate) : null,
-          conversions: s.published ?? "—",
-          conversionsDelta: g.posts != null ? parseFloat(g.posts) : null
-        }
-      }));
-    }
-    if (timeseriesRes.status === 'success' && Array.isArray(timeseriesRes.data)) {
-      setAnalytics(prev => ({ ...prev, timeSeries: timeseriesRes.data }));
-    }
   }, [activeBrand]);
 
   useEffect(() => {
-    const timer = setTimeout(() => fetchReports(), 0);
-    return () => clearTimeout(timer);
+    const t = setTimeout(fetchReports, 0);
+    return () => clearTimeout(t);
   }, [fetchReports]);
 
-  const handleExportPDF = () => {
-    window.print();
+  // Revoke blob URL on unmount to avoid memory leak
+  useEffect(() => {
+    return () => { if (renderState.blobUrl) URL.revokeObjectURL(renderState.blobUrl); };
+  }, [renderState.blobUrl]);
+
+  const handleGenerate = async () => {
+    if (renderState.blobUrl) URL.revokeObjectURL(renderState.blobUrl);
+    setRenderState({ status: 'loading', blobUrl: null, error: null });
+    try {
+      const html = await fetchReportHTML(reportConfig.type, activeBrand?.id);
+      const blob = new Blob([html], { type: 'text/html' });
+      const blobUrl = URL.createObjectURL(blob);
+      setRenderState({ status: 'ready', blobUrl, error: null });
+    } catch (err) {
+      setRenderState({ status: 'error', blobUrl: null, error: err.message });
+    }
   };
 
-  if (reportsState.status === 'loading') {
+  const handleOpenReport = () => {
+    if (renderState.blobUrl) window.open(renderState.blobUrl, '_blank');
+  };
+
+  const handleExportPDF = () => {
+    if (!renderState.blobUrl) return;
+    const win = window.open(renderState.blobUrl, '_blank');
+    if (win) setTimeout(() => win.print(), 900);
+  };
+
+  const handleShareReport = async () => {
+    const text = `${window.location.origin}/dashboard/reporting — ${REPORT_REGISTRY[reportConfig.type]?.label || 'Report'} for ${activeBrand?.name || 'Brand'}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2200);
+    } catch { /* silent */ }
+  };
+
+  const handleSave = async () => {
+    if (!activeBrand?.id) return;
+    await apiSafeFetch('/api/customer/reports', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: `${REPORT_REGISTRY[reportConfig.type]?.label} — ${reportConfig.dateRange}`,
+        date_range_start: new Date().toISOString().slice(0, 10),
+        date_range_end: new Date().toISOString().slice(0, 10),
+        report_type: reportConfig.type,
+      }),
+    });
+    setView('history');
+    fetchReports();
+  };
+
+  if (reportsState.status === 'loading' && view === 'history') {
     return (
-      <div className="d-flex flex-column align-items-center justify-content-center py-5" style={{ minHeight: '400px' }}>
-        <RefreshCw className="text-primary animate-spin mb-3" size={32} />
-        <div className="fw-bold text-muted">Loading Strategic Reports...</div>
+      <div className="d-flex flex-column align-items-center justify-content-center py-5" style={{ minHeight: 400 }}>
+        <RefreshCw className="text-primary mb-3" size={32} style={{ animation: 'spin 1s linear infinite' }} />
+        <div className="fw-bold text-muted small">Loading reports…</div>
       </div>
     );
   }
 
   const history = reportsState.data || [];
+  const selectedType = REPORT_REGISTRY[reportConfig.type];
 
   return (
-    <div className="reporting-engine animate__animated animate__fadeIn p-2">
-      
-      {/* ── Header System ── */}
+    <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+
+      {/* ── Header ── */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <div className="extra-small fw-bold text-primary text-uppercase tracking-widest mb-1">Executive Briefings</div>
-          <h4 className="fw-bold mb-1 text-main">Reporting & Strategy</h4>
+          <div className="extra-small fw-bold text-primary text-uppercase mb-1" style={{ letterSpacing: '0.1em' }}>Executive Briefings</div>
+          <h4 className="fw-bold mb-1" style={{ color: 'var(--text-main)' }}>Reporting &amp; Strategy</h4>
           <p className="text-muted extra-small mb-0">Generate strategic presentations, performance reviews, and client decks.</p>
         </div>
-        {view === "history" && (
-          <button className="btn btn-primary btn-sm px-4 d-flex align-items-center gap-2 extra-small fw-bold shadow-sm" onClick={() => setView("builder")} style={{ borderRadius: 8 }}>
-            <Plus size={16} /> Build Executive Report
+        {view === 'history' && (
+          <button className="btn btn-primary btn-sm px-4 d-flex align-items-center gap-2 extra-small fw-bold"
+            style={{ borderRadius: 8 }} onClick={() => setView('builder')}>
+            <Plus size={15} /> Build Report
           </button>
         )}
-        {view !== "history" && (
-          <button className="btn btn-light btn-sm extra-small fw-bold shadow-sm" onClick={() => setView("history")} style={{ borderRadius: 8 }}>
-            <History size={16} className="me-2" /> View History
+        {view !== 'history' && (
+          <button className="btn btn-light btn-sm extra-small fw-bold"
+            style={{ borderRadius: 8 }} onClick={() => setView('history')}>
+            <History size={14} className="me-1" /> History
           </button>
         )}
       </div>
 
-      {/* ── VIEW: HISTORY ── */}
-      {view === "history" && (
+      {/* ══ HISTORY ══════════════════════════════════════════════════════════ */}
+      {view === 'history' && (
         <div className="row g-4">
           <div className="col-lg-8">
-            <div className="card-workspace p-0 overflow-hidden bg-white shadow-sm" style={{ borderRadius: 16 }}>
+            <div className="card-workspace p-0 overflow-hidden bg-white" style={{ borderRadius: 14 }}>
               <div className="p-3 border-bottom d-flex justify-content-between align-items-center">
-                <h6 className="fw-bold mb-0 text-main">Recent Reports</h6>
-                <div className="d-flex align-items-center gap-2 extra-small text-muted fw-bold">
-                  <Toggle size={16} className="text-primary" /> Monthly Automation Active
-                </div>
+                <h6 className="fw-bold mb-0" style={{ color: 'var(--text-main)' }}>Recent Reports</h6>
+                <span className="extra-small text-muted fw-bold">All render through the same engine</span>
               </div>
-              <div className="table-responsive">
-                <table className="table table-hover mb-0">
-                  <thead className="bg-light">
-                    <tr>
-                      <th className="px-4 py-3 extra-small fw-bold text-muted text-uppercase">Briefing Type</th>
-                      <th className="py-3 extra-small fw-bold text-muted text-uppercase">Period</th>
-                      <th className="py-3 extra-small fw-bold text-muted text-uppercase">Status</th>
-                      <th className="text-end px-4 py-3 extra-small fw-bold text-muted text-uppercase">Actions</th>
+              <table className="table table-hover mb-0">
+                <thead className="bg-light">
+                  <tr>
+                    <th className="px-4 py-3 extra-small fw-bold text-muted text-uppercase">Report</th>
+                    <th className="py-3 extra-small fw-bold text-muted text-uppercase">Date</th>
+                    <th className="py-3 extra-small fw-bold text-muted text-uppercase">Status</th>
+                    <th className="text-end px-4 py-3 extra-small fw-bold text-muted text-uppercase">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.length > 0 ? history.map(r => (
+                    <tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => setView('builder')}>
+                      <td className="px-4 py-3">
+                        <div className="fw-bold small" style={{ color: 'var(--text-main)' }}>{r.title}</div>
+                        <div className="extra-small text-muted">{r.report_type}</div>
+                      </td>
+                      <td className="small text-muted">{new Date(r.created_at).toLocaleDateString()}</td>
+                      <td><span className="badge bg-success bg-opacity-10 text-success extra-small fw-bold rounded-pill">Generated</span></td>
+                      <td className="text-end px-4">
+                        <div className="d-flex justify-content-end gap-2">
+                          <button className="btn btn-link btn-sm p-0 text-muted"><Download size={15} /></button>
+                          <button className="btn btn-link btn-sm p-0 text-muted"><Copy size={15} /></button>
+                        </div>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {history.length > 0 ? history.map(report => (
-                      <tr key={report.id} style={{ cursor: 'pointer' }} onClick={() => setView("preview")}>
-                        <td className="px-4 py-3">
-                          <div className="fw-bold small text-main">{report.title}</div>
-                          <div className="extra-small text-muted">{report.report_type}</div>
-                        </td>
-                        <td className="small fw-medium text-muted">{new Date(report.created_at).toLocaleDateString()}</td>
-                        <td><span className="badge bg-success bg-opacity-10 text-success extra-small fw-bold rounded-pill">Generated</span></td>
-                        <td className="text-end px-4">
-                          <div className="d-flex justify-content-end gap-2">
-                            <button className="btn btn-link btn-sm p-0 text-muted hover-primary"><Download size={16} /></button>
-                            <button className="btn btn-link btn-sm p-0 text-muted hover-primary"><Copy size={16} /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    )) : (
-                      <tr>
-                        <td colSpan="4" className="text-center py-5 text-muted small">No reports generated yet. Build your first executive briefing.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                  )) : (
+                    <tr>
+                      <td colSpan="4" className="text-center py-5 text-muted small">
+                        No reports yet. Build your first executive briefing.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
-          
+
           <div className="col-lg-4">
-            <div className="card-workspace p-4 mb-4 bg-white shadow-sm" style={{ borderRadius: 16 }}>
-              <h6 className="fw-bold mb-3 d-flex align-items-center gap-2 text-main">
-                <Clock size={18} className="text-primary" /> Automated Delivery
+            <div className="card-workspace p-4 bg-white" style={{ borderRadius: 14 }}>
+              <h6 className="fw-bold mb-3 d-flex align-items-center gap-2" style={{ color: 'var(--text-main)' }}>
+                <Clock size={16} className="text-primary" /> Automated Delivery
               </h6>
-              <div className="extra-small text-muted mb-3 lh-base">Your next strategic review will generate automatically and notify stakeholders.</div>
-              <div className="bg-light p-3 rounded-3 border">
+              <p className="extra-small text-muted mb-3">Your next review will generate automatically and notify stakeholders.</p>
+              <div className="bg-light p-3 rounded border">
                 <div className="d-flex justify-content-between align-items-center mb-1">
-                  <span className="fw-bold small text-main">Executive Growth Report</span>
+                  <span className="fw-bold small" style={{ color: 'var(--text-main)' }}>Executive Growth Report</span>
                   <span className="extra-small text-primary fw-bold">In 12 days</span>
                 </div>
                 <div className="extra-small text-muted">Format: Strategic Deck</div>
               </div>
-              <button className="btn btn-outline-secondary w-100 mt-3 extra-small fw-bold rounded-3">Configure Automation</button>
+              <button className="btn btn-outline-secondary w-100 mt-3 extra-small fw-bold rounded">Configure Automation</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── VIEW: BUILDER (WIZARD) ── */}
-      {view === "builder" && (
-        <div className="builder-wizard card-workspace p-5 mx-auto bg-white shadow-sm" style={{ maxWidth: '960px', borderRadius: 20 }}>
-          <h4 className="fw-bold mb-1 text-main">Configure Executive Briefing</h4>
-          <p className="text-muted small mb-5">Select the reporting mode and intelligence template for this presentation.</p>
-          
+      {/* ══ BUILDER ══════════════════════════════════════════════════════════ */}
+      {view === 'builder' && (
+        <div className="card-workspace p-5 mx-auto bg-white" style={{ maxWidth: 860, borderRadius: 20 }}>
+          <h4 className="fw-bold mb-1" style={{ color: 'var(--text-main)' }}>Configure Report</h4>
+          <p className="text-muted small mb-5">Select mode and report type. The renderer applies cover, TOC, sections, and back page automatically.</p>
+
+          {/* Mode */}
           <div className="mb-5">
-            <label className="small fw-bold text-main mb-3 d-block">1. Select Reporting Mode</label>
+            <label className="small fw-bold mb-3 d-block" style={{ color: 'var(--text-main)' }}>1. Reporting Mode</label>
             <div className="row g-3">
               {REPORT_MODES.map(m => (
                 <div key={m.id} className="col-md-4">
-                  <div 
-                    className={`p-3 border rounded-3 h-100 cursor-pointer transition-all ${reportConfig.mode === m.id ? 'border-primary bg-primary bg-opacity-10' : 'hover-bg-light'}`}
-                    onClick={() => setReportConfig({...reportConfig, mode: m.id})}
-                  >
-                    <div className="small fw-bold mb-1 text-main">{m.label}</div>
-                    <div className="extra-small text-muted lh-base">{m.desc}</div>
+                  <div
+                    className="p-3 border rounded h-100 cursor-pointer"
+                    style={{ borderColor: reportConfig.mode === m.id ? 'var(--pilot-blue)' : 'var(--border-subtle)', background: reportConfig.mode === m.id ? 'var(--pilot-blue-light)' : '#fff', transition: 'all .15s' }}
+                    onClick={() => setReportConfig(c => ({ ...c, mode: m.id }))}>
+                    <div className="small fw-bold mb-1" style={{ color: 'var(--text-main)' }}>{m.label}</div>
+                    <div className="extra-small text-muted">{m.desc}</div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="mb-4">
-            <label className="small fw-bold text-main mb-3 d-block">2. Select Intelligence Template</label>
-            <div className="row g-3">
-              {REPORT_TYPES.map(t => (
-                <div key={t.id} className="col-md-3">
-                  <div 
-                    className={`p-3 border rounded-3 h-100 cursor-pointer transition-all ${reportConfig.type === t.id ? 'border-primary bg-primary bg-opacity-10' : 'hover-bg-light'}`}
-                    onClick={() => setReportConfig({...reportConfig, type: t.id})}
-                  >
-                    <t.icon size={20} className={`${reportConfig.type === t.id ? 'text-primary' : 'text-muted'} mb-2`} />
-                    <div className="small fw-bold text-main lh-sm">{t.label}</div>
+          {/* Type */}
+          <div className="mb-5">
+            <label className="small fw-bold mb-3 d-block" style={{ color: 'var(--text-main)' }}>2. Report Type</label>
+            <div className="row g-2">
+              {Object.entries(REPORT_REGISTRY).map(([id, cfg]) => {
+                const Icon = cfg.icon;
+                const active = reportConfig.type === id;
+                return (
+                  <div key={id} className="col-md-3">
+                    <div
+                      className="p-3 border rounded cursor-pointer"
+                      style={{ borderColor: active ? 'var(--pilot-blue)' : 'var(--border-subtle)', background: active ? 'var(--pilot-blue-light)' : '#fff', transition: 'all .15s' }}
+                      onClick={() => setReportConfig(c => ({ ...c, type: id }))}>
+                      <Icon size={18} style={{ color: active ? 'var(--pilot-blue)' : 'var(--text-muted)', marginBottom: 6 }} />
+                      <div className="small fw-bold lh-sm" style={{ color: 'var(--text-main)', fontSize: '0.78rem' }}>{cfg.label}</div>
+                      <div className="extra-small text-muted mt-1" style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{cfg.template}</div>
+                    </div>
                   </div>
-                </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Date range */}
+          <div className="mb-5">
+            <label className="small fw-bold mb-3 d-block" style={{ color: 'var(--text-main)' }}>3. Date Range</label>
+            <div className="d-flex flex-wrap gap-2">
+              {DATE_RANGES.map(r => (
+                <button key={r}
+                  className="btn btn-sm extra-small fw-bold"
+                  style={{ borderRadius: 8, border: `1.5px solid ${reportConfig.dateRange === r ? 'var(--pilot-blue)' : 'var(--border-subtle)'}`, background: reportConfig.dateRange === r ? 'var(--pilot-blue-light)' : '#fff', color: reportConfig.dateRange === r ? 'var(--pilot-blue)' : 'var(--text-muted)' }}
+                  onClick={() => setReportConfig(c => ({ ...c, dateRange: r }))}>
+                  {r}
+                </button>
               ))}
             </div>
           </div>
 
-          <div className="d-flex justify-content-end gap-3 mt-5 pt-4 border-top">
-             <button className="btn btn-light btn-sm px-4 fw-bold rounded-3" onClick={() => setView("history")}>Cancel</button>
-             <button className="btn btn-primary btn-sm px-5 fw-bold rounded-3 shadow-sm" onClick={() => setView("preview")}>Build Report Narrative <ArrowRight size={16} className="ms-2" /></button>
+          <div className="d-flex justify-content-end gap-3 pt-4 border-top">
+            <button className="btn btn-light btn-sm px-4 fw-bold rounded" onClick={() => setView('history')}>Cancel</button>
+            <button className="btn btn-primary btn-sm px-5 fw-bold rounded d-flex align-items-center gap-2"
+              onClick={() => { setView('preview'); handleGenerate(); }}>
+              Preview Report <ArrowRight size={15} />
+            </button>
           </div>
         </div>
       )}
 
-      {/* ── VIEW: PREVIEW & EDITOR ── */}
-      {view === "preview" && (
-        <div className={`report-document mode-${reportConfig.mode} animate__animated animate__fadeInUp`}>
-          <div className="report-actions-bar p-3 mb-4 bg-white border rounded-3 shadow-sm d-flex justify-content-between align-items-center sticky-top" style={{ top: 16, zIndex: 100 }}>
-            <div className="d-flex gap-2">
-              <button onClick={handleExportPDF} className="btn btn-outline-secondary btn-sm extra-small fw-bold d-flex align-items-center gap-2 rounded-3"><Printer size={14} /> Export PDF</button>
-              <button className="btn btn-outline-secondary btn-sm extra-small fw-bold d-flex align-items-center gap-2 rounded-3"><Share2 size={14} /> Share Link</button>
+      {/* ══ PREVIEW (split: settings left, iframe right) ═════════════════════ */}
+      {view === 'preview' && (
+        <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+
+          {/* ── Left: settings + actions ── */}
+          <div style={{ width: 280, flexShrink: 0, position: 'sticky', top: 16 }}>
+
+            {/* Config summary */}
+            <div className="card-workspace p-4 bg-white mb-3" style={{ borderRadius: 14 }}>
+              <div className="extra-small fw-bold text-muted text-uppercase mb-3" style={{ letterSpacing: '0.08em' }}>Report Configuration</div>
+
+              <div className="mb-3">
+                <div className="extra-small fw-bold text-muted mb-1">Type</div>
+                <div className="small fw-bold" style={{ color: 'var(--text-main)' }}>{selectedType?.label}</div>
+                <div className="extra-small text-muted" style={{ textTransform: 'uppercase', fontSize: '0.6rem', letterSpacing: '0.06em' }}>
+                  Template: {selectedType?.template}
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <div className="extra-small fw-bold text-muted mb-1">Mode</div>
+                <div className="small" style={{ color: 'var(--text-main)' }}>{REPORT_MODES.find(m => m.id === reportConfig.mode)?.label}</div>
+              </div>
+
+              <div className="mb-4">
+                <div className="extra-small fw-bold text-muted mb-1">Brand</div>
+                <div className="small" style={{ color: 'var(--text-main)' }}>{activeBrand?.name || '—'}</div>
+              </div>
+
+              <button className="btn btn-outline-secondary w-100 extra-small fw-bold rounded mb-2"
+                onClick={() => setView('builder')}>
+                ← Reconfigure
+              </button>
+              <button className="btn btn-primary w-100 extra-small fw-bold rounded d-flex align-items-center justify-content-center gap-2"
+                onClick={handleGenerate} disabled={renderState.status === 'loading'}>
+                {renderState.status === 'loading'
+                  ? <><RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> Generating…</>
+                  : <><RefreshCw size={13} /> Regenerate</>}
+              </button>
             </div>
-            <div className="d-flex align-items-center gap-3">
-              <span className="extra-small text-primary fw-bold bg-primary bg-opacity-10 px-2 py-1 rounded">Drafting Mode Active</span>
-              <button className="btn btn-primary btn-sm px-4 extra-small fw-bold rounded-3 shadow-sm" onClick={() => setView("history")}>Save Briefing</button>
-            </div>
+
+            {/* Actions (only when ready) */}
+            {renderState.status === 'ready' && (
+              <div className="card-workspace p-4 bg-white mb-3" style={{ borderRadius: 14 }}>
+                <div className="extra-small fw-bold text-muted text-uppercase mb-3" style={{ letterSpacing: '0.08em' }}>Export &amp; Share</div>
+                <div className="d-flex flex-column gap-2">
+                  <button className="btn btn-outline-secondary btn-sm extra-small fw-bold rounded d-flex align-items-center gap-2"
+                    onClick={handleOpenReport}>
+                    <ExternalLink size={13} /> Open Report
+                  </button>
+                  <button className="btn btn-primary btn-sm extra-small fw-bold rounded d-flex align-items-center gap-2"
+                    onClick={handleExportPDF}>
+                    <Printer size={13} /> Export PDF
+                  </button>
+                  <button className="btn btn-outline-secondary btn-sm extra-small fw-bold rounded d-flex align-items-center gap-2"
+                    onClick={handleShareReport}>
+                    {shareCopied ? <><Copy size={13} /> Copied!</> : <><Share2 size={13} /> Copy Link</>}
+                  </button>
+                  <button className="btn btn-outline-secondary btn-sm extra-small fw-bold rounded d-flex align-items-center gap-2"
+                    onClick={handleSave}>
+                    <FileCheck size={13} /> Save to History
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {renderState.status === 'error' && (
+              <div className="alert alert-danger extra-small p-3" style={{ borderRadius: 10 }}>
+                <strong>Render failed.</strong><br />{renderState.error || 'Please try again.'}
+              </div>
+            )}
           </div>
 
-          <div className="document-container bg-white shadow-lg mx-auto position-relative print-container" style={{ maxWidth: '850px', minHeight: '1100px' }}>
-            
-            {/* 1. Cover Page */}
-            <div className="report-cover" style={{ padding: '120px 60px', borderBottom: '1px solid #f1f5f9', background: 'linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)' }}>
-              <div className="d-flex justify-content-between align-items-start mb-5">
-                <div>
-                  <div className="fw-bold text-primary tracking-widest text-uppercase extra-small mb-2">Strategic Intelligence Briefing</div>
-                  <h1 className="fw-bold text-main mb-3" style={{ fontSize: '2.5rem', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
-                    {(REPORT_TYPES.find(t => t.id === reportConfig.type))?.label}
-                  </h1>
-                </div>
-                <div className="text-end">
-                  <div className="fw-bold text-main fs-5">myPilotPost</div>
-                  <div className="extra-small text-muted text-uppercase tracking-widest mt-1">Growth Intelligence</div>
-                </div>
-              </div>
-              
-              <div className="mt-5 pt-5">
-                <div className="row">
-                  <div className="col-6">
-                    <div className="extra-small text-muted text-uppercase fw-bold mb-1">Prepared For</div>
-                    <div className="fs-5 fw-bold text-main">{activeBrand?.name || "Global Brand Partner"}</div>
-                  </div>
-                  <div className="col-6 text-end">
-                    <div className="extra-small text-muted text-uppercase fw-bold mb-1">Analysis Period</div>
-                    <div className="fs-5 fw-bold text-main">{reportConfig.dateRange}</div>
-                    <div className="extra-small text-muted mt-1">Generated: {new Date().toLocaleDateString()}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
+          {/* ── Right: iframe preview ── */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="bg-white" style={{ borderRadius: 14, border: '1px solid var(--border-subtle)', overflow: 'hidden', boxShadow: '0 4px 24px rgba(0,0,0,.08)' }}>
 
-            <div className="p-5">
-              {/* 2. Executive Summary (Editable Narrative) */}
-              <div className="report-section mb-5 position-relative">
-                <EditableLayerBadge />
-                <h6 className="fw-bold text-main text-uppercase tracking-widest extra-small mb-3 pb-2 border-bottom">01 // Executive Summary</h6>
-                <RichTextEditor 
-                  value={narrative.summary} 
-                  onChange={(val) => setNarrative({...narrative, summary: val})} 
-                  placeholder="Enter strategic interpretation and executive diagnosis..."
+              {/* Browser chrome bar */}
+              <div style={{ padding: '10px 16px', background: 'var(--surface-secondary)', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#fc5c65', display: 'inline-block' }} />
+                <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ffd32a', display: 'inline-block' }} />
+                <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#05c46b', display: 'inline-block' }} />
+                <div style={{ flex: 1, background: '#fff', borderRadius: 6, padding: '3px 10px', fontSize: '0.72rem', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)', marginLeft: 8 }}>
+                  {selectedType?.label} — {activeBrand?.name || 'Brand'}
+                </div>
+              </div>
+
+              {/* States */}
+              {renderState.status === 'idle' && (
+                <div style={{ minHeight: 600, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: 'var(--text-muted)' }}>
+                  <FileText size={40} style={{ opacity: 0.3 }} />
+                  <div className="small fw-bold text-muted">Click "Preview Report" to generate</div>
+                </div>
+              )}
+
+              {renderState.status === 'loading' && (
+                <div style={{ minHeight: 600, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+                  <RefreshCw size={32} className="text-primary" style={{ animation: 'spin 1s linear infinite' }} />
+                  <div className="small fw-bold text-muted">Rendering report…</div>
+                  <div className="extra-small text-muted">Cover · TOC · 13 sections · Back page</div>
+                </div>
+              )}
+
+              {renderState.status === 'ready' && renderState.blobUrl && (
+                <iframe
+                  ref={iframeRef}
+                  src={renderState.blobUrl}
+                  title="Report Preview"
+                  style={{ width: '100%', height: '80vh', border: 'none', display: 'block' }}
+                  sandbox="allow-scripts allow-same-origin allow-popups allow-modals"
                 />
-              </div>
+              )}
 
-              {/* 3. Narrative Intelligence (Editable) */}
-              <div className="report-section mb-5 position-relative">
-                <EditableLayerBadge />
-                <h6 className="fw-bold text-main text-uppercase tracking-widest extra-small mb-3 pb-2 border-bottom">02 // Key Insights & Narrative</h6>
-                <RichTextEditor 
-                  value={narrative.insights} 
-                  onChange={(val) => setNarrative({...narrative, insights: val})} 
-                  placeholder="Document the 'why' behind the performance data..."
-                />
-              </div>
-
-              {/* 4. Benchmark & Analytics (Locked Data Layer) */}
-              <div className="report-section mb-5 position-relative">
-                <LockedDataBadge />
-                <h6 className="fw-bold text-main text-uppercase tracking-widest extra-small mb-3 pb-2 border-bottom">03 // Performance Benchmarks</h6>
-                
-                <div className="row g-3 mb-4">
-                  <div className="col-md-4"><MetricCard label="Total Audience Reach" value={analytics.summary?.reach} delta={analytics.summary?.reachDelta} /></div>
-                  <div className="col-md-4"><MetricCard label="Avg. Engagement Rate" value={analytics.summary?.engagement} delta={analytics.summary?.engagementDelta} /></div>
-                  <div className="col-md-4"><MetricCard label="Tracked Conversions" value={analytics.summary?.conversions} delta={analytics.summary?.conversionsDelta} /></div>
+              {renderState.status === 'error' && (
+                <div style={{ minHeight: 400, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, color: 'var(--status-danger)' }}>
+                  <div className="small fw-bold">Render failed — check brand data and try again.</div>
                 </div>
-
-                <div className="card-workspace p-4 border bg-white">
-                  <div className="extra-small fw-bold text-muted text-uppercase mb-3">Growth Trajectory</div>
-                  <div style={{ height: '240px' }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={analytics.timeSeries}>
-                        <defs>
-                          <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1}/>
-                            <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#64748b'}} dy={10} />
-                        <YAxis hide />
-                        <Tooltip contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                        <Area type="monotone" dataKey="value" stroke="#2563eb" fillOpacity={1} fill="url(#colorVal)" strokeWidth={3} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </div>
-
-              {/* 5. Strategic Recommendations (Editable) */}
-              <div className="report-section mb-5 position-relative">
-                <EditableLayerBadge />
-                <h6 className="fw-bold text-main text-uppercase tracking-widest extra-small mb-3 pb-2 border-bottom">04 // Strategic Recommendations</h6>
-                <RichTextEditor 
-                  value={narrative.recommendations} 
-                  onChange={(val) => setNarrative({...narrative, recommendations: val})} 
-                  placeholder="Detail the recommended actions to improve outcomes..."
-                />
-              </div>
-
-              {/* 6. Execution Roadmap (Editable) */}
-              <div className="report-section position-relative">
-                <EditableLayerBadge />
-                <h6 className="fw-bold text-main text-uppercase tracking-widest extra-small mb-3 pb-2 border-bottom">05 // Execution Roadmap</h6>
-                <RichTextEditor 
-                  value={narrative.roadmap} 
-                  onChange={(val) => setNarrative({...narrative, roadmap: val})} 
-                  placeholder="Outline the next 30-90 days of execution..."
-                />
-              </div>
-            </div>
-            
-            {/* Footer */}
-            <div className="px-5 py-4 border-top bg-light mt-4 d-flex justify-content-between align-items-center">
-              <div className="extra-small fw-bold text-muted">myPilotPost Intelligence Engine</div>
-              <div className="extra-small text-muted">CONFIDENTIAL</div>
+              )}
             </div>
           </div>
         </div>
       )}
 
       <style>{`
-        .reporting-engine { max-width: 1400px; margin: 0 auto; }
-        .hover-bg-light:hover { background: #f8fafc; }
-        .hover-primary:hover { color: #2563eb !important; }
-        
-        .rich-editor h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.75rem; color: #0f172a; }
-        .rich-editor p { font-size: 0.9rem; margin-bottom: 0.75rem; color: #334155; line-height: 1.6; }
-        .rich-editor ul { padding-left: 1.5rem; font-size: 0.9rem; color: #334155; line-height: 1.6; }
-        .rich-editor li { margin-bottom: 0.4rem; }
-        
-        /* Mode-specific styling */
-        .report-document.mode-snapshot .document-container { font-size: 0.9rem; }
-        .report-document.mode-deck .document-container { max-width: 1000px; font-size: 1.1rem; }
-        .report-document.mode-deck .report-cover { padding: 200px 80px; }
-        .report-document.mode-deck .MetricCard { transform: scale(1.05); margin-bottom: 1rem; }
-        
-        @media print {
-          body * { visibility: hidden; }
-          .print-container, .print-container * { visibility: visible; }
-          .print-container { position: absolute; left: 0; top: 0; width: 100%; max-width: 100%; box-shadow: none !important; }
-          .report-actions-bar { display: none !important; }
-          .rich-editor { border: none !important; background: transparent !important; padding: 0 !important; }
-          .badge, .lucide { display: none !important; } /* Hide badges/icons in print */
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .cursor-pointer { cursor: pointer; }
       `}</style>
     </div>
   );

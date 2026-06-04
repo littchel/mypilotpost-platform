@@ -1,0 +1,93 @@
+/* myPilotPost — Report Print Rules
+   A4 safe · browser Print→PDF · no PDF library
+   ─────────────────────────────────────────── */
+
+@page {
+  size: A4;
+  margin: 0;
+}
+
+@media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  body {
+    background: #fff !important;
+    margin: 0;
+    padding: 0;
+  }
+
+  .report-page {
+    box-shadow: none !important;
+    max-width: 100% !important;
+  }
+
+  /* ── Cover: fill A4 page ── */
+  .report-cover {
+    page-break-before: avoid;
+    page-break-after: always;
+    break-after: page;
+    min-height: 100vh;
+  }
+
+  /* ── Contents: own A4 page ── */
+  .report-contents {
+    page-break-before: always;
+    break-before: page;
+    page-break-after: always;
+    break-after: page;
+  }
+
+  /* ── Section explicit breaks ── */
+  .section-break-before {
+    page-break-before: always;
+    break-before: page;
+  }
+
+  /* ── Back page: own A4 page ── */
+  .report-backpage {
+    page-break-before: always;
+    break-before: page;
+    min-height: 100vh;
+  }
+
+  /* ── Keep cards intact ── */
+  .r-card,
+  .swot-cell,
+  .roadmap-col,
+  .r-grid-2,
+  .r-grid-3,
+  .r-grid-4,
+  .score-hero,
+  .dim-bars-group,
+  .cta-grid,
+  .platform-cards-grid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* ── Widows / orphans ── */
+  p {
+    widows: 3;
+    orphans: 3;
+  }
+
+  /* ── Section header stays with first card ── */
+  .section-header {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* ── Compact side padding ── */
+  .report-section {
+    padding-left: 40px !important;
+    padding-right: 40px !important;
+  }
+
+  a {
+    text-decoration: none !important;
+  }
+}

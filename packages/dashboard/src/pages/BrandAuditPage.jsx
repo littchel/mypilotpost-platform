@@ -169,6 +169,7 @@ const BrandAuditPage = () => {
   const [leadLoading, setLeadLoading] = useState(false);
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [brandNameHint, setBrandNameHint] = useState('');
+  const [shareCopied, setShareCopied] = useState(false);
 
   useEffect(() => {
     try {
@@ -237,7 +238,28 @@ const BrandAuditPage = () => {
     navigate(`/register?${p.toString()}`);
   };
 
-  const handleDownload = () => { if (auditResult?.audit_id) window.open(`/api/public/brand-audit/${auditResult.audit_id}/report`, '_blank'); };
+  const handleOpenReport = () => {
+    if (auditResult?.audit_id) window.open(`/api/public/brand-audit/${auditResult.audit_id}/report`, '_blank');
+  };
+
+  const handleDownloadPDF = () => {
+    if (auditResult?.audit_id) window.open(`/api/public/brand-audit/${auditResult.audit_id}/report?print=1`, '_blank');
+  };
+
+  const handleShareReport = async () => {
+    if (!auditResult?.audit_id) return;
+    const url = `${window.location.origin}/brand-audit?report=${auditResult.audit_id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2200);
+    } catch {
+      prompt('Copy this link:', url);
+    }
+  };
+
+  // keep for any legacy refs
+  const handleDownload = handleOpenReport;
 
   const handleRestart = () => { localStorage.removeItem(SESSION_KEY); setAuditResult(null); setStage(1); setError(''); };
 
@@ -352,12 +374,15 @@ const BrandAuditPage = () => {
               <img src="/logo-mpp.png" alt="myPilotPost" height="24" style={{ filter: 'brightness(10)' }} />
               <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.45)', marginLeft: 6 }}>Social Media Brand Audit</span>
             </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '4px 10px', borderRadius: 100, background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.15)' }}>
-                AI-Powered · Evidence-Based
-              </span>
-              <button className="ar-download-btn" onClick={handleDownload}>
-                <i className="fas fa-file-alt me-1"></i> Full Report
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <button className="ar-action-btn" onClick={handleOpenReport} title="Open full report in new tab">
+                <i className="fas fa-external-link-alt me-1"></i> Open Report
+              </button>
+              <button className="ar-action-btn ar-action-btn--primary" onClick={handleDownloadPDF} title="Opens report and triggers print dialog">
+                <i className="fas fa-file-pdf me-1"></i> Download PDF
+              </button>
+              <button className="ar-action-btn" onClick={handleShareReport} title="Copy shareable link">
+                {shareCopied ? <><i className="fas fa-check me-1"></i> Copied!</> : <><i className="fas fa-share-alt me-1"></i> Share</>}
               </button>
             </div>
           </div>
@@ -901,14 +926,24 @@ const BrandAuditPage = () => {
             </div>
           </div>
 
-          {/* ── Download CTA ────────────────────────────────────────────── */}
+          {/* ── Report Actions ────────────────────────────────────────────── */}
           <div className="ar-section">
-            <div style={{ padding: '20px', background: '#f8fafc', borderRadius: 14, border: '1px solid #e2e8f0', textAlign: 'center' }}>
-              <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>Download Your Full 13-Section Report</h4>
-              <p style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: 16 }}>Opens in browser — use File → Print → Save as PDF for a permanent copy.</p>
-              <button className="audit-btn-download" onClick={handleDownload} style={{ maxWidth: 340, margin: '0 auto' }}>
-                <i className="fas fa-file-alt me-2"></i> Download Full Report (PDF-ready)
-              </button>
+            <div style={{ padding: '20px', background: '#f8fafc', borderRadius: 14, border: '1px solid #e2e8f0' }}>
+              <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>Your Full 13-Section Executive Report</h4>
+              <p style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: 16 }}>Agency-quality cover · Table of contents · All 13 sections · Back page. Browser PDF — no library needed.</p>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <button className="audit-btn-download" style={{ flex: 1, minWidth: 140 }} onClick={handleOpenReport}>
+                  <i className="fas fa-external-link-alt me-2"></i> Open Report
+                </button>
+                <button className="audit-btn-primary" style={{ flex: 1, minWidth: 140, padding: '12px 16px' }} onClick={handleDownloadPDF}>
+                  <i className="fas fa-file-pdf me-2"></i> Download PDF
+                </button>
+                <button className="audit-btn-download" style={{ flex: 1, minWidth: 140 }} onClick={handleShareReport}>
+                  {shareCopied
+                    ? <><i className="fas fa-check me-2"></i> Link Copied!</>
+                    : <><i className="fas fa-share-alt me-2"></i> Share Report</>}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1003,6 +1038,10 @@ const BrandAuditPage = () => {
         .audit-trust { text-align:center; font-size:.72rem; color:#94a3b8; margin-bottom:0; }
         .audit-btn-download { width:100%; padding:13px 24px; background:#fff; color:#1e293b; border:1.5px solid #e2e8f0; border-radius:12px; font-weight:700; font-size:.9rem; cursor:pointer; transition:all .2s; display:flex; align-items:center; justify-content:center; }
         .audit-btn-download:hover { background:#f8fafc; border-color:#94a3b8; }
+        .ar-action-btn { padding:6px 12px; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); border-radius:8px; color:rgba(255,255,255,.85); font-size:.72rem; font-weight:700; cursor:pointer; transition:all .2s; white-space:nowrap; display:inline-flex; align-items:center; }
+        .ar-action-btn:hover { background:rgba(255,255,255,.18); border-color:rgba(255,255,255,.35); }
+        .ar-action-btn--primary { background:rgba(37,99,235,.7); border-color:rgba(37,99,235,.9); color:#fff; }
+        .ar-action-btn--primary:hover { background:rgba(37,99,235,.9); }
 
         /* ── Spinner ─────────────────────────────────────────────── */
         .analysis-spinner { position:relative; width:80px; height:80px; margin:0 auto; }

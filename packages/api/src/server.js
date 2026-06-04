@@ -94,7 +94,7 @@ import {
   vaultApproval, vaultSchedule, vaultPublishNow, vaultCancel,
   getApprovalItems,
 } from "./core/content/vault.js";
-import { createReport, getReports, shareReport } from "./core/reporting/handlers.js";
+import { createReport, getReports, shareReport, renderReportHandler } from "./core/reporting/handlers.js";
 import { approveSocialAssetsBulk } from "./core/content/social.js";
 import {
   getGrowthSummary,
@@ -1353,6 +1353,9 @@ export default {
 
          if (method === "POST" && path.startsWith("/api/customer/reports/") && path.endsWith("/share"))
            return withCors(request, shareReport(request, env, auth));
+
+         if (method === "POST" && path === "/api/customer/reports/render")
+           return withCors(request, renderReportHandler(request, env, auth));
 
 
          /* ---------- GROWTH ---------- */
