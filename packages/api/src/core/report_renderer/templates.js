@@ -13,7 +13,7 @@ export const PRINT_CSS = `
 body{background:#fff!important;margin:0;padding:0}
 .report-page{box-shadow:none!important;max-width:100%!important}
 .report-cover{page-break-before:avoid;page-break-after:always;break-after:page;min-height:100vh}
-.report-contents{page-break-before:always;break-before:page;page-break-after:always;break-after:page}
+.report-contents{page-break-before:always;break-before:page;page-break-after:always;break-after:page;min-height:100vh}
 .section-break-before{page-break-before:always;break-before:page}
 .report-backpage{page-break-before:always;break-before:page;min-height:100vh}
 .r-card,.swot-cell,.roadmap-col,.r-grid-2,.r-grid-3,.r-grid-4,.score-hero,.dim-bars-group,.cta-grid,.platform-cards-grid,.break-avoid{break-inside:avoid;page-break-inside:avoid}
@@ -69,7 +69,7 @@ a:hover{text-decoration:underline}
 .cover-footer-date,.cover-footer-id{font-size:11px;color:var(--cover-text-subtle)}
 
 /* ════ CONTENTS ════════════════════════════════════════════════════════════ */
-.report-contents{background:var(--surface-primary);min-height:60vh;display:flex;flex-direction:column}
+.report-contents{background:var(--surface-primary);min-height:80vh;display:flex;flex-direction:column}
 .contents-inner{flex:1;padding:56px 56px 40px;display:flex;flex-direction:column}
 .contents-eyebrow{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.14em;color:var(--section-accent);margin-bottom:10px}
 .contents-heading{font-size:32px;font-weight:900;color:var(--text-main);letter-spacing:-.02em;margin-bottom:24px}
@@ -90,6 +90,7 @@ a:hover{text-decoration:underline}
 /* ════ SECTIONS ════════════════════════════════════════════════════════════ */
 .report-section{padding:40px 48px;border-bottom:1px solid var(--border-subtle);background:var(--surface-primary);position:relative}
 .report-section:last-of-type{border-bottom:none}
+.score-summary-section{background:var(--surface-secondary)}
 
 .section-header{position:relative;margin-bottom:24px;overflow:hidden}
 .section-watermark{position:absolute;right:0;top:-28px;font-size:120px;font-weight:900;color:var(--section-watermark);line-height:1;pointer-events:none;user-select:none;letter-spacing:-.04em}
@@ -171,6 +172,7 @@ a:hover{text-decoration:underline}
 .plat-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
 .plat-name{font-size:12px;font-weight:700;color:var(--text-main);text-transform:capitalize}
 .plat-badge{font-size:10px;font-weight:700;text-transform:capitalize;padding:2px 9px;border-radius:100px;border:1px solid}
+.plat-card-url{margin-top:4px}
 .plat-url{font-size:10px;color:var(--pilot-blue);word-break:break-all}
 .plat-card-notes{font-size:10px;color:var(--text-muted);line-height:1.5;margin-top:4px}
 

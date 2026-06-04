@@ -68,6 +68,7 @@ export function mapToStory(audit, report, options = {}) {
     score,
     scoreColor,
     scoreLabel,
+    scoreRationale: report?.brand_score?.rationale || '',
     dimensions: report?.brand_score?.dimensions || {},
     date,
     reportId: String(audit.id || '').slice(0, 8).toUpperCase(),
@@ -157,16 +158,22 @@ function assembleDocument(story, theme, branding, css) {
   const coverHtml = renderCover(cover, branding);
   const tocHtml = renderTOC(contentsItems);
 
-  // Score hero is a special top section before numbered sections
-  const scoreData = sections.find(s => s.key === 'unlock_verified_intelligence')?.data;
-  const brandScoreSection = {
-    number: 0,
-    title: 'Brand Score',
-    pageBreakBefore: false,
-    html: scoreData
-      ? `<p class="na-text">Score data not available.</p>`
-      : `<p class="na-text">Score data not available.</p>`,
-  };
+  // Score summary opens the body before numbered sections
+  const scoreSectionHtml = cover.score > 0
+    ? `<div class="report-section score-summary-section" id="score">
+  <div class="section-header">
+    <div class="section-watermark" aria-hidden="true">${cover.score}</div>
+    <div class="section-meta">
+      <span class="section-num-pill" style="background:${cover.scoreColor}1a;color:${cover.scoreColor}">${esc(cover.scoreLabel)}</span>
+      <h2 class="section-title-text">Brand Score</h2>
+    </div>
+    <div class="section-rule" style="background:linear-gradient(to right,${cover.scoreColor},transparent)"></div>
+  </div>
+  <div class="section-body">
+    ${renderScoreHero({ score: cover.score, dimensions: cover.dimensions, rationale: cover.scoreRationale, label: cover.scoreLabel })}
+  </div>
+</div>`
+    : '';
 
   // Render all sections
   const sectionsHtml = sections.map(section => {
@@ -218,6 +225,7 @@ ${coverHtml}
 ${tocHtml}
 
 <div class="report-body">
+${scoreSectionHtml}
 ${sectionsHtml}
 </div>
 
