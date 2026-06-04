@@ -90,7 +90,7 @@ import { generateWeeklyPlan, getWeeklyPlan } from "./core/intelligence/weekly_pl
 import { createInvite, getInvites, getTeam, acceptInvite } from "./core/teams/handlers.js";
 import { updateMemberRole, removeMember, revokeInvite } from "./core/team/members.js";
 import { listClients, createClient, updateClient, archiveClient, sendToClient, getClientLinks } from "./core/team/clients.js";
-import { getActivity } from "./core/team/activity.js";
+import { getActivity as getTeamActivity } from "./core/team/activity.js";
 import { getCommPreferences, updateCommPreferences } from "./core/communication/preferences.js";
 import { recordNotificationEvent, handleOpenPixel } from "./core/communication/tracking.js";
 import { submitForApproval, getApprovalRequests } from "./core/approvals/handlers.js";
@@ -1370,7 +1370,7 @@ export default {
 
          /* ---------- ACTIVITY LOG ---------- */
          if (method === "GET" && path === "/api/customer/activity")
-           return withCors(request, getActivity(request, env, auth));
+           return withCors(request, getTeamActivity(request, env, auth));
 
          /* ---------- COMMUNICATION PREFERENCES ---------- */
          if (method === "GET" && path === "/api/customer/communication/preferences")
