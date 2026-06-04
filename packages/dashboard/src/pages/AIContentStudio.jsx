@@ -1,32 +1,31 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { apiRequest } from "../lib/api/client";
-import PlatformIcon from "../components/shared/PlatformIcon";
 
-// ── Animations (used by shimmer skeleton + refresh spinner) ───────────────────
+// ── Styles ─────────────────────────────────────────────────────────────────────
 const CSS = `
 @keyframes cs-spin    { to { transform:rotate(360deg) } }
 @keyframes cs-in      { from { opacity:0;transform:translateY(8px) } to { opacity:1;transform:translateY(0) } }
 @keyframes cs-shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
 .cs-shimmer {
-  background:linear-gradient(90deg,var(--hover-bg) 25%,var(--border-subtle) 50%,var(--hover-bg) 75%);
+  background:linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%);
   background-size:200% 100%;
   animation:cs-shimmer 1.4s infinite;
 }
 .cs-card { animation:cs-in 0.3s ease both; }
-.cs-card:hover { transform:translateY(-2px)!important; box-shadow:0 12px 32px rgba(15,23,42,0.12)!important; }
+.cs-card:hover { transform:translateY(-3px)!important; box-shadow:0 16px 48px rgba(0,0,0,0.12)!important; }
 `;
 
-// ── Calendar events ───────────────────────────────────────────────────────────
+// ── Calendar events ────────────────────────────────────────────────────────────
 const ANNUAL_EVENTS = [
-  { name:"Valentine's Day",          month:1,  day:14,  icon:"❤️",  accent:"#e11d48", tag:"Seasonal",  suggested:"Offer Campaign" },
+  { name:"Valentine's Day",         month:1,  day:14,  icon:"❤️",  accent:"#e11d48", tag:"Seasonal",  suggested:"Offer Campaign" },
   { name:"International Women's Day",month:2,  day:8,   icon:"💜",  accent:"#7c3aed", tag:"Seasonal",  suggested:"Brand Story" },
-  { name:"Earth Day",                 month:3,  day:22,  icon:"🌍",  accent:"#059669", tag:"Seasonal",  suggested:"Brand Values" },
-  { name:"Mother's Day",              month:4,  day:11,  icon:"🌸",  accent:"#db2777", tag:"Seasonal",  suggested:"Offer Campaign" },
-  { name:"Father's Day",              month:5,  day:15,  icon:"👔",  accent:"#2563eb", tag:"Seasonal",  suggested:"Offer Campaign" },
-  { name:"Black Friday",              month:10, day:28,  icon:"🛍️",  accent:"#111827", tag:"Seasonal",  suggested:"Sales Campaign" },
-  { name:"Cyber Monday",              month:11, day:1,   icon:"💻",  accent:"#4f46e5", tag:"Seasonal",  suggested:"Promotion" },
-  { name:"Christmas",                 month:11, day:25,  icon:"🎄",  accent:"#dc2626", tag:"Seasonal",  suggested:"Brand Story" },
-  { name:"New Year's Eve",            month:11, day:31,  icon:"🎆",  accent:"#f59e0b", tag:"Seasonal",  suggested:"Year Recap" },
+  { name:"Earth Day",                month:3,  day:22,  icon:"🌍",  accent:"#059669", tag:"Seasonal",  suggested:"Brand Values" },
+  { name:"Mother's Day",             month:4,  day:11,  icon:"🌸",  accent:"#db2777", tag:"Seasonal",  suggested:"Offer Campaign" },
+  { name:"Father's Day",             month:5,  day:15,  icon:"👔",  accent:"#2563eb", tag:"Seasonal",  suggested:"Offer Campaign" },
+  { name:"Black Friday",             month:10, day:28,  icon:"🛍️",  accent:"#111827", tag:"Seasonal",  suggested:"Sales Campaign" },
+  { name:"Cyber Monday",             month:11, day:1,   icon:"💻",  accent:"#4f46e5", tag:"Seasonal",  suggested:"Promotion" },
+  { name:"Christmas",                month:11, day:25,  icon:"🎄",  accent:"#dc2626", tag:"Seasonal",  suggested:"Brand Story" },
+  { name:"New Year's Eve",           month:11, day:31,  icon:"🎆",  accent:"#f59e0b", tag:"Seasonal",  suggested:"Year Recap" },
 ];
 
 function getUpcomingEvents() {
@@ -44,7 +43,7 @@ function getUpcomingEvents() {
   return results.sort((a,b) => a.daysAway - b.daysAway).slice(0, 4);
 }
 
-// ── Content Confidence Score ──────────────────────────────────────────────────
+// ── Content Confidence Score ───────────────────────────────────────────────────
 function calcCCS(activeBrand, connectedPlatforms) {
   let score = 0;
   const missing = [];
@@ -53,6 +52,7 @@ function calcCCS(activeBrand, connectedPlatforms) {
   if (activeBrand?.industry) score += 10;
   if (activeBrand?.website)  score += 8; else missing.push("Website URL");
 
+  // Brand DNA
   const hasDNA = activeBrand?.dna || activeBrand?.brand_voice || activeBrand?.target_audience;
   if (hasDNA) score += 35;
   else {
@@ -66,378 +66,323 @@ function calcCCS(activeBrand, connectedPlatforms) {
   else if (pCount >= 1) score += 12;
   else missing.push("Connect at least one social account");
 
-  score += 15;
+  score += 15; // calendar intelligence always available
 
   const s = Math.min(score, 100);
-  return { score: s, missing, level: s < 50 ? "weak" : s < 75 ? "good" : "high" };
+  return {
+    score: s,
+    missing,
+    level: s < 50 ? "weak" : s < 75 ? "good" : "high",
+  };
 }
 
-// ── Pexels image pool — hardcoded CDN URLs, no auth needed ───────────────────
-const PEXELS_POOL = [
-  "https://images.pexels.com/photos/3184298/pexels-photo-3184298.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
-  "https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
-  "https://images.pexels.com/photos/3760809/pexels-photo-3760809.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
-  "https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
-  "https://images.pexels.com/photos/3182812/pexels-photo-3182812.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
-  "https://images.pexels.com/photos/1181396/pexels-photo-1181396.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
-  "https://images.pexels.com/photos/3184360/pexels-photo-3184360.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
-  "https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
-  "https://images.pexels.com/photos/1181406/pexels-photo-1181406.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
-  "https://images.pexels.com/photos/3184292/pexels-photo-3184292.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
-  "https://images.pexels.com/photos/3182781/pexels-photo-3182781.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
-  "https://images.pexels.com/photos/3184302/pexels-photo-3184302.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
-  "https://images.pexels.com/photos/1181248/pexels-photo-1181248.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
-  "https://images.pexels.com/photos/3756679/pexels-photo-3756679.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
-  "https://images.pexels.com/photos/1779487/pexels-photo-1779487.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
-];
+// ── Visual preview thumbnails ──────────────────────────────────────────────────
+// Represent content FORMAT/TYPE — not generated text.
 
-function getPoolImage(index) {
-  return PEXELS_POOL[index % PEXELS_POOL.length];
-}
-
-function preloadImage(src) {
-  return new Promise((resolve, reject) => {
-    const img = new window.Image();
-    img.onload  = () => resolve(src);
-    img.onerror = reject;
-    img.src = src;
-  });
-}
-
-// ── Discovery Card (StudioLab v4 pattern) ─────────────────────────────────────
-function DiscoveryCard({ opp, onPreview, onUseIdea }) {
-  const [imgReady, setImgReady]   = useState(false);
-  const [imageUrl, setImageUrl]   = useState(null);
-
-  const primaryUrl  = getPoolImage(opp._index || 0);
-  const fallbackUrl = PEXELS_POOL[0];
-
-  useEffect(() => {
-    preloadImage(primaryUrl)
-      .then(url => { setImageUrl(url); setImgReady(true); })
-      .catch(() =>
-        preloadImage(fallbackUrl)
-          .then(url => { setImageUrl(url); setImgReady(true); })
-          .catch(() => { setImageUrl(fallbackUrl); setImgReady(true); })
-      );
-  }, [primaryUrl, fallbackUrl]);
-
-  const title     = opp.idea || opp.title || opp.framework || "Content Opportunity";
-  const format    = (opp.media_type || opp.format || opp.type || "Post").replace(/_/g, " ");
-  const effort    = opp.effort || "15 min";
-  const platforms = Array.isArray(opp.platforms) ? opp.platforms.slice(0, 3) : [];
-
+function PreviewDarkStatement({ accent = "#7c3aed" }) {
   return (
-    <div className="cs-card" style={{
-      border: "1px solid var(--border-subtle)",
-      borderRadius: "var(--radius-lg)",
-      background: "var(--surface-primary)",
-      boxShadow: "0 2px 8px rgba(15,23,42,0.06)",
-      overflow: "hidden",
-      display: "flex",
-      flexDirection: "column",
-      maxHeight: 520,
-      transition: "all 0.22s",
-    }}>
-
-      {/* ── IMAGE 80% ────────────────────────────────────────────────────── */}
-      <div style={{ position: "relative", width: "100%", height: 408, flexShrink: 0, overflow: "hidden", background: "var(--hover-bg)" }}>
-        {imgReady && (
-          <img
-            src={imageUrl}
-            alt=""
-            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-          />
-        )}
-
-        {/* Format badge — top-left */}
-        <div style={{ position: "absolute", top: 10, left: 10, background: "rgba(15,23,42,0.6)", backdropFilter: "blur(6px)", borderRadius: "var(--radius-md)", padding: "4px 8px" }}>
-          <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "#fff", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            {format}
-          </span>
-        </div>
-
-        {/* Effort badge — top-right */}
-        <div style={{ position: "absolute", top: 10, right: 10, background: "rgba(15,23,42,0.6)", backdropFilter: "blur(6px)", borderRadius: "var(--radius-md)", padding: "4px 8px" }}>
-          <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "#fff" }}>{effort}</span>
-        </div>
-
-        {/* Platform chips — bottom-left */}
-        {platforms.length > 0 && (
-          <div style={{ position: "absolute", bottom: 10, left: 10, display: "flex", gap: 4 }}>
-            {platforms.map(p => (
-              <div key={p} style={{ background: "rgba(15,23,42,0.6)", backdropFilter: "blur(6px)", borderRadius: "var(--radius-md)", padding: "3px 8px 3px 5px", display: "flex", alignItems: "center", gap: 4 }}>
-                <PlatformIcon platform={p} size={11} />
-                <span style={{ fontSize: "0.65rem", fontWeight: 600, color: "#fff", textTransform: "capitalize" }}>{p}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Calendar badge — bottom-right (only if seasonal) */}
-        {opp.calendar_event && (
-          <div style={{ position: "absolute", bottom: 10, right: 10, background: "rgba(15,23,42,0.6)", backdropFilter: "blur(6px)", borderRadius: "var(--radius-md)", padding: "3px 8px" }}>
-            <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "#fff" }}>{opp.days_away || "soon"}</span>
-          </div>
-        )}
+    <div style={{ height:"100%", background:"#0f172a", display:"flex", flexDirection:"column", justifyContent:"center", padding:"20px 22px", position:"relative" }}>
+      <div style={{ width:32, height:3, background:accent, borderRadius:2, marginBottom:14 }} />
+      <div style={{ fontSize:14, fontWeight:800, color:"#f8fafc", lineHeight:1.45, marginBottom:10 }}>
+        The one thing the industry won't tell you about growing faster.
       </div>
+      <div style={{ fontSize:9, color:"rgba(255,255,255,0.22)", fontWeight:700, letterSpacing:1.5, textTransform:"uppercase" }}>@yourbrand</div>
+      <div style={{ position:"absolute", bottom:14, right:16, width:20, height:20, borderRadius:"50%", background:accent, opacity:0.18 }} />
+    </div>
+  );
+}
 
-      {/* ── BOTTOM 20% ───────────────────────────────────────────────────── */}
-      <div style={{ padding: "12px 14px 14px", flex: 1 }}>
-        <div style={{
-          fontSize: "0.85rem", fontWeight: 700, color: "var(--text-main)",
-          lineHeight: 1.3, marginBottom: 4,
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        }}>
-          {title}
-        </div>
-        <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: 12 }}>
-          Suggested for your audience
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            type="button"
-            onClick={() => onPreview(opp, imageUrl)}
-            style={{
-              flex: 1, border: "1px solid var(--border-subtle)",
-              background: "var(--surface-secondary)", color: "var(--text-main)",
-              borderRadius: "var(--radius-md)", padding: "8px 0",
-              fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", transition: "0.2s ease",
-            }}
-          >
-            Preview
-          </button>
-          <button
-            type="button"
-            onClick={() => onUseIdea(opp)}
-            style={{
-              flex: 1, border: "none",
-              background: "var(--pilot-blue)", color: "#fff",
-              borderRadius: "var(--radius-md)", padding: "8px 0",
-              fontSize: "0.85rem", fontWeight: 700, cursor: "pointer", transition: "0.2s ease",
-            }}
-          >
-            Use Idea
-          </button>
-        </div>
+function PreviewCarousel({ accent = "#2563eb" }) {
+  return (
+    <div style={{ height:"100%", background:"#fff", display:"flex", flexDirection:"column", padding:"18px 22px 14px", position:"relative" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}>
+        <span style={{ fontSize:8, fontWeight:800, color:accent, textTransform:"uppercase", letterSpacing:2 }}>CAROUSEL</span>
+        <span style={{ fontSize:9, color:"#94a3b8", fontWeight:600 }}>1 / 5</span>
+      </div>
+      <div style={{ fontSize:15, fontWeight:800, color:"#0f172a", lineHeight:1.3, flex:1 }}>5 Things That Changed Our Business Forever</div>
+      <div style={{ display:"flex", gap:4, marginTop:12 }}>
+        <div style={{ width:22, height:4, borderRadius:2, background:accent }} />
+        {[1,2,3,4].map(i => <div key={i} style={{ width:7, height:4, borderRadius:2, background:"#e5e7eb" }} />)}
+      </div>
+      <div style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", width:26, height:26, borderRadius:"50%", background:"#f1f5f9", display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <span style={{ fontSize:13, color:"#64748b", marginLeft:1 }}>›</span>
       </div>
     </div>
   );
 }
 
-// ── Accordion row ─────────────────────────────────────────────────────────────
-function AccordionRow({ label, body, open, onToggle }) {
+function PreviewQuote({ accent = "#7c3aed" }) {
   return (
-    <div style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-      <button
-        type="button"
-        onClick={onToggle}
-        style={{
-          width: "100%", background: "none", border: "none", cursor: "pointer",
-          padding: "12px 0", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
-        }}
-      >
-        <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-main)" }}>{label}</span>
-        <i className={`fas fa-chevron-${open ? "up" : "down"}`} style={{ fontSize: 10, color: "var(--slate-400)", flexShrink: 0 }} />
-      </button>
-      {open && (
-        <div style={{ paddingBottom: 12, fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
-          {body}
+    <div style={{ height:"100%", background:"linear-gradient(135deg,#1e1b4b 0%,#312e81 100%)", display:"flex", flexDirection:"column", justifyContent:"center", padding:"18px 22px", position:"relative", overflow:"hidden" }}>
+      <div style={{ fontSize:56, color:"rgba(255,255,255,0.07)", fontFamily:"Georgia,serif", lineHeight:0.8, position:"absolute", top:6, left:12, userSelect:"none" }}>"</div>
+      <div style={{ fontSize:12, color:"#e2e8f0", lineHeight:1.65, fontStyle:"italic", position:"relative", zIndex:1, marginBottom:12 }}>
+        "The decision that changed everything was saying no before we said yes."
+      </div>
+      <div style={{ width:24, height:2, background:accent, borderRadius:2, marginBottom:6 }} />
+      <div style={{ fontSize:9, color:accent, fontWeight:700, letterSpacing:0.5 }}>— Founder Story</div>
+    </div>
+  );
+}
+
+function PreviewSplit() {
+  return (
+    <div style={{ height:"100%", background:"#0f172a", display:"flex", padding:12, gap:8 }}>
+      <div style={{ flex:1, background:"rgba(220,38,38,0.15)", borderRadius:8, padding:"12px 10px" }}>
+        <div style={{ fontSize:7, fontWeight:800, color:"#dc2626", letterSpacing:2, textTransform:"uppercase", marginBottom:8 }}>BEFORE</div>
+        <div style={{ fontSize:9, color:"#fca5a5", lineHeight:1.55 }}>❌ Hours wasted<br/>❌ No clear system<br/>❌ Constant guessing</div>
+      </div>
+      <div style={{ flex:1, background:"rgba(5,150,105,0.15)", borderRadius:8, padding:"12px 10px" }}>
+        <div style={{ fontSize:7, fontWeight:800, color:"#059669", letterSpacing:2, textTransform:"uppercase", marginBottom:8 }}>AFTER</div>
+        <div style={{ fontSize:9, color:"#6ee7b7", lineHeight:1.55 }}>✓ Clear process<br/>✓ Consistent results<br/>✓ More time for strategy</div>
+      </div>
+    </div>
+  );
+}
+
+function PreviewTips({ accent = "#d97706" }) {
+  return (
+    <div style={{ height:"100%", background:"#fffbeb", display:"flex", flexDirection:"column", padding:"16px 20px" }}>
+      <div style={{ fontSize:12, fontWeight:800, color:"#0f172a", marginBottom:8 }}>5 Mistakes Costing You Clients</div>
+      <div style={{ width:"100%", height:2, background:accent, borderRadius:2, marginBottom:10, opacity:0.7 }} />
+      {["Targeting too broadly", "No clear value prop", "Missing social proof"].map((t,i) => (
+        <div key={i} style={{ display:"flex", gap:6, alignItems:"flex-start", marginBottom:6 }}>
+          <span style={{ fontSize:9, fontWeight:800, color:accent, marginTop:1, flexShrink:0 }}>{i+1}.</span>
+          <span style={{ fontSize:10, color:"#374151", lineHeight:1.4 }}>{t}</span>
         </div>
+      ))}
+      <div style={{ marginTop:"auto", fontSize:8, color:"#9ca3af", fontWeight:600 }}>Save this →</div>
+    </div>
+  );
+}
+
+function PreviewReel({ accent = "#ec4899" }) {
+  return (
+    <div style={{ height:"100%", background:"linear-gradient(135deg,#0c0a09 0%,#1c1917 100%)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", position:"relative" }}>
+      <div style={{ width:46, height:46, borderRadius:"50%", background:"rgba(255,255,255,0.14)", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:10 }}>
+        <div style={{ width:0, height:0, borderTop:"8px solid transparent", borderBottom:"8px solid transparent", borderLeft:"14px solid #fff", marginLeft:3 }} />
+      </div>
+      <div style={{ fontSize:10, fontWeight:700, color:"#fff", letterSpacing:0.5, marginBottom:4 }}>REEL · 60s</div>
+      <div style={{ fontSize:8, color:"rgba(255,255,255,0.35)", fontWeight:600 }}>Vertical · 9:16</div>
+      <div style={{ position:"absolute", top:12, right:14, fontSize:8, fontWeight:700, color:accent, background:`${accent}22`, padding:"2px 7px", borderRadius:99 }}>TRENDING</div>
+    </div>
+  );
+}
+
+function PreviewStats({ accent = "#2563eb" }) {
+  return (
+    <div style={{ height:"100%", background:"linear-gradient(135deg,#0f172a 0%,#1e293b 100%)", display:"flex", flexDirection:"column", justifyContent:"center", padding:"16px 22px" }}>
+      <div style={{ fontSize:10, fontWeight:700, color:"#94a3b8", marginBottom:12, letterSpacing:0.5 }}>From the numbers...</div>
+      <div style={{ display:"flex", gap:8 }}>
+        {[{val:"3.2×",lbl:"ROI"},{val:"47",lbl:"Leads"},{val:"6wk",lbl:"Timeline"}].map((m,i) => (
+          <div key={i} style={{ flex:1, background:"rgba(255,255,255,0.07)", borderRadius:8, padding:"10px 4px", textAlign:"center" }}>
+            <div style={{ fontSize:18, fontWeight:900, color:accent, lineHeight:1 }}>{m.val}</div>
+            <div style={{ fontSize:7, color:"#64748b", fontWeight:700, marginTop:4, textTransform:"uppercase", letterSpacing:0.5 }}>{m.lbl}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PreviewSeasonal({ ev }) {
+  const accent = ev?.accent || "#f59e0b";
+  return (
+    <div style={{ height:"100%", background:`linear-gradient(135deg,${accent}20 0%,${accent}0a 100%)`, display:"flex", flexDirection:"column", justifyContent:"center", padding:"18px 22px", position:"relative" }}>
+      <div style={{ fontSize:32, marginBottom:10 }}>{ev?.icon || "📅"}</div>
+      <div style={{ fontSize:15, fontWeight:800, color:"#111827", marginBottom:6 }}>{ev?.name || "Upcoming Event"}</div>
+      <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+        <span style={{ fontSize:13, fontWeight:800, color:accent }}>{ev?.daysAway || "?"} days away</span>
+        <span style={{ fontSize:10, color:"#64748b" }}>· {ev?.suggested || "Time it perfectly"}</span>
+      </div>
+      <div style={{ position:"absolute", top:14, right:16, fontSize:8, fontWeight:700, color:accent, background:`${accent}25`, padding:"2px 8px", borderRadius:99, textTransform:"uppercase", letterSpacing:1 }}>Upcoming</div>
+    </div>
+  );
+}
+
+const THEME_RENDERERS = {
+  "dark-statement": (props) => <PreviewDarkStatement {...props} />,
+  "carousel":       (props) => <PreviewCarousel {...props} />,
+  "quote":          (props) => <PreviewQuote {...props} />,
+  "split":          ()      => <PreviewSplit />,
+  "tips":           (props) => <PreviewTips {...props} />,
+  "reel":           (props) => <PreviewReel {...props} />,
+  "stats":          (props) => <PreviewStats {...props} />,
+  "seasonal":       (props) => <PreviewSeasonal {...props} />,
+};
+
+function resolveTheme(opp) {
+  if (opp.calendar_event || opp.framework === "Seasonal") return "seasonal";
+  const mt = (opp.media_type || "").toLowerCase();
+  if (mt === "carousel")    return "carousel";
+  if (mt === "short_video") return "reel";
+  if (mt === "quote_card")  return "quote";
+  const fw = (opp.framework || "").toLowerCase();
+  if (fw.includes("before") || fw.includes("myth"))    return "split";
+  if (fw.includes("mistake") || fw.includes("listicle") || fw.includes("faq") || fw.includes("how-to")) return "tips";
+  if (fw.includes("stat") || fw.includes("case") || fw.includes("social proof")) return "stats";
+  if (fw.includes("customer") || fw.includes("team") || fw.includes("founder")) return "quote";
+  if (fw.includes("challenge") || fw.includes("product") || fw.includes("announcement")) return "carousel";
+  const cycle = ["dark-statement","carousel","tips","quote","split","reel","stats","dark-statement"];
+  return cycle[(opp._index || 0) % cycle.length];
+}
+
+function OpportunityPreview({ opp, calendarEvents }) {
+  const theme = resolveTheme(opp);
+  const calEv  = opp.calendar_event
+    ? calendarEvents.find(e => e.name === opp.calendar_event) || calendarEvents[0]
+    : null;
+  const accent = opp.accent || "#7c3aed";
+  const renderer = THEME_RENDERERS[theme] || THEME_RENDERERS["dark-statement"];
+  return (
+    <div style={{ height:175, overflow:"hidden", borderRadius:"14px 14px 0 0", position:"relative" }}>
+      {renderer({ accent, calendarEvent: calEv })}
+    </div>
+  );
+}
+
+// ── Reason chip ───────────────────────────────────────────────────────────────
+const REASON_ICONS = {
+  engagement:  { icon:"🔥", color:"#dc2626", bg:"#fef2f2" },
+  calendar:    { icon:"📅", color:"#d97706", bg:"#fffbeb" },
+  campaign:    { icon:"🎯", color:"#7c3aed", bg:"#faf5ff" },
+  competition: { icon:"📊", color:"#059669", bg:"#f0fdf4" },
+  audience:    { icon:"⚡", color:"#2563eb", bg:"#eff6ff" },
+  seasonal:    { icon:"🌟", color:"#d97706", bg:"#fffbeb" },
+};
+
+function ReasonChip({ text = "" }) {
+  const lower = text.toLowerCase();
+  const key = lower.includes("engag") ? "engagement"
+    : lower.includes("holiday") || lower.includes("days") || lower.includes("event") ? "calendar"
+    : lower.includes("campaign") ? "campaign"
+    : lower.includes("competition") || lower.includes("low") ? "competition"
+    : lower.includes("audience") || lower.includes("respond") ? "audience"
+    : "seasonal";
+  const r = REASON_ICONS[key];
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:5, padding:"5px 10px", borderRadius:8, background:r.bg }}>
+      <span style={{ fontSize:11 }}>{r.icon}</span>
+      <span style={{ fontSize:11, color:r.color, fontWeight:600, lineHeight:1.3 }}>
+        Suggested because: {text}
+      </span>
+    </div>
+  );
+}
+
+// ── Format pill ───────────────────────────────────────────────────────────────
+function FormatPill({ format, effort }) {
+  return (
+    <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+      {format && (
+        <span style={{ fontSize:10, padding:"3px 9px", borderRadius:99, background:"#f1f5f9", color:"#475569", fontWeight:700, textTransform:"uppercase", letterSpacing:0.5 }}>
+          {format}
+        </span>
       )}
+      {effort && (() => {
+        const e = (effort || "").toLowerCase();
+        return (
+          <span style={{
+            fontSize:10, padding:"3px 9px", borderRadius:99, fontWeight:700,
+            background: e === "low" ? "#f0fdf4" : e === "high" ? "#fef2f2" : "#fffbeb",
+            color:      e === "low" ? "#16a34a" : e === "high" ? "#dc2626" : "#d97706",
+          }}>
+            {effort} effort
+          </span>
+        );
+      })()}
     </div>
   );
 }
 
-// ── Post Preview Modal ────────────────────────────────────────────────────────
-function PostPreviewModal({ opp, imageUrl, activeBrand, onClose, onUseIdea }) {
-  const [openRow, setOpenRow] = useState(0);
+// ── Opportunity Card ──────────────────────────────────────────────────────────
+function OpportunityCard({ opp, calendarEvents, onUse, onSave, onHide }) {
+  const [saved,  setSaved]  = useState(false);
+  const [hidden, setHidden] = useState(false);
 
-  const brandName = activeBrand?.name || "Your Brand";
-  const initials  = brandName.split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase();
-  const caption   = opp.hook || opp.idea || opp.title || "Open in Create Social Post to write your full post.";
+  if (hidden) return null;
 
-  const rows = [
-    {
-      label: "Why suggested",
-      body: opp.objective || opp.suggested_because || opp.reason
-        || "Based on your brand DNA and recent engagement patterns. This format is performing above average in your niche.",
-    },
-    {
-      label: "Brand signals",
-      body: `${opp.framework ? `Your brand responds well to ${opp.framework} content. ` : ""}This format matches your top-performing content type. Competitors in your space are seeing strong engagement with similar ideas.`,
-    },
-    {
-      label: "Campaign alignment",
-      body: opp.calendar_event
-        ? `Aligned with upcoming ${opp.calendar_event} — ${opp.days_away || "soon"}. Ideal timing to build awareness ahead of the moment.`
-        : "No active campaign linked. Assign a campaign after opening in the editor to track attribution.",
-    },
-  ];
+  const platforms = Array.isArray(opp.platforms) ? opp.platforms : [];
 
-  return (
-    <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 3000, backdropFilter: "blur(3px)" }} />
-      <div style={{
-        position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
-        width: "min(820px, 94vw)", maxHeight: "88vh",
-        background: "var(--surface-primary)",
-        borderRadius: "var(--radius-lg)",
-        border: "1px solid var(--border-subtle)",
-        boxShadow: "0 20px 60px rgba(15,23,42,0.18)",
-        zIndex: 3001, display: "flex", flexDirection: "column", overflow: "hidden",
-      }}>
-        {/* Header */}
-        <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, background: "var(--surface-primary)" }}>
-          <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-main)" }}>Content Preview</div>
-          <button type="button" onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, color: "var(--slate-400)", cursor: "pointer", lineHeight: 1 }}>×</button>
-        </div>
-
-        {/* Body */}
-        <div style={{ flex: 1, display: "flex", minHeight: 0, overflow: "hidden" }}>
-          {/* LEFT — post render */}
-          <div style={{ width: "46%", borderRight: "1px solid var(--border-subtle)", padding: "20px 16px", overflowY: "auto", background: "var(--surface-secondary)", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-            <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", alignSelf: "flex-start" }}>
-              Post Preview
-            </div>
-            {/* Instagram-style render */}
-            <div style={{ background: "var(--surface-primary)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)", maxWidth: 340, width: "100%" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px" }}>
-                <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--pilot-blue)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: "#fff" }}>{initials}</span>
-                </div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-main)" }}>{brandName}</div>
-                  <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Suggested</div>
-                </div>
-                <div style={{ marginLeft: "auto", color: "var(--text-muted)", fontSize: 16 }}>•••</div>
-              </div>
-              <div style={{ width: "100%", aspectRatio: "1/1", overflow: "hidden", background: "var(--hover-bg)" }}>
-                {imageUrl && <img src={imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
-              </div>
-              <div style={{ padding: "8px 12px 4px", display: "flex", gap: 14, fontSize: 20, color: "var(--text-main)" }}>
-                <i className="far fa-heart" />
-                <i className="far fa-comment" />
-                <i className="far fa-paper-plane" />
-                <i className="far fa-bookmark" style={{ marginLeft: "auto" }} />
-              </div>
-              <div style={{ padding: "4px 12px 14px", fontSize: "0.85rem", color: "var(--text-main)", lineHeight: 1.6, maxHeight: 140, overflowY: "auto" }}>
-                <strong style={{ fontSize: "0.85rem" }}>{brandName.toLowerCase().replace(/\s+/g, "")}</strong>{" "}{caption}
-              </div>
-            </div>
-          </div>
-
-          {/* RIGHT — accordion */}
-          <div style={{ flex: 1, padding: "20px 20px", overflowY: "auto", background: "var(--surface-primary)" }}>
-            <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
-              Intelligence
-            </div>
-            {rows.map((row, i) => (
-              <AccordionRow
-                key={i}
-                label={row.label}
-                body={row.body}
-                open={openRow === i}
-                onToggle={() => setOpenRow(openRow === i ? null : i)}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div style={{ padding: "12px 20px", borderTop: "1px solid var(--border-subtle)", background: "var(--surface-secondary)", display: "flex", gap: 8, justifyContent: "flex-end", flexShrink: 0 }}>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{ border: "1px solid var(--border-subtle)", background: "var(--surface-primary)", color: "var(--text-main)", borderRadius: "var(--radius-md)", padding: "8px 16px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", transition: "0.2s ease" }}
-          >
-            Close
-          </button>
-          <button
-            type="button"
-            onClick={() => onUseIdea(opp)}
-            style={{ border: "none", background: "var(--pilot-blue)", color: "#fff", borderRadius: "var(--radius-md)", padding: "8px 20px", fontSize: "0.85rem", fontWeight: 700, cursor: "pointer", transition: "0.2s ease" }}
-          >
-            Use Idea
-          </button>
-        </div>
-      </div>
-    </>
-  );
-}
-
-// ── Route Modal — Choose destination, store prefill, route ───────────────────
-function RouteModal({ opp, switchTab, onClose }) {
-  function route(tab) {
-    // Store prefill for destination editor to consume
-    try {
-      sessionStorage.setItem("studio_idea_prefill", JSON.stringify({
-        idea_id:           opp.id || opp.title,
-        title:             opp.idea || opp.title || opp.framework || "",
-        visual_reference:  opp.visual_reference || "",
-        hook:              opp.hook || "",
-        suggested_structure: opp.structure || opp.framework || "",
-        campaign_id:       opp.campaign_id || null,
-        calendar_context:  opp.calendar_event || null,
-        brand_context:     opp.objective || opp.suggested_because || "",
-        source:            "studio",
-      }));
-    } catch {}
-    onClose();
-    switchTab(tab);
+  function handleSave() {
+    setSaved(true);
+    onSave(opp);
   }
 
   return (
-    <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 4000, backdropFilter: "blur(3px)" }} />
-      <div style={{
-        position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
-        width: "min(420px, 94vw)",
-        background: "var(--surface-primary)",
-        borderRadius: "var(--radius-lg)",
-        border: "1px solid var(--border-subtle)",
-        boxShadow: "0 20px 60px rgba(15,23,42,0.18)",
-        zIndex: 4001, overflow: "hidden",
-      }}>
-        <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-main)" }}>Open in editor</div>
-          <button type="button" onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, color: "var(--slate-400)", cursor: "pointer", lineHeight: 1 }}>×</button>
-        </div>
-        <div style={{ padding: "20px" }}>
-          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: 16 }}>
-            Choose where to take this idea. The editor will receive context from Studio.
+    <div className="cs-card" style={{
+      border:"1px solid #e5e7eb", borderRadius:14, background:"#fff",
+      boxShadow:"0 2px 8px rgba(0,0,0,0.06)", transition:"all 0.22s", display:"flex", flexDirection:"column", overflow:"hidden",
+    }}>
+      {/* Visual preview */}
+      <div style={{ position:"relative", flexShrink:0 }}>
+        <OpportunityPreview opp={opp} calendarEvents={calendarEvents} />
+        {/* Platform badges — overlay bottom-left */}
+        {platforms.length > 0 && (
+          <div style={{ position:"absolute", bottom:10, left:12, display:"flex", gap:5 }}>
+            {platforms.slice(0,4).map(p => (
+              <span key={p} style={{ fontSize:9, fontWeight:800, padding:"2px 8px", borderRadius:99, background:"rgba(0,0,0,0.55)", color:"#fff", backdropFilter:"blur(4px)", letterSpacing:0.3 }}>{p}</span>
+            ))}
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <button
-              type="button"
-              onClick={() => route("social")}
-              style={{ border: "1px solid var(--pilot-blue)", background: "var(--pilot-blue-light)", color: "var(--pilot-blue)", borderRadius: "var(--radius-md)", padding: "13px 16px", fontSize: "0.85rem", fontWeight: 700, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 10, transition: "0.2s ease" }}
-            >
-              <i className="fas fa-edit" style={{ fontSize: 14, flexShrink: 0 }} />
-              <div>
-                <div>Create Social Post</div>
-                <div style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--pilot-blue)", opacity: 0.8, marginTop: 1 }}>Instagram, LinkedIn, Facebook, X and more</div>
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => route("blog")}
-              style={{ border: "1px solid var(--border-subtle)", background: "var(--surface-secondary)", color: "var(--text-main)", borderRadius: "var(--radius-md)", padding: "13px 16px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 10, transition: "0.2s ease" }}
-            >
-              <i className="fas fa-file-alt" style={{ fontSize: 14, flexShrink: 0 }} />
-              <div>
-                <div>Create Article</div>
-                <div style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--text-muted)", marginTop: 1 }}>Blog post, long-form, thought leadership</div>
-              </div>
-            </button>
+        )}
+        {/* Calendar event badge */}
+        {opp.calendar_event && (
+          <div style={{ position:"absolute", top:10, right:12, fontSize:9, fontWeight:800, color:"#d97706", background:"rgba(255,255,255,0.92)", padding:"3px 8px", borderRadius:99, boxShadow:"0 1px 4px rgba(0,0,0,0.12)" }}>
+            {opp.calendar_event} · {opp.days_away || "soon"}
           </div>
-        </div>
+        )}
       </div>
-    </>
+
+      {/* Card body */}
+      <div style={{ padding:"14px 16px 10px", display:"flex", flexDirection:"column", flex:1, gap:8 }}>
+        <div style={{ fontSize:14, fontWeight:800, color:"#111827", lineHeight:1.3 }}>
+          {opp.idea || opp.title || opp.framework || "Content Opportunity"}
+        </div>
+        {opp.framework && opp.idea && (
+          <span style={{ fontSize:10, fontWeight:700, color:"#7c3aed", textTransform:"uppercase", letterSpacing:1 }}>
+            {opp.framework}
+          </span>
+        )}
+
+        {opp.hook && (
+          <div style={{ fontSize:12, color:"#374151", lineHeight:1.55, fontStyle:"italic", borderLeft:"3px solid #e5e7eb", paddingLeft:10 }}>
+            "{opp.hook}"
+          </div>
+        )}
+
+        <FormatPill format={(opp.media_type || opp.format || opp.type || "").replace(/_/g," ")} effort={opp.effort} />
+
+        {(opp.objective || opp.suggested_because || opp.reason) && (
+          <ReasonChip text={opp.objective || opp.suggested_because || opp.reason} />
+        )}
+      </div>
+
+      {/* Actions */}
+      <div style={{ padding:"10px 16px 14px", display:"flex", gap:6, borderTop:"1px solid #f1f5f9" }}>
+        <button type="button" onClick={() => onUse(opp)} style={{
+          flex:1, padding:"9px 0", borderRadius:8, border:"none", cursor:"pointer",
+          background:"linear-gradient(135deg,#7c3aed,#4f46e5)", color:"#fff", fontWeight:700, fontSize:13,
+        }}>
+          Use Idea
+        </button>
+        <button type="button" onClick={handleSave} disabled={saved} style={{
+          padding:"9px 12px", borderRadius:8, border:`1px solid ${saved ? "#bbf7d0" : "#e5e7eb"}`,
+          background: saved ? "#f0fdf4" : "#fff",
+          color: saved ? "#16a34a" : "#6b7280", fontWeight:600, fontSize:12, cursor:saved ? "default" : "pointer",
+        }}>
+          {saved ? "✓ Saved" : "Save"}
+        </button>
+        <button type="button" onClick={() => { setHidden(true); onHide(opp); }} style={{
+          padding:"9px 12px", borderRadius:8, border:"1px solid #e5e7eb",
+          background:"#fff", color:"#9ca3af", fontWeight:600, fontSize:12, cursor:"pointer",
+        }} title="Hide this idea">
+          Hide
+        </button>
+      </div>
+    </div>
   );
 }
 
-// ── CCS Bar ───────────────────────────────────────────────────────────────────
+// ── CCS Bar ────────────────────────────────────────────────────────────────────
 function CCSBar({ ccs }) {
   const { score, level, missing } = ccs;
   const color = level === "high" ? "#059669" : level === "good" ? "#d97706" : "#dc2626";
@@ -447,7 +392,7 @@ function CCSBar({ ccs }) {
   return (
     <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
       <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-        <div style={{ width:100, height:6, background:"var(--hover-bg)", borderRadius:3, overflow:"hidden" }}>
+        <div style={{ width:100, height:6, background:"#f1f5f9", borderRadius:3, overflow:"hidden" }}>
           <div style={{ width:`${score}%`, height:"100%", background:color, borderRadius:3, transition:"width 0.4s ease" }} />
         </div>
         <span style={{ fontSize:11, fontWeight:800, color }}>
@@ -455,15 +400,15 @@ function CCSBar({ ccs }) {
         </span>
       </div>
       {missing.length > 0 && (
-        <button type="button" onClick={() => setOpen(o => !o)} style={{ fontSize:11, color:"var(--text-muted)", fontWeight:600, background:"none", border:"none", cursor:"pointer", textDecoration:"underline", padding:0 }}>
+        <button type="button" onClick={() => setOpen(o => !o)} style={{ fontSize:11, color:"#6b7280", fontWeight:600, background:"none", border:"none", cursor:"pointer", textDecoration:"underline", padding:0 }}>
           {open ? "Hide" : `${missing.length} signal${missing.length > 1 ? "s" : ""} missing`}
         </button>
       )}
       {open && (
-        <div style={{ width:"100%", background:"var(--surface-primary)", border:"1px solid var(--status-danger)", borderRadius:"var(--radius-md)", padding:"10px 14px", marginTop:2 }}>
-          <div style={{ fontSize:10, fontWeight:700, color:"var(--status-danger)", marginBottom:6, textTransform:"uppercase", letterSpacing:0.8 }}>Complete these to improve generation quality:</div>
+        <div style={{ width:"100%", background:"#fef2f2", border:"1px solid #fecaca", borderRadius:8, padding:"10px 14px", marginTop:2 }}>
+          <div style={{ fontSize:10, fontWeight:700, color:"#dc2626", marginBottom:6, textTransform:"uppercase", letterSpacing:0.8 }}>Complete these to improve generation quality:</div>
           {missing.map(m => (
-            <div key={m} style={{ fontSize:12, color:"var(--text-main)", marginBottom:3 }}>• {m}</div>
+            <div key={m} style={{ fontSize:12, color:"#374151", marginBottom:3 }}>• {m}</div>
           ))}
         </div>
       )}
@@ -471,10 +416,202 @@ function CCSBar({ ccs }) {
   );
 }
 
-// ── Posts Tab ─────────────────────────────────────────────────────────────────
+// ── Generation Modal ───────────────────────────────────────────────────────────
+function GenerationModal({ opp, ccs, activeBrand, switchTab, onClose }) {
+  const [phase,   setPhase]   = useState(ccs.level === "weak" ? "blocked" : "generating");
+  const [result,  setResult]  = useState(null);
+  const [err,     setErr]     = useState("");
+  const [saving,  setSaving]  = useState(false);
+  const [savedId, setSavedId] = useState(null);
+  const [routed,  setRouted]  = useState(false);
+
+  useEffect(() => {
+    if (phase !== "generating") return;
+    apiRequest("/api/customer/studio/generate-post", {
+      method:"POST",
+      body: JSON.stringify({
+        framework: opp.framework || opp.type || opp.idea || "General",
+        idea:      opp.idea || opp.title || "",
+        hook:      opp.hook || "",
+        platforms: Array.isArray(opp.platforms) ? opp.platforms : [],
+      }),
+    }).then(data => {
+      setResult(data);
+      setPhase("done");
+    }).catch(e => {
+      setErr(e.message || "Generation failed.");
+      setPhase("error");
+    });
+  }, []);
+
+  async function saveToVault(status = "draft") {
+    setSaving(true);
+    try {
+      const title = result?.title || opp.title || opp.idea || "Studio Draft";
+      const body  = result?.body  || result?.content || result?.post_body || result?.suggested_hook || "";
+      const saved = await apiRequest("/api/customer/vault", {
+        method:"POST",
+        body: JSON.stringify({ content_type:"social", title, body, lifecycle_status: status, source:"studio" }),
+      });
+      setSavedId(saved?.content_id || true);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleRoute(tab, vaultStatus = "draft") {
+    if (!savedId) await saveToVault(vaultStatus);
+    setRouted(true);
+    onClose();
+    switchTab(tab);
+  }
+
+  const platforms = Array.isArray(opp.platforms) ? opp.platforms : [];
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
+      <div style={{ background:"#fff", borderRadius:20, width:"100%", maxWidth:680, maxHeight:"92vh", overflowY:"auto", boxShadow:"0 32px 80px rgba(0,0,0,0.25)" }}>
+        <style>{CSS}</style>
+
+        {/* Header */}
+        <div style={{ padding:"20px 24px 16px", borderBottom:"1px solid #f3f4f6", display:"flex", alignItems:"flex-start", justifyContent:"space-between" }}>
+          <div>
+            <div style={{ fontSize:10, fontWeight:700, color:"#7c3aed", letterSpacing:1, textTransform:"uppercase", marginBottom:4 }}>AI Content Studio · Generation</div>
+            <div style={{ fontSize:18, fontWeight:800, color:"#111827" }}>{opp.title || opp.idea || "Generating..."}</div>
+          </div>
+          <button type="button" onClick={onClose} style={{ background:"none", border:"none", cursor:"pointer", color:"#9ca3af", fontSize:24, lineHeight:1, padding:0, marginLeft:16 }}>×</button>
+        </div>
+
+        <div style={{ padding:"20px 24px 28px" }}>
+
+          {/* BLOCKED */}
+          {phase === "blocked" && (
+            <div>
+              <div style={{ background:"#fef2f2", border:"1px solid #fecaca", borderRadius:12, padding:"20px 22px", marginBottom:20 }}>
+                <div style={{ fontSize:15, fontWeight:700, color:"#dc2626", marginBottom:8 }}>Insufficient brand context to generate</div>
+                <div style={{ fontSize:13, color:"#374151", marginBottom:14 }}>
+                  Content Confidence Score: <strong>{ccs.score}/100</strong> — minimum 50 required.
+                </div>
+                <div style={{ fontSize:12, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", letterSpacing:0.8, marginBottom:8 }}>Complete these:</div>
+                {ccs.missing.map(m => (
+                  <div key={m} style={{ fontSize:13, color:"#374151", marginBottom:5 }}>• {m}</div>
+                ))}
+              </div>
+              <button type="button" onClick={onClose} style={{ padding:"10px 20px", borderRadius:8, border:"1px solid #e5e7eb", background:"#fff", color:"#374151", fontWeight:600, fontSize:14, cursor:"pointer" }}>Close</button>
+            </div>
+          )}
+
+          {/* GENERATING */}
+          {phase === "generating" && (
+            <div style={{ textAlign:"center", padding:"56px 0" }}>
+              <div style={{ width:48, height:48, border:"4px solid #ede9fe", borderTopColor:"#7c3aed", borderRadius:"50%", margin:"0 auto 20px", animation:"cs-spin 1s linear infinite" }} />
+              <div style={{ fontSize:16, fontWeight:700, color:"#111827", marginBottom:8 }}>Generating with full brand context...</div>
+              <div style={{ fontSize:13, color:"#6b7280", maxWidth:340, margin:"0 auto" }}>
+                Brand DNA · {activeBrand?.industry || "industry"} · {platforms.join(" · ") || "selected platforms"}
+              </div>
+            </div>
+          )}
+
+          {/* ERROR */}
+          {phase === "error" && (
+            <div>
+              <div style={{ background:"#fef2f2", border:"1px solid #fecaca", borderRadius:10, padding:"14px 18px", marginBottom:16, fontSize:14, color:"#dc2626" }}>{err}</div>
+              <button type="button" onClick={() => { setPhase("generating"); setErr(""); }} style={{ padding:"10px 20px", borderRadius:8, border:"none", cursor:"pointer", background:"#7c3aed", color:"#fff", fontWeight:700, fontSize:14 }}>
+                Retry
+              </button>
+            </div>
+          )}
+
+          {/* DONE */}
+          {phase === "done" && result && (
+            <div>
+              {ccs.level === "good" && (
+                <div style={{ background:"#fffbeb", border:"1px solid #fde68a", borderRadius:10, padding:"10px 16px", marginBottom:16, fontSize:12, color:"#92400e" }}>
+                  Content generated with moderate confidence. Consider completing Brand DNA for stronger outputs.
+                </div>
+              )}
+
+              <div style={{ display:"flex", flexDirection:"column", gap:14, marginBottom:24 }}>
+                <div style={{ background:"#f8fafc", borderRadius:10, padding:"12px 16px", display:"flex", gap:16, flexWrap:"wrap" }}>
+                  <div><span style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", letterSpacing:0.8, display:"block", marginBottom:2 }}>Brand</span><span style={{ fontSize:13, color:"#111827", fontWeight:600 }}>{activeBrand?.name || "—"}</span></div>
+                  <div><span style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", letterSpacing:0.8, display:"block", marginBottom:2 }}>Format</span><span style={{ fontSize:13, color:"#111827", fontWeight:600 }}>{opp.format || opp.type || "Social Post"}</span></div>
+                  <div><span style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", letterSpacing:0.8, display:"block", marginBottom:2 }}>Platforms</span><span style={{ fontSize:13, color:"#111827", fontWeight:600 }}>{platforms.join(", ") || "All connected"}</span></div>
+                </div>
+
+                {[
+                  { label:"Hook",      value: result.hook || result.suggested_hook },
+                  { label:"Post Body", value: result.body || result.content || result.post_body },
+                  { label:"CTA",       value: result.cta  || result.suggested_cta },
+                  { label:"Hashtags",  value: Array.isArray(result.hashtags) ? result.hashtags.join("  ") : result.hashtags },
+                ].filter(f => f.value).map(f => (
+                  <div key={f.label}>
+                    <div style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", letterSpacing:0.8, marginBottom:5 }}>{f.label}</div>
+                    <div style={{ fontSize:13, color:"#111827", lineHeight:1.65, whiteSpace:"pre-wrap", background:"#fafafa", borderRadius:8, padding:"10px 14px" }}>{f.value}</div>
+                  </div>
+                ))}
+              </div>
+
+              {savedId && !routed && (
+                <div style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:10, padding:"10px 16px", marginBottom:16, fontSize:13, color:"#15803d", fontWeight:600 }}>
+                  ✓ Saved to Content Vault — choose where to open it below
+                </div>
+              )}
+
+              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                {!savedId && (
+                  <button type="button" onClick={() => saveToVault("draft")} disabled={saving} style={{
+                    padding:"13px 0", borderRadius:10, border:"none", cursor:"pointer",
+                    background:"linear-gradient(135deg,#7c3aed,#4f46e5)", color:"#fff", fontWeight:700, fontSize:14,
+                  }}>
+                    {saving ? "Saving..." : "Save To Content Vault"}
+                  </button>
+                )}
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                  <button type="button" onClick={() => handleRoute("social", "draft")} style={{
+                    padding:"12px 0", borderRadius:10, border:"1px solid #c4b5fd", background:"#faf5ff",
+                    color:"#7c3aed", fontWeight:700, fontSize:13, cursor:"pointer",
+                  }}>
+                    Open in Create Social Post
+                  </button>
+                  <button type="button" onClick={() => handleRoute("blog", "draft")} style={{
+                    padding:"12px 0", borderRadius:10, border:"1px solid #bae6fd", background:"#f0f9ff",
+                    color:"#0284c7", fontWeight:700, fontSize:13, cursor:"pointer",
+                  }}>
+                    Open in Create Article
+                  </button>
+                  <button type="button" onClick={() => handleRoute("social", "approval_requested")} style={{
+                    padding:"12px 0", borderRadius:10, border:"1px solid #bbf7d0", background:"#f0fdf4",
+                    color:"#059669", fontWeight:700, fontSize:13, cursor:"pointer",
+                  }}>
+                    Share For Approval
+                  </button>
+                  <button type="button" onClick={() => handleRoute("schedule", "draft")} style={{
+                    padding:"12px 0", borderRadius:10, border:"1px solid #e5e7eb", background:"#f9fafb",
+                    color:"#374151", fontWeight:700, fontSize:13, cursor:"pointer",
+                  }}>
+                    Schedule
+                  </button>
+                </div>
+                <button type="button" onClick={onClose} style={{
+                  padding:"12px 0", borderRadius:10, border:"none", background:"#f3f4f6",
+                  color:"#374151", fontWeight:600, fontSize:14, cursor:"pointer",
+                }}>Close</button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Posts Tab ──────────────────────────────────────────────────────────────────
 const FILTERS = [
   { id:"for-you",           label:"For You" },
-  { id:"upcoming-moments",  label:"Trending" },
+  { id:"upcoming-moments",  label:"Upcoming Moments" },
   { id:"high-conversion",   label:"High Conversion" },
   { id:"thought-leadership",label:"Thought Leadership" },
   { id:"seasonal",          label:"Seasonal" },
@@ -502,9 +639,11 @@ function PostsTab({ activeBrand, connectedPlatforms, switchTab }) {
   const [refreshing, setRefreshing] = useState(false);
   const [error,      setError]      = useState("");
   const [filter,     setFilter]     = useState("for-you");
-  const [preview,    setPreview]    = useState(null); // { opp, imageUrl }
-  const [routing,    setRouting]    = useState(null); // opp
+  const [genModal,   setGenModal]   = useState(null);
+  const [saved,      setSaved]      = useState(new Set());
+  const [hidden,     setHidden]     = useState(new Set());
 
+  const calendarEvents = getUpcomingEvents();
   const ccs = calcCCS(activeBrand, connectedPlatforms);
 
   const load = useCallback(async (isRefresh = false) => {
@@ -524,18 +663,21 @@ function PostsTab({ activeBrand, connectedPlatforms, switchTab }) {
 
   useEffect(() => { load(); }, [load]);
 
+  function handleSave(opp) {
+    setSaved(prev => new Set([...prev, opp.id || opp.title]));
+    apiRequest("/api/customer/vault", {
+      method:"POST",
+      body: JSON.stringify({
+        content_type:"social", title: opp.title || opp.idea || "Studio Idea",
+        body: opp.hook || opp.objective || "", lifecycle_status:"draft", source:"studio",
+      }),
+    }).catch(() => {});
+  }
+
   const visible = opps
+    .filter(o => !hidden.has(o.id || o.title))
     .filter(o => matchFilter(o, filter))
     .slice(0, 20);
-
-  function handlePreview(opp, imageUrl) {
-    setPreview({ opp, imageUrl });
-  }
-
-  function handleUseIdea(opp) {
-    setPreview(null);
-    setRouting(opp);
-  }
 
   return (
     <div>
@@ -545,11 +687,11 @@ function PostsTab({ activeBrand, connectedPlatforms, switchTab }) {
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16, flexWrap:"wrap", gap:12 }}>
         <CCSBar ccs={ccs} />
         <button type="button" onClick={() => load(true)} disabled={refreshing} style={{
-          display:"flex", alignItems:"center", gap:6, padding:"7px 14px", borderRadius:"var(--radius-md)",
-          border:"1px solid var(--border-subtle)", background:"var(--surface-primary)", color:"var(--text-main)", fontWeight:600, fontSize:12, cursor:"pointer",
+          display:"flex", alignItems:"center", gap:6, padding:"7px 14px", borderRadius:8,
+          border:"1px solid #e5e7eb", background:"#fff", color:"#374151", fontWeight:600, fontSize:12, cursor:"pointer",
         }}>
           {refreshing
-            ? <><div style={{ width:12, height:12, border:"2px solid var(--border-subtle)", borderTopColor:"var(--pilot-blue)", borderRadius:"50%", animation:"cs-spin 1s linear infinite" }} /> Refreshing...</>
+            ? <><div style={{ width:12, height:12, border:"2px solid #d1d5db", borderTopColor:"#7c3aed", borderRadius:"50%", animation:"cs-spin 1s linear infinite" }} /> Refreshing...</>
             : <><i className="fas fa-sync-alt" style={{ fontSize:10 }} /> Refresh Feed</>
           }
         </button>
@@ -560,9 +702,9 @@ function PostsTab({ activeBrand, connectedPlatforms, switchTab }) {
         {FILTERS.map(f => (
           <button key={f.id} type="button" onClick={() => setFilter(f.id)} style={{
             flexShrink:0, padding:"7px 16px", borderRadius:99, border:"1px solid",
-            borderColor: filter === f.id ? "var(--pilot-blue)" : "var(--border-subtle)",
-            background:  filter === f.id ? "var(--pilot-blue)" : "var(--surface-primary)",
-            color:       filter === f.id ? "#fff" : "var(--text-main)",
+            borderColor: filter === f.id ? "#7c3aed" : "#e5e7eb",
+            background:  filter === f.id ? "#7c3aed" : "#fff",
+            color:       filter === f.id ? "#fff" : "#374151",
             fontWeight:700, fontSize:12, cursor:"pointer", transition:"all 0.15s", whiteSpace:"nowrap",
           }}>{f.label}</button>
         ))}
@@ -570,17 +712,19 @@ function PostsTab({ activeBrand, connectedPlatforms, switchTab }) {
 
       {/* Loading skeleton */}
       {loading && (
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:16 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))", gap:16 }}>
           {Array.from({length:6}).map((_,i) => (
-            <div key={i} style={{ border:"1px solid var(--border-subtle)", borderRadius:"var(--radius-lg)", overflow:"hidden" }}>
-              <div className="cs-shimmer" style={{ height:408 }} />
-              <div style={{ padding:"12px 14px 14px", display:"flex", flexDirection:"column", gap:8 }}>
+            <div key={i} style={{ border:"1px solid #e5e7eb", borderRadius:14, overflow:"hidden" }}>
+              <div className="cs-shimmer" style={{ height:175 }} />
+              <div style={{ padding:"14px 16px", display:"flex", flexDirection:"column", gap:8 }}>
                 <div className="cs-shimmer" style={{ height:14, borderRadius:4, width:"75%" }} />
-                <div className="cs-shimmer" style={{ height:10, borderRadius:4, width:"50%" }} />
-                <div style={{ display:"flex", gap:8, marginTop:4 }}>
-                  <div className="cs-shimmer" style={{ flex:1, height:34, borderRadius:"var(--radius-md)" }} />
-                  <div className="cs-shimmer" style={{ flex:1, height:34, borderRadius:"var(--radius-md)" }} />
-                </div>
+                <div className="cs-shimmer" style={{ height:10, borderRadius:4, width:"90%" }} />
+                <div className="cs-shimmer" style={{ height:10, borderRadius:4, width:"55%" }} />
+              </div>
+              <div style={{ padding:"10px 16px 14px", borderTop:"1px solid #f1f5f9", display:"flex", gap:6 }}>
+                <div className="cs-shimmer" style={{ flex:1, height:34, borderRadius:8 }} />
+                <div className="cs-shimmer" style={{ width:60, height:34, borderRadius:8 }} />
+                <div className="cs-shimmer" style={{ width:60, height:34, borderRadius:8 }} />
               </div>
             </div>
           ))}
@@ -591,9 +735,9 @@ function PostsTab({ activeBrand, connectedPlatforms, switchTab }) {
       {!loading && error && (
         <div style={{ textAlign:"center", padding:"56px 24px" }}>
           <div style={{ fontSize:28, marginBottom:14 }}>⚠️</div>
-          <div style={{ fontSize:15, fontWeight:700, color:"var(--text-main)", marginBottom:6 }}>Failed to load opportunities</div>
-          <div style={{ fontSize:13, color:"var(--text-muted)", marginBottom:20 }}>{error}</div>
-          <button type="button" onClick={() => load()} style={{ padding:"10px 24px", borderRadius:"var(--radius-md)", border:"none", cursor:"pointer", background:"var(--pilot-blue)", color:"#fff", fontWeight:700, fontSize:14 }}>Try Again</button>
+          <div style={{ fontSize:15, fontWeight:700, color:"#374151", marginBottom:6 }}>Failed to load opportunities</div>
+          <div style={{ fontSize:13, color:"#6b7280", marginBottom:20 }}>{error}</div>
+          <button type="button" onClick={() => load()} style={{ padding:"10px 24px", borderRadius:8, border:"none", cursor:"pointer", background:"#7c3aed", color:"#fff", fontWeight:700, fontSize:14 }}>Try Again</button>
         </div>
       )}
 
@@ -601,53 +745,45 @@ function PostsTab({ activeBrand, connectedPlatforms, switchTab }) {
       {!loading && !error && (
         <>
           {visible.length === 0 ? (
-            <div style={{ textAlign:"center", padding:"48px 24px", border:"1px dashed var(--border-subtle)", borderRadius:"var(--radius-lg)", background:"var(--surface-secondary)" }}>
+            <div style={{ textAlign:"center", padding:"48px 24px", border:"1px dashed #e5e7eb", borderRadius:14, background:"#fafafa" }}>
               <div style={{ fontSize:28, marginBottom:12 }}>🔍</div>
-              <div style={{ fontSize:15, fontWeight:700, color:"var(--text-main)", marginBottom:6 }}>No opportunities in this category</div>
-              <div style={{ fontSize:13, color:"var(--text-muted)" }}>Try a different filter or refresh the feed.</div>
+              <div style={{ fontSize:15, fontWeight:700, color:"#374151", marginBottom:6 }}>No opportunities in this category</div>
+              <div style={{ fontSize:13, color:"#9ca3af" }}>Try a different filter or refresh the feed.</div>
             </div>
           ) : (
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:16 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))", gap:16 }}>
               {visible.map((opp, i) => (
-                <DiscoveryCard
+                <OpportunityCard
                   key={opp.id || i}
                   opp={opp}
-                  onPreview={handlePreview}
-                  onUseIdea={handleUseIdea}
+                  calendarEvents={calendarEvents}
+                  onUse={setGenModal}
+                  onSave={handleSave}
+                  onHide={o => setHidden(prev => new Set([...prev, o.id || o.title]))}
                 />
               ))}
             </div>
           )}
-          <div style={{ marginTop:14, fontSize:12, color:"var(--text-muted)", textAlign:"right" }}>
+          <div style={{ marginTop:14, fontSize:12, color:"#9ca3af", textAlign:"right" }}>
             {visible.length} of {opps.length} opportunities · Studio never publishes
           </div>
         </>
       )}
 
-      {/* Preview modal */}
-      {preview && (
-        <PostPreviewModal
-          opp={preview.opp}
-          imageUrl={preview.imageUrl}
+      {genModal && (
+        <GenerationModal
+          opp={genModal}
+          ccs={ccs}
           activeBrand={activeBrand}
-          onClose={() => setPreview(null)}
-          onUseIdea={handleUseIdea}
-        />
-      )}
-
-      {/* Route chooser */}
-      {routing && (
-        <RouteModal
-          opp={routing}
           switchTab={switchTab}
-          onClose={() => setRouting(null)}
+          onClose={() => setGenModal(null)}
         />
       )}
     </div>
   );
 }
 
-// ── Playbooks Tab ─────────────────────────────────────────────────────────────
+// ── Playbooks Tab ──────────────────────────────────────────────────────────────
 const PLAYBOOK_TYPES = [
   { id:"authority-building",   name:"Authority Building",   icon:"fas fa-crown",         accent:"#d97706", desc:"Position as the definitive expert in your category." },
   { id:"product-launch",       name:"Product Launch",       icon:"fas fa-rocket",        accent:"#7c3aed", desc:"Announce and amplify your next product or service." },
@@ -713,7 +849,7 @@ function PlaybooksTab({ activeBrand, switchTab }) {
   );
 }
 
-// ── Playbook Wizard ───────────────────────────────────────────────────────────
+// ── Playbook Wizard ────────────────────────────────────────────────────────────
 function PlaybookWizard({ playbook, activeBrand, switchTab, onClose }) {
   const [step,        setStep]        = useState(1);
   const [industry,    setIndustry]    = useState(activeBrand?.industry || "");
@@ -823,33 +959,36 @@ function PlaybookWizard({ playbook, activeBrand, switchTab, onClose }) {
           <div>
             <div style={{ fontSize:16, fontWeight:700, color:"#111827", marginBottom:6 }}>Where should we get source data?</div>
             <div style={{ fontSize:13, color:"#6b7280", marginBottom:16 }}>The richer the context, the stronger the output.</div>
+
             {[
-              { id:"brand-dna",  label:"Brand DNA",                 desc:"Use your stored brand profile. Best for on-brand, consistent content.", icon:"🧬" },
-              { id:"manual",     label:"Manual Input",               desc:"Provide specific context, messages, or angles for this run.", icon:"✍️" },
+              { id:"brand-dna",  label:"Brand DNA",              desc:"Use your stored brand profile. Best for on-brand, consistent content.", icon:"🧬" },
+              { id:"manual",     label:"Manual Input",            desc:"Provide specific context, messages, or angles for this run.", icon:"✍️" },
               { id:"repurpose",  label:"Repurpose Existing Content", desc:"Paste existing content and we'll transform it into fresh posts.", icon:"🔄" },
             ].map(opt => (
-              <div key={opt.id} onClick={() => setSourceType(opt.id)} style={{
+              <div key={opt.id} onClick={() => !opt.disabled && setSourceType(opt.id)} style={{
                 border:`2px solid ${sourceType === opt.id ? playbook.accent : "#e5e7eb"}`,
                 borderRadius:10, padding:"13px 16px", marginBottom:10,
-                cursor:"pointer",
-                background: sourceType === opt.id ? `${playbook.accent}08` : "#fff",
-                transition:"all 0.15s",
+                cursor: opt.disabled ? "default" : "pointer",
+                background: sourceType === opt.id ? `${playbook.accent}08` : opt.disabled ? "#fafafa" : "#fff",
+                opacity: opt.disabled ? 0.5 : 1, transition:"all 0.15s",
               }}>
                 <div style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
                   <span style={{ fontSize:16, flexShrink:0, marginTop:1 }}>{opt.icon}</span>
                   <div>
-                    <div style={{ fontSize:14, fontWeight:700, color:"#111827" }}>{opt.label}</div>
+                    <div style={{ fontSize:14, fontWeight:700, color:"#111827" }}>{opt.label}{opt.disabled && " (Soon)"}</div>
                     <div style={{ fontSize:12, color:"#6b7280", marginTop:2 }}>{opt.desc}</div>
                   </div>
                 </div>
               </div>
             ))}
+
             {(sourceType === "manual" || sourceType === "repurpose") && (
               <textarea value={inputData} onChange={e => setInputData(e.target.value)}
                 placeholder={sourceType === "manual" ? "Key messages, angles, specific details..." : "Paste existing content to repurpose..."}
                 style={{ width:"100%", padding:"11px 14px", borderRadius:8, border:"1px solid #d1d5db", fontSize:13, color:"#111827", resize:"vertical", minHeight:90, boxSizing:"border-box", lineHeight:1.6, outline:"none", marginTop:6 }}
               />
             )}
+
             <div style={{ marginTop:16, display:"flex", justifyContent:"space-between" }}>
               <button type="button" onClick={() => setStep(1)} style={{ padding:"9px 18px", borderRadius:8, border:"1px solid #e5e7eb", background:"#fff", color:"#374151", fontWeight:600, fontSize:13, cursor:"pointer" }}>← Back</button>
               <button type="button" onClick={() => setStep(3)} style={{ padding:"9px 22px", borderRadius:8, border:"none", cursor:"pointer", background:playbook.accent, color:"#fff", fontWeight:700, fontSize:13 }}>Continue →</button>
@@ -866,7 +1005,7 @@ function PlaybookWizard({ playbook, activeBrand, switchTab, onClose }) {
                 { label:"Brand",    value: activeBrand?.name || "Your Brand" },
                 { label:"Industry", value: industry },
                 { label:"Playbook", value: playbook.name },
-                { label:"Source",   value: sourceType === "brand-dna" ? "Brand DNA" : sourceType === "manual" ? "Manual input" : "Repurpose existing" },
+                { label:"Source",   value: sourceType === "brand-dna" ? "Brand DNA" : sourceType === "manual" ? "Manual input" : sourceType === "website" ? "Website import" : "Repurpose existing" },
                 inputData ? { label:"Context", value: inputData.slice(0,200) + (inputData.length > 200 ? "…" : "") } : null,
               ].filter(Boolean).map((row, i, arr) => (
                 <div key={i} style={{ display:"flex", gap:16, padding:"11px 16px", borderBottom: i < arr.length-1 ? "1px solid #f3f4f6" : "none", background: i%2===0 ? "#fff" : "#fafafa" }}>
@@ -886,6 +1025,7 @@ function PlaybookWizard({ playbook, activeBrand, switchTab, onClose }) {
           <div>
             <div style={{ fontSize:16, fontWeight:700, color:"#111827", marginBottom:6 }}>Configure execution</div>
             <div style={{ fontSize:13, color:"#6b7280", marginBottom:20 }}>Set scale and channels.</div>
+
             <div style={{ marginBottom:20 }}>
               <div style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:0.5, marginBottom:10 }}>Content Intensity</div>
               <div style={{ display:"flex", gap:8 }}>
@@ -901,6 +1041,7 @@ function PlaybookWizard({ playbook, activeBrand, switchTab, onClose }) {
                 ))}
               </div>
             </div>
+
             <div style={{ marginBottom:20 }}>
               <div style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:0.5, marginBottom:10 }}>Channels</div>
               <div style={{ display:"flex", gap:7, flexWrap:"wrap" }}>
@@ -915,10 +1056,16 @@ function PlaybookWizard({ playbook, activeBrand, switchTab, onClose }) {
                 ))}
               </div>
             </div>
+
             {err && <div style={{ background:"#fef2f2", border:"1px solid #fecaca", borderRadius:8, padding:"10px 14px", marginBottom:14, fontSize:13, color:"#dc2626" }}>{err}</div>}
+
             <div style={{ display:"flex", justifyContent:"space-between" }}>
               <button type="button" onClick={() => setStep(3)} style={{ padding:"9px 18px", borderRadius:8, border:"1px solid #e5e7eb", background:"#fff", color:"#374151", fontWeight:600, fontSize:13, cursor:"pointer" }}>← Back</button>
-              <button type="button" onClick={generate} style={{ padding:"9px 22px", borderRadius:8, border:"none", cursor:"pointer", background:`linear-gradient(135deg,${playbook.accent},${playbook.accent}cc)`, color:"#fff", fontWeight:700, fontSize:13 }}>Generate Playbook</button>
+              <button type="button" onClick={generate} style={{
+                padding:"9px 22px", borderRadius:8, border:"none", cursor:"pointer",
+                background:`linear-gradient(135deg,${playbook.accent},${playbook.accent}cc)`,
+                color:"#fff", fontWeight:700, fontSize:13,
+              }}>Generate Playbook</button>
             </div>
           </div>
         )}
@@ -941,6 +1088,7 @@ function PlaybookWizard({ playbook, activeBrand, switchTab, onClose }) {
               <div style={{ fontSize:15, fontWeight:700, color:"#111827" }}>Playbook generated</div>
             </div>
             <div style={{ fontSize:12, color:"#6b7280", marginBottom:16 }}>Save pieces individually or all at once. Route to Create Post to edit.</div>
+
             <div style={{ display:"flex", flexDirection:"column", gap:10, maxHeight:360, overflowY:"auto", marginBottom:20, paddingRight:4 }}>
               {(result.modules || result.posts || []).map((mod,i) => (
                 <div key={i} style={{ border:"1px solid #e5e7eb", borderRadius:10, padding:"13px 16px" }}>
@@ -964,8 +1112,12 @@ function PlaybookWizard({ playbook, activeBrand, switchTab, onClose }) {
                 ))
               }
             </div>
+
             <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
-              <button type="button" onClick={() => { switchTab("social"); onClose(); }} style={{ flex:1, padding:"11px 0", borderRadius:8, border:"none", cursor:"pointer", background:`linear-gradient(135deg,${playbook.accent},${playbook.accent}cc)`, color:"#fff", fontWeight:700, fontSize:13 }}>Open in Create Social Post</button>
+              <button type="button" onClick={() => { switchTab("social"); onClose(); }} style={{
+                flex:1, padding:"11px 0", borderRadius:8, border:"none", cursor:"pointer",
+                background:`linear-gradient(135deg,${playbook.accent},${playbook.accent}cc)`, color:"#fff", fontWeight:700, fontSize:13,
+              }}>Open in Create Social Post</button>
               <button type="button" onClick={onClose} style={{ padding:"11px 20px", borderRadius:8, border:"none", background:"#f3f4f6", color:"#374151", fontWeight:600, fontSize:13, cursor:"pointer" }}>Done</button>
             </div>
           </div>
@@ -975,7 +1127,7 @@ function PlaybookWizard({ playbook, activeBrand, switchTab, onClose }) {
   );
 }
 
-// ── Campaign Content Tab ──────────────────────────────────────────────────────
+// ── Campaign Content Tab ───────────────────────────────────────────────────────
 function CampaignContentTab({ activeBrand, switchTab }) {
   const [campaigns,  setCampaigns]  = useState([]);
   const [loading,    setLoading]    = useState(true);
@@ -1052,12 +1204,13 @@ function CampaignContentTab({ activeBrand, switchTab }) {
             ← Back
           </button>
         </div>
+
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:14 }}>
           {[
-            { key:"social_posts",       label:"Social Posts",         accent:"#7c3aed", bg:"#faf5ff" },
-            { key:"article",            label:"Article / Blog",       accent:"#0284c7", bg:"#f0f9ff" },
-            { key:"cta_variants",       label:"CTA Variants",         accent:"#059669", bg:"#f0fdf4" },
-            { key:"media_requirements", label:"Media Requirements",   accent:"#d97706", bg:"#fffbeb" },
+            { key:"social_posts", label:"Social Posts",         accent:"#7c3aed", bg:"#faf5ff" },
+            { key:"article",      label:"Article / Blog",       accent:"#0284c7", bg:"#f0f9ff" },
+            { key:"cta_variants", label:"CTA Variants",         accent:"#059669", bg:"#f0fdf4" },
+            { key:"media_requirements", label:"Media Requirements", accent:"#d97706", bg:"#fffbeb" },
           ].filter(m => result[m.key]).map(m => (
             <div key={m.key} style={{ border:"1px solid #e5e7eb", borderRadius:12, overflow:"hidden", gridColumn: m.key==="social_posts" ? "span 2" : undefined }}>
               <div style={{ padding:"12px 16px 10px", background:m.bg, borderBottom:"1px solid #e5e7eb", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
@@ -1080,6 +1233,7 @@ function CampaignContentTab({ activeBrand, switchTab }) {
             </div>
           ))}
         </div>
+
         <div style={{ marginTop:16, display:"flex", gap:10 }}>
           <button type="button" onClick={() => switchTab("social")} style={{ padding:"11px 24px", borderRadius:8, border:"none", cursor:"pointer", background:"#059669", color:"#fff", fontWeight:700, fontSize:14 }}>Open Editor</button>
           <button type="button" onClick={() => switchTab("schedule")} style={{ padding:"11px 24px", borderRadius:8, border:"1px solid #e5e7eb", background:"#fff", color:"#374151", fontWeight:600, fontSize:14, cursor:"pointer" }}>Schedule</button>
@@ -1094,12 +1248,15 @@ function CampaignContentTab({ activeBrand, switchTab }) {
         <div style={{ fontSize:15, fontWeight:700, color:"#111827" }}>Generate Campaign Content</div>
         <div style={{ fontSize:13, color:"#6b7280", marginTop:2 }}>Select an existing campaign — we'll read it and generate a full content asset set.</div>
       </div>
+
       {campaigns.length === 0 ? (
         <div style={{ border:"1px dashed #e5e7eb", borderRadius:14, padding:"56px 24px", textAlign:"center", background:"#fafafa" }}>
           <div style={{ fontSize:28, marginBottom:12 }}>📋</div>
           <div style={{ fontSize:15, fontWeight:700, color:"#374151", marginBottom:6 }}>No campaigns found</div>
           <div style={{ fontSize:13, color:"#9ca3af", marginBottom:20 }}>Create a campaign first — Studio uses your campaign as the content source.</div>
-          <button type="button" onClick={() => switchTab("campaign")} style={{ padding:"10px 24px", borderRadius:8, border:"none", cursor:"pointer", background:"#7c3aed", color:"#fff", fontWeight:700, fontSize:14 }}>Go to Campaigns</button>
+          <button type="button" onClick={() => switchTab("campaign")} style={{ padding:"10px 24px", borderRadius:8, border:"none", cursor:"pointer", background:"#7c3aed", color:"#fff", fontWeight:700, fontSize:14 }}>
+            Go to Campaigns
+          </button>
         </div>
       ) : (
         <div>
@@ -1107,7 +1264,8 @@ function CampaignContentTab({ activeBrand, switchTab }) {
             {campaigns.slice(0,10).map(c => (
               <div key={c.id || c.campaign_id} onClick={() => setSelected(c)} style={{
                 border:`2px solid ${selected?.id === c.id ? "#7c3aed" : "#e5e7eb"}`,
-                borderRadius:12, padding:"14px 18px", cursor:"pointer", background: selected?.id === c.id ? "#faf5ff" : "#fff", transition:"all 0.15s",
+                borderRadius:12, padding:"14px 18px", cursor:"pointer", background: selected?.id === c.id ? "#faf5ff" : "#fff",
+                transition:"all 0.15s",
               }}>
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
                   <div>
@@ -1121,7 +1279,9 @@ function CampaignContentTab({ activeBrand, switchTab }) {
               </div>
             ))}
           </div>
+
           {err && <div style={{ background:"#fef2f2", border:"1px solid #fecaca", borderRadius:8, padding:"10px 14px", marginBottom:14, fontSize:13, color:"#dc2626" }}>{err}</div>}
+
           <button type="button" onClick={generate} disabled={!selected || generating} style={{
             padding:"13px 32px", borderRadius:10, border:"none",
             cursor: selected ? "pointer" : "default",
@@ -1129,7 +1289,9 @@ function CampaignContentTab({ activeBrand, switchTab }) {
             color: selected ? "#fff" : "#9ca3af", fontWeight:700, fontSize:15,
             display:"flex", alignItems:"center", gap:10,
           }}>
-            {generating && <div style={{ width:17, height:17, border:"2px solid rgba(255,255,255,0.35)", borderTopColor:"#fff", borderRadius:"50%", animation:"cs-spin 1s linear infinite" }} />}
+            {generating && (
+              <div style={{ width:17, height:17, border:"2px solid rgba(255,255,255,0.35)", borderTopColor:"#fff", borderRadius:"50%", animation:"cs-spin 1s linear infinite" }} />
+            )}
             <style>{CSS}</style>
             {generating ? "Generating..." : "Generate Campaign Assets"}
           </button>
@@ -1139,7 +1301,7 @@ function CampaignContentTab({ activeBrand, switchTab }) {
   );
 }
 
-// ── Studio Vault Tab ──────────────────────────────────────────────────────────
+// ── Studio Vault Tab ───────────────────────────────────────────────────────────
 const VAULT_SUB_TABS = [
   { id:"posts",            label:"Posts" },
   { id:"carousels",        label:"Carousels" },
@@ -1200,7 +1362,7 @@ function StudioVaultTab({ activeBrand, switchTab }) {
   }
 
   function filterBySubTab(item) {
-    const type  = (item.content_type || item.type || "").toLowerCase();
+    const type = (item.content_type || item.type || "").toLowerCase();
     const title = (item.title || "").toLowerCase();
     if (subTab === "posts")            return type === "social" && !title.includes("carousel");
     if (subTab === "carousels")        return title.includes("carousel") || type === "carousel";
@@ -1212,81 +1374,79 @@ function StudioVaultTab({ activeBrand, switchTab }) {
 
   const visible = items.filter(filterBySubTab);
 
-  const thS = { padding:"9px 14px", fontSize:10, fontWeight:700, color:"var(--text-muted)", textTransform:"uppercase", letterSpacing:1, textAlign:"left", whiteSpace:"nowrap", borderBottom:"1px solid var(--border-subtle)", background:"var(--surface-secondary)" };
-  const tdS = { padding:"12px 14px", fontSize:13, color:"var(--text-main)", borderBottom:"1px solid var(--hover-bg)", verticalAlign:"top" };
+  const thS = { padding:"9px 14px", fontSize:10, fontWeight:700, color:"#64748b", textTransform:"uppercase", letterSpacing:1, textAlign:"left", whiteSpace:"nowrap", borderBottom:"1px solid #e5e7eb", background:"#f8fafc" };
+  const tdS = { padding:"12px 14px", fontSize:13, color:"#374151", borderBottom:"1px solid #f1f5f9", verticalAlign:"top" };
 
   return (
     <div>
       <style>{CSS}</style>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16, flexWrap:"wrap", gap:10 }}>
         <div>
-          <div style={{ fontSize:15, fontWeight:700, color:"var(--text-main)" }}>Content Vault</div>
-          <div style={{ fontSize:13, color:"var(--text-muted)", marginTop:2 }}>Studio-generated drafts. Open in editor to refine before publishing.</div>
+          <div style={{ fontSize:15, fontWeight:700, color:"#111827" }}>Content Vault</div>
+          <div style={{ fontSize:13, color:"#6b7280", marginTop:2 }}>Studio-generated drafts. Open in editor to refine before publishing.</div>
         </div>
-        <button type="button" onClick={load} style={{ padding:"7px 14px", borderRadius:"var(--radius-md)", border:"1px solid var(--border-subtle)", background:"var(--surface-primary)", color:"var(--text-main)", fontWeight:600, fontSize:12, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}>
+        <button type="button" onClick={load} style={{ padding:"7px 14px", borderRadius:8, border:"1px solid #e5e7eb", background:"#fff", color:"#374151", fontWeight:600, fontSize:12, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}>
           <i className="fas fa-sync-alt" style={{ fontSize:10 }} /> Refresh
         </button>
       </div>
 
-      <div style={{ display:"flex", gap:0, background:"var(--hover-bg)", borderRadius:"var(--radius-lg)", padding:3, marginBottom:20, overflow:"hidden" }}>
+      <div style={{ display:"flex", gap:0, background:"#f1f5f9", borderRadius:10, padding:3, marginBottom:20, overflow:"hidden" }}>
         {VAULT_SUB_TABS.map(t => (
           <button key={t.id} type="button" onClick={() => setSubTab(t.id)} style={{
-            flex:1, padding:"7px 0", border:"none", borderRadius:"var(--radius-md)", cursor:"pointer",
+            flex:1, padding:"7px 0", border:"none", borderRadius:8, cursor:"pointer",
             fontSize:12, fontWeight: subTab === t.id ? 700 : 500,
-            background: subTab === t.id ? "var(--surface-primary)" : "transparent",
-            color: subTab === t.id ? "var(--text-main)" : "var(--text-muted)",
+            background: subTab === t.id ? "#fff" : "transparent",
+            color: subTab === t.id ? "#111827" : "#6b7280",
             boxShadow: subTab === t.id ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
             transition:"all 0.15s", whiteSpace:"nowrap",
           }}>{t.label}</button>
         ))}
       </div>
 
-      <div style={{ background:"var(--pilot-blue-light)", border:"1px solid var(--pilot-blue)", borderRadius:"var(--radius-md)", padding:"10px 16px", marginBottom:16, fontSize:12, color:"var(--pilot-blue)" }}>
+      <div style={{ background:"#f0f9ff", border:"1px solid #bae6fd", borderRadius:10, padding:"10px 16px", marginBottom:16, fontSize:12, color:"#0369a1" }}>
         AI-generated drafts. Open in editor → refine → send for approval → schedule. Studio never publishes.
       </div>
 
       {loading && (
         <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-          {[1,2,3].map(i => <div key={i} className="cs-shimmer" style={{ height:64, borderRadius:"var(--radius-md)" }} />)}
+          {[1,2,3].map(i => <div key={i} className="cs-shimmer" style={{ height:64, borderRadius:10 }} />)}
         </div>
       )}
 
       {!loading && err && (
-        <div style={{ background:"var(--surface-primary)", border:"1px solid var(--status-danger)", borderRadius:"var(--radius-md)", padding:"10px 14px", fontSize:13, color:"var(--status-danger)", marginBottom:12 }}>{err}</div>
+        <div style={{ background:"#fef2f2", border:"1px solid #fecaca", borderRadius:8, padding:"10px 14px", fontSize:13, color:"#dc2626", marginBottom:12 }}>{err}</div>
       )}
 
       {!loading && !err && visible.length === 0 && (
-        <div style={{ border:"1px dashed var(--border-subtle)", borderRadius:"var(--radius-lg)", padding:"56px 24px", textAlign:"center", background:"var(--surface-secondary)" }}>
+        <div style={{ border:"1px dashed #e5e7eb", borderRadius:14, padding:"56px 24px", textAlign:"center", background:"#fafafa" }}>
           <div style={{ fontSize:28, marginBottom:12 }}>🗂️</div>
-          <div style={{ fontSize:15, fontWeight:700, color:"var(--text-main)", marginBottom:6 }}>No drafts in this category</div>
-          <div style={{ fontSize:13, color:"var(--text-muted)" }}>Generate content in Posts, Playbooks, or Campaign Content — it lands here.</div>
+          <div style={{ fontSize:15, fontWeight:700, color:"#374151", marginBottom:6 }}>No drafts in this category</div>
+          <div style={{ fontSize:13, color:"#9ca3af" }}>Generate content in Posts, Playbooks, or Campaign Content — it lands here.</div>
         </div>
       )}
 
       {!loading && !err && visible.length > 0 && (
-        <div style={{ border:"1px solid var(--border-subtle)", borderRadius:"var(--radius-lg)", overflow:"hidden" }}>
+        <div style={{ border:"1px solid #e5e7eb", borderRadius:12, overflow:"hidden" }}>
           <table style={{ width:"100%", borderCollapse:"collapse" }}>
             <thead>
               <tr>
                 <th style={thS}>Title</th>
                 <th style={{ ...thS, width:100 }}>Status</th>
                 <th style={{ ...thS, width:120 }}>Created</th>
-                <th style={{ ...thS, width:220 }}>Actions</th>
+                <th style={{ ...thS, width:200 }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {visible.map(item => {
                 const id = item.content_id || item.id;
                 const status = item.lifecycle_status || "draft";
-                const statusColor = status === "approval_requested"
-                  ? { bg:"var(--surface-secondary)", color:"var(--status-warning)" }
-                  : { bg:"var(--hover-bg)", color:"var(--text-muted)" };
+                const statusColor = status === "approval_requested" ? { bg:"#fef3c7", color:"#92400e" } : { bg:"#f1f5f9", color:"#475569" };
                 return (
                   <tr key={id}>
                     <td style={tdS}>
-                      <div style={{ fontWeight:600, color:"var(--text-main)", marginBottom:2 }}>{item.title || "Untitled Draft"}</div>
+                      <div style={{ fontWeight:600, color:"#111827", marginBottom:2 }}>{item.title || "Untitled Draft"}</div>
                       {item.body && (
-                        <div style={{ fontSize:11, color:"var(--text-muted)", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{item.body}</div>
+                        <div style={{ fontSize:11, color:"#9ca3af", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{item.body}</div>
                       )}
                     </td>
                     <td style={tdS}>
@@ -1294,18 +1454,18 @@ function StudioVaultTab({ activeBrand, switchTab }) {
                         {status.replace(/_/g," ")}
                       </span>
                     </td>
-                    <td style={{ ...tdS, fontSize:11, color:"var(--text-muted)", whiteSpace:"nowrap" }}>
+                    <td style={{ ...tdS, fontSize:11, color:"#6b7280", whiteSpace:"nowrap" }}>
                       {item.created_at ? new Date(item.created_at).toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" }) : "—"}
                     </td>
                     <td style={tdS}>
                       <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
-                        <button type="button" onClick={() => switchTab("social")} style={{ padding:"4px 9px", borderRadius:"var(--radius-md)", border:"1px solid var(--pilot-blue)", background:"var(--pilot-blue-light)", color:"var(--pilot-blue)", fontWeight:700, fontSize:11, cursor:"pointer" }}>Edit</button>
-                        <button type="button" onClick={() => duplicate(item)} style={{ padding:"4px 9px", borderRadius:"var(--radius-md)", border:"1px solid var(--border-subtle)", background:"var(--surface-primary)", color:"var(--text-main)", fontWeight:600, fontSize:11, cursor:"pointer" }}>Duplicate</button>
+                        <button type="button" onClick={() => switchTab("social")} style={{ padding:"4px 9px", borderRadius:6, border:"1px solid #c4b5fd", background:"#faf5ff", color:"#7c3aed", fontWeight:700, fontSize:11, cursor:"pointer" }}>Edit</button>
+                        <button type="button" onClick={() => duplicate(item)} style={{ padding:"4px 9px", borderRadius:6, border:"1px solid #e5e7eb", background:"#fff", color:"#374151", fontWeight:600, fontSize:11, cursor:"pointer" }}>Duplicate</button>
                         {status !== "approval_requested" && (
-                          <button type="button" onClick={() => shareForApproval(item)} style={{ padding:"4px 9px", borderRadius:"var(--radius-md)", border:"1px solid var(--status-success)", background:"var(--surface-primary)", color:"var(--status-success)", fontWeight:700, fontSize:11, cursor:"pointer" }}>Share</button>
+                          <button type="button" onClick={() => shareForApproval(item)} style={{ padding:"4px 9px", borderRadius:6, border:"1px solid #bbf7d0", background:"#f0fdf4", color:"#059669", fontWeight:700, fontSize:11, cursor:"pointer" }}>Approve</button>
                         )}
-                        <button type="button" onClick={() => switchTab("schedule")} style={{ padding:"4px 9px", borderRadius:"var(--radius-md)", border:"1px solid var(--border-subtle)", background:"var(--surface-primary)", color:"var(--text-main)", fontWeight:600, fontSize:11, cursor:"pointer" }}>Schedule</button>
-                        <button type="button" onClick={() => deleteItem(id)} style={{ padding:"4px 7px", borderRadius:"var(--radius-md)", border:"1px solid var(--status-danger)", background:"var(--surface-primary)", color:"var(--status-danger)", fontWeight:700, fontSize:11, cursor:"pointer" }}>✕</button>
+                        <button type="button" onClick={() => switchTab("schedule")} style={{ padding:"4px 9px", borderRadius:6, border:"1px solid #e5e7eb", background:"#fff", color:"#374151", fontWeight:600, fontSize:11, cursor:"pointer" }}>Schedule</button>
+                        <button type="button" onClick={() => deleteItem(id)} style={{ padding:"4px 7px", borderRadius:6, border:"1px solid #fecaca", background:"#fef2f2", color:"#dc2626", fontWeight:700, fontSize:11, cursor:"pointer" }}>✕</button>
                       </div>
                     </td>
                   </tr>
@@ -1319,7 +1479,7 @@ function StudioVaultTab({ activeBrand, switchTab }) {
   );
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
+// ── Main ───────────────────────────────────────────────────────────────────────
 export default function AIContentStudio({ activeBrand, intelligenceFeed = [], connectedPlatforms = [], switchTab }) {
   const [activeTab, setActiveTab] = useState("posts");
 
@@ -1337,12 +1497,12 @@ export default function AIContentStudio({ activeBrand, intelligenceFeed = [], co
       {/* Header */}
       <div style={{ marginBottom:24 }}>
         <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:4 }}>
-          <div style={{ width:38, height:38, borderRadius:10, background:"var(--pilot-blue)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+          <div style={{ width:38, height:38, borderRadius:10, background:"linear-gradient(135deg,#7c3aed,#4f46e5)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
             <i className="fas fa-magic" style={{ fontSize:16, color:"#fff" }} />
           </div>
           <div>
-            <h2 style={{ fontSize:22, fontWeight:800, color:"var(--text-main)", margin:0, lineHeight:1.2 }}>AI Content Studio</h2>
-            <div style={{ fontSize:12, color:"var(--pilot-blue)", fontWeight:600, marginTop:1, letterSpacing:0.2 }}>
+            <h2 style={{ fontSize:22, fontWeight:800, color:"#111827", margin:0, lineHeight:1.2 }}>AI Content Studio</h2>
+            <div style={{ fontSize:12, color:"#7c3aed", fontWeight:600, marginTop:1, letterSpacing:0.2 }}>
               Discover → Generate → Refine → Approve → Schedule
             </div>
           </div>
@@ -1350,13 +1510,13 @@ export default function AIContentStudio({ activeBrand, intelligenceFeed = [], co
       </div>
 
       {/* Tab bar */}
-      <div style={{ display:"flex", gap:0, background:"var(--hover-bg)", borderRadius:"var(--radius-lg)", padding:4, maxWidth:520, marginBottom:28 }}>
+      <div style={{ display:"flex", gap:0, background:"#f1f5f9", borderRadius:10, padding:4, maxWidth:520, marginBottom:28 }}>
         {TABS.map(t => (
           <button key={t.id} type="button" onClick={() => setActiveTab(t.id)} style={{
-            flex:1, padding:"8px 0", border:"none", borderRadius:"var(--radius-md)", cursor:"pointer",
+            flex:1, padding:"8px 0", border:"none", borderRadius:8, cursor:"pointer",
             fontSize:13, fontWeight: activeTab === t.id ? 700 : 500,
-            background: activeTab === t.id ? "var(--surface-primary)" : "transparent",
-            color: activeTab === t.id ? "var(--text-main)" : "var(--text-muted)",
+            background: activeTab === t.id ? "#fff" : "transparent",
+            color: activeTab === t.id ? "#111827" : "#6b7280",
             boxShadow: activeTab === t.id ? "0 1px 4px rgba(0,0,0,0.10)" : "none",
             transition:"all 0.15s",
           }}>{t.label}</button>
