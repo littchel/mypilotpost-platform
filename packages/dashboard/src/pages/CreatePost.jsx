@@ -3,6 +3,7 @@ import PlatformPreviewPanel from "../components/publishing/PlatformPreviewPanel"
 import SocialAssistantModal from "../components/shared/SocialAssistantModal";
 import PlatformIcon from "../components/shared/PlatformIcon";
 import { validateContent } from "../lib/platformRequirements";
+import { fetchMediaSuggestions, trackImageSelected, trackImageAttached } from "../services/mediaSuggestions";
 
 const API_BASE = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 
@@ -171,6 +172,56 @@ function PexelsCard({ item, onUse, loading }) {
           {loading ? "…" : "Use"}
         </button>
       </div>
+    </div>
+  );
+}
+
+// ── Agency Media Picker ─────────────────────────────────────────────────────────
+const MEDIA_TABS = [
+  { id: "agencyPicks",   label: "✨ Agency Picks" },
+  { id: "trending",      label: "🔥 Trending" },
+  { id: "humanStories",  label: "👥 Human Stories" },
+  { id: "professional",  label: "🏢 Professional" },
+  { id: "minimal",       label: "🎨 Minimal" },
+];
+
+function MediaPickerPanel({ loading, error, buckets, activeTab, onTabChange, onUse, using, onRetry }) {
+  const items = buckets?.[activeTab] || [];
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      {/* Tab strip */}
+      <div style={{ display: "flex", gap: 4, marginBottom: 8, overflowX: "auto", paddingBottom: 2 }}>
+        {MEDIA_TABS.map(t => (
+          <button key={t.id} onClick={() => onTabChange(t.id)}
+            style={{ flexShrink: 0, padding: "3px 9px", borderRadius: 100, border: `1px solid ${activeTab === t.id ? "#0ea5e9" : "#e2e8f0"}`, background: activeTab === t.id ? "#f0f9ff" : "#fff", color: activeTab === t.id ? "#0ea5e9" : "#64748b", fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: "center", padding: "12px 0", color: "#94a3b8", fontSize: 12 }}>
+          <span className="spinner-border spinner-border-sm" style={{ color: "#0ea5e9", width: 14, height: 14, borderWidth: 2, marginRight: 6 }}></span>
+          Finding images…
+        </div>
+      ) : error ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "#fef2f2", borderRadius: 6, border: "1px solid #fecaca" }}>
+          <i className="fas fa-exclamation-circle" style={{ color: "#ef4444", fontSize: 12 }}></i>
+          <span style={{ fontSize: 11, color: "#64748b", flex: 1 }}>Could not load images.</span>
+          <button onClick={onRetry} style={{ background: "none", border: "1px solid #e2e8f0", borderRadius: 4, padding: "2px 8px", fontSize: 10, color: "#475569", cursor: "pointer" }}>Retry</button>
+        </div>
+      ) : items.length === 0 ? (
+        <div style={{ fontSize: 11, color: "#94a3b8", padding: "8px 0", textAlign: "center" }}>
+          No images in this category — try Agency Picks or Trending.
+        </div>
+      ) : (
+        <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+          {items.slice(0, 12).map(item => (
+            <PexelsCard key={item.external_id || item.id} item={item} onUse={onUse} loading={using === (item.external_id || item.id)} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -501,12 +552,14 @@ export default function CreatePost({
   const [overrides, setOverrides]           = useState({});
   const [selectedPlatforms, setSelectedPlatforms] = useState([]);
   const [mediaItems, setMediaItems]         = useState([]);
-  const [pexelsItems, setPexelsItems]     = useState([]);
-  const [pexelsLoading, setPexelsLoading] = useState(false);
-  const [pexelsUsing, setPexelsUsing]     = useState(null);
-  const [pexelsError, setPexelsError]     = useState(false);
-  const [pexelsQuery, setPexelsQuery]     = useState("");
   const [showSuggested, setShowSuggested]   = useState(false);
+  const [mediaTab, setMediaTab]             = useState("agencyPicks");
+  const [mediaBuckets, setMediaBuckets]     = useState(null); // { agencyPicks, trending, humanStories, professional, minimal }
+  const [mediaLoading, setMediaLoading]     = useState(false);
+  const [mediaError, setMediaError]         = useState(false);
+  const [pexelsUsing, setPexelsUsing]       = useState(null);
+  // legacy compat (read by handleAssistantGenerate)
+  const [pexelsItems, setPexelsItems]       = useState([]);
   const [libraryOpen, setLibraryOpen]       = useState(false);
   const [campaignId, setCampaignId]         = useState(propCampaignId || "");
   const [scheduledTime, setScheduledTime]   = useState("");
@@ -657,55 +710,65 @@ export default function CreatePost({
     }
   };
 
-  // ── Pexels suggestions ──────────────────────────────────────────────────
-  const fetchPexelsSuggestions = async (query) => {
-    setPexelsLoading(true);
-    setPexelsError(false);
-    setPexelsQuery(query);
+  // ── Media suggestions (engine-backed) ──────────────────────────────────
+  const loadMediaSuggestions = useCallback(async () => {
+    if (mediaBuckets) return; // already loaded for this session
+    setMediaLoading(true);
+    setMediaError(false);
     try {
-      const data = await apiJSON("/api/customer/media/suggestions", "POST", { query });
-      const items = data?.items || [];
-      setPexelsItems(items);
-      if (items.length === 0) setPexelsError(true);
+      const platform = selectedPlatforms[0] || "instagram";
+      const buckets = await fetchMediaSuggestions({ platform, contentType: "social", text: content, brand: brandName, industry: "" });
+      setMediaBuckets(buckets);
+      setPexelsItems(buckets.agencyPicks); // legacy compat
     } catch {
-      setPexelsError(true);
+      setMediaError(true);
     } finally {
-      setPexelsLoading(false);
+      setMediaLoading(false);
     }
-  };
+  }, [mediaBuckets, selectedPlatforms, content, brandName]);
 
-  const handleSuggestedToggle = async () => {
+  const handleSuggestedToggle = () => {
     const next = !showSuggested;
     setShowSuggested(next);
-    if (!next || pexelsItems.length > 0) return;
-
-    const query = content.trim().split(/\s+/).slice(0, 6).join(" ") || brandName || "social media content";
-    fetchPexelsSuggestions(query);
+    if (next) loadMediaSuggestions();
   };
 
   const handlePexelsUse = async (item) => {
-    setPexelsUsing(item.external_id);
+    const previewUrl = item.preview_url || item.preview || item.url;
+    setPexelsUsing(item.external_id || item.id);
+    trackImageSelected(item);
     try {
       const saved = await apiJSON("/api/customer/media/from-pexels", "POST", {
-        external_id: item.external_id,
-        preview_url: item.preview_url,
-        type: item.type || "image",
+        external_id: item.external_id || item.id,
+        preview_url: previewUrl,
+        type: "image",
       });
-      setMediaItems(prev => [...prev, {
+      const newItem = {
         id: crypto.randomUUID(),
-        url: item.preview_url,
-        type: item.type || "image",
+        url: previewUrl,
+        type: "image",
         label: "Pexels",
-        external_id: item.external_id,
-        asset_id: saved?.media_id,   // needed for content_media_links
-      }]);
-      showToast("Pexels image added");
+        external_id: item.external_id || item.id,
+        asset_id: saved?.media_id,
+      };
+      setMediaItems(prev => [...prev, newItem]);
+      trackImageAttached(item);
+      showToast("Image added");
     } catch {
       showToast("Could not add image", "error");
     } finally {
       setPexelsUsing(null);
     }
   };
+
+  // Reset buckets when platform or content changes significantly
+  const prevPlatformRef = useRef(selectedPlatforms[0]);
+  useEffect(() => {
+    if (prevPlatformRef.current !== selectedPlatforms[0]) {
+      prevPlatformRef.current = selectedPlatforms[0];
+      setMediaBuckets(null);
+    }
+  }, [selectedPlatforms]);
 
   const handleLibrarySelect = (item) => {
     const url = item.preview_url
@@ -727,9 +790,8 @@ export default function CreatePost({
     if (result.platforms?.length) setSelectedPlatforms(result.platforms);
     if (result.mediaRecommendations?.length) {
       setShowSuggested(true);
-      setPexelsItems([]);
-      const q = result.mediaRecommendations[0]?.query || result.mediaQuery || brandName || "social media content";
-      fetchPexelsSuggestions(q);
+      setMediaBuckets(null); // force fresh fetch with new context
+      loadMediaSuggestions();
     }
     setAssistantOpen(false);
     setTimeout(() => editorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 200);
@@ -1263,7 +1325,7 @@ export default function CreatePost({
                     onClick={handleSuggestedToggle}
                     style={{ ...mediaBtn, border: showSuggested ? "1px solid #0ea5e9" : "1px solid #e2e8f0", color: showSuggested ? "#0ea5e9" : "#475569", background: showSuggested ? "#f0f9ff" : "#fff" }}
                   >
-                    <i className="fas fa-magic"></i> Suggested
+                    ✨ Agency Picks
                   </button>
                 </div>
               </div>
@@ -1295,45 +1357,18 @@ export default function CreatePost({
                 )}
               </div>
 
-              {/* Pexels suggestions panel */}
+              {/* Agency media picker */}
               {showSuggested && (
-                <div style={{ marginTop: 10 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: "#0ea5e9", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>
-                    <i className="fas fa-magic me-1"></i>AI Suggested · Pexels
-                  </div>
-                  {pexelsLoading ? (
-                    <div style={{ textAlign: "center", padding: "12px 0", color: "#94a3b8", fontSize: 12 }}>
-                      <span className="spinner-border spinner-border-sm" style={{ color: "#0ea5e9", width: 14, height: 14, borderWidth: 2, marginRight: 6 }}></span>
-                      Finding images…
-                    </div>
-                  ) : pexelsError ? (
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "#fef2f2", borderRadius: 6, border: "1px solid #fecaca" }}>
-                      <i className="fas fa-exclamation-circle" style={{ color: "#ef4444", fontSize: 12 }}></i>
-                      <span style={{ fontSize: 11, color: "#64748b", flex: 1 }}>Could not load image suggestions.</span>
-                      <button
-                        onClick={() => fetchPexelsSuggestions(pexelsQuery || content.trim().split(/\s+/).slice(0, 6).join(" ") || "social media content")}
-                        style={{ background: "none", border: "1px solid #e2e8f0", borderRadius: 4, padding: "2px 8px", fontSize: 10, color: "#475569", cursor: "pointer", whiteSpace: "nowrap" }}
-                      >
-                        Retry
-                      </button>
-                    </div>
-                  ) : pexelsItems.length === 0 ? (
-                    <div style={{ fontSize: 12, color: "#94a3b8", padding: "8px 0" }}>
-                      Generate content first — suggestions load from your post topic.
-                    </div>
-                  ) : (
-                    <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
-                      {pexelsItems.slice(0, 10).map((item) => (
-                        <PexelsCard
-                          key={item.external_id}
-                          item={item}
-                          onUse={handlePexelsUse}
-                          loading={pexelsUsing === item.external_id}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <MediaPickerPanel
+                  loading={mediaLoading}
+                  error={mediaError}
+                  buckets={mediaBuckets}
+                  activeTab={mediaTab}
+                  onTabChange={setMediaTab}
+                  onUse={handlePexelsUse}
+                  using={pexelsUsing}
+                  onRetry={() => { setMediaBuckets(null); loadMediaSuggestions(); }}
+                />
               )}
             </div>
           </div>

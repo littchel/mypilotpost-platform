@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { apiRequest } from "../lib/api/client";
 import PlatformIcon from "../components/shared/PlatformIcon";
+import { fetchMediaSuggestions, trackImageImported } from "../services/mediaSuggestions";
 
 const CSS = `
 @keyframes cs-spin    { to { transform:rotate(360deg) } }
@@ -278,6 +279,7 @@ function PreviewModal({ opp, imageUrl, activeBrand, onClose, onUseIdea }) {
 function RouteModal({ opp, imageUrl, switchTab, onClose }) {
   function route(tab) {
     try {
+      if (imageUrl) trackImageImported({ url: imageUrl, provider: 'pexels' });
       sessionStorage.setItem("studio_idea_prefill", JSON.stringify({
         idea_id:             opp.id || opp.title,
         title:               opp.idea || opp.title || opp.framework || "",
@@ -445,12 +447,27 @@ function PostsTab({ activeBrand, connectedPlatforms, switchTab }) {
       const data = await apiRequest("/api/customer/studio/opportunities");
       const list = (data.opportunities || []).map((o, i) => ({ ...o, _index: i }));
       setOpps(list);
-      list.forEach((_, i) => {
-        const url = PEXELS_POOL[i % PEXELS_POOL.length];
-        preloadImg(url)
-          .then(u => setImageMap(m => ({ ...m, [i]: { url: u, ready: true } })))
-          .catch(() => setImageMap(m => ({ ...m, [i]: { url: PEXELS_POOL[0], ready: true } })));
-      });
+      // Fetch live images from media engine based on opportunity context
+      fetchMediaSuggestions({ platform: 'instagram', contentType: 'social', text: list.slice(0, 3).map(o => o.title || o.idea || '').join(' ') })
+        .then(buckets => {
+          const pool = [...(buckets.agencyPicks || []), ...(buckets.trending || [])];
+          list.forEach((_, i) => {
+            const img = pool[i % Math.max(pool.length, 1)];
+            const url = img?.preview || img?.url || PEXELS_POOL[i % PEXELS_POOL.length];
+            preloadImg(url)
+              .then(u => setImageMap(m => ({ ...m, [i]: { url: u, ready: true } })))
+              .catch(() => setImageMap(m => ({ ...m, [i]: { url, ready: true } })));
+          });
+        })
+        .catch(() => {
+          // fallback to static pool
+          list.forEach((_, i) => {
+            const url = PEXELS_POOL[i % PEXELS_POOL.length];
+            preloadImg(url)
+              .then(u => setImageMap(m => ({ ...m, [i]: { url: u, ready: true } })))
+              .catch(() => setImageMap(m => ({ ...m, [i]: { url, ready: true } })));
+          });
+        });
     } catch (e) { setError(e.message || "Failed to load opportunities."); }
     finally { setLoading(false); setRefreshing(false); }
   }, []);
