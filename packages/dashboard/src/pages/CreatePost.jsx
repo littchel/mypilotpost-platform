@@ -30,7 +30,7 @@ function apiJSON(endpoint, method, body) {
   });
 }
 
-// ── Platform metadata ────────────────────────────────────────────────────────
+// ── Platform metadata ───────────────────────────────────────────────────────────
 const PLATFORM_META = {
   facebook:  { label: "Facebook",  icon: "fab fa-facebook",  color: "#1877f2" },
   instagram: { label: "Instagram", icon: "fab fa-instagram", color: "#e1306c" },
@@ -50,36 +50,14 @@ const TIMEZONES = [
   "UTC",
 ];
 
-// ── Sub-tab bar ──────────────────────────────────────────────────────────────
-function SubTabBar({ tabs, active, onChange }) {
-  return (
-    <div style={{ flexShrink: 0, borderBottom: "1px solid #e2e8f0", background: "#f8fafc", padding: "0 16px", display: "flex" }}>
-      {tabs.map(tab => {
-        const on = active === tab.id;
-        return (
-          <button
-            key={tab.id}
-            onClick={() => onChange(tab.id)}
-            style={{
-              border: "none", background: "none",
-              borderBottom: `2px solid ${on ? "#2563eb" : "transparent"}`,
-              color: on ? "#2563eb" : "#64748b",
-              padding: "8px 14px", fontSize: 12,
-              fontWeight: on ? 700 : 500, cursor: "pointer",
-              display: "flex", alignItems: "center", gap: 5, marginBottom: -1,
-              transition: "color 0.15s",
-            }}
-          >
-            <i className={tab.icon} style={{ fontSize: 11 }} />
-            {tab.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
+const WATERMARK_SECTIONS = [
+  { key: "HOOK",     label: "HOOK — open with something that stops the scroll" },
+  { key: "BODY",     label: "BODY — deliver the value, the story, the substance" },
+  { key: "CTA",      label: "CTA — tell them exactly what to do next" },
+  { key: "HASHTAGS", label: "HASHTAGS — #brand #topic #niche" },
+];
 
-// ── Toast ────────────────────────────────────────────────────────────────────
+// ── Toast ───────────────────────────────────────────────────────────────────────
 function Toast({ msg, type }) {
   const isErr = type === "error";
   return (
@@ -99,7 +77,7 @@ function Toast({ msg, type }) {
   );
 }
 
-// ── Clean editor ─────────────────────────────────────────────────────────────
+// ── Clean editor (no watermarks) ─────────────────────────────────────────────────
 function WatermarkEditor({ value, onChange }) {
   return (
     <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
@@ -119,7 +97,7 @@ function WatermarkEditor({ value, onChange }) {
   );
 }
 
-// ── Media card ───────────────────────────────────────────────────────────────
+// ── Media card ──────────────────────────────────────────────────────────────────
 function MediaCard({ item, index, onReplace, onRemove, onMoveLeft, onMoveRight, isFirst, isLast }) {
   const isVideo = item.type === "video";
   return (
@@ -155,7 +133,7 @@ function MediaCard({ item, index, onReplace, onRemove, onMoveLeft, onMoveRight, 
 
 const btnStyle = { border: "none", background: "#f1f5f9", borderRadius: 3, width: 17, height: 17, fontSize: 8, cursor: "pointer", color: "#64748b" };
 
-// ── Pexels card ──────────────────────────────────────────────────────────────
+// ── Pexels suggested card ──────────────────────────────────────────────────────
 function PexelsCard({ item, onUse, loading }) {
   const orient = item.width && item.height
     ? (item.width > item.height ? "landscape" : item.width < item.height ? "portrait" : "square")
@@ -197,7 +175,7 @@ function PexelsCard({ item, onUse, loading }) {
   );
 }
 
-// ── Library modal ────────────────────────────────────────────────────────────
+// ── Library modal ───────────────────────────────────────────────────────────────
 function LibraryModal({ open, onClose, onSelect }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -250,28 +228,28 @@ function LibraryModal({ open, onClose, onSelect }) {
                   ? new Date(item.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
                   : null;
                 return (
-                  <div
-                    key={item.id}
-                    onClick={() => { onSelect(item); onClose(); }}
-                    style={{ borderRadius: 8, overflow: "hidden", border: "1px solid #e2e8f0", cursor: "pointer", background: "#f8fafc" }}
-                  >
-                    <div style={{ height: 80, overflow: "hidden", position: "relative" }}>
-                      {thumb ? (
-                        <img src={thumb} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      ) : (
-                        <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          <i className="fas fa-image" style={{ color: "#cbd5e1", fontSize: 24 }}></i>
-                        </div>
-                      )}
-                      <div style={{ position: "absolute", bottom: 2, right: 2, background: "rgba(0,0,0,0.5)", borderRadius: 3, padding: "1px 5px" }}>
-                        <span style={{ fontSize: 7, color: "#fff", fontWeight: 700, textTransform: "uppercase" }}>{item.provider || typeLabel}</span>
+                <div
+                  key={item.id}
+                  onClick={() => { onSelect(item); onClose(); }}
+                  style={{ borderRadius: 8, overflow: "hidden", border: "1px solid #e2e8f0", cursor: "pointer", background: "#f8fafc" }}
+                >
+                  <div style={{ height: 80, overflow: "hidden", position: "relative" }}>
+                    {thumb ? (
+                      <img src={thumb} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <i className="fas fa-image" style={{ color: "#cbd5e1", fontSize: 24 }}></i>
                       </div>
-                    </div>
-                    <div style={{ padding: "4px 6px 5px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: 9, color: "#64748b", fontWeight: 600, textTransform: "uppercase" }}>{typeLabel}</span>
-                      {uploadedDate && <span style={{ fontSize: 8, color: "#94a3b8" }}>{uploadedDate}</span>}
+                    )}
+                    <div style={{ position: "absolute", bottom: 2, right: 2, background: "rgba(0,0,0,0.5)", borderRadius: 3, padding: "1px 5px" }}>
+                      <span style={{ fontSize: 7, color: "#fff", fontWeight: 700, textTransform: "uppercase" }}>{item.provider || typeLabel}</span>
                     </div>
                   </div>
+                  <div style={{ padding: "4px 6px 5px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 9, color: "#64748b", fontWeight: 600, textTransform: "uppercase" }}>{typeLabel}</span>
+                    {uploadedDate && <span style={{ fontSize: 8, color: "#94a3b8" }}>{uploadedDate}</span>}
+                  </div>
+                </div>
                 );
               })}
             </div>
@@ -282,11 +260,11 @@ function LibraryModal({ open, onClose, onSelect }) {
   );
 }
 
-// ── Verification Panel ────────────────────────────────────────────────────────
+// ── Slide-over Verification Panel ──────────────────────────────────────────────
 const PUBLISH_PHASES = {
-  creating:   { label: "Creating post…",       icon: "fas fa-pen",          color: "#3b82f6" },
-  linking:    { label: "Attaching media…",     icon: "fas fa-paperclip",    color: "#8b5cf6" },
-  scheduling: { label: "Scheduling delivery…", icon: "fas fa-clock",        color: "#f59e0b" },
+  creating:   { label: "Creating post…",       icon: "fas fa-pen",        color: "#3b82f6" },
+  linking:    { label: "Attaching media…",     icon: "fas fa-paperclip",  color: "#8b5cf6" },
+  scheduling: { label: "Scheduling delivery…", icon: "fas fa-clock",      color: "#f59e0b" },
   queued:     { label: "Queued for delivery",  icon: "fas fa-check-circle", color: "#10b981" },
   failed:     { label: "Publish failed",       icon: "fas fa-times-circle", color: "#ef4444" },
 };
@@ -405,6 +383,7 @@ function VerificationPanel({ open, onClose, data, onPublish, onSchedule, onDraft
         </div>
 
         <div style={{ padding: "14px 20px", borderTop: "1px solid #e2e8f0", background: "#f8fafc", display: "flex", flexDirection: "column", gap: 8 }}>
+          {/* Phase progress indicator */}
           {isActive && (
             <div style={{
               background: publishPhase === "queued" ? "#f0fdf4" : publishPhase === "failed" ? "#fef2f2" : "#eff6ff",
@@ -427,6 +406,7 @@ function VerificationPanel({ open, onClose, data, onPublish, onSchedule, onDraft
             </div>
           )}
 
+          {/* Steps timeline (shown while active) */}
           {isActive && publishPhase !== "queued" && publishPhase !== "failed" && (
             <div style={{ display: "flex", gap: 0, marginBottom: 4 }}>
               {["creating", "linking", "scheduling"].map((phase, i) => {
@@ -493,7 +473,6 @@ function VerificationPanel({ open, onClose, data, onPublish, onSchedule, onDraft
 const sectionLabel = { fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 };
 const ghostBtn = { flex: 1, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "9px", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#475569" };
 const mediaBtn = { border: "1px solid #e2e8f0", background: "#fff", color: "#475569", borderRadius: 6, padding: "4px 9px", fontSize: 10, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 };
-const thStyle  = { padding: "8px 16px", fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", textAlign: "left", whiteSpace: "nowrap" };
 
 function VaultActionBtn({ color, onClick, children }) {
   return (
@@ -510,36 +489,6 @@ function VaultActionBtn({ color, onClick, children }) {
   );
 }
 
-// ── Tab constants ─────────────────────────────────────────────────────────────
-const TOP_LEVEL_TABS = [
-  { id: "editor",    label: "Editor",    icon: "fas fa-edit"        },
-  { id: "preview",   label: "Preview",   icon: "fas fa-eye"         },
-  { id: "lifecycle", label: "Lifecycle", icon: "fas fa-layer-group" },
-  { id: "settings",  label: "Settings",  icon: "fas fa-cog"         },
-];
-
-const EDITOR_SUB_TABS = [
-  { id: "content",   label: "Content",   icon: "fas fa-align-left"  },
-  { id: "media",     label: "Media",     icon: "fas fa-photo-video" },
-  { id: "platforms", label: "Platforms", icon: "fas fa-share-alt"   },
-  { id: "cta",       label: "CTA",       icon: "fas fa-hand-pointer"},
-  { id: "hashtags",  label: "Hashtags",  icon: "fas fa-hashtag"     },
-];
-
-const LIFECYCLE_SUB_TABS = [
-  { id: "drafts",    label: "Drafts",    icon: "fas fa-file-alt"   },
-  { id: "scheduled", label: "Scheduled", icon: "fas fa-clock"      },
-  { id: "approvals", label: "Approvals", icon: "fas fa-user-check" },
-];
-
-const SETTINGS_SUB_TABS = [
-  { id: "publishing", label: "Publishing", icon: "fas fa-rocket"    },
-  { id: "timezone",   label: "Timezone",   icon: "fas fa-globe"     },
-  { id: "brand",      label: "Brand",      icon: "fas fa-tag"       },
-  { id: "audience",   label: "Audience",   icon: "fas fa-users"     },
-  { id: "advanced",   label: "Advanced",   icon: "fas fa-sliders-h" },
-];
-
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function CreatePost({
   selectedCampaignId: propCampaignId,
@@ -552,17 +501,17 @@ export default function CreatePost({
   const [overrides, setOverrides]           = useState({});
   const [selectedPlatforms, setSelectedPlatforms] = useState([]);
   const [mediaItems, setMediaItems]         = useState([]);
-  const [pexelsItems, setPexelsItems]       = useState([]);
-  const [pexelsLoading, setPexelsLoading]   = useState(false);
-  const [pexelsUsing, setPexelsUsing]       = useState(null);
-  const [pexelsError, setPexelsError]       = useState(false);
-  const [pexelsQuery, setPexelsQuery]       = useState("");
+  const [pexelsItems, setPexelsItems]     = useState([]);
+  const [pexelsLoading, setPexelsLoading] = useState(false);
+  const [pexelsUsing, setPexelsUsing]     = useState(null);
+  const [pexelsError, setPexelsError]     = useState(false);
+  const [pexelsQuery, setPexelsQuery]     = useState("");
   const [showSuggested, setShowSuggested]   = useState(false);
   const [libraryOpen, setLibraryOpen]       = useState(false);
   const [campaignId, setCampaignId]         = useState(propCampaignId || "");
   const [scheduledTime, setScheduledTime]   = useState("");
   const [timezone, setTimezone]             = useState(brandTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
-  const [activeTopTab, setActiveTopTab]     = useState("drafts");  // lifecycle sub-tab
+  const [activeTopTab, setActiveTopTab]     = useState("drafts");
   const [vaultItems, setVaultItems]         = useState([]);
   const [vaultLoading, setVaultLoading]     = useState(false);
   const [actionLoading, setActionLoading]   = useState(false);
@@ -570,16 +519,10 @@ export default function CreatePost({
   const [tabCounts, setTabCounts]           = useState({ drafts: 0, scheduled: 0, approvals: 0 });
   const [assistantOpen, setAssistantOpen]   = useState(false);
   const [verificationOpen, setVerificationOpen] = useState(false);
-  const [publishPhase, setPublishPhase]     = useState("idle");
-  const [publishResult, setPublishResult]   = useState(null);
+  const [publishPhase, setPublishPhase]     = useState("idle"); // idle|creating|linking|scheduling|queued|failed
+  const [publishResult, setPublishResult]   = useState(null);  // { content_id, platforms }
   const [canvaBanner, setCanvaBanner]       = useState(false);
   const [toast, setToast]                   = useState(null);
-
-  // Tab navigation state
-  const [topTab, setTopTab]           = useState("editor");
-  const [editorSubTab, setEditorSubTab] = useState("content");
-  const [settingsSubTab, setSettingsSubTab] = useState("publishing");
-
   const isPublishing = publishPhase !== "idle" && publishPhase !== "queued" && publishPhase !== "failed";
 
   const fileInputRef    = useRef(null);
@@ -613,7 +556,7 @@ export default function CreatePost({
     );
   };
 
-  // ── File upload ───────────────────────────────────────────────────────────
+  // ── File upload (R2) ────────────────────────────────────────────────────
   const handleFileSelect = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
@@ -668,7 +611,7 @@ export default function CreatePost({
     });
   };
 
-  // ── Canva ─────────────────────────────────────────────────────────────────
+  // ── Canva ────────────────────────────────────────────────────────────────
   const handleCanvaImport = () => {
     window.open("https://www.canva.com/", "_blank");
     setCanvaBanner(true);
@@ -714,7 +657,7 @@ export default function CreatePost({
     }
   };
 
-  // ── Pexels ────────────────────────────────────────────────────────────────
+  // ── Pexels suggestions ──────────────────────────────────────────────────
   const fetchPexelsSuggestions = async (query) => {
     setPexelsLoading(true);
     setPexelsError(false);
@@ -735,6 +678,7 @@ export default function CreatePost({
     const next = !showSuggested;
     setShowSuggested(next);
     if (!next || pexelsItems.length > 0) return;
+
     const query = content.trim().split(/\s+/).slice(0, 6).join(" ") || brandName || "social media content";
     fetchPexelsSuggestions(query);
   };
@@ -753,7 +697,7 @@ export default function CreatePost({
         type: item.type || "image",
         label: "Pexels",
         external_id: item.external_id,
-        asset_id: saved?.media_id,
+        asset_id: saved?.media_id,   // needed for content_media_links
       }]);
       showToast("Pexels image added");
     } catch {
@@ -776,7 +720,7 @@ export default function CreatePost({
     }]);
   };
 
-  // ── Assistant output ──────────────────────────────────────────────────────
+  // ── Assistant output ─────────────────────────────────────────────────────
   const handleAssistantGenerate = (result) => {
     if (result.baseCaption) setContent(result.baseCaption);
     if (result.platformVariants) setOverrides(result.platformVariants);
@@ -788,11 +732,10 @@ export default function CreatePost({
       fetchPexelsSuggestions(q);
     }
     setAssistantOpen(false);
-    setTopTab("editor");
-    setEditorSubTab("content");
+    setTimeout(() => editorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 200);
   };
 
-  // ── Vault loading ─────────────────────────────────────────────────────────
+  // ── Vault lifecycle panel ────────────────────────────────────────────────
   const loadVault = useCallback(async (tab) => {
     setActiveTopTab(tab);
     setSelectedVaultItem(null);
@@ -825,14 +768,8 @@ export default function CreatePost({
     } catch {}
   }, []);
 
-  useEffect(() => { loadTabCounts(); }, [loadTabCounts]);
+  useEffect(() => { loadVault("drafts"); loadTabCounts(); }, [loadVault, loadTabCounts]);
 
-  // Refresh vault when user navigates to the lifecycle tab
-  useEffect(() => {
-    if (topTab === "lifecycle") loadVault(activeTopTab);
-  }, [topTab]); // eslint-disable-line
-
-  // ── Vault actions ──────────────────────────────────────────────────────────
   const handleVaultEdit = (item) => {
     setContent(item.body || item.text || "");
     const platforms = item.platforms
@@ -840,8 +777,7 @@ export default function CreatePost({
       : [];
     if (platforms.length) setSelectedPlatforms(platforms);
     setSelectedVaultItem(item);
-    setTopTab("editor");
-    setEditorSubTab("content");
+    editorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
   const handleVaultDelete = async (item) => {
@@ -904,7 +840,20 @@ export default function CreatePost({
     }
   };
 
-  // ── Media linking ─────────────────────────────────────────────────────────
+  const handleVaultDuplicate = async (item) => {
+    try {
+      const platforms = Array.isArray(item.platforms) ? item.platforms : JSON.parse(item.platforms || "[]");
+      await apiJSON("/api/customer/vault", "POST", {
+        body: item.body || " ", platforms, lifecycle_status: "draft", content_type: "social",
+      });
+      showToast("Duplicated to drafts");
+      if (activeTopTab === "drafts") loadVault("drafts");
+    } catch {
+      showToast("Failed to duplicate", "error");
+    }
+  };
+
+  // ── Link media items to a content_id via content_media_links ───────────
   const linkMedia = async (content_id) => {
     const attachable = mediaItems.filter(m => m.asset_id);
     for (let i = 0; i < attachable.length; i++) {
@@ -912,11 +861,11 @@ export default function CreatePost({
         content_type: "social",
         content_id,
         media_id: attachable[i].asset_id,
-      }).catch(() => {});
+      }).catch(() => {}); // non-blocking — don't fail publish if attach fails
     }
   };
 
-  // ── Save draft ────────────────────────────────────────────────────────────
+  // ── Save draft ──────────────────────────────────────────────────────────
   const saveDraft = async () => {
     const data = await apiJSON("/api/customer/vault", "POST", {
       body: content,
@@ -937,7 +886,7 @@ export default function CreatePost({
       await saveDraft();
       showToast("Draft saved");
       setVerificationOpen(false);
-      loadTabCounts();
+      loadVault("drafts");
     } catch (e) {
       showToast(e.message || "Could not save draft", "error");
     } finally {
@@ -945,7 +894,7 @@ export default function CreatePost({
     }
   };
 
-  // ── Send for approval ─────────────────────────────────────────────────────
+  // ── Send for approval ────────────────────────────────────────────────────
   const handleApproval = async () => {
     if (!content.trim()) { showToast("Write something first", "error"); return; }
     setActionLoading(true);
@@ -953,7 +902,7 @@ export default function CreatePost({
       const content_id = await saveDraft();
       await apiJSON(`/api/customer/vault/${content_id}/approval`, "POST", { action: "submit" });
       showToast("Sent for approval");
-      loadTabCounts();
+      loadVault("approvals");
     } catch (e) {
       showToast(e.message || "Approval request failed", "error");
     } finally {
@@ -961,11 +910,12 @@ export default function CreatePost({
     }
   };
 
-  // ── Publish / schedule ────────────────────────────────────────────────────
+  // ── Publish / schedule ───────────────────────────────────────────────────
   const handlePublish = async () => {
     setPublishPhase("creating");
     setPublishResult(null);
     try {
+      // Step 1: write to vault (single source of truth)
       const asset = await apiJSON("/api/customer/vault", "POST", {
         body: content,
         platforms: selectedPlatforms,
@@ -975,9 +925,11 @@ export default function CreatePost({
         content_type: "social",
       });
 
+      // Step 2: link media
       setPublishPhase("linking");
       await linkMedia(asset.content_id);
 
+      // Step 3: schedule via vault or publish immediately
       setPublishPhase("scheduling");
       if (scheduledTime) {
         await apiJSON(`/api/customer/vault/${asset.content_id}/schedule`, "POST", {
@@ -993,7 +945,7 @@ export default function CreatePost({
       setPublishPhase("queued");
       setPublishResult({ content_id: asset.content_id, platforms: selectedPlatforms });
       showToast(scheduledTime ? "Post scheduled" : "Post queued for delivery");
-      loadTabCounts();
+      loadVault(scheduledTime ? "scheduled" : "drafts");
     } catch (e) {
       setPublishPhase("failed");
       showToast(e.message || "Publish failed", "error");
@@ -1010,7 +962,7 @@ export default function CreatePost({
 
   const canPublish = content.trim().length > 0 && selectedPlatforms.length > 0;
 
-  // ── Preview data ──────────────────────────────────────────────────────────
+  // ── P1: preview priority chain ────────────────────────────────────────────
   const VAULT_STATUS_META = {
     draft:              { label: "Draft",       color: "#64748b", bg: "#f1f5f9" },
     ready:              { label: "Ready",       color: "#2563eb", bg: "#eff6ff" },
@@ -1031,12 +983,18 @@ export default function CreatePost({
     const valid = arr.filter(p => PLATFORM_META[p]);
     return valid.length ? valid : selectedPlatforms;
   })();
-  const previewContent   = selectedVaultItem ? (selectedVaultItem.body || "") : content;
+  const previewContent  = selectedVaultItem ? (selectedVaultItem.body || "") : content;
   const previewOverrides = selectedVaultItem ? {} : overrides;
-  const previewMedia     = selectedVaultItem ? null : (mediaItems.length > 0 ? { image: mediaItems[0]?.url } : null);
-  const vaultStatusMeta  = selectedVaultItem
+  const previewMedia    = selectedVaultItem ? null : (mediaItems.length > 0 ? { image: mediaItems[0]?.url } : null);
+  const vaultStatusMeta = selectedVaultItem
     ? (VAULT_STATUS_META[selectedVaultItem.lifecycle_status] || { label: selectedVaultItem.lifecycle_status, color: "#64748b", bg: "#f1f5f9" })
     : null;
+
+  const TOP_TABS = [
+    { id: "drafts",    label: "Drafts",    icon: "fas fa-file-alt"   },
+    { id: "scheduled", label: "Scheduled", icon: "fas fa-clock"      },
+    { id: "approvals", label: "Approvals", icon: "fas fa-user-check" },
+  ];
 
   const scheduleLabel = (() => {
     if (!scheduledTime) return null;
@@ -1044,46 +1002,40 @@ export default function CreatePost({
     return `${d.toLocaleDateString("en-GB", { weekday: "long" })} ${d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} · ${timezone}`;
   })();
 
-  const totalLifecycleCount = tabCounts.drafts + tabCounts.scheduled + tabCounts.approvals;
-
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div id="tab-create-post" className="h-100 d-flex flex-column" style={{ minHeight: 0 }}>
       <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple style={{ display: "none" }} onChange={handleFileSelect} />
       <input ref={canvaFileRef} type="file" accept="image/*,video/*" style={{ display: "none" }} onChange={handleCanvaFileSelect} />
 
-      {/* ── TOP LEVEL TAB BAR ─────────────────────────────────────────────── */}
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        borderBottom: "2px solid #e2e8f0", background: "#fff", padding: "0 4px",
-        flexShrink: 0,
-      }}>
-        <div style={{ display: "flex" }}>
-          {TOP_LEVEL_TABS.map(tab => {
-            const on = topTab === tab.id;
+      {/* ── TOP BAR: Lifecycle tabs + Assistant ─────────────────────────── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexShrink: 0, gap: 12 }}>
+        <div style={{ display: "flex", gap: 5 }}>
+          {TOP_TABS.map(tab => {
+            const count = tabCounts[tab.id] || 0;
+            const active = activeTopTab === tab.id;
             return (
               <button
                 key={tab.id}
-                onClick={() => setTopTab(tab.id)}
+                onClick={() => loadVault(tab.id)}
                 style={{
-                  border: "none", borderBottom: `2px solid ${on ? "#2563eb" : "transparent"}`,
-                  background: "none", color: on ? "#2563eb" : "#64748b",
-                  padding: "11px 18px", fontSize: 13, fontWeight: on ? 700 : 500,
-                  cursor: "pointer", display: "flex", alignItems: "center", gap: 7,
-                  marginBottom: -2, transition: "color 0.15s",
+                  display: "flex", alignItems: "center", gap: 6,
+                  border: `1px solid ${active ? "#2563eb" : "#e2e8f0"}`,
+                  background: active ? "#eff6ff" : "#fff",
+                  color: active ? "#2563eb" : "#64748b",
+                  borderRadius: 8, padding: "7px 14px", fontSize: 12,
+                  fontWeight: active ? 700 : 600, cursor: "pointer",
+                  transition: "all 0.15s",
                 }}
               >
-                <i className={tab.icon} style={{ fontSize: 12 }} />
+                <i className={tab.icon} style={{ fontSize: 11 }} />
                 {tab.label}
-                {tab.id === "lifecycle" && totalLifecycleCount > 0 && (
+                {count > 0 && (
                   <span style={{
                     fontSize: 10, fontWeight: 700,
-                    background: on ? "#2563eb" : "#e2e8f0",
-                    color: on ? "#fff" : "#475569",
+                    background: active ? "#2563eb" : "#e2e8f0",
+                    color: active ? "#fff" : "#64748b",
                     borderRadius: 99, padding: "1px 6px", minWidth: 18, textAlign: "center",
-                  }}>
-                    {totalLifecycleCount}
-                  </span>
+                  }}>{count}</span>
                 )}
               </button>
             );
@@ -1092,520 +1044,393 @@ export default function CreatePost({
         <button
           className="btn-pilot"
           onClick={() => setAssistantOpen(true)}
-          style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, marginRight: 8 }}
+          style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700 }}
         >
-          <i className="fas fa-robot"></i> Assistant
+          <i className="fas fa-robot"></i> myPilotPost Assistant
         </button>
       </div>
 
-      {/* ── TAB BODY ──────────────────────────────────────────────────────── */}
-      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-
-        {/* ── EDITOR TAB ── */}
-        {topTab === "editor" && (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-            <SubTabBar tabs={EDITOR_SUB_TABS} active={editorSubTab} onChange={setEditorSubTab} />
-
-            <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 16 }}>
-
-              {/* Content sub-tab */}
-              {editorSubTab === "content" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10, height: "100%" }}>
-                  {selectedVaultItem && vaultStatusMeta && (
-                    <div style={{
-                      background: vaultStatusMeta.bg, border: `1px solid ${vaultStatusMeta.color}44`,
-                      borderRadius: 8, padding: "8px 14px", display: "flex", alignItems: "center", gap: 10,
-                    }}>
-                      <span style={{
-                        fontSize: 10, fontWeight: 700, textTransform: "uppercase",
-                        color: vaultStatusMeta.color, background: "#fff",
-                        border: `1px solid ${vaultStatusMeta.color}55`, padding: "2px 8px", borderRadius: 20,
-                      }}>
-                        {vaultStatusMeta.label}
-                      </span>
-                      {selectedVaultItem.scheduled_at && (
-                        <span style={{ fontSize: 11, color: "#64748b", display: "flex", alignItems: "center", gap: 5 }}>
-                          <i className="fas fa-clock" style={{ fontSize: 10 }}></i>
-                          {new Date(selectedVaultItem.scheduled_at).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                        </span>
-                      )}
-                      <span style={{ flex: 1, fontSize: 11, color: "#94a3b8", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {(selectedVaultItem.title || selectedVaultItem.body || "").slice(0, 60)}
-                      </span>
-                      <button onClick={() => setSelectedVaultItem(null)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 16 }}>×</button>
-                    </div>
-                  )}
-
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-                    <label className="extra-small fw-bold text-muted text-uppercase mb-0">Post Content</label>
-                    <span style={{ fontSize: 10, color: content.length > 2200 ? "#ef4444" : "#94a3b8" }}>{content.length} chars</span>
-                  </div>
-                  <div
-                    ref={editorRef}
-                    style={{
-                      border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden",
-                      background: "#fff", display: "flex", flexDirection: "column",
-                      minHeight: 300, flex: 1,
-                    }}
-                  >
-                    <WatermarkEditor value={content} onChange={setContent} />
-                  </div>
-                </div>
-              )}
-
-              {/* Media sub-tab */}
-              {editorSubTab === "media" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                  {canvaBanner && (
-                    <div style={{ background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <i className="fas fa-pen-fancy" style={{ color: "#7c3aed", fontSize: 14 }}></i>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: "#4c1d95" }}>Finished designing in Canva? Export as PNG, JPG, or MP4 and upload it here.</span>
-                      </div>
-                      <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                        <button onClick={() => canvaFileRef.current?.click()} style={{ background: "#7c3aed", border: "none", borderRadius: 6, color: "#fff", fontSize: 11, fontWeight: 700, padding: "6px 12px", cursor: "pointer" }}>
-                          <i className="fas fa-upload me-1"></i> Upload Design
-                        </button>
-                        <button onClick={() => setCanvaBanner(false)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 16, cursor: "pointer" }}>×</button>
-                      </div>
-                    </div>
-                  )}
-
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                      <label className="extra-small fw-bold text-muted text-uppercase mb-0">Attached Media</label>
-                      <div style={{ display: "flex", gap: 5 }}>
-                        <button onClick={handleCanvaImport} style={{ border: "1px solid #7c3aed", background: "#fff", color: "#7c3aed", borderRadius: 6, padding: "4px 10px", fontSize: 10, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
-                          <i className="fas fa-pen-fancy"></i> Canva
-                        </button>
-                        <button onClick={() => { replaceIndexRef.current = null; fileInputRef.current?.click(); }} style={mediaBtn}>
-                          <i className="fas fa-upload"></i> Upload
-                        </button>
-                        <button onClick={() => setLibraryOpen(true)} style={mediaBtn}>
-                          <i className="fas fa-photo-video"></i> Library
-                        </button>
-                        <button
-                          onClick={handleSuggestedToggle}
-                          style={{ ...mediaBtn, border: showSuggested ? "1px solid #0ea5e9" : "1px solid #e2e8f0", color: showSuggested ? "#0ea5e9" : "#475569", background: showSuggested ? "#f0f9ff" : "#fff" }}
-                        >
-                          <i className="fas fa-magic"></i> Suggested
-                        </button>
-                      </div>
-                    </div>
-
-                    <div style={{
-                      display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4,
-                      minHeight: mediaItems.length === 0 && !showSuggested ? 80 : "auto",
-                      alignItems: mediaItems.length === 0 && !showSuggested ? "center" : "flex-start",
-                      justifyContent: mediaItems.length === 0 && !showSuggested ? "center" : "flex-start",
-                      border: mediaItems.length === 0 && !showSuggested ? "1px dashed #e2e8f0" : "none",
-                      borderRadius: 8, background: mediaItems.length === 0 && !showSuggested ? "#f8fafc" : "transparent",
-                    }}>
-                      {mediaItems.length === 0 && !showSuggested ? (
-                        <div style={{ textAlign: "center", color: "#cbd5e1" }}>
-                          <i className="fas fa-photo-video" style={{ fontSize: 20, marginBottom: 4 }}></i>
-                          <div style={{ fontSize: 10 }}>Upload, Library, Canva, or Suggested</div>
-                        </div>
-                      ) : (
-                        mediaItems.map((item, i) => (
-                          <MediaCard
-                            key={item.id || i}
-                            item={item} index={i}
-                            onReplace={replaceMedia} onRemove={removeMedia}
-                            onMoveLeft={idx => moveMedia(idx, -1)} onMoveRight={idx => moveMedia(idx, 1)}
-                            isFirst={i === 0} isLast={i === mediaItems.length - 1}
-                          />
-                        ))
-                      )}
-                    </div>
-                  </div>
-
-                  {showSuggested && (
-                    <div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: "#0ea5e9", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>
-                        <i className="fas fa-magic me-1"></i>AI Suggested · Pexels
-                      </div>
-                      {pexelsLoading ? (
-                        <div style={{ textAlign: "center", padding: "12px 0", color: "#94a3b8", fontSize: 12 }}>
-                          <span className="spinner-border spinner-border-sm" style={{ color: "#0ea5e9", width: 14, height: 14, borderWidth: 2, marginRight: 6 }}></span>
-                          Finding images…
-                        </div>
-                      ) : pexelsError ? (
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "#fef2f2", borderRadius: 6, border: "1px solid #fecaca" }}>
-                          <i className="fas fa-exclamation-circle" style={{ color: "#ef4444", fontSize: 12 }}></i>
-                          <span style={{ fontSize: 11, color: "#64748b", flex: 1 }}>Could not load image suggestions.</span>
-                          <button onClick={() => fetchPexelsSuggestions(pexelsQuery || content.trim().split(/\s+/).slice(0, 6).join(" ") || "social media content")} style={{ background: "none", border: "1px solid #e2e8f0", borderRadius: 4, padding: "2px 8px", fontSize: 10, color: "#475569", cursor: "pointer", whiteSpace: "nowrap" }}>
-                            Retry
-                          </button>
-                        </div>
-                      ) : pexelsItems.length === 0 ? (
-                        <div style={{ fontSize: 12, color: "#94a3b8", padding: "8px 0" }}>Generate content first — suggestions load from your post topic.</div>
-                      ) : (
-                        <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
-                          {pexelsItems.slice(0, 10).map(item => (
-                            <PexelsCard key={item.external_id} item={item} onUse={handlePexelsUse} loading={pexelsUsing === item.external_id} />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Platforms sub-tab */}
-              {editorSubTab === "platforms" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  <div>
-                    <label className="extra-small fw-bold text-muted text-uppercase mb-2 d-block">Select Platforms</label>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-                      {allKnownPlatforms.map(conn => {
-                        const m = PLATFORM_META[conn.platform];
-                        if (!m) return null;
-                        const isExpired = conn.status === "error" || conn.status === "expired";
-                        const isSelected = selectedPlatforms.includes(conn.platform);
-                        return (
-                          <button
-                            key={conn.platform}
-                            onClick={() => togglePlatform(conn.platform, isExpired)}
-                            title={isExpired ? "Reconnect required" : conn.platform_username ? `@${conn.platform_username}` : m.label}
-                            style={{
-                              border: `1px solid ${isExpired ? "#fecaca" : isSelected ? m.color : "#e2e8f0"}`,
-                              background: isExpired ? "#fef2f2" : isSelected ? m.color + "15" : "#fff",
-                              color: isExpired ? "#dc2626" : isSelected ? m.color : "#64748b",
-                              borderRadius: 20, padding: "6px 14px",
-                              fontSize: 12, fontWeight: 600, cursor: isExpired ? "not-allowed" : "pointer",
-                              display: "flex", alignItems: "center", gap: 6, opacity: isExpired ? 0.7 : 1,
-                            }}
-                          >
-                            <PlatformIcon platform={conn.platform} size={14} />
-                            {m.label}
-                            {isExpired && <i className="fas fa-exclamation-circle" style={{ fontSize: 9 }}></i>}
-                            {isSelected && !isExpired && <i className="fas fa-check" style={{ fontSize: 9, color: m.color }}></i>}
-                          </button>
-                        );
-                      })}
-                      {allKnownPlatforms.length === 0 && (
-                        <span style={{ fontSize: 13, color: "#94a3b8" }}>No platforms connected — go to Integrations</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {selectedPlatforms.length > 0 && (
-                    <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#065f46" }}>
-                      <i className="fas fa-info-circle me-2"></i>
-                      <strong>1 post</strong> will be created and delivered to {selectedPlatforms.length} platform{selectedPlatforms.length > 1 ? "s" : ""}. Your content count stays at 1.
-                    </div>
-                  )}
-
-                  {expiredConnections.length > 0 && (
-                    <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#dc2626" }}>
-                      <i className="fas fa-exclamation-circle me-2"></i>
-                      {expiredConnections.length} platform{expiredConnections.length > 1 ? "s" : ""} need reconnecting to publish.
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* CTA sub-tab — per-platform overrides */}
-              {editorSubTab === "cta" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>
-                    Customize the caption for each platform. Leave empty to use the main post content.
-                  </div>
-                  {selectedPlatforms.length === 0 ? (
-                    <div style={{ color: "#94a3b8", fontSize: 13, padding: "20px 0" }}>
-                      Select platforms first to set per-platform captions.
-                    </div>
-                  ) : (
-                    selectedPlatforms.map(p => {
-                      const m = PLATFORM_META[p];
-                      return (
-                        <div key={p}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                            {m && <PlatformIcon platform={p} size={14} />}
-                            <label style={{ fontSize: 12, fontWeight: 700, color: m?.color || "#64748b" }}>{m?.label || p}</label>
-                            {overrides[p] && (
-                              <span style={{ fontSize: 10, background: "#f0fdf4", color: "#059669", border: "1px solid #bbf7d0", borderRadius: 99, padding: "1px 6px" }}>customized</span>
-                            )}
-                          </div>
-                          <textarea
-                            value={overrides[p] || ""}
-                            onChange={e => setOverrides(prev => ({ ...prev, [p]: e.target.value }))}
-                            placeholder={content || `Caption for ${m?.label || p}…`}
-                            rows={3}
-                            style={{ width: "100%", border: "1px solid #e2e8f0", borderRadius: 8, padding: "8px 12px", fontSize: 12, lineHeight: 1.6, resize: "vertical", fontFamily: "inherit", color: "#0f172a", outline: "none" }}
-                          />
-                          {overrides[p] && (
-                            <button
-                              onClick={() => setOverrides(prev => { const n = { ...prev }; delete n[p]; return n; })}
-                              style={{ fontSize: 10, color: "#94a3b8", background: "none", border: "none", cursor: "pointer", padding: "2px 0" }}
-                            >
-                              Reset to main content
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              )}
-
-              {/* Hashtags sub-tab */}
-              {editorSubTab === "hashtags" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>
-                    Hashtags detected in your post content are shown below. Add them in the Content tab.
-                  </div>
-                  <div>
-                    <label className="extra-small fw-bold text-muted text-uppercase mb-2 d-block">Hashtags in Post</label>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {(content.match(/#\w+/g) || []).map((tag, i) => (
-                        <span key={i} style={{ fontSize: 12, background: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe", borderRadius: 20, padding: "3px 10px", fontWeight: 600 }}>
-                          {tag}
-                        </span>
-                      ))}
-                      {!content.match(/#\w+/g) && (
-                        <span style={{ fontSize: 12, color: "#94a3b8" }}>No hashtags in post yet. Add #hashtags in the Content tab.</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ── PREVIEW TAB ── */}
-        {topTab === "preview" && (
-          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: "12px 0 0" }}>
-            <PlatformPreviewPanel
-              platforms={previewPlatforms.length ? previewPlatforms : (selectedPlatforms.length ? selectedPlatforms : ["facebook", "instagram", "linkedin", "x"])}
-              content={previewContent}
-              overrides={previewOverrides}
-              media={previewMedia}
-              brandName={brandName}
-              isLiveEditor={!selectedVaultItem}
-            />
-          </div>
-        )}
-
-        {/* ── LIFECYCLE TAB ── */}
-        {topTab === "lifecycle" && (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-            <div style={{ flexShrink: 0, borderBottom: "1px solid #e2e8f0", background: "#f8fafc", padding: "0 16px", display: "flex" }}>
-              {LIFECYCLE_SUB_TABS.map(st => {
-                const count = tabCounts[st.id] || 0;
-                const on = activeTopTab === st.id;
+      {/* ── LIFECYCLE ROWS — collapsible, shown when items present ────── */}
+      {(vaultLoading || vaultItems.length > 0) && (
+        <div style={{ marginBottom: 8, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, flexShrink: 0, overflow: "hidden" }}>
+          <div style={{ maxHeight: 210, overflowY: "auto" }}>
+            {vaultLoading ? (
+              <div style={{ textAlign: "center", padding: "14px 0", color: "#94a3b8", fontSize: 12 }}>
+                <span className="spinner-border spinner-border-sm" style={{ color: "#2563eb", width: 14, height: 14, borderWidth: 2, marginRight: 6 }}></span>
+                Loading…
+              </div>
+            ) : (
+              vaultItems.map((item, i) => {
+                const preview = item.body || item.title || "—";
+                const itemPlatforms = item.platforms ? (Array.isArray(item.platforms) ? item.platforms : JSON.parse(item.platforms || "[]")) : [];
+                const date = item.updated_at ? new Date(item.updated_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "—";
+                const isSelected = selectedVaultItem?.id === item.id;
                 return (
-                  <button
-                    key={st.id}
-                    onClick={() => loadVault(st.id)}
+                  <div
+                    key={item.id || i}
+                    onClick={() => setSelectedVaultItem(isSelected ? null : item)}
                     style={{
-                      border: "none", background: "none",
-                      borderBottom: `2px solid ${on ? "#2563eb" : "transparent"}`,
-                      color: on ? "#2563eb" : "#64748b",
-                      padding: "10px 16px", fontSize: 12, fontWeight: on ? 700 : 500,
-                      cursor: "pointer", display: "flex", alignItems: "center", gap: 6, marginBottom: -1,
+                      padding: "9px 14px", borderBottom: "1px solid #f8fafc",
+                      display: "flex", alignItems: "center", gap: 10,
+                      cursor: "pointer",
+                      background: isSelected ? "#eff6ff" : "#fff",
+                      borderLeft: `3px solid ${isSelected ? "#2563eb" : "transparent"}`,
+                      transition: "background 0.1s",
                     }}
                   >
-                    <i className={st.icon} style={{ fontSize: 11 }} />
-                    {st.label}
-                    {count > 0 && (
-                      <span style={{ fontSize: 10, fontWeight: 700, background: on ? "#2563eb" : "#e2e8f0", color: on ? "#fff" : "#64748b", borderRadius: 99, padding: "1px 6px" }}>
-                        {count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-              {vaultLoading ? (
-                <div style={{ textAlign: "center", padding: "36px 0", color: "#94a3b8" }}>
-                  <span className="spinner-border spinner-border-sm" style={{ color: "#2563eb", width: 16, height: 16, borderWidth: 2, marginRight: 8 }}></span>
-                  Loading…
-                </div>
-              ) : vaultItems.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "52px 0", color: "#94a3b8" }}>
-                  <i className="fas fa-inbox" style={{ fontSize: 28, marginBottom: 12, display: "block" }}></i>
-                  <div style={{ fontSize: 13 }}>No {activeTopTab} content</div>
-                </div>
-              ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid #e2e8f0", background: "#f8fafc" }}>
-                      <th style={thStyle}>Content</th>
-                      <th style={thStyle}>Platforms</th>
-                      <th style={thStyle}>Status</th>
-                      <th style={thStyle}>Updated</th>
-                      <th style={{ ...thStyle, textAlign: "right" }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {vaultItems.map((item, i) => {
-                      const preview = item.body || item.title || "—";
-                      const itemPlatforms = item.platforms
-                        ? (Array.isArray(item.platforms) ? item.platforms : JSON.parse(item.platforms || "[]"))
-                        : [];
-                      const date = item.updated_at
-                        ? new Date(item.updated_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
-                        : "—";
-                      const statusM = VAULT_STATUS_META[item.lifecycle_status] || { label: item.lifecycle_status, color: "#64748b", bg: "#f1f5f9" };
-                      return (
-                        <tr key={item.id || i} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                          <td style={{ padding: "11px 16px", maxWidth: 340 }}>
-                            <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                              {preview.slice(0, 90)}
-                            </div>
-                          </td>
-                          <td style={{ padding: "11px 16px" }}>
-                            <div style={{ display: "flex", gap: 3 }}>
-                              {itemPlatforms.slice(0, 5).map(p => <PlatformIcon key={p} platform={p} size={13} />)}
-                            </div>
-                          </td>
-                          <td style={{ padding: "11px 16px" }}>
-                            <span style={{ fontSize: 10, fontWeight: 700, background: statusM.bg, color: statusM.color, padding: "2px 8px", borderRadius: 20, textTransform: "uppercase" }}>
-                              {statusM.label}
-                            </span>
-                          </td>
-                          <td style={{ padding: "11px 16px", fontSize: 11, color: "#94a3b8", whiteSpace: "nowrap" }}>{date}</td>
-                          <td style={{ padding: "11px 16px", textAlign: "right" }}>
-                            <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
-                              {activeTopTab === "drafts" && item.lifecycle_status === "approved" && (<>
-                                <VaultActionBtn color="#059669" onClick={() => handleVaultEdit(item)}>Schedule</VaultActionBtn>
-                                <VaultActionBtn color="#2563eb" onClick={() => handleVaultEdit(item)}>Edit</VaultActionBtn>
-                                <VaultActionBtn color="#ef4444" onClick={() => handleVaultDelete(item)}>Delete</VaultActionBtn>
-                              </>)}
-                              {activeTopTab === "drafts" && item.lifecycle_status !== "approved" && (<>
-                                <VaultActionBtn color="#2563eb" onClick={() => handleVaultEdit(item)}>Edit</VaultActionBtn>
-                                <VaultActionBtn color="#10b981" onClick={() => handleVaultSendApproval(item)}>Send for Approval</VaultActionBtn>
-                                <VaultActionBtn color="#ef4444" onClick={() => handleVaultDelete(item)}>Delete</VaultActionBtn>
-                              </>)}
-                              {activeTopTab === "scheduled" && (<>
-                                <VaultActionBtn color="#2563eb" onClick={() => handleVaultEdit(item)}>Edit</VaultActionBtn>
-                                <VaultActionBtn color="#10b981" onClick={() => handleVaultPublishNow(item)}>Publish Now</VaultActionBtn>
-                                <VaultActionBtn color="#ef4444" onClick={() => handleVaultCancel(item)}>Cancel</VaultActionBtn>
-                              </>)}
-                              {activeTopTab === "approvals" && (<>
-                                <VaultActionBtn color="#64748b" onClick={() => handleVaultWithdraw(item)}>Withdraw</VaultActionBtn>
-                              </>)}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ── SETTINGS TAB ── */}
-        {topTab === "settings" && (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-            <SubTabBar tabs={SETTINGS_SUB_TABS} active={settingsSubTab} onChange={setSettingsSubTab} />
-            <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 24 }}>
-              <div style={{ maxWidth: 480 }}>
-
-                {settingsSubTab === "publishing" && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                    <div>
-                      <label style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 6, display: "block" }}>Schedule Date &amp; Time</label>
-                      <input
-                        type="datetime-local"
-                        className="form-control border-subtle"
-                        style={{ fontSize: 12, maxWidth: 280 }}
-                        value={scheduledTime}
-                        onChange={e => setScheduledTime(e.target.value)}
-                      />
-                      <div style={{ fontSize: 11, color: "#64748b", marginTop: 5 }}>Leave empty to publish immediately.</div>
-                    </div>
-                    {scheduleLabel && (
-                      <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 14px" }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "#1d4ed8", marginBottom: 2 }}>Scheduled for</div>
-                        <div style={{ fontSize: 12, color: "#1e40af" }}>{scheduleLabel}</div>
+                    {itemPlatforms.length > 0 && (
+                      <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
+                        {itemPlatforms.slice(0, 3).map(p => <PlatformIcon key={p} platform={p} size={12} />)}
                       </div>
                     )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 500, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                        {preview.slice(0, 80)}
+                      </div>
+                      <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 1 }}>{date}</div>
+                    </div>
+                    <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                      {activeTopTab === "drafts" && (<>
+                        <VaultActionBtn color="#2563eb" onClick={() => handleVaultEdit(item)}>Edit</VaultActionBtn>
+                        <VaultActionBtn color="#10b981" onClick={() => handleVaultSendApproval(item)}>Send for Approval</VaultActionBtn>
+                        <VaultActionBtn color="#ef4444" onClick={() => handleVaultDelete(item)}>Delete</VaultActionBtn>
+                      </>)}
+                      {activeTopTab === "scheduled" && (<>
+                        <VaultActionBtn color="#2563eb" onClick={() => handleVaultEdit(item)}>Edit</VaultActionBtn>
+                        <VaultActionBtn color="#10b981" onClick={() => handleVaultPublishNow(item)}>Publish Now</VaultActionBtn>
+                        <VaultActionBtn color="#ef4444" onClick={() => handleVaultCancel(item)}>Cancel</VaultActionBtn>
+                      </>)}
+                      {activeTopTab === "approvals" && (<>
+                        <VaultActionBtn color="#2563eb" onClick={() => handleVaultEdit(item)}>Edit</VaultActionBtn>
+                        <VaultActionBtn color="#10b981" onClick={() => handleVaultPublishNow(item)}>Publish</VaultActionBtn>
+                        <VaultActionBtn color="#7c3aed" onClick={() => handleVaultDuplicate(item)}>Duplicate</VaultActionBtn>
+                        <VaultActionBtn color="#64748b" onClick={() => handleVaultWithdraw(item)}>Withdraw</VaultActionBtn>
+                      </>)}
+                    </div>
                   </div>
-                )}
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
 
-                {settingsSubTab === "timezone" && (
-                  <div>
-                    <label style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 6, display: "block" }}>Timezone</label>
-                    <select
-                      className="form-select border-subtle"
-                      style={{ fontSize: 12, maxWidth: 280 }}
-                      value={timezone}
-                      onChange={e => setTimezone(e.target.value)}
-                    >
-                      {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz}</option>)}
-                    </select>
-                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 5 }}>Current: <strong>{timezone}</strong></div>
-                  </div>
-                )}
+      {/* ── CANVA BANNER ────────────────────────────────────────────────── */}
+      {canvaBanner && (
+        <div style={{
+          background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: 8,
+          padding: "10px 14px", marginBottom: 10, flexShrink: 0,
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <i className="fas fa-pen-fancy" style={{ color: "#7c3aed", fontSize: 14 }}></i>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#4c1d95" }}>
+              Finished designing in Canva? Export as PNG, JPG, or MP4 and upload it here.
+            </span>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+            <button
+              onClick={() => canvaFileRef.current?.click()}
+              style={{ background: "#7c3aed", border: "none", borderRadius: 6, color: "#fff", fontSize: 11, fontWeight: 700, padding: "6px 12px", cursor: "pointer" }}
+            >
+              <i className="fas fa-upload me-1"></i> Upload Design
+            </button>
+            <button onClick={() => setCanvaBanner(false)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 16, cursor: "pointer" }}>×</button>
+          </div>
+        </div>
+      )}
 
-                {settingsSubTab === "brand" && (
-                  <div>
-                    <label style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 6, display: "block" }}>Campaign</label>
-                    <select
-                      className="form-select border-subtle"
-                      style={{ fontSize: 12, maxWidth: 280 }}
-                      value={campaignId}
-                      onChange={e => setCampaignId(e.target.value)}
-                    >
-                      <option value="">No Campaign</option>
-                      {campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                  </div>
-                )}
+      {/* ── MAIN TWO-COLUMN ─────────────────────────────────────────────── */}
+      <div style={{ display: "flex", gap: 14, flex: 1, minHeight: 0 }}>
 
-                {settingsSubTab === "audience" && (
-                  <div style={{ color: "#94a3b8", fontSize: 13, padding: "20px 0", textAlign: "center" }}>
-                    <i className="fas fa-users" style={{ fontSize: 28, display: "block", marginBottom: 10 }}></i>
-                    Audience targeting coming soon.
-                  </div>
-                )}
+        {/* LEFT 45% */}
+        <div style={{ width: "45%", display: "flex", flexDirection: "column", minHeight: 0 }}>
+          <div className="card-workspace" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden", padding: 0 }}>
 
-                {settingsSubTab === "advanced" && (
-                  <div style={{ color: "#94a3b8", fontSize: 13, padding: "20px 0", textAlign: "center" }}>
-                    <i className="fas fa-sliders-h" style={{ fontSize: 28, display: "block", marginBottom: 10 }}></i>
-                    Advanced settings coming soon.
-                  </div>
-                )}
+            {/* Campaign + Platform row */}
+            <div style={{ padding: "12px 14px 0", flexShrink: 0 }}>
+              <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <label className="extra-small fw-bold text-muted text-uppercase mb-1">Campaign</label>
+                  <select className="form-select form-select-sm border-subtle" value={campaignId} onChange={e => setCampaignId(e.target.value)}>
+                    <option value="">No Campaign</option>
+                    {campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Platform selector */}
+              <div style={{ marginBottom: 12 }}>
+                <label className="extra-small fw-bold text-muted text-uppercase mb-1">Platforms</label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                  {allKnownPlatforms.map(conn => {
+                    const m = PLATFORM_META[conn.platform];
+                    if (!m) return null;
+                    const isExpired = conn.status === "error" || conn.status === "expired";
+                    const isSelected = selectedPlatforms.includes(conn.platform);
+                    return (
+                      <button
+                        key={conn.platform}
+                        onClick={() => togglePlatform(conn.platform, isExpired)}
+                        title={isExpired ? "Reconnect required" : conn.platform_username ? `@${conn.platform_username}` : m.label}
+                        style={{
+                          border: `1px solid ${isExpired ? "#fecaca" : isSelected ? m.color : "#e2e8f0"}`,
+                          background: isExpired ? "#fef2f2" : isSelected ? m.color + "15" : "#fff",
+                          color: isExpired ? "#dc2626" : isSelected ? m.color : "#64748b",
+                          borderRadius: 20, padding: "4px 11px",
+                          fontSize: 11, fontWeight: 600, cursor: isExpired ? "not-allowed" : "pointer",
+                          display: "flex", alignItems: "center", gap: 5, opacity: isExpired ? 0.7 : 1,
+                        }}
+                      >
+                        <PlatformIcon platform={conn.platform} size={12} />
+                        {m.label}
+                        {isExpired && <i className="fas fa-exclamation-circle" style={{ fontSize: 8, marginLeft: 2 }}></i>}
+                        {isSelected && !isExpired && <i className="fas fa-check" style={{ fontSize: 8, marginLeft: 2, color: m.color }}></i>}
+                      </button>
+                    );
+                  })}
+                  {allKnownPlatforms.length === 0 && (
+                    <span style={{ fontSize: 12, color: "#94a3b8" }}>No platforms connected — go to Integrations</span>
+                  )}
+                </div>
               </div>
             </div>
+
+            {/* ── CONTENT EDITOR ─────────────────────────────────────── */}
+            <div ref={editorRef} style={{ padding: "0 14px", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, flexShrink: 0 }}>
+                <label className="extra-small fw-bold text-muted text-uppercase mb-0">Post</label>
+                <span style={{ fontSize: 10, color: content.length > 2200 ? "#ef4444" : "#94a3b8" }}>{content.length} chars</span>
+              </div>
+
+              <div style={{
+                flex: 1, border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden",
+                background: "#fff", display: "flex", flexDirection: "column", minHeight: 140,
+              }}>
+                <WatermarkEditor value={content} onChange={setContent} />
+              </div>
+
+              {/* Per-platform overrides */}
+              {selectedPlatforms.length > 1 && (
+                <div style={{ marginTop: 8, flexShrink: 0 }}>
+                  <label className="extra-small fw-bold text-muted text-uppercase mb-1">Platform overrides</label>
+                  <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                    {selectedPlatforms.map(p => {
+                      const m = PLATFORM_META[p];
+                      return (
+                        <button
+                          key={p}
+                          onClick={() => {
+                            const val = prompt(`Custom caption for ${m?.label || p}:`, overrides[p] || content);
+                            if (val !== null) setOverrides(prev => ({ ...prev, [p]: val }));
+                          }}
+                          style={{
+                            border: `1px solid ${overrides[p] ? "#10b981" : "#e2e8f0"}`,
+                            background: overrides[p] ? "#f0fdf4" : "#f8fafc",
+                            borderRadius: 20, padding: "3px 10px", fontSize: 10, fontWeight: 600,
+                            cursor: "pointer", color: overrides[p] ? "#065f46" : "#64748b",
+                            display: "flex", alignItems: "center", gap: 4,
+                          }}
+                        >
+                          {m && <PlatformIcon platform={p} size={11} />}
+                          {m?.label || p} {overrides[p] ? "✓" : ""}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── MEDIA STRIP ─────────────────────────────────────────── */}
+            <div style={{ padding: "10px 14px 14px", flexShrink: 0, borderTop: "1px solid #f1f5f9", marginTop: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <label className="extra-small fw-bold text-muted text-uppercase mb-0">Media</label>
+                <div style={{ display: "flex", gap: 5 }}>
+                  <button
+                    onClick={handleCanvaImport}
+                    style={{ border: "1px solid #7c3aed", background: "#fff", color: "#7c3aed", borderRadius: 6, padding: "4px 10px", fontSize: 10, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}
+                  >
+                    <i className="fas fa-pen-fancy"></i> Canva
+                  </button>
+                  <button onClick={() => { replaceIndexRef.current = null; fileInputRef.current?.click(); }} style={mediaBtn}>
+                    <i className="fas fa-upload"></i> Upload
+                  </button>
+                  <button onClick={() => setLibraryOpen(true)} style={mediaBtn}>
+                    <i className="fas fa-photo-video"></i> Library
+                  </button>
+                  <button
+                    onClick={handleSuggestedToggle}
+                    style={{ ...mediaBtn, border: showSuggested ? "1px solid #0ea5e9" : "1px solid #e2e8f0", color: showSuggested ? "#0ea5e9" : "#475569", background: showSuggested ? "#f0f9ff" : "#fff" }}
+                  >
+                    <i className="fas fa-magic"></i> Suggested
+                  </button>
+                </div>
+              </div>
+
+              {/* Attached media */}
+              <div style={{
+                display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4,
+                minHeight: mediaItems.length === 0 && !showSuggested ? 80 : "auto",
+                alignItems: mediaItems.length === 0 && !showSuggested ? "center" : "flex-start",
+                justifyContent: mediaItems.length === 0 && !showSuggested ? "center" : "flex-start",
+                border: mediaItems.length === 0 && !showSuggested ? "1px dashed #e2e8f0" : "none",
+                borderRadius: 8, background: mediaItems.length === 0 && !showSuggested ? "#f8fafc" : "transparent",
+              }}>
+                {mediaItems.length === 0 && !showSuggested ? (
+                  <div style={{ textAlign: "center", color: "#cbd5e1" }}>
+                    <i className="fas fa-photo-video" style={{ fontSize: 20, marginBottom: 4 }}></i>
+                    <div style={{ fontSize: 10 }}>Upload, Library, Canva, or Suggested</div>
+                  </div>
+                ) : (
+                  mediaItems.map((item, i) => (
+                    <MediaCard
+                      key={item.id || i}
+                      item={item} index={i}
+                      onReplace={replaceMedia} onRemove={removeMedia}
+                      onMoveLeft={idx => moveMedia(idx, -1)} onMoveRight={idx => moveMedia(idx, 1)}
+                      isFirst={i === 0} isLast={i === mediaItems.length - 1}
+                    />
+                  ))
+                )}
+              </div>
+
+              {/* Pexels suggestions panel */}
+              {showSuggested && (
+                <div style={{ marginTop: 10 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "#0ea5e9", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>
+                    <i className="fas fa-magic me-1"></i>AI Suggested · Pexels
+                  </div>
+                  {pexelsLoading ? (
+                    <div style={{ textAlign: "center", padding: "12px 0", color: "#94a3b8", fontSize: 12 }}>
+                      <span className="spinner-border spinner-border-sm" style={{ color: "#0ea5e9", width: 14, height: 14, borderWidth: 2, marginRight: 6 }}></span>
+                      Finding images…
+                    </div>
+                  ) : pexelsError ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "#fef2f2", borderRadius: 6, border: "1px solid #fecaca" }}>
+                      <i className="fas fa-exclamation-circle" style={{ color: "#ef4444", fontSize: 12 }}></i>
+                      <span style={{ fontSize: 11, color: "#64748b", flex: 1 }}>Could not load image suggestions.</span>
+                      <button
+                        onClick={() => fetchPexelsSuggestions(pexelsQuery || content.trim().split(/\s+/).slice(0, 6).join(" ") || "social media content")}
+                        style={{ background: "none", border: "1px solid #e2e8f0", borderRadius: 4, padding: "2px 8px", fontSize: 10, color: "#475569", cursor: "pointer", whiteSpace: "nowrap" }}
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  ) : pexelsItems.length === 0 ? (
+                    <div style={{ fontSize: 12, color: "#94a3b8", padding: "8px 0" }}>
+                      Generate content first — suggestions load from your post topic.
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+                      {pexelsItems.slice(0, 10).map((item) => (
+                        <PexelsCard
+                          key={item.external_id}
+                          item={item}
+                          onUse={handlePexelsUse}
+                          loading={pexelsUsing === item.external_id}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        )}
+        </div>
+
+        {/* RIGHT 55% — Platform Rendering */}
+        <div style={{ width: "55%", display: "flex", flexDirection: "column", minHeight: 0, gap: 8 }}>
+
+          {/* Lifecycle status banner — appears when a vault item is selected */}
+          {selectedVaultItem && vaultStatusMeta && (
+            <div style={{
+              background: vaultStatusMeta.bg,
+              border: `1px solid ${vaultStatusMeta.color}44`,
+              borderRadius: 8, padding: "8px 14px", flexShrink: 0,
+              display: "flex", alignItems: "center", gap: 10,
+            }}>
+              <span style={{
+                fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em",
+                color: vaultStatusMeta.color, background: "#fff",
+                border: `1px solid ${vaultStatusMeta.color}55`,
+                padding: "2px 8px", borderRadius: 20,
+              }}>
+                {vaultStatusMeta.label}
+              </span>
+              {selectedVaultItem.scheduled_at && (
+                <span style={{ fontSize: 11, color: "#64748b", display: "flex", alignItems: "center", gap: 5 }}>
+                  <i className="fas fa-clock" style={{ fontSize: 10 }}></i>
+                  {new Date(selectedVaultItem.scheduled_at).toLocaleString("en-GB", {
+                    weekday: "short", day: "numeric", month: "short",
+                    hour: "2-digit", minute: "2-digit",
+                  })}
+                </span>
+              )}
+              <span style={{ flex: 1, fontSize: 11, color: "#94a3b8", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {(selectedVaultItem.title || selectedVaultItem.body || "").slice(0, 60)}
+              </span>
+              <button
+                onClick={() => setSelectedVaultItem(null)}
+                title="Back to live editor"
+                style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "0 2px" }}
+              >×</button>
+            </div>
+          )}
+
+          <PlatformPreviewPanel
+            platforms={previewPlatforms.length ? previewPlatforms : (selectedPlatforms.length ? selectedPlatforms : [])}
+            content={previewContent}
+            overrides={previewOverrides}
+            media={previewMedia}
+            brandName={brandName}
+            isLiveEditor={!selectedVaultItem}
+          />
+        </div>
       </div>
 
-      {/* ── BOTTOM ACTION BAR — always visible ─────────────────────────────── */}
-      <div style={{
-        marginTop: 10, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10,
-        padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between",
-        flexShrink: 0,
-      }}>
+      {/* ── BOTTOM ACTION BAR ─────────────────────────────────────────────── */}
+      <div style={{ marginTop: 10, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+
         <button
           onClick={handleDraft}
-          disabled={isPublishing || actionLoading}
+          disabled={isPublishing}
           style={{ border: "1px solid #e2e8f0", background: "#fff", color: "#475569", borderRadius: 8, padding: "8px 16px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
         >
           <i className="fas fa-save me-1"></i> Save Draft
         </button>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {scheduleLabel && (
-            <div style={{ fontSize: 10, color: "#64748b", fontWeight: 600 }}>
-              <i className="fas fa-clock me-1"></i>{scheduleLabel}
+          <div style={{ textAlign: "right" }}>
+            {scheduleLabel && (
+              <div style={{ fontSize: 10, color: "#64748b", marginBottom: 3, fontWeight: 600 }}>
+                <i className="fas fa-clock me-1"></i>{scheduleLabel}
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <input
+                type="datetime-local"
+                className="form-control form-control-sm border-subtle"
+                style={{ fontSize: 11, width: 175 }}
+                value={scheduledTime}
+                onChange={e => setScheduledTime(e.target.value)}
+              />
+              <select
+                value={timezone}
+                onChange={e => setTimezone(e.target.value)}
+                className="form-select form-select-sm border-subtle"
+                style={{ fontSize: 10, width: 130 }}
+              >
+                {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz}</option>)}
+              </select>
             </div>
-          )}
+          </div>
+
           <button
             onClick={handleApproval}
-            disabled={isPublishing || !canPublish || actionLoading}
+            disabled={isPublishing || !canPublish}
             style={{
-              border: "1px solid #e2e8f0", background: "#fff",
-              color: canPublish ? "#475569" : "#cbd5e1",
+              border: "1px solid #e2e8f0", background: "#fff", color: canPublish ? "#475569" : "#cbd5e1",
               borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 600,
               cursor: canPublish ? "pointer" : "not-allowed", whiteSpace: "nowrap",
             }}
@@ -1631,7 +1456,7 @@ export default function CreatePost({
         </button>
       </div>
 
-      {/* ── MODALS ─────────────────────────────────────────────────────────── */}
+      {/* ── MODALS ────────────────────────────────────────────────────────── */}
       {assistantOpen && (
         <SocialAssistantModal
           isOpen={assistantOpen}
