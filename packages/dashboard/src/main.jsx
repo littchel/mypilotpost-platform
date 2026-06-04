@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import App from "./App.jsx";
 import PublicApproval from "./pages/PublicApproval.jsx";
+import StudioLab from "./pages/StudioLab.jsx";
 import "./index.css";
 import { AuthProvider } from "./contexts/AuthContext";
 import { BrandProvider } from "./contexts/BrandContext";
@@ -18,6 +19,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <OnboardingProvider>
             <Routes>
               <Route path="/public/approval/:contentId" element={<PublicApproval />} />
+              <Route path="/studio-lab" element={<StudioLab />} />
               <Route path="/login" element={<App />} />
               <Route path="/register" element={<App />} />
               <Route path="/reset-password" element={<App />} />
