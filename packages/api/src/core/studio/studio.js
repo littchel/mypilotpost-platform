@@ -36,8 +36,19 @@ async function fetchBrandCtx(db, brand_id) {
   };
 }
 
+// ── Strip HTML to plain text ──────────────────────────────────────────────────
+function stripHTML(html) {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<nav[\s\S]*?<\/nav>/gi, " ")
+    .replace(/<footer[\s\S]*?<\/footer>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 // ── GET /api/customer/studio/opportunities ────────────────────────────────────
-// Generate 20 content opportunities for the Posts tab
 export async function getStudioOpportunities(request, env, auth) {
   if (!auth?.brand_id) return error("Unauthorized", 401);
 
@@ -98,7 +109,6 @@ Rules:
 }
 
 // ── POST /api/customer/studio/generate-post ───────────────────────────────────
-// Expand a single opportunity into full post content
 export async function generateStudioPost(request, env, auth) {
   if (!auth?.brand_id) return error("Unauthorized", 401);
 
@@ -159,24 +169,111 @@ Rules:
   });
 }
 
+// ── POST /api/customer/studio/scrape-website ──────────────────────────────────
+export async function scrapeWebsite(request, env, auth) {
+  if (!auth?.brand_id) return error("Unauthorized", 401);
+
+  const body = await request.json().catch(() => ({}));
+  const { url } = body;
+  if (!url) return error("url is required", 400);
+
+  // Ensure URL has protocol
+  const targetUrl = url.startsWith("http") ? url : `https://${url}`;
+
+  // Fetch with timeout
+  let rawText = "";
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    const res = await fetch(targetUrl, {
+      signal: controller.signal,
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; myPilotPost/1.0; +https://mypilotpost.com)" },
+    });
+    clearTimeout(timeout);
+    const html = await res.text();
+    rawText = stripHTML(html).slice(0, 4000);
+  } catch (e) {
+    return json({
+      success: false,
+      brandContext: null,
+      error: `Could not fetch ${targetUrl}: ${e.message}`,
+    });
+  }
+
+  if (!rawText || rawText.length < 50) {
+    return json({ success: false, brandContext: null, error: "Page returned insufficient content." });
+  }
+
+  const db = getDB(env);
+  const { brand } = await fetchBrandCtx(db, auth.brand_id);
+
+  const prompt = `You are extracting business context from website content.
+
+WEBSITE TEXT (from ${targetUrl}):
+${rawText}
+
+Extract and return ONLY this JSON:
+{
+  "business_name": "company name",
+  "tagline": "brand tagline or value prop",
+  "services": ["service 1", "service 2"],
+  "products": ["product 1", "product 2"],
+  "pricing": ["pricing info if found"],
+  "target_audience": "who this is for",
+  "value_proposition": "core offer or promise",
+  "key_messages": ["message 1", "message 2", "message 3"],
+  "testimonials": ["testimonial snippet 1"],
+  "tone": "formal/casual/friendly/authoritative",
+  "content_topics": ["topic 1", "topic 2", "topic 3", "topic 4", "topic 5"]
+}
+
+Rules:
+- Only extract what is actually present — do not invent
+- If a field is empty, use []
+- Respond with JSON only. No markdown.`;
+
+  const result = await trackedRunLLM(env, {
+    brand: brand || {},
+    prompt,
+    brand_id: auth.brand_id,
+    user_id: auth.user_id || null,
+    content_type: "studio_website_scrape",
+    options: { mode: "fast" },
+  });
+
+  if (!result) {
+    return json({ success: false, brandContext: null, error: "Extraction failed. Try again." });
+  }
+
+  return json({
+    success: true,
+    url: targetUrl,
+    brandContext: result,
+  });
+}
+
 // ── POST /api/customer/studio/playbook ────────────────────────────────────────
-// Run a playbook to generate a structured content plan
 export async function runPlaybook(request, env, auth) {
   if (!auth?.brand_id) return error("Unauthorized", 401);
 
   const body = await request.json().catch(() => ({}));
-  const { playbook_type, industry: reqIndustry, input_data, intensity = "standard", channels = [] } = body;
+  const { playbook_type, industry: reqIndustry, input_data, intensity = "medium", channels = [], website_context } = body;
   if (!playbook_type) return error("playbook_type is required", 400);
 
   const db = getDB(env);
   const { brand, context, brandName, industry } = await fetchBrandCtx(db, auth.brand_id);
 
   const targetIndustry = reqIndustry || industry;
-  const postCount = intensity === "minimal" ? 3 : intensity === "full" ? 5 : 4;
+  const cardCount = intensity === "low" ? 6 : intensity === "high" ? 12 : 8;
   const channelList = channels.length ? channels.join(", ") : "Facebook, Instagram, LinkedIn";
+
   const inputSummary = typeof input_data === "string"
     ? input_data
     : JSON.stringify(input_data || {}, null, 2);
+
+  const websiteSummary = website_context
+    ? `\nWEBSITE CONTEXT:\n${JSON.stringify(website_context, null, 2)}`
+    : "";
 
   const prompt = `You are a senior content strategist executing a ${playbook_type} playbook.
 
@@ -186,32 +283,36 @@ ${context || `Brand: ${brandName}\nIndustry: ${targetIndustry}`}
 PLAYBOOK: ${playbook_type}
 INDUSTRY: ${targetIndustry}
 CHANNELS: ${channelList}
+${websiteSummary}
 
 BRAND/PRODUCT DATA:
 ${inputSummary}
 
-Generate ${postCount} high-quality content pieces for this playbook. Return ONLY this JSON:
+Generate exactly ${cardCount} content cards for this playbook. Return ONLY this JSON:
 {
-  "summary": "2-sentence plan overview specific to this brand and playbook",
-  "modules": [
+  "summary": "2-sentence plan overview specific to this brand",
+  "cards": [
     {
-      "type": "social_post",
-      "platform": "platform name",
-      "title": "module title",
-      "body": "complete, ready-to-use post content — not a template",
-      "hook": "opening line",
+      "title": "specific post title for this brand",
+      "content_type": "social",
+      "platform": "primary platform",
+      "platforms": ["platform1", "platform2"],
+      "caption": "complete, ready-to-publish post — 80-220 words, no placeholders",
+      "hook": "scroll-stopping opening line — max 12 words",
       "cta": "specific call to action",
-      "media_suggestion": "brief visual direction"
+      "hashtags": ["#tag1", "#tag2", "#tag3"],
+      "format": "single_image",
+      "timing": "best day/time to post"
     }
   ],
-  "media_requirements": ["specific asset 1", "specific asset 2"],
   "schedule_suggestion": "1-sentence scheduling recommendation"
 }
 
 Rules:
-- Every body field must be a complete, publishable post — no [PLACEHOLDERS]
-- Reference the brand/product data above directly in the content
-- Mix post types across modules
+- Every caption must be complete and publishable — no [PLACEHOLDERS], no templates
+- Reference the brand and industry data above directly in each caption
+- Mix formats: single_image, carousel, video, text_only
+- Vary platforms across cards
 - Respond with JSON only. No markdown.`;
 
   const result = await trackedRunLLM(env, {
@@ -225,31 +326,44 @@ Rules:
 
   if (!result) return error("Generation failed. Please try again.", 500);
 
+  const cards = (result.cards || []).slice(0, cardCount).map((c, i) => ({
+    id: `pb_${i}`,
+    title: c.title || `${playbook_type} Post ${i + 1}`,
+    content_type: c.content_type || "social",
+    platform: c.platform || "instagram",
+    platforms: Array.isArray(c.platforms) ? c.platforms : [c.platform || "instagram"],
+    caption: c.caption || c.body || "",
+    hook: c.hook || "",
+    cta: c.cta || "",
+    hashtags: Array.isArray(c.hashtags) ? c.hashtags : [],
+    format: c.format || "single_image",
+    timing: c.timing || "",
+    source: "playbook",
+    playbook_type,
+  }));
+
   return json({
     playbook_type,
     intensity,
     summary: result.summary || `${playbook_type} content plan for ${brandName}.`,
-    modules: (result.modules || []).slice(0, 5),
-    media_requirements: result.media_requirements || [],
+    cards,
     schedule_suggestion: result.schedule_suggestion || "",
   });
 }
 
 // ── POST /api/customer/studio/campaign ────────────────────────────────────────
-// Generate a full campaign asset set
 export async function generateCampaignContent(request, env, auth) {
   if (!auth?.brand_id) return error("Unauthorized", 401);
 
   const body = await request.json().catch(() => ({}));
-  const { campaign_name, offer, goal, channels = [] } = body;
+  const { campaign_name, offer, goal, channels = [], campaign_id } = body;
   if (!campaign_name || !offer) return error("campaign_name and offer are required", 400);
 
   const db = getDB(env);
   const { brand, context, brandName } = await fetchBrandCtx(db, auth.brand_id);
-
   const channelList = channels.length ? channels.join(", ") : "Facebook, Instagram, LinkedIn";
 
-  const prompt = `You are a campaign strategist creating a complete launch asset set.
+  const prompt = `You are a campaign strategist creating a complete launch asset set as visual content cards.
 
 BRAND CONTEXT:
 ${context || `Brand: ${brandName}`}
@@ -259,28 +373,33 @@ OFFER: ${offer}
 GOAL: ${goal || "increase awareness and drive conversions"}
 CHANNELS: ${channelList}
 
-Return ONLY this JSON:
+Generate a set of campaign content cards. Return ONLY this JSON:
 {
   "campaign_summary": "2-sentence strategic overview",
-  "social_posts": [
-    { "platform": "platform", "post_type": "awareness", "body": "complete post text", "cta": "call to action", "hashtags": "#tag1 #tag2" },
-    { "platform": "platform", "post_type": "consideration", "body": "complete post text", "cta": "call to action", "hashtags": "#tag1 #tag2" },
-    { "platform": "platform", "post_type": "conversion", "body": "complete post text", "cta": "call to action", "hashtags": "#tag1 #tag2" }
+  "cards": [
+    {
+      "title": "card title",
+      "post_type": "awareness",
+      "platform": "instagram",
+      "platforms": ["instagram", "facebook"],
+      "caption": "complete, ready-to-publish post about ${offer} — no placeholders",
+      "hook": "scroll-stopping opening line",
+      "cta": "specific call to action",
+      "hashtags": ["#tag1", "#tag2"],
+      "format": "single_image"
+    }
   ],
   "article": {
     "title": "article headline",
     "intro": "2-paragraph introduction (complete text)",
     "cta": "article call to action"
-  },
-  "cta_variants": [
-    { "channel": "channel", "cta": "specific CTA text" }
-  ],
-  "media_requirements": ["asset description 1", "asset description 2", "asset description 3"]
+  }
 }
 
+Include exactly 4-6 social cards covering: awareness, consideration, conversion, social proof.
 Rules:
-- All body fields must be complete, publishable content — no [PLACEHOLDERS]
-- Every post references the specific offer: ${offer}
+- Every caption must reference the specific offer: ${offer}
+- No [PLACEHOLDER] text anywhere
 - Respond with JSON only. No markdown.`;
 
   const result = await trackedRunLLM(env, {
@@ -294,24 +413,38 @@ Rules:
 
   if (!result) return error("Generation failed. Please try again.", 500);
 
+  const cards = (result.cards || []).slice(0, 6).map((c, i) => ({
+    id: `camp_${i}`,
+    title: c.title || `${campaign_name} — ${c.post_type || "Post"} ${i + 1}`,
+    content_type: "social",
+    platform: c.platform || "instagram",
+    platforms: Array.isArray(c.platforms) ? c.platforms : [c.platform || "instagram"],
+    caption: c.caption || "",
+    hook: c.hook || "",
+    cta: c.cta || "",
+    hashtags: Array.isArray(c.hashtags) ? c.hashtags : [],
+    format: c.format || "single_image",
+    post_type: c.post_type || "",
+    source: "campaign",
+    campaign_name,
+    campaign_id: campaign_id || null,
+  }));
+
   return json({
     campaign_name,
     campaign_summary: result.campaign_summary || "",
-    social_posts: result.social_posts || [],
+    cards,
     article: result.article || null,
-    cta_variants: result.cta_variants || [],
-    media_requirements: result.media_requirements || [],
   });
 }
 
 // ── GET /api/customer/studio/vault ────────────────────────────────────────────
-// Drafts saved from Studio
 export async function getStudioVault(request, env, auth) {
   if (!auth?.brand_id) return error("Unauthorized", 401);
 
   const db = getDB(env);
   const { results } = await db.prepare(`
-    SELECT id, title, body, platforms, content_type, lifecycle_status, created_at, updated_at
+    SELECT id, title, body, hook, cta, hashtags, platforms, content_type, lifecycle_status, metadata, created_at, updated_at
     FROM content_vault
     WHERE brand_id = ? AND source = 'studio' AND lifecycle_status = 'draft'
     ORDER BY updated_at DESC LIMIT 50

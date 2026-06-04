@@ -222,7 +222,7 @@ import {
 } from "./core/campaigns/campaigns.js";
 
 import { generateCampaignPlan, generatePostIdea, generateRecommendation, generateVisualBrief } from "./core/templates/templates.js";
-import { getStudioOpportunities, generateStudioPost, runPlaybook, generateCampaignContent, getStudioVault } from "./core/studio/studio.js";
+import { getStudioOpportunities, generateStudioPost, runPlaybook, generateCampaignContent, getStudioVault, scrapeWebsite } from "./core/studio/studio.js";
 
 /* ======================================================
    ADMIN — CAMPAIGNS & EMAILS
@@ -2027,6 +2027,8 @@ export default {
           return withCors(request, generateCampaignContent(request, env, auth));
         if (method === "GET"  && path === "/api/customer/studio/vault")
           return withCors(request, getStudioVault(request, env, auth));
+        if (method === "POST" && path === "/api/customer/studio/scrape-website")
+          return withCors(request, scrapeWebsite(request, env, auth));
 
         /* ---------- TEMPLATES ---------- */
         if (method === "POST" && path === "/api/customer/templates/generate-campaign")

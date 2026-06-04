@@ -15,6 +15,16 @@ const CSS = `
 .cs-card:hover { transform:translateY(-2px)!important; box-shadow:0 12px 32px rgba(15,23,42,0.12)!important; }
 `;
 
+// ── 30 supported industries ───────────────────────────────────────────────────
+const INDUSTRY_LIST = [
+  "SaaS", "Real Estate", "Moving Services", "Insurance", "Healthcare", "Dental",
+  "Legal", "Construction", "Travel", "Hotels", "Restaurants", "Retail",
+  "Ecommerce", "Fashion", "Education", "Finance", "Accounting", "Consulting",
+  "Marketing Agency", "Beauty", "Fitness", "Automotive", "Property Management",
+  "Recruitment", "Events", "Nonprofit", "Manufacturing", "Technology",
+  "Professional Services", "Home Services",
+];
+
 // ── Calendar events ───────────────────────────────────────────────────────────
 const ANNUAL_EVENTS = [
   { name:"Valentine's Day",          month:1,  day:14,  icon:"❤️",  accent:"#e11d48", suggested:"Offer Campaign" },
@@ -66,7 +76,7 @@ function calcCCS(activeBrand, connectedPlatforms) {
   return { score: s, missing, level: s < 50 ? "weak" : s < 75 ? "good" : "high" };
 }
 
-// ── Pexels pool — 15 CDN URLs, no auth, reliable ─────────────────────────────
+// ── Pexels pool — 15 CDN URLs, no auth required ───────────────────────────────
 const PEXELS_POOL = [
   "https://images.pexels.com/photos/3184298/pexels-photo-3184298.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
   "https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
@@ -95,7 +105,8 @@ function preloadImg(src) {
 }
 
 // ── Discovery Card — Posts Discovery Card v1 ─────────────────────────────────
-function DiscoveryCard({ opp, imageUrl, imgReady, onPreview, onUseIdea }) {
+// onSave optional — if provided renders Save button
+function DiscoveryCard({ opp, imageUrl, imgReady, onPreview, onUseIdea, onSave, saved }) {
   const title     = opp.idea || opp.title || opp.framework || "Content Opportunity";
   const format    = (opp.media_type || opp.format || opp.type || "Post").replace(/_/g, " ");
   const effort    = opp.effort || "15 min";
@@ -103,34 +114,21 @@ function DiscoveryCard({ opp, imageUrl, imgReady, onPreview, onUseIdea }) {
 
   return (
     <div className="cs-card" style={{
-      border: "1px solid var(--border-subtle)",
-      borderRadius: "var(--radius-lg)",
-      background: "var(--surface-primary)",
-      boxShadow: "0 2px 8px rgba(15,23,42,0.06)",
-      overflow: "hidden",
-      display: "flex",
-      flexDirection: "column",
-      maxHeight: 520,
-      transition: "all 0.22s",
+      border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)",
+      background: "var(--surface-primary)", boxShadow: "0 2px 8px rgba(15,23,42,0.06)",
+      overflow: "hidden", display: "flex", flexDirection: "column", maxHeight: 520, transition: "all 0.22s",
     }}>
-
       {/* IMAGE 80% */}
       <div style={{ position: "relative", width: "100%", height: 408, flexShrink: 0, overflow: "hidden", background: "var(--hover-bg)" }}>
         {imgReady && imageUrl && (
           <img src={imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
         )}
-
-        {/* Format — top-left */}
         <div style={{ position: "absolute", top: 10, left: 10, background: "rgba(15,23,42,0.6)", backdropFilter: "blur(6px)", borderRadius: "var(--radius-md)", padding: "4px 8px" }}>
           <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "#fff", textTransform: "uppercase", letterSpacing: "0.06em" }}>{format}</span>
         </div>
-
-        {/* Effort — top-right */}
         <div style={{ position: "absolute", top: 10, right: 10, background: "rgba(15,23,42,0.6)", backdropFilter: "blur(6px)", borderRadius: "var(--radius-md)", padding: "4px 8px" }}>
           <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "#fff" }}>{effort}</span>
         </div>
-
-        {/* Platform chips — bottom-left */}
         {platforms.length > 0 && (
           <div style={{ position: "absolute", bottom: 10, left: 10, display: "flex", gap: 4 }}>
             {platforms.map(p => (
@@ -141,8 +139,6 @@ function DiscoveryCard({ opp, imageUrl, imgReady, onPreview, onUseIdea }) {
             ))}
           </div>
         )}
-
-        {/* Calendar badge — bottom-right */}
         {opp.calendar_event && (
           <div style={{ position: "absolute", bottom: 10, right: 10, background: "rgba(15,23,42,0.6)", backdropFilter: "blur(6px)", borderRadius: "var(--radius-md)", padding: "3px 8px" }}>
             <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "#fff" }}>{opp.days_away ? `${opp.days_away}d` : "soon"}</span>
@@ -158,15 +154,21 @@ function DiscoveryCard({ opp, imageUrl, imgReady, onPreview, onUseIdea }) {
         <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: 12 }}>
           Suggested for your audience
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 6 }}>
           <button type="button" onClick={() => onPreview(opp, imageUrl)}
-            style={{ flex: 1, border: "1px solid var(--border-subtle)", background: "var(--surface-secondary)", color: "var(--text-main)", borderRadius: "var(--radius-md)", padding: "8px 0", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", transition: "0.2s ease" }}>
+            style={{ flex: 1, border: "1px solid var(--border-subtle)", background: "var(--surface-secondary)", color: "var(--text-main)", borderRadius: "var(--radius-md)", padding: "8px 0", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer" }}>
             Preview
           </button>
           <button type="button" onClick={() => onUseIdea(opp)}
-            style={{ flex: 1, border: "none", background: "var(--pilot-blue)", color: "#fff", borderRadius: "var(--radius-md)", padding: "8px 0", fontSize: "0.85rem", fontWeight: 700, cursor: "pointer", transition: "0.2s ease" }}>
+            style={{ flex: 1, border: "none", background: "var(--pilot-blue)", color: "#fff", borderRadius: "var(--radius-md)", padding: "8px 0", fontSize: "0.85rem", fontWeight: 700, cursor: "pointer" }}>
             Use Idea
           </button>
+          {onSave && (
+            <button type="button" onClick={() => onSave(opp, imageUrl)} disabled={saved}
+              style={{ flex: 1, border: `1px solid ${saved ? "var(--status-success)" : "var(--border-subtle)"}`, background: saved ? "var(--surface-primary)" : "var(--surface-secondary)", color: saved ? "var(--status-success)" : "var(--text-main)", borderRadius: "var(--radius-md)", padding: "8px 0", fontSize: "0.85rem", fontWeight: saved ? 700 : 600, cursor: saved ? "default" : "pointer" }}>
+              {saved ? "✓ Saved" : "Save"}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -181,9 +183,7 @@ function AccordionRow({ label, body, open, onToggle }) {
         <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-main)" }}>{label}</span>
         <i className={`fas fa-chevron-${open ? "up" : "down"}`} style={{ fontSize: 10, color: "var(--slate-400)", flexShrink: 0 }} />
       </button>
-      {open && (
-        <div style={{ paddingBottom: 12, fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.6 }}>{body}</div>
-      )}
+      {open && <div style={{ paddingBottom: 12, fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.6 }}>{body}</div>}
     </div>
   );
 }
@@ -191,10 +191,10 @@ function AccordionRow({ label, body, open, onToggle }) {
 // ── Preview Modal ─────────────────────────────────────────────────────────────
 function PreviewModal({ opp, imageUrl, activeBrand, onClose, onUseIdea }) {
   const [openRow, setOpenRow] = useState(0);
-
   const brandName = activeBrand?.name || "Your Brand";
   const initials  = brandName.split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase();
-  const caption   = opp.hook || opp.idea || opp.title || "Open in Create Social Post to write your full post.";
+  // Use actual generated caption if available, otherwise fall back to hook/idea
+  const caption   = opp._caption || opp.caption || opp.hook || opp.idea || opp.title || "Open in Create Social Post to write your full post.";
 
   const rows = [
     {
@@ -209,28 +209,23 @@ function PreviewModal({ opp, imageUrl, activeBrand, onClose, onUseIdea }) {
     {
       label: "Campaign alignment",
       body: opp.calendar_event
-        ? `Aligned with upcoming ${opp.calendar_event} — ${opp.days_away || "soon"} days away. Ideal timing to build awareness ahead of the moment.`
-        : "No active campaign currently linked. Assign a campaign after opening in the editor.",
+        ? `Aligned with upcoming ${opp.calendar_event} — ${opp.days_away || "soon"} days away. Ideal timing.`
+        : opp.campaign_name
+          ? `Generated for campaign: ${opp.campaign_name}. Assign to campaign in the editor to track attribution.`
+          : "No active campaign currently linked. Assign a campaign after opening in the editor.",
     },
   ];
 
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 3000, backdropFilter: "blur(3px)" }} />
-      <div style={{
-        position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
-        width: "min(820px, 94vw)", maxHeight: "88vh",
-        background: "var(--surface-primary)", borderRadius: "var(--radius-lg)",
-        border: "1px solid var(--border-subtle)", boxShadow: "0 20px 60px rgba(15,23,42,0.18)",
-        zIndex: 3001, display: "flex", flexDirection: "column", overflow: "hidden",
-      }}>
-        <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, background: "var(--surface-primary)" }}>
+      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(820px, 94vw)", maxHeight: "88vh", background: "var(--surface-primary)", borderRadius: "var(--radius-lg)", border: "1px solid var(--border-subtle)", boxShadow: "0 20px 60px rgba(15,23,42,0.18)", zIndex: 3001, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
           <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-main)" }}>Content Preview</div>
           <button type="button" onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, color: "var(--slate-400)", cursor: "pointer", lineHeight: 1 }}>×</button>
         </div>
-
         <div style={{ flex: 1, display: "flex", minHeight: 0, overflow: "hidden" }}>
-          {/* LEFT — post render */}
+          {/* LEFT */}
           <div style={{ width: "46%", borderRight: "1px solid var(--border-subtle)", padding: "20px 16px", overflowY: "auto", background: "var(--surface-secondary)", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
             <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", alignSelf: "flex-start" }}>Post Preview</div>
             <div style={{ background: "var(--surface-primary)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)", maxWidth: 340, width: "100%" }}>
@@ -251,13 +246,12 @@ function PreviewModal({ opp, imageUrl, activeBrand, onClose, onUseIdea }) {
                 <i className="far fa-heart" /><i className="far fa-comment" /><i className="far fa-paper-plane" />
                 <i className="far fa-bookmark" style={{ marginLeft: "auto" }} />
               </div>
-              <div style={{ padding: "4px 12px 14px", fontSize: "0.85rem", color: "var(--text-main)", lineHeight: 1.6, maxHeight: 140, overflowY: "auto" }}>
+              <div style={{ padding: "4px 12px 14px", fontSize: "0.85rem", color: "var(--text-main)", lineHeight: 1.6, maxHeight: 180, overflowY: "auto" }}>
                 <strong>{brandName.toLowerCase().replace(/\s+/g, "")}</strong>{" "}{caption}
               </div>
             </div>
           </div>
-
-          {/* RIGHT — accordion */}
+          {/* RIGHT */}
           <div style={{ flex: 1, padding: "20px 20px", overflowY: "auto", background: "var(--surface-primary)" }}>
             <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>Intelligence</div>
             {rows.map((row, i) => (
@@ -265,7 +259,6 @@ function PreviewModal({ opp, imageUrl, activeBrand, onClose, onUseIdea }) {
             ))}
           </div>
         </div>
-
         <div style={{ padding: "12px 20px", borderTop: "1px solid var(--border-subtle)", background: "var(--surface-secondary)", display: "flex", gap: 8, justifyContent: "flex-end", flexShrink: 0 }}>
           <button type="button" onClick={onClose}
             style={{ border: "1px solid var(--border-subtle)", background: "var(--surface-primary)", color: "var(--text-main)", borderRadius: "var(--radius-md)", padding: "8px 16px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer" }}>
@@ -281,19 +274,28 @@ function PreviewModal({ opp, imageUrl, activeBrand, onClose, onUseIdea }) {
   );
 }
 
-// ── Route Modal — choose editor, store prefill, route ─────────────────────────
-function RouteModal({ opp, switchTab, onClose }) {
+// ── Route Modal — enriched prefill including image ────────────────────────────
+function RouteModal({ opp, imageUrl, switchTab, onClose }) {
   function route(tab) {
     try {
       sessionStorage.setItem("studio_idea_prefill", JSON.stringify({
-        idea_id:           opp.id || opp.title,
-        title:             opp.idea || opp.title || opp.framework || "",
-        hook:              opp.hook || "",
+        idea_id:             opp.id || opp.title,
+        title:               opp.idea || opp.title || opp.framework || "",
+        caption:             opp._caption || opp.caption || "",
+        hook:                opp.hook || "",
+        cta:                 opp._cta || opp.cta || "",
+        hashtags:            opp._hashtags || opp.hashtags || [],
+        platforms:           opp.platforms || [],
+        contentType:         opp.content_type || "social",
+        image:               imageUrl || "",
+        imageSource:         "pexels",
         suggested_structure: opp.structure || opp.framework || "",
-        campaign_id:       opp.campaign_id || null,
-        calendar_context:  opp.calendar_event || null,
-        brand_context:     opp.objective || opp.suggested_because || "",
-        source:            "studio",
+        campaign_id:         opp.campaign_id || null,
+        campaign_name:       opp.campaign_name || null,
+        calendar_context:    opp.calendar_event || null,
+        brand_context:       opp.objective || opp.suggested_because || "",
+        generationMeta:      { source: opp.source || "studio", playbook_type: opp.playbook_type || null },
+        source:              "studio",
       }));
     } catch {}
     onClose();
@@ -303,19 +305,14 @@ function RouteModal({ opp, switchTab, onClose }) {
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 4000, backdropFilter: "blur(3px)" }} />
-      <div style={{
-        position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
-        width: "min(400px, 94vw)", background: "var(--surface-primary)",
-        borderRadius: "var(--radius-lg)", border: "1px solid var(--border-subtle)",
-        boxShadow: "0 20px 60px rgba(15,23,42,0.18)", zIndex: 4001, overflow: "hidden",
-      }}>
+      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(400px, 94vw)", background: "var(--surface-primary)", borderRadius: "var(--radius-lg)", border: "1px solid var(--border-subtle)", boxShadow: "0 20px 60px rgba(15,23,42,0.18)", zIndex: 4001, overflow: "hidden" }}>
         <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-main)" }}>Open in editor</div>
           <button type="button" onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, color: "var(--slate-400)", cursor: "pointer", lineHeight: 1 }}>×</button>
         </div>
         <div style={{ padding: "20px" }}>
           <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: 16 }}>
-            Choose where to take this idea. The editor receives context from Studio.
+            The editor receives context, caption, and image from Studio.
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <button type="button" onClick={() => route("social")}
@@ -341,13 +338,47 @@ function RouteModal({ opp, switchTab, onClose }) {
   );
 }
 
+// ── Save card to vault ────────────────────────────────────────────────────────
+async function saveCardToVault(card, imageUrl) {
+  const payload = {
+    content_type: card.content_type || "social",
+    title:        card.title || card.idea || "Studio Draft",
+    body:         card._caption || card.caption || card.hook || "",
+    hook:         card.hook || "",
+    cta:          card._cta || card.cta || "",
+    hashtags:     JSON.stringify(card._hashtags || card.hashtags || []),
+    platforms:    JSON.stringify(card.platforms || []),
+    lifecycle_status: "draft",
+    source:       "studio",
+    metadata: JSON.stringify({
+      image: imageUrl || "",
+      image_source: "pexels",
+      platform_targets: card.platforms || [],
+      generation_context: {
+        source:         card.source || "studio",
+        playbook_type:  card.playbook_type || null,
+        campaign_name:  card.campaign_name || null,
+        framework:      card.framework || null,
+      },
+      editor_payload: {
+        caption:    card._caption || card.caption || "",
+        hook:       card.hook || "",
+        cta:        card._cta || card.cta || "",
+        hashtags:   card._hashtags || card.hashtags || [],
+        format:     card.format || "single_image",
+        timing:     card.timing || "",
+      },
+    }),
+  };
+  return apiRequest("/api/customer/vault", { method: "POST", body: JSON.stringify(payload) });
+}
+
 // ── CCS Bar ───────────────────────────────────────────────────────────────────
 function CCSBar({ ccs }) {
   const { score, level, missing } = ccs;
   const color = level === "high" ? "var(--status-success)" : level === "good" ? "var(--status-warning)" : "var(--status-danger)";
   const label = level === "high" ? "High Confidence" : level === "good" ? "Good Context" : "Weak Context";
   const [open, setOpen] = useState(false);
-
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -387,25 +418,24 @@ function matchFilter(opp, filter) {
   const mt = (opp.media_type || opp.type || opp.format || "").toLowerCase();
   const fw = (opp.framework || opp.category || "").toLowerCase();
   const combined = mt + " " + fw;
-  if (filter === "trending")         return !!opp.calendar_event || combined.includes("trend") || combined.includes("moment");
-  if (filter === "high-conversion")  return combined.includes("convert") || combined.includes("lead") || combined.includes("offer") || combined.includes("sale") || fw.includes("generation");
+  if (filter === "trending")          return !!opp.calendar_event || combined.includes("trend") || combined.includes("moment");
+  if (filter === "high-conversion")   return combined.includes("convert") || combined.includes("lead") || combined.includes("offer") || combined.includes("sale") || fw.includes("generation");
   if (filter === "thought-leadership") return fw.includes("authority") || fw.includes("thought") || fw.includes("predict") || fw.includes("opinion") || fw.includes("insight") || fw.includes("leadership");
-  if (filter === "seasonal")         return !!opp.calendar_event || combined.includes("seasonal") || combined.includes("holiday");
-  if (filter === "carousel")         return mt.includes("carousel");
-  if (filter === "blog-ideas")       return combined.includes("blog") || combined.includes("article") || combined.includes("long");
+  if (filter === "seasonal")          return !!opp.calendar_event || combined.includes("seasonal") || combined.includes("holiday");
+  if (filter === "carousel")          return mt.includes("carousel");
+  if (filter === "blog-ideas")        return combined.includes("blog") || combined.includes("article") || combined.includes("long");
   return true;
 }
 
 function PostsTab({ activeBrand, connectedPlatforms, switchTab }) {
-  const [opps,        setOpps]      = useState([]);
-  const [imageMap,    setImageMap]  = useState({}); // index → { url, ready }
-  const [loading,     setLoading]   = useState(true);
-  const [refreshing,  setRefreshing]= useState(false);
-  const [error,       setError]     = useState("");
-  const [filter,      setFilter]    = useState("for-you");
-  const [preview,     setPreview]   = useState(null); // { opp, imageUrl }
-  const [routing,     setRouting]   = useState(null); // opp
-
+  const [opps,       setOpps]      = useState([]);
+  const [imageMap,   setImageMap]  = useState({});
+  const [loading,    setLoading]   = useState(true);
+  const [refreshing, setRefreshing]= useState(false);
+  const [error,      setError]     = useState("");
+  const [filter,     setFilter]    = useState("for-you");
+  const [preview,    setPreview]   = useState(null);
+  const [routing,    setRouting]   = useState(null);
   const ccs = calcCCS(activeBrand, connectedPlatforms);
 
   const load = useCallback(async (isRefresh = false) => {
@@ -415,23 +445,14 @@ function PostsTab({ activeBrand, connectedPlatforms, switchTab }) {
       const data = await apiRequest("/api/customer/studio/opportunities");
       const list = (data.opportunities || []).map((o, i) => ({ ...o, _index: i }));
       setOpps(list);
-      // Preload images for all cards (non-blocking, updates map as each resolves)
       list.forEach((_, i) => {
         const url = PEXELS_POOL[i % PEXELS_POOL.length];
         preloadImg(url)
           .then(u => setImageMap(m => ({ ...m, [i]: { url: u, ready: true } })))
-          .catch(() => {
-            preloadImg(PEXELS_POOL[0])
-              .then(u => setImageMap(m => ({ ...m, [i]: { url: u, ready: true } })))
-              .catch(() => setImageMap(m => ({ ...m, [i]: { url: PEXELS_POOL[0], ready: true } })));
-          });
+          .catch(() => setImageMap(m => ({ ...m, [i]: { url: PEXELS_POOL[0], ready: true } })));
       });
-    } catch (e) {
-      setError(e.message || "Failed to load opportunities.");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+    } catch (e) { setError(e.message || "Failed to load opportunities."); }
+    finally { setLoading(false); setRefreshing(false); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -441,32 +462,21 @@ function PostsTab({ activeBrand, connectedPlatforms, switchTab }) {
   return (
     <div>
       <style>{CSS}</style>
-
-      {/* CCS + refresh */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
         <CCSBar ccs={ccs} />
         <button type="button" onClick={() => load(true)} disabled={refreshing} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: "var(--radius-md)", border: "1px solid var(--border-subtle)", background: "var(--surface-primary)", color: "var(--text-main)", fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
-          {refreshing
-            ? <><div style={{ width: 12, height: 12, border: "2px solid var(--border-subtle)", borderTopColor: "var(--pilot-blue)", borderRadius: "50%", animation: "cs-spin 1s linear infinite" }} /> Refreshing...</>
-            : <><i className="fas fa-sync-alt" style={{ fontSize: 10 }} /> Refresh Feed</>
-          }
+          {refreshing ? <><div style={{ width: 12, height: 12, border: "2px solid var(--border-subtle)", borderTopColor: "var(--pilot-blue)", borderRadius: "50%", animation: "cs-spin 1s linear infinite" }} /> Refreshing...</> : <><i className="fas fa-sync-alt" style={{ fontSize: 10 }} /> Refresh Feed</>}
         </button>
       </div>
 
-      {/* Filter rail */}
       <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, marginBottom: 20, scrollbarWidth: "none" }}>
         {FILTERS.map(f => (
-          <button key={f.id} type="button" onClick={() => setFilter(f.id)} style={{
-            flexShrink: 0, padding: "7px 16px", borderRadius: 99, border: "1px solid",
-            borderColor: filter === f.id ? "var(--pilot-blue)" : "var(--border-subtle)",
-            background:  filter === f.id ? "var(--pilot-blue)" : "var(--surface-primary)",
-            color:       filter === f.id ? "#fff" : "var(--text-main)",
-            fontWeight: 700, fontSize: 12, cursor: "pointer", transition: "all 0.15s", whiteSpace: "nowrap",
-          }}>{f.label}</button>
+          <button key={f.id} type="button" onClick={() => setFilter(f.id)} style={{ flexShrink: 0, padding: "7px 16px", borderRadius: 99, border: "1px solid", borderColor: filter === f.id ? "var(--pilot-blue)" : "var(--border-subtle)", background: filter === f.id ? "var(--pilot-blue)" : "var(--surface-primary)", color: filter === f.id ? "#fff" : "var(--text-main)", fontWeight: 700, fontSize: 12, cursor: "pointer", transition: "all 0.15s", whiteSpace: "nowrap" }}>
+            {f.label}
+          </button>
         ))}
       </div>
 
-      {/* Loading skeleton */}
       {loading && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 16 }}>
           {Array.from({ length: 6 }).map((_, i) => (
@@ -485,7 +495,6 @@ function PostsTab({ activeBrand, connectedPlatforms, switchTab }) {
         </div>
       )}
 
-      {/* Error */}
       {!loading && error && (
         <div style={{ textAlign: "center", padding: "56px 24px" }}>
           <div style={{ fontSize: 28, marginBottom: 14 }}>⚠️</div>
@@ -495,7 +504,6 @@ function PostsTab({ activeBrand, connectedPlatforms, switchTab }) {
         </div>
       )}
 
-      {/* Cards */}
       {!loading && !error && (
         <>
           {visible.length === 0 ? (
@@ -509,14 +517,9 @@ function PostsTab({ activeBrand, connectedPlatforms, switchTab }) {
               {visible.map((opp, i) => {
                 const imgData = imageMap[opp._index] || {};
                 return (
-                  <DiscoveryCard
-                    key={opp.id || i}
-                    opp={opp}
-                    imageUrl={imgData.url || null}
-                    imgReady={!!imgData.ready}
+                  <DiscoveryCard key={opp.id || i} opp={opp} imageUrl={imgData.url || null} imgReady={!!imgData.ready}
                     onPreview={(o, u) => setPreview({ opp: o, imageUrl: u })}
-                    onUseIdea={o => setRouting(o)}
-                  />
+                    onUseIdea={o => setRouting({ opp: o, imageUrl: imgData.url || null })} />
                 );
               })}
             </div>
@@ -529,17 +532,85 @@ function PostsTab({ activeBrand, connectedPlatforms, switchTab }) {
 
       {preview && (
         <PreviewModal opp={preview.opp} imageUrl={preview.imageUrl} activeBrand={activeBrand}
-          onClose={() => setPreview(null)} onUseIdea={o => { setPreview(null); setRouting(o); }} />
+          onClose={() => setPreview(null)}
+          onUseIdea={o => { setPreview(null); setRouting({ opp: o, imageUrl: preview.imageUrl }); }} />
       )}
-
       {routing && (
-        <RouteModal opp={routing} switchTab={switchTab} onClose={() => setRouting(null)} />
+        <RouteModal opp={routing.opp} imageUrl={routing.imageUrl} switchTab={switchTab} onClose={() => setRouting(null)} />
       )}
     </div>
   );
 }
 
-// ── Playbooks Tab (unchanged) ─────────────────────────────────────────────────
+// ── Asset Card Grid (Playbook + Campaign outputs) ─────────────────────────────
+function AssetCardGrid({ cards, activeBrand, switchTab, source }) {
+  const [imageMap,  setImageMap]  = useState({});
+  const [savedSet,  setSavedSet]  = useState(new Set());
+  const [preview,   setPreview]   = useState(null);
+  const [routing,   setRouting]   = useState(null);
+  const [saveErr,   setSaveErr]   = useState("");
+
+  useEffect(() => {
+    cards.forEach((_, i) => {
+      const url = PEXELS_POOL[i % PEXELS_POOL.length];
+      preloadImg(url)
+        .then(u => setImageMap(m => ({ ...m, [i]: { url: u, ready: true } })))
+        .catch(() => setImageMap(m => ({ ...m, [i]: { url: PEXELS_POOL[0], ready: true } })));
+    });
+  }, [cards]);
+
+  async function handleSave(card, imageUrl) {
+    try {
+      await saveCardToVault(card, imageUrl);
+      setSavedSet(s => new Set([...s, card.id]));
+    } catch { setSaveErr("Save failed. Try again."); }
+  }
+
+  if (!cards.length) return null;
+
+  return (
+    <div>
+      {saveErr && (
+        <div style={{ background: "var(--surface-primary)", border: "1px solid var(--status-danger)", borderRadius: "var(--radius-md)", padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "var(--status-danger)" }}>{saveErr}</div>
+      )}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 16 }}>
+        {cards.map((card, i) => {
+          // Map card → opp shape for DiscoveryCard
+          const opp = {
+            ...card,
+            idea:        card.title,
+            media_type:  card.format || "single_image",
+            effort:      card.timing || "15 min",
+            platforms:   card.platforms || (card.platform ? [card.platform] : []),
+            hook:        card.hook,
+            _caption:    card.caption,
+            _cta:        card.cta,
+            _hashtags:   card.hashtags,
+          };
+          const imgData = imageMap[i] || {};
+          return (
+            <DiscoveryCard key={card.id || i} opp={opp} imageUrl={imgData.url || null} imgReady={!!imgData.ready}
+              onPreview={(o, u) => setPreview({ opp: o, imageUrl: u })}
+              onUseIdea={o => setRouting({ opp: o, imageUrl: imgData.url || null })}
+              onSave={(o, u) => handleSave(o, u)}
+              saved={savedSet.has(card.id)} />
+          );
+        })}
+      </div>
+
+      {preview && (
+        <PreviewModal opp={preview.opp} imageUrl={preview.imageUrl} activeBrand={activeBrand}
+          onClose={() => setPreview(null)}
+          onUseIdea={o => { setPreview(null); setRouting({ opp: o, imageUrl: preview.imageUrl }); }} />
+      )}
+      {routing && (
+        <RouteModal opp={routing.opp} imageUrl={routing.imageUrl} switchTab={switchTab} onClose={() => setRouting(null)} />
+      )}
+    </div>
+  );
+}
+
+// ── Playbooks Tab ─────────────────────────────────────────────────────────────
 const PLAYBOOK_TYPES = [
   { id:"authority-building",   name:"Authority Building",   icon:"fas fa-crown",         accent:"#d97706", desc:"Position as the definitive expert in your category." },
   { id:"product-launch",       name:"Product Launch",       icon:"fas fa-rocket",        accent:"#7c3aed", desc:"Announce and amplify your next product or service." },
@@ -594,38 +665,55 @@ function PlaybooksTab({ activeBrand, switchTab }) {
 
 // ── Playbook Wizard ───────────────────────────────────────────────────────────
 function PlaybookWizard({ playbook, activeBrand, switchTab, onClose }) {
-  const [step,     setStep]     = useState(1);
-  const [industry, setIndustry] = useState(activeBrand?.industry || "");
-  const [srcType,  setSrcType]  = useState("brand-dna");
-  const [inputData,setInputData]= useState("");
-  const [intensity,setIntensity]= useState("medium");
-  const [channels, setChannels] = useState([]);
-  const [result,   setResult]   = useState(null);
-  const [loading,  setLoading]  = useState(false);
-  const [err,      setErr]      = useState("");
-  const [savedIdx, setSavedIdx] = useState([]);
+  const [step,          setStep]         = useState(1);
+  const [industry,      setIndustry]     = useState(activeBrand?.industry || "");
+  const [srcType,       setSrcType]      = useState("brand-dna");
+  const [inputData,     setInputData]    = useState("");
+  const [websiteUrl,    setWebsiteUrl]   = useState("");
+  const [websiteCtx,    setWebsiteCtx]   = useState(null);
+  const [websiteLoading,setWebsiteLoading]= useState(false);
+  const [websiteErr,    setWebsiteErr]   = useState("");
+  const [intensity,     setIntensity]    = useState("medium");
+  const [channels,      setChannels]     = useState([]);
+  const [result,        setResult]       = useState(null);
+  const [loading,       setLoading]      = useState(false);
+  const [err,           setErr]          = useState("");
   const CHANNELS = ["LinkedIn","Instagram","Facebook","TikTok","Twitter/X","YouTube","Blog"];
+
+  async function handleWebsiteImport() {
+    if (!websiteUrl.trim()) return;
+    setWebsiteLoading(true); setWebsiteErr("");
+    try {
+      const data = await apiRequest("/api/customer/studio/scrape-website", {
+        method: "POST",
+        body: JSON.stringify({ url: websiteUrl.trim() }),
+      });
+      if (data.success && data.brandContext) {
+        setWebsiteCtx(data.brandContext);
+      } else {
+        setWebsiteErr(data.error || "Could not extract content. Try manual input.");
+      }
+    } catch (e) {
+      setWebsiteErr(e.message || "Website import failed.");
+    } finally {
+      setWebsiteLoading(false);
+    }
+  }
 
   async function generate() {
     setStep(5); setLoading(true); setErr("");
     try {
       const data = await apiRequest("/api/customer/studio/playbook", {
-        method:"POST",
-        body: JSON.stringify({ playbook_type: playbook.id, industry, input_data: inputData, intensity, channels }),
+        method: "POST",
+        body: JSON.stringify({
+          playbook_type: playbook.id, industry, input_data: inputData,
+          intensity, channels,
+          website_context: websiteCtx || undefined,
+        }),
       });
       setResult(data); setStep(6);
     } catch (e) { setErr(e.message || "Generation failed. Try again."); setStep(4); }
     finally { setLoading(false); }
-  }
-
-  async function saveModule(mod, i) {
-    try {
-      await apiRequest("/api/customer/vault", {
-        method:"POST",
-        body: JSON.stringify({ content_type:"social", title: mod.title || `${playbook.name} — Output ${i+1}`, body: mod.body || mod.content || mod.hook || "", lifecycle_status:"draft", source:"studio" }),
-      });
-      setSavedIdx(prev => [...prev, i]);
-    } catch { setErr("Save failed."); }
   }
 
   const STEPS = ["Industry","Source","Review","Configure"];
@@ -662,15 +750,21 @@ function PlaybookWizard({ playbook, activeBrand, switchTab, onClose }) {
       )}
 
       <div style={{ maxWidth:560 }}>
+
+        {/* ── STEP 1: Industry selector ── */}
         {step === 1 && (
           <div>
             <div style={{ fontSize:16, fontWeight:700, color:"var(--text-main)", marginBottom:6 }}>What industry are you in?</div>
             <div style={{ fontSize:13, color:"var(--text-muted)", marginBottom:16 }}>We'll tailor the playbook to your specific market context.</div>
-            <input type="text" value={industry} onChange={e => setIndustry(e.target.value)} placeholder="e.g. SaaS, Real Estate, Fitness..."
-              style={{ width:"100%", padding:"12px 14px", borderRadius:"var(--radius-md)", border:"1px solid var(--border-subtle)", fontSize:14, color:"var(--text-main)", boxSizing:"border-box", outline:"none", background:"var(--surface-primary)" }}
-              onFocus={e => { e.currentTarget.style.borderColor = playbook.accent; }}
-              onBlur={e => { e.currentTarget.style.borderColor = ""; }}
-              onKeyDown={e => { if (e.key === "Enter" && industry.trim()) setStep(2); }} />
+            <select
+              value={industry}
+              onChange={e => setIndustry(e.target.value)}
+              style={{ width:"100%", padding:"12px 14px", borderRadius:"var(--radius-md)", border:"1px solid var(--border-subtle)", fontSize:14, color: industry ? "var(--text-main)" : "var(--text-muted)", boxSizing:"border-box", outline:"none", background:"var(--surface-primary)", cursor:"pointer" }}
+            >
+              <option value="">Select industry…</option>
+              {INDUSTRY_LIST.map(ind => <option key={ind} value={ind}>{ind}</option>)}
+              <option value="General Business">General Business</option>
+            </select>
             <div style={{ marginTop:20, display:"flex", justifyContent:"flex-end" }}>
               <button type="button" onClick={() => setStep(2)} disabled={!industry.trim()}
                 style={{ padding:"10px 24px", borderRadius:"var(--radius-md)", border:"none", background: industry.trim() ? playbook.accent : "var(--border-subtle)", color: industry.trim() ? "#fff" : "var(--text-muted)", fontWeight:700, fontSize:14, cursor: industry.trim() ? "pointer" : "default" }}>
@@ -680,14 +774,16 @@ function PlaybookWizard({ playbook, activeBrand, switchTab, onClose }) {
           </div>
         )}
 
+        {/* ── STEP 2: Source data ── */}
         {step === 2 && (
           <div>
             <div style={{ fontSize:16, fontWeight:700, color:"var(--text-main)", marginBottom:6 }}>Where should we get source data?</div>
-            <div style={{ fontSize:13, color:"var(--text-muted)", marginBottom:16 }}>The richer the context, the stronger the output.</div>
+            <div style={{ fontSize:13, color:"var(--text-muted)", marginBottom:16 }}>Richer context produces better content.</div>
             {[
-              { id:"brand-dna", label:"Brand DNA",                 desc:"Use your stored brand profile.", icon:"🧬" },
-              { id:"manual",    label:"Manual Input",               desc:"Provide specific context for this run.", icon:"✍️" },
-              { id:"repurpose", label:"Repurpose Existing Content", desc:"Paste content to transform into fresh posts.", icon:"🔄" },
+              { id:"brand-dna",      label:"Brand DNA",                 desc:"Use your stored brand profile.", icon:"🧬" },
+              { id:"website",        label:"Website Import",             desc:"Crawl your website — products, services, copy, pricing.", icon:"🌐" },
+              { id:"manual",         label:"Manual Input",               desc:"Provide specific context for this run.", icon:"✍️" },
+              { id:"repurpose",      label:"Repurpose Existing Content", desc:"Paste content to transform into fresh posts.", icon:"🔄" },
             ].map(opt => (
               <div key={opt.id} onClick={() => setSrcType(opt.id)}
                 style={{ border:`2px solid ${srcType === opt.id ? playbook.accent : "var(--border-subtle)"}`, borderRadius:"var(--radius-md)", padding:"13px 16px", marginBottom:10, cursor:"pointer", background: srcType === opt.id ? `${playbook.accent}08` : "var(--surface-primary)", transition:"all 0.15s" }}>
@@ -700,18 +796,53 @@ function PlaybookWizard({ playbook, activeBrand, switchTab, onClose }) {
                 </div>
               </div>
             ))}
+
+            {/* Website URL input */}
+            {srcType === "website" && (
+              <div style={{ marginTop:8 }}>
+                <div style={{ display:"flex", gap:8 }}>
+                  <input
+                    type="text" value={websiteUrl} onChange={e => setWebsiteUrl(e.target.value)}
+                    placeholder="https://yourwebsite.com"
+                    style={{ flex:1, padding:"10px 14px", borderRadius:"var(--radius-md)", border:"1px solid var(--border-subtle)", fontSize:13, color:"var(--text-main)", boxSizing:"border-box", outline:"none" }}
+                    onKeyDown={e => { if (e.key === "Enter" && websiteUrl.trim()) handleWebsiteImport(); }}
+                  />
+                  <button type="button" onClick={handleWebsiteImport} disabled={!websiteUrl.trim() || websiteLoading}
+                    style={{ padding:"10px 16px", borderRadius:"var(--radius-md)", border:"none", background:"var(--pilot-blue)", color:"#fff", fontWeight:700, fontSize:13, cursor: websiteUrl.trim() && !websiteLoading ? "pointer" : "default", whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:6 }}>
+                    {websiteLoading ? <><div style={{ width:14, height:14, border:"2px solid rgba(255,255,255,0.35)", borderTopColor:"#fff", borderRadius:"50%", animation:"cs-spin 1s linear infinite" }} /> Scanning…</> : "Import"}
+                  </button>
+                </div>
+                {websiteErr && <div style={{ marginTop:8, fontSize:12, color:"var(--status-danger)" }}>{websiteErr}</div>}
+                {websiteCtx && (
+                  <div style={{ marginTop:10, background:"var(--surface-secondary)", border:"1px solid var(--status-success)", borderRadius:"var(--radius-md)", padding:"10px 14px" }}>
+                    <div style={{ fontSize:12, fontWeight:700, color:"var(--status-success)", marginBottom:6 }}>
+                      <i className="fas fa-check-circle me-1" /> Website imported successfully
+                    </div>
+                    <div style={{ fontSize:11, color:"var(--text-muted)" }}>
+                      {websiteCtx.business_name && <span style={{ marginRight:12 }}>Business: <strong>{websiteCtx.business_name}</strong></span>}
+                      {websiteCtx.services?.length > 0 && <span>{websiteCtx.services.length} services found</span>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {(srcType === "manual" || srcType === "repurpose") && (
               <textarea value={inputData} onChange={e => setInputData(e.target.value)}
-                placeholder={srcType === "manual" ? "Key messages, angles..." : "Paste existing content..."}
+                placeholder={srcType === "manual" ? "Key messages, angles, specific details..." : "Paste existing content to repurpose..."}
                 style={{ width:"100%", padding:"11px 14px", borderRadius:"var(--radius-md)", border:"1px solid var(--border-subtle)", fontSize:13, color:"var(--text-main)", resize:"vertical", minHeight:90, boxSizing:"border-box", lineHeight:1.6, outline:"none", marginTop:6 }} />
             )}
+
             <div style={{ marginTop:16, display:"flex", justifyContent:"space-between" }}>
               <button type="button" onClick={() => setStep(1)} style={{ padding:"9px 18px", borderRadius:"var(--radius-md)", border:"1px solid var(--border-subtle)", background:"var(--surface-primary)", color:"var(--text-main)", fontWeight:600, fontSize:13, cursor:"pointer" }}>← Back</button>
-              <button type="button" onClick={() => setStep(3)} style={{ padding:"9px 22px", borderRadius:"var(--radius-md)", border:"none", cursor:"pointer", background:playbook.accent, color:"#fff", fontWeight:700, fontSize:13 }}>Continue →</button>
+              <button type="button" onClick={() => setStep(3)}
+                disabled={srcType === "website" && !websiteCtx && !websiteLoading && websiteUrl.trim() === ""}
+                style={{ padding:"9px 22px", borderRadius:"var(--radius-md)", border:"none", cursor:"pointer", background:playbook.accent, color:"#fff", fontWeight:700, fontSize:13 }}>Continue →</button>
             </div>
           </div>
         )}
 
+        {/* ── STEP 3: Review ── */}
         {step === 3 && (
           <div>
             <div style={{ fontSize:16, fontWeight:700, color:"var(--text-main)", marginBottom:6 }}>Review your inputs</div>
@@ -720,7 +851,8 @@ function PlaybookWizard({ playbook, activeBrand, switchTab, onClose }) {
                 { label:"Brand",    value: activeBrand?.name || "Your Brand" },
                 { label:"Industry", value: industry },
                 { label:"Playbook", value: playbook.name },
-                { label:"Source",   value: srcType === "brand-dna" ? "Brand DNA" : srcType === "manual" ? "Manual input" : "Repurpose existing" },
+                { label:"Source",   value: srcType === "brand-dna" ? "Brand DNA" : srcType === "website" ? `Website: ${websiteUrl}` : srcType === "manual" ? "Manual input" : "Repurpose existing" },
+                websiteCtx?.business_name ? { label:"Website", value: `Imported ${websiteCtx.services?.length || 0} services, ${websiteCtx.products?.length || 0} products` } : null,
                 inputData ? { label:"Context", value: inputData.slice(0,200) + (inputData.length > 200 ? "…" : "") } : null,
               ].filter(Boolean).map((row, i, arr) => (
                 <div key={i} style={{ display:"flex", gap:16, padding:"11px 16px", borderBottom: i < arr.length-1 ? "1px solid var(--hover-bg)" : "none", background: i%2===0 ? "var(--surface-primary)" : "var(--surface-secondary)" }}>
@@ -736,13 +868,14 @@ function PlaybookWizard({ playbook, activeBrand, switchTab, onClose }) {
           </div>
         )}
 
+        {/* ── STEP 4: Configure ── */}
         {step === 4 && (
           <div>
             <div style={{ fontSize:16, fontWeight:700, color:"var(--text-main)", marginBottom:6 }}>Configure execution</div>
             <div style={{ marginBottom:20 }}>
-              <div style={{ fontSize:12, fontWeight:700, color:"var(--text-main)", textTransform:"uppercase", letterSpacing:0.5, marginBottom:10 }}>Content Intensity</div>
+              <div style={{ fontSize:12, fontWeight:700, color:"var(--text-main)", textTransform:"uppercase", letterSpacing:0.5, marginBottom:10 }}>Content Volume</div>
               <div style={{ display:"flex", gap:8 }}>
-                {[{id:"low",label:"Low",sub:"3–5 posts"},{id:"medium",label:"Medium",sub:"8–12 posts"},{id:"high",label:"High",sub:"15–20 posts"}].map(opt => (
+                {[{id:"low",label:"Low",sub:"6 cards"},{id:"medium",label:"Medium",sub:"8 cards"},{id:"high",label:"High",sub:"12 cards"}].map(opt => (
                   <div key={opt.id} onClick={() => setIntensity(opt.id)}
                     style={{ flex:1, border:`2px solid ${intensity===opt.id ? playbook.accent : "var(--border-subtle)"}`, borderRadius:"var(--radius-md)", padding:"12px 8px", textAlign:"center", cursor:"pointer", background: intensity===opt.id ? `${playbook.accent}08` : "var(--surface-primary)", transition:"all 0.15s" }}>
                     <div style={{ fontSize:14, fontWeight:700, color: intensity===opt.id ? playbook.accent : "var(--text-main)" }}>{opt.label}</div>
@@ -769,48 +902,40 @@ function PlaybookWizard({ playbook, activeBrand, switchTab, onClose }) {
           </div>
         )}
 
+        {/* ── STEP 5: Generating ── */}
         {step === 5 && loading && (
           <div style={{ textAlign:"center", padding:"60px 0" }}>
             <style>{CSS}</style>
             <div style={{ width:48, height:48, border:`4px solid ${playbook.accent}30`, borderTopColor:playbook.accent, borderRadius:"50%", margin:"0 auto 20px", animation:"cs-spin 1s linear infinite" }} />
             <div style={{ fontSize:16, fontWeight:700, color:"var(--text-main)", marginBottom:6 }}>Building your playbook...</div>
-            <div style={{ fontSize:13, color:"var(--text-muted)" }}>Generating full content strategy. This may take a moment.</div>
+            <div style={{ fontSize:13, color:"var(--text-muted)" }}>Generating content cards. This may take a moment.</div>
           </div>
         )}
 
+        {/* ── STEP 6: Results — asset cards ── */}
         {step === 6 && result && (
           <div>
-            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
-              <div style={{ width:28, height:28, borderRadius:"50%", background:"var(--surface-primary)", border:"1px solid var(--status-success)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <span style={{ color:"var(--status-success)", fontSize:14 }}>✓</span>
-              </div>
-              <div style={{ fontSize:15, fontWeight:700, color:"var(--text-main)" }}>Playbook generated</div>
-            </div>
-            <div style={{ fontSize:12, color:"var(--text-muted)", marginBottom:16 }}>Save pieces individually. Open in Create Social Post to edit.</div>
-            <div style={{ display:"flex", flexDirection:"column", gap:10, maxHeight:360, overflowY:"auto", marginBottom:20, paddingRight:4 }}>
-              {(result.modules || result.posts || []).map((mod,i) => (
-                <div key={i} style={{ border:"1px solid var(--border-subtle)", borderRadius:"var(--radius-md)", padding:"13px 16px" }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
-                    <div style={{ fontSize:13, fontWeight:700, color:"var(--text-main)" }}>{mod.title || `Output ${i+1}`}</div>
-                    {savedIdx.includes(i)
-                      ? <span style={{ fontSize:11, color:"var(--status-success)", fontWeight:700 }}>✓ Saved</span>
-                      : <button type="button" onClick={() => saveModule(mod,i)} style={{ padding:"4px 10px", borderRadius:"var(--radius-md)", border:`1px solid ${playbook.accent}50`, background:`${playbook.accent}10`, color:playbook.accent, fontWeight:700, fontSize:11, cursor:"pointer" }}>Save</button>
-                    }
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16, flexWrap:"wrap", gap:10 }}>
+              <div>
+                <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:4 }}>
+                  <div style={{ width:28, height:28, borderRadius:"50%", background:"var(--surface-primary)", border:"1px solid var(--status-success)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    <span style={{ color:"var(--status-success)", fontSize:14 }}>✓</span>
                   </div>
-                  <div style={{ fontSize:12, color:"var(--text-muted)", lineHeight:1.65, maxHeight:80, overflowY:"auto" }}>{mod.body || mod.content || mod.hook || ""}</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:"var(--text-main)" }}>{result.cards?.length || 0} content cards generated</div>
                 </div>
-              ))}
-              {!result.modules && !result.posts && Object.entries(result)
-                .filter(([,v]) => typeof v === "string" && v.length > 10)
-                .map(([k,v]) => (
-                  <div key={k} style={{ border:"1px solid var(--hover-bg)", borderRadius:"var(--radius-md)", padding:"12px 14px" }}>
-                    <div style={{ fontSize:9, fontWeight:700, color:"var(--slate-400)", textTransform:"uppercase", letterSpacing:1, marginBottom:5 }}>{k.replace(/_/g," ")}</div>
-                    <div style={{ fontSize:12, color:"var(--text-muted)", lineHeight:1.6 }}>{v}</div>
-                  </div>
-                ))}
+                {result.summary && <div style={{ fontSize:13, color:"var(--text-muted)", marginLeft:38 }}>{result.summary}</div>}
+              </div>
+              <button type="button" onClick={() => setStep(4)} style={{ padding:"7px 14px", borderRadius:"var(--radius-md)", border:"1px solid var(--border-subtle)", background:"var(--surface-primary)", color:"var(--text-main)", fontWeight:600, fontSize:12, cursor:"pointer" }}>
+                ← Regenerate
+              </button>
             </div>
-            <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
-              <button type="button" onClick={() => { switchTab("social"); onClose(); }} style={{ flex:1, padding:"11px 0", borderRadius:"var(--radius-md)", border:"none", cursor:"pointer", background:playbook.accent, color:"#fff", fontWeight:700, fontSize:13 }}>Open in Create Social Post</button>
+            <AssetCardGrid cards={result.cards || []} activeBrand={activeBrand} switchTab={switchTab} source="playbook" />
+            {result.schedule_suggestion && (
+              <div style={{ marginTop:16, background:"var(--pilot-blue-light)", border:"1px solid var(--pilot-blue)", borderRadius:"var(--radius-md)", padding:"10px 14px", fontSize:12, color:"var(--pilot-blue)" }}>
+                <i className="fas fa-calendar-alt me-2" />{result.schedule_suggestion}
+              </div>
+            )}
+            <div style={{ marginTop:16, display:"flex", gap:10 }}>
               <button type="button" onClick={onClose} style={{ padding:"11px 20px", borderRadius:"var(--radius-md)", border:"1px solid var(--border-subtle)", background:"var(--surface-secondary)", color:"var(--text-main)", fontWeight:600, fontSize:13, cursor:"pointer" }}>Done</button>
             </div>
           </div>
@@ -820,7 +945,7 @@ function PlaybookWizard({ playbook, activeBrand, switchTab, onClose }) {
   );
 }
 
-// ── Campaign Content Tab (unchanged) ─────────────────────────────────────────
+// ── Campaign Content Tab ──────────────────────────────────────────────────────
 function CampaignContentTab({ activeBrand, switchTab }) {
   const [campaigns,  setCampaigns]  = useState([]);
   const [loading,    setLoading]    = useState(true);
@@ -828,7 +953,6 @@ function CampaignContentTab({ activeBrand, switchTab }) {
   const [generating, setGenerating] = useState(false);
   const [result,     setResult]     = useState(null);
   const [err,        setErr]        = useState("");
-  const [savedKeys,  setSavedKeys]  = useState([]);
 
   useEffect(() => {
     apiRequest("/api/customer/campaigns")
@@ -843,22 +967,17 @@ function CampaignContentTab({ activeBrand, switchTab }) {
     try {
       const data = await apiRequest("/api/customer/studio/campaign", {
         method:"POST",
-        body: JSON.stringify({ campaign_name: selected.name, offer: selected.description || selected.goal || "", goal: selected.objective || selected.goal || "", channels: selected.channels || [], campaign_id: selected.id || selected.campaign_id }),
+        body: JSON.stringify({
+          campaign_name: selected.name,
+          offer: selected.description || selected.goal || selected.name,
+          goal: selected.objective || selected.goal || "",
+          channels: selected.channels || [],
+          campaign_id: selected.id || selected.campaign_id,
+        }),
       });
       setResult(data);
     } catch (e) { setErr(e.message || "Generation failed. Try again."); }
     finally { setGenerating(false); }
-  }
-
-  async function saveModule(key, content) {
-    try {
-      const text = typeof content === "string" ? content : JSON.stringify(content, null, 2);
-      await apiRequest("/api/customer/vault", {
-        method:"POST",
-        body: JSON.stringify({ content_type:"social", title:`${selected?.name || "Campaign"} — ${key.replace(/_/g," ")}`, body: text, lifecycle_status:"draft", source:"studio" }),
-      });
-      setSavedKeys(prev => [...prev, key]);
-    } catch { setErr("Save failed."); }
   }
 
   if (loading) return (
@@ -873,43 +992,29 @@ function CampaignContentTab({ activeBrand, switchTab }) {
     <div>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20, flexWrap:"wrap", gap:10 }}>
         <div>
-          <div style={{ fontSize:15, fontWeight:700, color:"var(--text-main)" }}>Campaign Assets — {selected?.name}</div>
-          <div style={{ fontSize:13, color:"var(--text-muted)" }}>Save to vault. Open in editor to refine.</div>
-        </div>
-        <button type="button" onClick={() => { setResult(null); setSavedKeys([]); }} style={{ padding:"8px 16px", borderRadius:"var(--radius-md)", border:"1px solid var(--border-subtle)", background:"var(--surface-primary)", color:"var(--text-main)", fontWeight:600, fontSize:12, cursor:"pointer" }}>← Back</button>
-      </div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:14 }}>
-        {[
-          { key:"social_posts", label:"Social Posts", accent:"#7c3aed", bg:"#faf5ff" },
-          { key:"article",      label:"Article / Blog", accent:"#0284c7", bg:"#f0f9ff" },
-          { key:"cta_variants", label:"CTA Variants", accent:"#059669", bg:"#f0fdf4" },
-          { key:"media_requirements", label:"Media Requirements", accent:"#d97706", bg:"#fffbeb" },
-        ].filter(m => result[m.key]).map(m => (
-          <div key={m.key} style={{ border:"1px solid var(--border-subtle)", borderRadius:"var(--radius-lg)", overflow:"hidden", gridColumn: m.key==="social_posts" ? "span 2" : undefined }}>
-            <div style={{ padding:"12px 16px 10px", background:m.bg, borderBottom:"1px solid var(--border-subtle)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-              <div style={{ fontSize:13, fontWeight:700, color:m.accent }}>{m.label}</div>
-              {savedKeys.includes(m.key)
-                ? <span style={{ fontSize:11, color:"var(--status-success)", fontWeight:700 }}>✓ Saved</span>
-                : <button type="button" onClick={() => saveModule(m.key, result[m.key])} style={{ padding:"4px 10px", borderRadius:"var(--radius-md)", border:`1px solid ${m.accent}40`, background:"var(--surface-primary)", color:m.accent, fontWeight:700, fontSize:11, cursor:"pointer" }}>Save to Vault</button>
-              }
-            </div>
-            <div style={{ padding:"12px 16px", fontSize:12, color:"var(--text-main)", lineHeight:1.65 }}>
-              {Array.isArray(result[m.key])
-                ? result[m.key].slice(0,4).map((item,i) => (
-                    <div key={i} style={{ background:"var(--surface-secondary)", borderRadius:"var(--radius-md)", padding:"8px 10px", marginBottom:8 }}>
-                      {typeof item === "string" ? item : (item.content || item.body || item.text || JSON.stringify(item))}
-                    </div>
-                  ))
-                : <span style={{ whiteSpace:"pre-wrap" }}>{typeof result[m.key]==="string" ? result[m.key] : (result[m.key]?.headline || result[m.key]?.title || JSON.stringify(result[m.key]))}</span>
-              }
-            </div>
+          <div style={{ fontSize:15, fontWeight:700, color:"var(--text-main)" }}>
+            {result.cards?.length || 0} campaign cards — {selected?.name}
           </div>
-        ))}
+          {result.campaign_summary && <div style={{ fontSize:13, color:"var(--text-muted)", marginTop:2 }}>{result.campaign_summary}</div>}
+        </div>
+        <button type="button" onClick={() => { setResult(null); }} style={{ padding:"8px 16px", borderRadius:"var(--radius-md)", border:"1px solid var(--border-subtle)", background:"var(--surface-primary)", color:"var(--text-main)", fontWeight:600, fontSize:12, cursor:"pointer" }}>← Back</button>
       </div>
-      <div style={{ marginTop:16, display:"flex", gap:10 }}>
-        <button type="button" onClick={() => switchTab("social")} style={{ padding:"11px 24px", borderRadius:"var(--radius-md)", border:"none", cursor:"pointer", background:"var(--status-success)", color:"#fff", fontWeight:700, fontSize:14 }}>Open Editor</button>
-        <button type="button" onClick={() => switchTab("schedule")} style={{ padding:"11px 24px", borderRadius:"var(--radius-md)", border:"1px solid var(--border-subtle)", background:"var(--surface-primary)", color:"var(--text-main)", fontWeight:600, fontSize:14, cursor:"pointer" }}>Schedule</button>
-      </div>
+
+      <AssetCardGrid cards={result.cards || []} activeBrand={activeBrand} switchTab={switchTab} source="campaign" />
+
+      {result.article && (
+        <div style={{ marginTop:20, border:"1px solid var(--border-subtle)", borderRadius:"var(--radius-lg)", overflow:"hidden" }}>
+          <div style={{ padding:"12px 16px", background:"var(--surface-secondary)", borderBottom:"1px solid var(--border-subtle)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+            <div style={{ fontSize:13, fontWeight:700, color:"var(--pilot-blue)" }}>Article / Blog</div>
+            <button type="button" onClick={() => switchTab("blog")} style={{ padding:"4px 10px", borderRadius:"var(--radius-md)", border:"1px solid var(--pilot-blue)", background:"var(--pilot-blue-light)", color:"var(--pilot-blue)", fontWeight:700, fontSize:11, cursor:"pointer" }}>Open in Create Article</button>
+          </div>
+          <div style={{ padding:"12px 16px" }}>
+            <div style={{ fontSize:14, fontWeight:700, color:"var(--text-main)", marginBottom:8 }}>{result.article.title}</div>
+            <div style={{ fontSize:13, color:"var(--text-muted)", lineHeight:1.65 }}>{result.article.intro}</div>
+            {result.article.cta && <div style={{ marginTop:8, fontSize:12, fontWeight:600, color:"var(--pilot-blue)" }}>CTA: {result.article.cta}</div>}
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -917,7 +1022,7 @@ function CampaignContentTab({ activeBrand, switchTab }) {
     <div>
       <div style={{ marginBottom:20 }}>
         <div style={{ fontSize:15, fontWeight:700, color:"var(--text-main)" }}>Generate Campaign Content</div>
-        <div style={{ fontSize:13, color:"var(--text-muted)", marginTop:2 }}>Select an existing campaign — we'll read it and generate a full content asset set.</div>
+        <div style={{ fontSize:13, color:"var(--text-muted)", marginTop:2 }}>Select an existing campaign — we'll generate a full visual asset set.</div>
       </div>
       {campaigns.length === 0 ? (
         <div style={{ border:"1px dashed var(--border-subtle)", borderRadius:"var(--radius-lg)", padding:"56px 24px", textAlign:"center", background:"var(--surface-secondary)" }}>
@@ -947,7 +1052,7 @@ function CampaignContentTab({ activeBrand, switchTab }) {
             style={{ padding:"13px 32px", borderRadius:"var(--radius-md)", border:"none", cursor: selected ? "pointer" : "default", background: selected ? "var(--pilot-blue)" : "var(--border-subtle)", color: selected ? "#fff" : "var(--text-muted)", fontWeight:700, fontSize:15, display:"flex", alignItems:"center", gap:10 }}>
             {generating && <div style={{ width:17, height:17, border:"2px solid rgba(255,255,255,0.35)", borderTopColor:"#fff", borderRadius:"50%", animation:"cs-spin 1s linear infinite" }} />}
             <style>{CSS}</style>
-            {generating ? "Generating..." : "Generate Campaign Assets"}
+            {generating ? "Generating cards..." : "Generate Campaign Cards"}
           </button>
         </div>
       )}
@@ -974,7 +1079,7 @@ function StudioVaultTab({ activeBrand, switchTab }) {
     setLoading(true); setErr("");
     try {
       const data = await apiRequest("/api/customer/studio/vault");
-      setItems(data.data || data.items || data.drafts || data.vault || []);
+      setItems(data.data || data.items || []);
     } catch (e) { setErr(e.message || "Failed to load vault."); }
     finally { setLoading(false); }
   }
@@ -984,13 +1089,6 @@ function StudioVaultTab({ activeBrand, switchTab }) {
   async function deleteItem(id) {
     try { await apiRequest(`/api/customer/vault/${id}`, { method:"DELETE" }); setItems(prev => prev.filter(i => (i.content_id || i.id) !== id)); }
     catch { setErr("Delete failed."); }
-  }
-
-  async function duplicate(item) {
-    try {
-      await apiRequest("/api/customer/vault", { method:"POST", body: JSON.stringify({ content_type: item.content_type || "social", title: `${item.title || "Draft"} (Copy)`, body: item.body || "", lifecycle_status:"draft", source:"studio" }) });
-      load();
-    } catch { setErr("Duplicate failed."); }
   }
 
   async function shareForApproval(item) {
@@ -1007,6 +1105,14 @@ function StudioVaultTab({ activeBrand, switchTab }) {
     if (subTab === "playbook-outputs") return title.includes("playbook") || (item.source === "studio" && type === "social" && title.includes("output"));
     if (subTab === "campaign-outputs") return title.includes("campaign") || title.includes(" — social") || title.includes(" — article") || title.includes(" — cta");
     return true;
+  }
+
+  // Parse metadata for image display
+  function getItemImage(item) {
+    try {
+      const meta = typeof item.metadata === "string" ? JSON.parse(item.metadata) : item.metadata;
+      return meta?.image || null;
+    } catch { return null; }
   }
 
   const visible = items.filter(filterBySubTab);
@@ -1037,9 +1143,7 @@ function StudioVaultTab({ activeBrand, switchTab }) {
       </div>
 
       {loading && <div style={{ display:"flex", flexDirection:"column", gap:10 }}>{[1,2,3].map(i => <div key={i} className="cs-shimmer" style={{ height:64, borderRadius:"var(--radius-md)" }} />)}</div>}
-
       {!loading && err && <div style={{ background:"var(--surface-primary)", border:"1px solid var(--status-danger)", borderRadius:"var(--radius-md)", padding:"10px 14px", fontSize:13, color:"var(--status-danger)", marginBottom:12 }}>{err}</div>}
-
       {!loading && !err && visible.length === 0 && (
         <div style={{ border:"1px dashed var(--border-subtle)", borderRadius:"var(--radius-lg)", padding:"56px 24px", textAlign:"center", background:"var(--surface-secondary)" }}>
           <div style={{ fontSize:28, marginBottom:12 }}>🗂️</div>
@@ -1053,6 +1157,7 @@ function StudioVaultTab({ activeBrand, switchTab }) {
           <table style={{ width:"100%", borderCollapse:"collapse" }}>
             <thead>
               <tr>
+                <th style={{ ...thS, width:48 }}>Image</th>
                 <th style={thS}>Title</th>
                 <th style={{ ...thS, width:100 }}>Status</th>
                 <th style={{ ...thS, width:120 }}>Created</th>
@@ -1064,8 +1169,20 @@ function StudioVaultTab({ activeBrand, switchTab }) {
                 const id = item.content_id || item.id;
                 const status = item.lifecycle_status || "draft";
                 const statusColor = status === "approval_requested" ? { bg:"var(--surface-secondary)", color:"var(--status-warning)" } : { bg:"var(--hover-bg)", color:"var(--text-muted)" };
+                const imgUrl = getItemImage(item);
                 return (
                   <tr key={id}>
+                    <td style={{ ...tdS, padding:"8px 10px" }}>
+                      {imgUrl ? (
+                        <div style={{ width:36, height:36, borderRadius:"var(--radius-md)", overflow:"hidden", flexShrink:0 }}>
+                          <img src={imgUrl} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                        </div>
+                      ) : (
+                        <div style={{ width:36, height:36, borderRadius:"var(--radius-md)", background:"var(--hover-bg)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                          <i className="fas fa-image" style={{ fontSize:12, color:"var(--slate-400)" }} />
+                        </div>
+                      )}
+                    </td>
                     <td style={tdS}>
                       <div style={{ fontWeight:600, color:"var(--text-main)", marginBottom:2 }}>{item.title || "Untitled Draft"}</div>
                       {item.body && <div style={{ fontSize:11, color:"var(--text-muted)", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{item.body}</div>}
@@ -1079,7 +1196,6 @@ function StudioVaultTab({ activeBrand, switchTab }) {
                     <td style={tdS}>
                       <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
                         <button type="button" onClick={() => switchTab("social")} style={{ padding:"4px 9px", borderRadius:"var(--radius-md)", border:"1px solid var(--pilot-blue)", background:"var(--pilot-blue-light)", color:"var(--pilot-blue)", fontWeight:700, fontSize:11, cursor:"pointer" }}>Open Editor</button>
-                        <button type="button" onClick={() => duplicate(item)} style={{ padding:"4px 9px", borderRadius:"var(--radius-md)", border:"1px solid var(--border-subtle)", background:"var(--surface-primary)", color:"var(--text-main)", fontWeight:600, fontSize:11, cursor:"pointer" }}>Duplicate</button>
                         {status !== "approval_requested" && (
                           <button type="button" onClick={() => shareForApproval(item)} style={{ padding:"4px 9px", borderRadius:"var(--radius-md)", border:"1px solid var(--status-success)", background:"var(--surface-primary)", color:"var(--status-success)", fontWeight:700, fontSize:11, cursor:"pointer" }}>Share</button>
                         )}
@@ -1112,8 +1228,6 @@ export default function AIContentStudio({ activeBrand, intelligenceFeed = [], co
   return (
     <div style={{ padding:"24px 0" }}>
       <style>{CSS}</style>
-
-      {/* Header */}
       <div style={{ marginBottom:24 }}>
         <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:4 }}>
           <div style={{ width:38, height:38, borderRadius:10, background:"var(--pilot-blue)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
@@ -1127,21 +1241,11 @@ export default function AIContentStudio({ activeBrand, intelligenceFeed = [], co
           </div>
         </div>
       </div>
-
-      {/* Tab bar */}
       <div style={{ display:"flex", gap:0, background:"var(--hover-bg)", borderRadius:"var(--radius-lg)", padding:4, maxWidth:520, marginBottom:28 }}>
         {TABS.map(t => (
-          <button key={t.id} type="button" onClick={() => setActiveTab(t.id)} style={{
-            flex:1, padding:"8px 0", border:"none", borderRadius:"var(--radius-md)", cursor:"pointer",
-            fontSize:13, fontWeight: activeTab === t.id ? 700 : 500,
-            background: activeTab === t.id ? "var(--surface-primary)" : "transparent",
-            color: activeTab === t.id ? "var(--text-main)" : "var(--text-muted)",
-            boxShadow: activeTab === t.id ? "0 1px 4px rgba(0,0,0,0.10)" : "none",
-            transition:"all 0.15s",
-          }}>{t.label}</button>
+          <button key={t.id} type="button" onClick={() => setActiveTab(t.id)} style={{ flex:1, padding:"8px 0", border:"none", borderRadius:"var(--radius-md)", cursor:"pointer", fontSize:13, fontWeight: activeTab === t.id ? 700 : 500, background: activeTab === t.id ? "var(--surface-primary)" : "transparent", color: activeTab === t.id ? "var(--text-main)" : "var(--text-muted)", boxShadow: activeTab === t.id ? "0 1px 4px rgba(0,0,0,0.10)" : "none", transition:"all 0.15s" }}>{t.label}</button>
         ))}
       </div>
-
       {activeTab === "posts"            && <PostsTab            activeBrand={activeBrand} connectedPlatforms={connectedPlatforms} switchTab={switchTab} />}
       {activeTab === "playbooks"        && <PlaybooksTab        activeBrand={activeBrand} switchTab={switchTab} />}
       {activeTab === "campaign-content" && <CampaignContentTab  activeBrand={activeBrand} switchTab={switchTab} />}
