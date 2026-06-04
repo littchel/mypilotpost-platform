@@ -222,6 +222,7 @@ import {
 } from "./core/campaigns/campaigns.js";
 
 import { generateCampaignPlan, generatePostIdea, generateRecommendation, generateVisualBrief } from "./core/templates/templates.js";
+import { getStudioOpportunities, generateStudioPost, runPlaybook, generateCampaignContent, getStudioVault } from "./core/studio/studio.js";
 
 /* ======================================================
    ADMIN — CAMPAIGNS & EMAILS
@@ -2014,6 +2015,18 @@ export default {
 
           return withCors(request, getCampaignDetails(request, env, auth, campaignId));
         }
+
+        /* ---------- AI CONTENT STUDIO ---------- */
+        if (method === "GET"  && path === "/api/customer/studio/opportunities")
+          return withCors(request, getStudioOpportunities(request, env, auth));
+        if (method === "POST" && path === "/api/customer/studio/generate-post")
+          return withCors(request, generateStudioPost(request, env, auth));
+        if (method === "POST" && path === "/api/customer/studio/playbook")
+          return withCors(request, runPlaybook(request, env, auth));
+        if (method === "POST" && path === "/api/customer/studio/campaign")
+          return withCors(request, generateCampaignContent(request, env, auth));
+        if (method === "GET"  && path === "/api/customer/studio/vault")
+          return withCors(request, getStudioVault(request, env, auth));
 
         /* ---------- TEMPLATES ---------- */
         if (method === "POST" && path === "/api/customer/templates/generate-campaign")
