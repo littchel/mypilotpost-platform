@@ -167,7 +167,9 @@ pre{font-size:.72rem;background:#f8fafc;border:1px solid var(--border);padding:.
 
   <div class="nav-section">Support</div>
   <div class="nav-item" data-section="support">💬 Support</div>
+  <div class="nav-item" data-section="support_requests">🆘 Support Requests</div>
   <div class="nav-item" data-section="messaging">📣 Messaging</div>
+  <div class="nav-item" data-section="comm_ops">📡 Comms Monitor</div>
 
   <div class="nav-section">Operations</div>
   <div class="nav-item" data-section="operations">⚙️ Operations</div>
@@ -426,6 +428,52 @@ pre{font-size:.72rem;background:#f8fafc;border:1px solid var(--border);padding:.
         <tr><td style="padding:.5rem;font-size:.82rem">0 3 * * *</td><td style="padding:.5rem;font-size:.82rem">Lifecycle Email Campaigns</td><td style="padding:.5rem"><span class="badge ok">Active</span></td></tr>
         <tr><td style="padding:.5rem;font-size:.82rem">0 */4 * * *</td><td style="padding:.5rem;font-size:.82rem">OAuth Token Refresh</td><td style="padding:.5rem"><span class="badge ok">Active</span></td></tr>
       </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- SUPPORT REQUESTS -->
+<div class="section" id="support_requests">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+    <div>
+      <h4 style="font-size:1rem;font-weight:700;margin-bottom:.2rem">Support Requests</h4>
+      <p style="font-size:.78rem;color:var(--muted)">User-submitted help requests. Respond within 24 hours.</p>
+    </div>
+    <div style="display:flex;gap:.5rem">
+      <select id="srStatusFilter" onchange="loadSupportRequests()" style="padding:.35rem .75rem;border:1px solid var(--border);border-radius:8px;font-size:.78rem">
+        <option value="open">Open</option><option value="in_progress">In Progress</option><option value="resolved">Resolved</option><option value="closed">Closed</option>
+      </select>
+      <button onclick="loadSupportRequests()" style="padding:.35rem .9rem;border:1px solid var(--border);border-radius:8px;background:var(--panel);cursor:pointer;font-size:.78rem;font-weight:600">Refresh</button>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>User</th><th>Category</th><th>Subject</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+      <tbody id="srBody"><tr><td colspan="6" class="empty">Click Refresh to load.</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- COMMS MONITOR -->
+<div class="section" id="comm_ops">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+    <div>
+      <h4 style="font-size:1rem;font-weight:700;margin-bottom:.2rem">Communication Monitor</h4>
+      <p style="font-size:.78rem;color:var(--muted)">Notification delivery status across email and WhatsApp.</p>
+    </div>
+    <button onclick="loadCommOps()" style="padding:.35rem .9rem;border:1px solid var(--border);border-radius:8px;background:var(--panel);cursor:pointer;font-size:.78rem;font-weight:600">Refresh</button>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.25rem" id="commSummary">
+    <div class="card" style="text-align:center"><div style="font-size:1.4rem;font-weight:800;color:var(--good)" id="commSent">—</div><div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">Email Sent</div></div>
+    <div class="card" style="text-align:center"><div style="font-size:1.4rem;font-weight:800;color:var(--good)" id="commWASent">—</div><div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">WhatsApp Sent</div></div>
+    <div class="card" style="text-align:center"><div style="font-size:1.4rem;font-weight:800;color:var(--bad)" id="commFailed">—</div><div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">Failed</div></div>
+    <div class="card" style="text-align:center"><div style="font-size:1.4rem;font-weight:800" id="commRate">—</div><div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">Delivery Rate</div></div>
+  </div>
+  <div class="table-wrap">
+    <div class="table-header"><h5>Delivery Breakdown</h5></div>
+    <table>
+      <thead><tr><th>Channel</th><th>Status</th><th>Count</th></tr></thead>
+      <tbody id="commBody"><tr><td colspan="3" class="empty">Click Refresh to load.</td></tr></tbody>
     </table>
   </div>
 </div>
@@ -1692,6 +1740,72 @@ async function loadCompliance() {
 }
 
 init();
+
+// ── Support Requests ────────────────────────────────────────────────────────
+async function loadSupportRequests() {
+  const status = document.getElementById('srStatusFilter')?.value || 'open';
+  const tbody = document.getElementById('srBody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="6" class="empty">Loading…</td></tr>';
+  try {
+    const data = await apiFetch(`/api/v1/admin/support/requests?status=${status}`);
+    const rows = (data.data || []);
+    if (!rows.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">No requests.</td></tr>'; return; }
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td style="padding:.6rem 1rem;font-size:.82rem">${r.name || '—')}<div style="font-size:.7rem;color:var(--muted)">${r.email || '')}</div></td>
+        <td style="padding:.6rem 1rem"><span style="font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:100px;background:#eff6ff;color:#2563eb;text-transform:capitalize">${r.category}</span></td>
+        <td style="padding:.6rem 1rem;font-size:.82rem">${r.subject}</td>
+        <td style="padding:.6rem 1rem"><span style="font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:100px;background:${r.status==='resolved'?'#f0fdf4':'#fff7ed'};color:${r.status==='resolved'?'#16a34a':'#d97706'}">${r.status}</span></td>
+        <td style="padding:.6rem 1rem;font-size:.75rem;color:var(--muted)">${new Date(r.created_at).toLocaleDateString()}</td>
+        <td style="padding:.6rem 1rem">
+          <button onclick="resolveSupportRequest('${r.id}')" style="padding:3px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:.72rem;font-weight:600;background:#fff">Resolve</button>
+        </td>
+      </tr>`).join('');
+  } catch(e) { tbody.innerHTML = `<tr><td colspan="6" class="empty error">${e.message}</td></tr>`; }
+}
+
+async function resolveSupportRequest(id) {
+  try {
+    await apiFetch(`/api/v1/admin/support/requests/${id}`, { method: 'PUT', body: JSON.stringify({ status: 'resolved' }) });
+    loadSupportRequests();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+// ── Comms Monitor ────────────────────────────────────────────────────────────
+async function loadCommOps() {
+  const tbody = document.getElementById('commBody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="3" class="empty">Loading…</td></tr>';
+  try {
+    const data = await apiFetch('/api/v1/admin/comms/delivery');
+    const rows = data.data || [];
+
+    // Compute summary
+    let emailSent = 0, waSent = 0, failed = 0, total = 0;
+    rows.forEach(r => {
+      total += r.count;
+      if (r.channel === 'email' && r.status === 'sent')      emailSent += r.count;
+      if (r.channel === 'whatsapp' && r.status === 'sent')   waSent += r.count;
+      if (r.status === 'failed')                              failed += r.count;
+    });
+    const rate = total > 0 ? Math.round(((total - failed) / total) * 100) : 100;
+
+    document.getElementById('commSent').textContent    = emailSent;
+    document.getElementById('commWASent').textContent  = waSent;
+    document.getElementById('commFailed').textContent  = failed;
+    document.getElementById('commRate').textContent    = rate + '%';
+    document.getElementById('commRate').style.color    = rate >= 90 ? 'var(--good)' : rate >= 75 ? 'var(--warn)' : 'var(--bad)';
+
+    if (!rows.length) { tbody.innerHTML = '<tr><td colspan="3" class="empty">No delivery data yet.</td></tr>'; return; }
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td style="padding:.6rem 1rem;font-size:.82rem;text-transform:capitalize">${r.channel}</td>
+        <td style="padding:.6rem 1rem"><span style="font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:100px;background:${r.status==='sent'?'#f0fdf4':r.status==='failed'?'#fef2f2':'#fff7ed'};color:${r.status==='sent'?'#16a34a':r.status==='failed'?'#dc2626':'#d97706'}">${r.status}</span></td>
+        <td style="padding:.6rem 1rem;font-size:.85rem;font-weight:700">${r.count}</td>
+      </tr>`).join('');
+  } catch(e) { tbody.innerHTML = `<tr><td colspan="3" class="empty error">${e.message}</td></tr>`; }
+}
 </script>
 </body>
 </html>

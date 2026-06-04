@@ -6,6 +6,7 @@
 import { json, error } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
 import { emitEvent } from "../../lib/bus.js";
+import { notify } from "../communication/notify.js";
 
 /**
  * POST /api/customer/invites
@@ -35,12 +36,21 @@ export async function createInvite(request, env, auth) {
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `).bind(id, brand_id, email, role, token, user_id, expiresAt).run();
 
-  // Emit event (Notification system can pick this up to send email)
-  await emitEvent(env, 'invite_created', {
-    brand_id,
-    user_id,
-    metadata: { email, role, token }
-  });
+  await emitEvent(env, 'invite_created', { brand_id, user_id, metadata: { email, role, token } });
+
+  // Notify invitee via communication engine
+  const brand  = await db.prepare('SELECT name FROM brands WHERE id = ?').bind(brand_id).first().catch(() => null);
+  const sender = await db.prepare('SELECT full_name FROM users WHERE id = ?').bind(user_id).first().catch(() => null);
+  const inviteUrl = `https://app.mypilotpost.com/register?invite=${token}`;
+  notify(env, {
+    event: 'invite_sent',
+    brandId: brand_id,
+    recipientEmail: email,
+    title: `You're invited to ${brand?.name || 'a brand'}`,
+    message: `${sender?.full_name || 'Someone'} invited you to collaborate on ${brand?.name || 'myPilotPost'} as ${role}.`,
+    data: { inviter_name: sender?.full_name || '', brand_name: brand?.name || '', role, invite_url: inviteUrl },
+    link: inviteUrl,
+  }).catch(() => {});
 
   return json({ success: true, invite_id: id });
 }

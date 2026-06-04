@@ -57,7 +57,11 @@ function MembersTab({ brandId }) {
             {members.map(m => (
               <tr key={m.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                 <td style={{ padding: '12px 16px' }}>
-                  <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-main)' }}>{m.full_name || m.email}</div>
+                  <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {m.full_name || m.email}
+                    {m.email_verified && <span title="Email verified" style={{ fontSize: '0.65rem', color: '#16a34a', fontWeight: 700 }}>✓</span>}
+                    {m.whatsapp_linked && <span title="WhatsApp linked" style={{ fontSize: '0.65rem', color: '#25d366', fontWeight: 700 }}>WA</span>}
+                  </div>
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{m.email}</div>
                 </td>
                 <td style={{ padding: '12px 16px' }}>

@@ -12,6 +12,7 @@ import { normalizeForSQLite, hasConflict } from "../schedule/schedule.js";
 import { completeReferral } from "../promotions/promotions.js";
 import { insertExperienceNotification } from "../notifications/utils.js";
 import { sendEmail } from "../email/send-email.js";
+import { notify } from "../communication/notify.js";
 
 const LOCKED_STATUSES = new Set(['scheduled', 'queued', 'publishing', 'published']);
 
@@ -356,6 +357,22 @@ export async function vaultApproval(request, env, auth) {
     }
 
     await insertExperienceNotification(db, brand_id, "approval", "Approval Requested", "Content sent for review.");
+
+    // Notify reviewer via communication engine (supplements direct email above)
+    if (reviewer_email || reviewer_phone) {
+      const brand = await db.prepare('SELECT name FROM brands WHERE id = ?').bind(brand_id).first().catch(() => null);
+      notify(env, {
+        event: 'approval_requested',
+        brandId: brand_id,
+        recipientEmail: reviewer_email || null,
+        recipientPhone: reviewer_phone || null,
+        title: 'Content awaiting your review',
+        message: `${brand?.name || 'A brand'} sent "${item.title || 'content'}" for your approval.`,
+        data: { brand_name: brand?.name, content_title: item.title, approval_url: share_url, reviewer_name },
+        link: share_url,
+      }).catch(() => {});
+    }
+
     return json({ success: true, status: "approval_requested", share_url });
   }
 
@@ -365,26 +382,43 @@ export async function vaultApproval(request, env, auth) {
       db.prepare(`UPDATE social_assets SET lifecycle_status = 'approved', status = 'approved', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
       db.prepare(`UPDATE approval_requests SET approved_by = ?, approved_at = CURRENT_TIMESTAMP WHERE content_id = ? AND brand_id = ? AND approved_at IS NULL`).bind(user_id, id, brand_id),
     ]);
+
+    // Notify content creator
+    const creator = await db.prepare('SELECT u.email, u.full_name FROM users u JOIN content_vault cv ON cv.created_by = u.id WHERE cv.id = ?').bind(id).first().catch(() => null);
+    if (creator) {
+      notify(env, { event: 'approval_approved', brandId: brand_id, recipientId: item.created_by, recipientEmail: creator.email, title: 'Content approved ✓', message: `"${item.title || 'Your content'}" was approved and is ready to schedule.`, data: { content_title: item.title }, link: `https://app.mypilotpost.com/dashboard` }).catch(() => {});
+    }
+
     return json({ success: true, status: "approved" });
   }
 
   if (action === "reject") {
-    // Reject → archive so it disappears from both draft and approval views
     await db.batch([
       db.prepare(`UPDATE content_vault SET lifecycle_status = 'archived', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
       db.prepare(`UPDATE social_assets SET lifecycle_status = 'archived', status = 'archived', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
       db.prepare(`UPDATE approval_requests SET rejected_by = ?, rejection_reason = ? WHERE content_id = ? AND brand_id = ? AND approved_at IS NULL`).bind(user_id, notes || null, id, brand_id),
     ]);
+
+    const creator = await db.prepare('SELECT u.email, u.full_name FROM users u JOIN content_vault cv ON cv.created_by = u.id WHERE cv.id = ?').bind(id).first().catch(() => null);
+    if (creator) {
+      notify(env, { event: 'approval_rejected', brandId: brand_id, recipientId: item.created_by, recipientEmail: creator.email, title: 'Content rejected', message: `"${item.title || 'Your content'}" was rejected.${notes ? ` Reason: ${notes}` : ''}`, data: { content_title: item.title, notes }, link: `https://app.mypilotpost.com/dashboard` }).catch(() => {});
+    }
+
     return json({ success: true, status: "archived" });
   }
 
   if (action === "request_changes") {
-    // Request changes → back to draft so creator can edit and resubmit
     await db.batch([
       db.prepare(`UPDATE content_vault SET lifecycle_status = 'draft', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
       db.prepare(`UPDATE social_assets SET lifecycle_status = 'draft', status = 'draft', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
       db.prepare(`UPDATE approval_requests SET rejection_reason = ? WHERE content_id = ? AND brand_id = ? AND approved_at IS NULL`).bind(notes || null, id, brand_id),
     ]);
+
+    const creator = await db.prepare('SELECT u.email FROM users u JOIN content_vault cv ON cv.created_by = u.id WHERE cv.id = ?').bind(id).first().catch(() => null);
+    if (creator) {
+      notify(env, { event: 'approval_rejected', brandId: brand_id, recipientId: item.created_by, recipientEmail: creator.email, title: 'Changes requested', message: `"${item.title || 'Your content'}" needs changes before approval.${notes ? ` Notes: ${notes}` : ''}`, data: { content_title: item.title, notes }, link: `https://app.mypilotpost.com/dashboard` }).catch(() => {});
+    }
+
     return json({ success: true, status: "draft" });
   }
 }

@@ -90,6 +90,7 @@ import { generateWeeklyPlan, getWeeklyPlan } from "./core/intelligence/weekly_pl
 import { createInvite, getInvites, getTeam, acceptInvite } from "./core/teams/handlers.js";
 import { updateMemberRole, removeMember, revokeInvite } from "./core/team/members.js";
 import { listClients, createClient, updateClient, archiveClient, sendToClient, getClientLinks } from "./core/team/clients.js";
+import { createSupportRequest, listSupportRequests, adminListSupport, adminUpdateSupport } from "./core/support/requests.js";
 import { getActivity as getTeamActivity } from "./core/team/activity.js";
 import { getCommPreferences, updateCommPreferences } from "./core/communication/preferences.js";
 import { recordNotificationEvent, handleOpenPixel } from "./core/communication/tracking.js";
@@ -1056,6 +1057,23 @@ export default {
           return getAdminSupportThreads(request, env);
         }
 
+        if (path === "/api/v1/admin/support/requests" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return withCors(request, adminListSupport(request, env));
+        }
+
+        if (path.startsWith("/api/v1/admin/support/requests/") && method === "PUT") {
+          await requireAdminAuth(request, env);
+          return withCors(request, adminUpdateSupport(request, env));
+        }
+
+        if (path === "/api/v1/admin/comms/delivery" && method === "GET") {
+          await requireAdminAuth(request, env);
+          const db = getDB(env);
+          const { results } = await db.prepare(`SELECT channel, status, COUNT(*) as count FROM notification_delivery_logs GROUP BY channel, status ORDER BY channel, status`).all();
+          return withCors(request, json({ data: results || [] }));
+        }
+
         if (path === "/api/v1/admin/support/message" && method === "POST") {
           const auth = await requireAdminAuth(request, env);
           return sendAdminMessage(request, env, auth);
@@ -1380,6 +1398,12 @@ export default {
 
          if (method === "POST" && path.startsWith("/api/customer/notifications/") && path.endsWith("/event"))
            return withCors(request, recordNotificationEvent(request, env, auth));
+
+         /* ---------- SUPPORT ---------- */
+         if (method === "POST" && path === "/api/customer/support")
+           return withCors(request, createSupportRequest(request, env, auth));
+         if (method === "GET"  && path === "/api/customer/support")
+           return withCors(request, listSupportRequests(request, env, auth));
 
          /* ---------- APPROVALS ---------- */
          if (method === "GET" && path === "/api/customer/approvals")
