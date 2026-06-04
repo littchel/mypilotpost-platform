@@ -1,211 +1,241 @@
-import React, { useState } from "react";
-import { useApi } from "../lib/api/hooks";
-import { apiRequest } from "../lib/api/client";
-import { UserPlus, Shield, User, Trash2, Mail } from "lucide-react";
+/**
+ * myPilotPost — Teams
+ * Tabs: Members · Clients · Activity · Invites
+ */
+import React, { useState, useEffect, useCallback } from 'react';
+import { apiRequest } from '../lib/api/client';
 
-const Teams = ({ brandId }) => {
-  const [listVersion, setListVersion] = useState(0);
-  const { data: teamData, loading: teamLoading } = useApi(brandId ? "/api/customer/teams/members" : null, [brandId, listVersion]);
-  const { data: inviteData } = useApi(brandId ? "/api/customer/teams/invites" : null, [brandId, listVersion]);
-  
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState("team");
-  const [isInviting, setIsInviting] = useState(false);
+const ASSIGNABLE_ROLES = ['admin', 'brand_manager', 'creator', 'approver', 'viewer'];
+const ROLE_COLORS = {
+  owner:         '#7c3aed', admin: '#2563eb', brand_manager: '#0891b2',
+  creator:       '#16a34a', approver: '#d97706', viewer: '#94a3b8',
+  team:          '#2563eb', client: '#ec4899',
+};
 
-  const members = teamData?.data || [];
-  const invites = inviteData?.data || [];
+function RolePill({ role }) {
+  const color = ROLE_COLORS[role] || '#94a3b8';
+  return <span style={{ padding: '2px 9px', borderRadius: 100, background: `${color}18`, color, fontSize: '0.68rem', fontWeight: 700, textTransform: 'capitalize', border: `1px solid ${color}33` }}>{role?.replace('_', ' ')}</span>;
+}
 
-  const handleInvite = async (e) => {
-    e.preventDefault();
-    if (!inviteEmail) return;
-    setIsInviting(true);
-    try {
-      await apiRequest("/api/customer/teams/invites", {
-        method: "POST",
-        body: JSON.stringify({ email: inviteEmail, role: inviteRole })
-      });
-      setInviteEmail("");
-      setListVersion(v => v + 1);
-      alert("Invite sent successfully!");
-    } catch (err) {
-      alert("Failed to send invite: " + err.message);
-    } finally {
-      setIsInviting(false);
-    }
-  };
+// ── Members tab ───────────────────────────────────────────────────────────────
+function MembersTab({ brandId }) {
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(null); // { id, role }
 
-  const handleRemoveMember = async (userId) => {
-    if (!window.confirm("Are you sure you want to remove this member?")) return;
-    try {
-      await apiRequest(`/api/customer/teams/members/${userId}`, { method: "DELETE" });
-      setListVersion(v => v + 1);
-    } catch (err) {
-      alert("Failed to remove member: " + err.message);
-    }
-  };
+  const load = useCallback(async () => {
+    if (!brandId) return;
+    setLoading(true);
+    try { const d = await apiRequest('/api/customer/team'); setMembers(d?.data || []); }
+    catch { /* silent */ }
+    finally { setLoading(false); }
+  }, [brandId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function changeRole(memberId, role) {
+    try { await apiRequest(`/api/customer/team/${memberId}`, { method: 'PUT', body: JSON.stringify({ role }) }); setEditing(null); await load(); }
+    catch { /* silent */ }
+  }
+
+  async function remove(memberId) {
+    if (!confirm('Remove this team member?')) return;
+    try { await apiRequest(`/api/customer/team/${memberId}`, { method: 'DELETE' }); await load(); }
+    catch { /* silent */ }
+  }
 
   return (
-    <div className="container-fluid py-4 animate__animated animate__fadeIn">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h2 className="fw-bold text-main mb-1">Team & Clients</h2>
-          <p className="text-muted small">Manage who has access to this brand's workspace.</p>
+    <div>
+      {loading ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Loading…</div>
+      : members.length === 0 ? <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No team members yet.</div>
+      : (
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead><tr style={{ background: 'var(--surface-secondary)' }}>
+            {['Name', 'Role', 'Joined', ''].map(h => <th key={h} style={{ padding: '10px 16px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: h === '' ? 'right' : 'left', borderBottom: '1px solid var(--border-subtle)' }}>{h}</th>)}
+          </tr></thead>
+          <tbody>
+            {members.map(m => (
+              <tr key={m.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                <td style={{ padding: '12px 16px' }}>
+                  <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-main)' }}>{m.full_name || m.email}</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{m.email}</div>
+                </td>
+                <td style={{ padding: '12px 16px' }}>
+                  {editing?.id === m.id ? (
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <select value={editing.role} onChange={e => setEditing(ed => ({ ...ed, role: e.target.value }))}
+                        style={{ padding: '4px 8px', border: '1.5px solid var(--pilot-blue)', borderRadius: 6, fontSize: '0.8rem', color: 'var(--text-main)' }}>
+                        {ASSIGNABLE_ROLES.map(r => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
+                      </select>
+                      <button onClick={() => changeRole(m.id, editing.role)} style={{ padding: '4px 10px', background: 'var(--pilot-blue)', color: '#fff', border: 'none', borderRadius: 6, fontSize: '0.75rem', cursor: 'pointer', fontWeight: 700 }}>Save</button>
+                      <button onClick={() => setEditing(null)} style={{ padding: '4px 8px', background: 'none', border: '1px solid var(--border-subtle)', borderRadius: 6, fontSize: '0.75rem', cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <RolePill role={m.role} />
+                      {m.role !== 'owner' && <button onClick={() => setEditing({ id: m.id, role: m.role })} style={{ background: 'none', border: 'none', fontSize: '0.68rem', color: 'var(--pilot-blue)', cursor: 'pointer', padding: '2px 4px' }}>Change</button>}
+                    </div>
+                  )}
+                </td>
+                <td style={{ padding: '12px 16px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>{m.created_at ? new Date(m.created_at).toLocaleDateString() : '—'}</td>
+                <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                  {m.role !== 'owner' && <button onClick={() => remove(m.id)} style={{ background: 'none', border: '1px solid var(--border-subtle)', borderRadius: 7, padding: '4px 10px', fontSize: '0.72rem', cursor: 'pointer', color: '#dc2626' }}>Remove</button>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+// ── Invites tab ───────────────────────────────────────────────────────────────
+function InvitesTab({ brandId }) {
+  const [invites, setInvites]     = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [email, setEmail]         = useState('');
+  const [role, setRole]           = useState('creator');
+  const [sending, setSending]     = useState(false);
+  const [sent, setSent]           = useState(false);
+
+  const load = useCallback(async () => {
+    if (!brandId) return;
+    setLoading(true);
+    try { const d = await apiRequest('/api/customer/invites'); setInvites(d?.data || []); }
+    catch { /* silent */ }
+    finally { setLoading(false); }
+  }, [brandId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function invite(e) {
+    e.preventDefault();
+    if (!email) return;
+    setSending(true);
+    try {
+      await apiRequest('/api/customer/invites', { method: 'POST', body: JSON.stringify({ email, role }) });
+      setEmail(''); setSent(true); setTimeout(() => setSent(false), 2500);
+      await load();
+    } catch { /* silent */ }
+    finally { setSending(false); }
+  }
+
+  async function revoke(inviteId) {
+    try { await apiRequest(`/api/customer/invites/${inviteId}`, { method: 'DELETE' }); await load(); }
+    catch { /* silent */ }
+  }
+
+  return (
+    <div style={{ padding: 20 }}>
+      <form onSubmit={invite} style={{ display: 'flex', gap: 10, marginBottom: 24, flexWrap: 'wrap', background: 'var(--surface-secondary)', padding: 16, borderRadius: 12, border: '1px solid var(--border-subtle)' }}>
+        <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address" required
+          style={{ flex: 1, minWidth: 200, padding: '9px 12px', border: '1.5px solid var(--border-subtle)', borderRadius: 8, fontSize: '0.875rem', outline: 'none' }} />
+        <select value={role} onChange={e => setRole(e.target.value)}
+          style={{ padding: '9px 12px', border: '1.5px solid var(--border-subtle)', borderRadius: 8, fontSize: '0.875rem', color: 'var(--text-main)' }}>
+          {ASSIGNABLE_ROLES.map(r => <option key={r} value={r}>{r.replace('_',' ')}</option>)}
+        </select>
+        <button type="submit" disabled={sending || !email}
+          style={{ padding: '9px 20px', background: 'var(--pilot-blue)', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: '0.875rem', cursor: sending ? 'wait' : 'pointer' }}>
+          {sending ? 'Sending…' : sent ? '✓ Sent' : 'Send Invite'}
+        </button>
+      </form>
+
+      {loading ? <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 20, fontSize: '0.85rem' }}>Loading…</div>
+      : invites.length === 0 ? <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 20, fontSize: '0.85rem' }}>No pending invites.</div>
+      : invites.map(inv => (
+        <div key={inv.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#fff', border: '1px solid var(--border-subtle)', borderRadius: 10, marginBottom: 8 }}>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-main)' }}>{inv.email}</div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Expires {new Date(inv.expires_at).toLocaleDateString()}</div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <RolePill role={inv.role} />
+            <button onClick={() => revoke(inv.id)} style={{ background: 'none', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: '3px 10px', fontSize: '0.72rem', cursor: 'pointer', color: '#dc2626' }}>Revoke</button>
+          </div>
         </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Activity tab ──────────────────────────────────────────────────────────────
+function ActivityTab({ brandId }) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!brandId) return;
+    apiRequest('/api/customer/activity?limit=50')
+      .then(d => setItems(d?.data || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [brandId]);
+
+  const ACTION_ICON = { 'content.approved':'✅', 'content.rejected':'❌', 'member.invited':'👥', 'member.removed':'🚪', 'client.created':'🧑‍💼', 'client.approval_sent':'📨', 'report.shared':'📊' };
+
+  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Loading…</div>;
+  if (items.length === 0) return <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}><div style={{ fontSize: '2rem', marginBottom: 8 }}>📋</div>No activity yet.</div>;
+
+  return (
+    <div style={{ padding: '8px 0' }}>
+      {items.map(item => (
+        <div key={item.id} style={{ display: 'flex', gap: 12, padding: '10px 16px', borderBottom: '1px solid var(--border-subtle)', alignItems: 'flex-start' }}>
+          <span style={{ fontSize: '1rem', flexShrink: 0, marginTop: 1 }}>{ACTION_ICON[item.action] || '•'}</span>
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-main)' }}>
+              <strong>{item.actor_name || 'System'}</strong>{' '}
+              <span style={{ color: 'var(--text-muted)' }}>{item.action?.replace(/\./g, ' ')}</span>
+              {item.entity_label && <> — <em style={{ color: 'var(--text-secondary)' }}>{item.entity_label}</em></>}
+            </p>
+            <p style={{ margin: '2px 0 0', fontSize: '0.68rem', color: 'var(--text-muted)' }}>{new Date(item.created_at).toLocaleString()}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Main ─────────────────────────────────────────────────────────────────────
+const TABS = [
+  { id: 'members', label: 'Members', icon: '👤' },
+  { id: 'clients', label: 'Clients', icon: '🧑‍💼' },
+  { id: 'activity', label: 'Activity', icon: '📋' },
+  { id: 'invites', label: 'Invites', icon: '✉️' },
+];
+
+const Teams = ({ brandId }) => {
+  const [tab, setTab] = useState('members');
+
+  return (
+    <div style={{ maxWidth: 900, margin: '0 auto' }}>
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--pilot-blue)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Collaboration</div>
+        <h4 style={{ margin: '0 0 2px', fontWeight: 800, color: 'var(--text-main)' }}>Team & Clients</h4>
+        <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Manage your team, invite collaborators, and share content with clients.</p>
       </div>
 
-      <div className="row g-4">
-        {/* Invite Form */}
-        <div className="col-lg-4">
-          <div className="card border-0 shadow-sm rounded-4 p-4">
-            <h5 className="fw-bold mb-3 d-flex align-items-center gap-2">
-              <UserPlus size={20} className="text-pilot" />
-              Invite Member
-            </h5>
-            <form onSubmit={handleInvite}>
-              <div className="mb-3">
-                <label className="form-label extra-small fw-bold text-muted uppercase">Email Address</label>
-                <input 
-                  type="email" 
-                  className="form-control input-pill" 
-                  placeholder="name@company.com"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="mb-4">
-                <label className="form-label extra-small fw-bold text-muted uppercase">Workspace Role</label>
-                <select 
-                  className="form-select input-pill"
-                  value={inviteRole}
-                  onChange={(e) => setInviteRole(e.target.value)}
-                >
-                  <option value="team">Team Member (Full Edit)</option>
-                  <option value="client">Client (Read & Approve)</option>
-                  <option value="admin">Admin (Full Access)</option>
-                </select>
-                <div className="extra-small text-muted mt-2 ps-2">
-                  {inviteRole === 'client' ? 'Clients can only view and approve content.' : 
-                   inviteRole === 'team' ? 'Team members can create and schedule content.' : 
-                   'Admins can manage members and billing.'}
-                </div>
-              </div>
-              <button 
-                type="submit" 
-                className="btn btn-pilot w-100 rounded-pill fw-bold py-2 shadow-sm"
-                disabled={isInviting}
-              >
-                {isInviting ? 'Sending...' : 'Send Invitation'}
-              </button>
-            </form>
-          </div>
-        </div>
+      {/* Tab strip */}
+      <div style={{ display: 'flex', borderBottom: '2px solid var(--border-subtle)', marginBottom: 0 }}>
+        {TABS.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)}
+            style={{ padding: '10px 16px', background: 'none', border: 'none', borderBottom: `2px solid ${tab === t.id ? 'var(--pilot-blue)' : 'transparent'}`, marginBottom: -2, fontSize: '0.82rem', fontWeight: tab === t.id ? 700 : 500, color: tab === t.id ? 'var(--pilot-blue)' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+            {t.icon} {t.label}
+          </button>
+        ))}
+      </div>
 
-        {/* Member List */}
-        <div className="col-lg-8">
-          <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
-            <div className="p-4 border-bottom bg-white">
-              <h5 className="fw-bold mb-0">Active Members</h5>
-            </div>
-            <div className="table-responsive">
-              <table className="table table-hover mb-0">
-                <thead className="bg-light">
-                  <tr>
-                    <th className="extra-small fw-bold text-muted uppercase ps-4 py-3">Member</th>
-                    <th className="extra-small fw-bold text-muted uppercase py-3">Role</th>
-                    <th className="extra-small fw-bold text-muted uppercase py-3">Joined</th>
-                    <th className="extra-small fw-bold text-muted uppercase py-3 pe-4 text-end">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {teamLoading ? (
-                    <tr><td colSpan="4" className="text-center py-5 text-muted">Loading team...</td></tr>
-                  ) : members.length === 0 ? (
-                    <tr><td colSpan="4" className="text-center py-5 text-muted">No members yet</td></tr>
-                  ) : members.map(m => (
-                    <tr key={m.id} className="align-middle">
-                      <td className="ps-4 py-3">
-                        <div className="d-flex align-items-center gap-3">
-                          <div className="p-2 bg-pilot-light text-pilot rounded-circle">
-                            <User size={16} />
-                          </div>
-                          <div>
-                            <div className="fw-bold small text-main">{m.email}</div>
-                            <div className="extra-small text-muted">{m.user_id === brandId ? 'Brand Owner' : 'Member'}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span className={`badge rounded-pill extra-small ${
-                          m.role === 'admin' ? 'bg-danger bg-opacity-10 text-danger' : 
-                          m.role === 'client' ? 'bg-info bg-opacity-10 text-info' : 
-                          'bg-primary bg-opacity-10 text-primary'
-                        }`}>
-                          {m.role.toUpperCase()}
-                        </span>
-                      </td>
-                      <td className="small text-muted">
-                        {new Date(m.created_at).toLocaleDateString()}
-                      </td>
-                      <td className="pe-4 text-end">
-                        <button 
-                          className="btn btn-link text-danger p-0 border-0" 
-                          onClick={() => handleRemoveMember(m.user_id)}
-                          title="Remove Member"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+      <div style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-subtle)', borderTop: 'none', borderRadius: '0 0 12px 12px', minHeight: 300 }}>
+        {tab === 'members'  && <MembersTab brandId={brandId} />}
+        {tab === 'clients'  && (
+          <div style={{ padding: 12 }}>
+            <a href="/clients" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--pilot-blue-light)', color: 'var(--pilot-blue)', border: '1.5px solid var(--pilot-blue)', borderRadius: 8, fontSize: '0.82rem', fontWeight: 700, textDecoration: 'none', marginBottom: 16 }}>
+              Open Clients Page →
+            </a>
           </div>
-
-          {/* Pending Invites */}
-          {invites.length > 0 && (
-            <div className="card border-0 shadow-sm rounded-4 overflow-hidden mt-4 animate__animated animate__fadeInUp">
-              <div className="p-4 border-bottom bg-white d-flex justify-content-between align-items-center">
-                <h5 className="fw-bold mb-0">Pending Invitations</h5>
-                <span className="badge bg-warning bg-opacity-10 text-warning rounded-pill extra-small fw-bold">
-                  {invites.length} PENDING
-                </span>
-              </div>
-              <div className="table-responsive">
-                <table className="table table-hover mb-0">
-                  <tbody>
-                    {invites.map(inv => (
-                      <tr key={inv.id} className="align-middle border-bottom">
-                        <td className="ps-4 py-3">
-                          <div className="d-flex align-items-center gap-3">
-                            <div className="p-2 bg-light text-muted rounded-circle">
-                              <Mail size={16} />
-                            </div>
-                            <div>
-                              <div className="fw-bold small text-main">{inv.email}</div>
-                              <div className="extra-small text-muted">Expires in 7 days</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <span className="badge border text-muted rounded-pill extra-small">
-                            {inv.role.toUpperCase()}
-                          </span>
-                        </td>
-                        <td className="pe-4 text-end">
-                          <button className="btn btn-outline-secondary btn-sm rounded-pill extra-small fw-bold px-3">
-                            Resend
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
+        )}
+        {tab === 'activity' && <ActivityTab brandId={brandId} />}
+        {tab === 'invites'  && <InvitesTab brandId={brandId} />}
       </div>
     </div>
   );

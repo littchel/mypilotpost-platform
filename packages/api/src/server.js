@@ -88,6 +88,11 @@ import { generateWeeklyPlan, getWeeklyPlan } from "./core/intelligence/weekly_pl
    BACKEND FOUNDATION (CANON LOCK)
 ====================================================== */
 import { createInvite, getInvites, getTeam, acceptInvite } from "./core/teams/handlers.js";
+import { updateMemberRole, removeMember, revokeInvite } from "./core/team/members.js";
+import { listClients, createClient, updateClient, archiveClient, sendToClient, getClientLinks } from "./core/team/clients.js";
+import { getActivity } from "./core/team/activity.js";
+import { getCommPreferences, updateCommPreferences } from "./core/communication/preferences.js";
+import { recordNotificationEvent, handleOpenPixel } from "./core/communication/tracking.js";
 import { submitForApproval, getApprovalRequests } from "./core/approvals/handlers.js";
 import {
   listVault, saveToVault, getVaultItem, deleteVaultItem,
@@ -782,6 +787,9 @@ export default {
         return withCors(request, runPublicAudit(request, env));
       }
 
+      if (method === "GET" && path.startsWith("/api/t/") && path.endsWith("/open.gif"))
+        return handleOpenPixel(request, env);
+
       if (method === "GET" && path.startsWith("/api/public/brand-audit/") && path.endsWith("/report")) {
         return withCors(request, getPublicAuditReport(request, env));
       }
@@ -1336,6 +1344,42 @@ export default {
          
          if (method === "POST" && path === "/api/customer/invites")
            return withCors(request, createInvite(request, env, auth));
+
+         if (method === "PUT" && path.startsWith("/api/customer/team/") && !path.endsWith("/team/"))
+           return withCors(request, updateMemberRole(request, env, auth));
+
+         if (method === "DELETE" && path.startsWith("/api/customer/team/") && !path.endsWith("/team/"))
+           return withCors(request, removeMember(request, env, auth));
+
+         if (method === "DELETE" && path.startsWith("/api/customer/invites/") && !path.endsWith("/invites/accept"))
+           return withCors(request, revokeInvite(request, env, auth));
+
+         /* ---------- CLIENTS ---------- */
+         if (method === "GET"    && path === "/api/customer/clients")
+           return withCors(request, listClients(request, env, auth));
+         if (method === "POST"   && path === "/api/customer/clients")
+           return withCors(request, createClient(request, env, auth));
+         if (method === "PUT"    && path.startsWith("/api/customer/clients/") && !path.includes("/send") && !path.includes("/links"))
+           return withCors(request, updateClient(request, env, auth));
+         if (method === "DELETE" && path.startsWith("/api/customer/clients/") && !path.includes("/send"))
+           return withCors(request, archiveClient(request, env, auth));
+         if (method === "POST"   && path.startsWith("/api/customer/clients/") && path.endsWith("/send"))
+           return withCors(request, sendToClient(request, env, auth));
+         if (method === "GET"    && path.startsWith("/api/customer/clients/") && path.endsWith("/links"))
+           return withCors(request, getClientLinks(request, env, auth));
+
+         /* ---------- ACTIVITY LOG ---------- */
+         if (method === "GET" && path === "/api/customer/activity")
+           return withCors(request, getActivity(request, env, auth));
+
+         /* ---------- COMMUNICATION PREFERENCES ---------- */
+         if (method === "GET" && path === "/api/customer/communication/preferences")
+           return withCors(request, getCommPreferences(request, env, auth));
+         if (method === "PUT" && path === "/api/customer/communication/preferences")
+           return withCors(request, updateCommPreferences(request, env, auth));
+
+         if (method === "POST" && path.startsWith("/api/customer/notifications/") && path.endsWith("/event"))
+           return withCors(request, recordNotificationEvent(request, env, auth));
 
          /* ---------- APPROVALS ---------- */
          if (method === "GET" && path === "/api/customer/approvals")
