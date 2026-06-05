@@ -91,6 +91,7 @@ import { createInvite, getInvites, getTeam, acceptInvite } from "./core/teams/ha
 import { updateMemberRole, removeMember, revokeInvite } from "./core/team/members.js";
 import { listClients, createClient, updateClient, archiveClient, sendToClient, getClientLinks } from "./core/team/clients.js";
 import { createSupportRequest, listSupportRequests, adminListSupport, adminUpdateSupport } from "./core/support/requests.js";
+import { getMemory, getFeatures, getSnapshot, getEvents } from "./core/memory/query.js";
 import { getActivity as getTeamActivity } from "./core/team/activity.js";
 import { getCommPreferences, updateCommPreferences } from "./core/communication/preferences.js";
 import { recordNotificationEvent, handleOpenPixel } from "./core/communication/tracking.js";
@@ -1074,6 +1075,42 @@ export default {
           return withCors(request, json({ data: results || [] }));
         }
 
+        /* ---------- ADMIN MEMORY ---------- */
+        if (path === "/api/v1/admin/memory/events" && method === "GET") {
+          await requireAdminAuth(request, env);
+          const db  = getDB(env);
+          const url2 = new URL(request.url);
+          const limit = Math.min(parseInt(url2.searchParams.get('limit')) || 100, 500);
+          const { results } = await db.prepare(`SELECT id, brand_id, user_id, tool, event, value, metadata, created_at FROM memory_events ORDER BY created_at DESC LIMIT ?`).bind(limit).all();
+          return withCors(request, json({ data: results || [] }));
+        }
+
+        if (path === "/api/v1/admin/memory/features" && method === "GET") {
+          await requireAdminAuth(request, env);
+          const db  = getDB(env);
+          const url2 = new URL(request.url);
+          const brandId = url2.searchParams.get('brand_id');
+          let q = 'SELECT brand_id, feature, value, window, computed_at FROM memory_features';
+          const b = [];
+          if (brandId) { q += ' WHERE brand_id=?'; b.push(brandId); }
+          q += ' ORDER BY computed_at DESC LIMIT 200';
+          const { results } = await db.prepare(q).bind(...b).all();
+          return withCors(request, json({ data: results || [] }));
+        }
+
+        if (path === "/api/v1/admin/memory/brands" && method === "GET") {
+          await requireAdminAuth(request, env);
+          const db = getDB(env);
+          const url2 = new URL(request.url);
+          const brandId = url2.searchParams.get('brand_id');
+          let q = 'SELECT brand_id, namespace, key, value, confidence, source, updated_at FROM brand_memory';
+          const b = [];
+          if (brandId) { q += ' WHERE brand_id=?'; b.push(brandId); }
+          q += ' ORDER BY brand_id, namespace, key LIMIT 500';
+          const { results } = await db.prepare(q).bind(...b).all();
+          return withCors(request, json({ data: results || [] }));
+        }
+
         if (path === "/api/v1/admin/support/message" && method === "POST") {
           const auth = await requireAdminAuth(request, env);
           return sendAdminMessage(request, env, auth);
@@ -1404,6 +1441,16 @@ export default {
            return withCors(request, createSupportRequest(request, env, auth));
          if (method === "GET"  && path === "/api/customer/support")
            return withCors(request, listSupportRequests(request, env, auth));
+
+         /* ---------- MEMORY LAYER (read-only) ---------- */
+         if (method === "GET" && path === "/api/customer/memory")
+           return withCors(request, getMemory(request, env, auth));
+         if (method === "GET" && path === "/api/customer/features")
+           return withCors(request, getFeatures(request, env, auth));
+         if (method === "GET" && path === "/api/customer/memory/snapshot")
+           return withCors(request, getSnapshot(request, env, auth));
+         if (method === "GET" && path === "/api/customer/memory/events")
+           return withCors(request, getEvents(request, env, auth));
 
          /* ---------- APPROVALS ---------- */
          if (method === "GET" && path === "/api/customer/approvals")
@@ -2198,6 +2245,19 @@ export default {
           } catch (err) {
             console.error("[CRON_INTEL] Daily intelligence cron failed:", err?.message || err);
           }
+        }
+
+        // Daily 3am: memory aggregation + retention
+        if (cron === "0 3 * * *") {
+          try {
+            const { runDailyAggregation } = await import("./core/memory/aggregator.js");
+            await runDailyAggregation(env);
+          } catch (err) { console.error("[CRON] Memory aggregation failed:", err?.message); }
+
+          try {
+            const { runRetention } = await import("./core/memory/retention.js");
+            await runRetention(env);
+          } catch (err) { console.error("[CRON] Memory retention failed:", err?.message); }
         }
 
         // Daily 3am: analytics backfill for site-level platforms (GA4, GSC)

@@ -97,6 +97,21 @@ const ArticleCreator = ({ activeBrandOverride, initialArticle, onSaveSuccess, on
     }
   }, [initialArticle]);
 
+  // ── Studio idea prefill — read once on mount if no initialArticle ─────────
+  useEffect(() => {
+    if (initialArticle) return;
+    const raw = sessionStorage.getItem("studio_idea_prefill");
+    if (!raw) return;
+    sessionStorage.removeItem("studio_idea_prefill");
+    let prefill;
+    try { prefill = JSON.parse(raw); } catch { return; }
+    if (prefill.contentType && prefill.contentType !== "blog") return;
+    if (prefill.title) setTitle(prefill.title);
+    if (prefill.caption || prefill.hook) {
+      setContent([prefill.hook, prefill.caption].filter(Boolean).join("\n\n"));
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const fetchCampaigns = useCallback(async () => {
     setCampaignsState(prev => ({ ...prev, status: 'loading' }));
     const res = await apiSafeFetch("/api/customer/campaigns");

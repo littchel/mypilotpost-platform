@@ -586,6 +586,37 @@ export default function CreatePost({
   useEffect(() => { if (propCampaignId) setCampaignId(propCampaignId); }, [propCampaignId]);
   useEffect(() => { if (brandTimezone) setTimezone(brandTimezone); }, [brandTimezone]);
 
+  // ── Studio idea prefill — read once on mount ─────────────────────────────
+  useEffect(() => {
+    const raw = sessionStorage.getItem("studio_idea_prefill");
+    if (!raw) return;
+    sessionStorage.removeItem("studio_idea_prefill");
+    let prefill;
+    try { prefill = JSON.parse(raw); } catch { return; }
+
+    const body = [prefill.hook, prefill.caption].filter(Boolean).join("\n\n");
+    if (body) setContent(body);
+    if (Array.isArray(prefill.platforms) && prefill.platforms.length) setSelectedPlatforms(prefill.platforms);
+    if (prefill.campaign_id) setCampaignId(prefill.campaign_id);
+
+    if (prefill.image) {
+      const tempId = crypto.randomUUID();
+      setMediaItems(prev => [...prev, { id: tempId, url: prefill.image, type: "image", label: "Studio", uploading: false }]);
+      // Register in media_assets so linkMedia() can attach it on save
+      const m = prefill.image.match(/photos\/(\d+)\//);
+      const externalId = m ? m[1] : prefill.image.split('/').filter(Boolean).pop().split('?')[0];
+      apiJSON("/api/customer/media/from-pexels", "POST", {
+        external_id: externalId,
+        preview_url: prefill.image,
+        type: "image",
+      }).then(saved => {
+        if (saved?.media_id) {
+          setMediaItems(prev => prev.map(mi => mi.id === tempId ? { ...mi, asset_id: saved.media_id } : mi));
+        }
+      }).catch(() => {});
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (connections.length > 0 && selectedPlatforms.length === 0) {
       const active = connections.filter(c => c.status === "active").map(c => c.platform);

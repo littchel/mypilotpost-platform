@@ -8,6 +8,7 @@ import { getDB } from '../../lib/db.js';
 import { can } from './permissions.js';
 import { logActivity } from './activity.js';
 import { deliver } from '../communication/engine.js';
+import { emit, TOOLS, EVENTS } from '../events/emit.js';
 
 const APP_URL = 'https://app.mypilotpost.com';
 
@@ -50,6 +51,7 @@ export async function createClient(req, env, auth) {
   `).bind(id, auth.brand_id, name, email || null, phone || null, company || null, notes || null, auth.user_id).run();
 
   await logActivity(env, { brand_id: auth.brand_id, actor_id: auth.user_id, action: 'client.created', entity_type: 'client', entity_id: id, entity_label: name });
+  emit(env, { tool: TOOLS.CLIENTS, event: EVENTS.CLIENT_ADDED, brandId: auth.brand_id, userId: auth.user_id });
   return json({ success: true, client_id: id });
 }
 

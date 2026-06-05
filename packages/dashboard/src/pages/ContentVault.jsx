@@ -228,6 +228,24 @@ function ApprovalTable({ items, onReview }) {
 
 // ─── Preview Modal ────────────────────────────────────────────────────────────
 function PreviewModal({ item, brandName, onClose, onEdit, onShare }) {
+  const [mediaUrl, setMediaUrl] = useState(null);
+
+  useEffect(() => {
+    if (!item?.id) return;
+    // Parse metadata.image as immediate fallback (no request needed)
+    try {
+      const meta = typeof item.metadata === "string" ? JSON.parse(item.metadata) : (item.metadata || {});
+      if (meta.image) setMediaUrl(meta.image);
+    } catch { /* ignore */ }
+    // Fetch formally attached media — overrides metadata.image if present
+    apiRequest(`/api/customer/media/attached/${item.content_type || "social"}/${item.id}`)
+      .then(res => {
+        const first = (res?.items || [])[0];
+        if (first?.preview_url) setMediaUrl(first.preview_url);
+      })
+      .catch(() => {});
+  }, [item?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <>
       <Backdrop onClose={onClose} />
@@ -238,9 +256,14 @@ function PreviewModal({ item, brandName, onClose, onEdit, onShare }) {
         zIndex: 401, display: "flex", flexDirection: "column", overflow: "hidden",
       }}>
         <div style={{ padding: "14px 20px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: C.slate }}>{item.title || (item.body || "").slice(0, 70) || "Untitled"}</div>
-            <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>Platform preview — how this content renders across platforms</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            {mediaUrl && (
+              <img src={mediaUrl} alt="" style={{ width: 46, height: 46, borderRadius: 8, objectFit: "cover", border: `1px solid ${C.border}`, flexShrink: 0 }} />
+            )}
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: C.slate }}>{item.title || (item.body || "").slice(0, 70) || "Untitled"}</div>
+              <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>Platform preview — how this content renders across platforms</div>
+            </div>
           </div>
           <button onClick={onClose} style={{ border: "none", background: "none", cursor: "pointer", color: C.muted, fontSize: 24, lineHeight: 1 }}>×</button>
         </div>

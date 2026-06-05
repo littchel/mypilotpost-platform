@@ -13,6 +13,7 @@ import { completeReferral } from "../promotions/promotions.js";
 import { insertExperienceNotification } from "../notifications/utils.js";
 import { sendEmail } from "../email/send-email.js";
 import { notify } from "../communication/notify.js";
+import { emit, TOOLS, EVENTS } from "../events/emit.js";
 
 const LOCKED_STATUSES = new Set(['scheduled', 'queued', 'publishing', 'published']);
 
@@ -218,6 +219,9 @@ export async function saveToVault(request, env, auth) {
     } catch { /* mirror writes must not block vault write */ }
   }
 
+  // Memory: fire-and-forget
+  emit(env, { tool: TOOLS.CREATE_POST, event: EVENTS.CONTENT_SAVED, brandId: brand_id, userId: user_id, metadata: { content_type, platform: platforms?.[0] } });
+
   return json({ success: true, content_id: id, version, lifecycle_status });
 }
 
@@ -373,6 +377,7 @@ export async function vaultApproval(request, env, auth) {
       }).catch(() => {});
     }
 
+    emit(env, { tool: TOOLS.APPROVAL, event: EVENTS.APPROVAL_REQUESTED, brandId: brand_id, userId: user_id });
     return json({ success: true, status: "approval_requested", share_url });
   }
 
@@ -389,6 +394,7 @@ export async function vaultApproval(request, env, auth) {
       notify(env, { event: 'approval_approved', brandId: brand_id, recipientId: item.created_by, recipientEmail: creator.email, title: 'Content approved ✓', message: `"${item.title || 'Your content'}" was approved and is ready to schedule.`, data: { content_title: item.title }, link: `https://app.mypilotpost.com/dashboard` }).catch(() => {});
     }
 
+    emit(env, { tool: TOOLS.APPROVAL, event: EVENTS.CONTENT_APPROVED, brandId: brand_id, userId: user_id });
     return json({ success: true, status: "approved" });
   }
 

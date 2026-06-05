@@ -9,6 +9,7 @@ import { logEvent } from "./events.js";
 import { handleGrowthEvent } from "../core/growth/engine.js";
 import { handleNotificationEvent } from "../core/notifications/notifications.js";
 import { handleIntelligenceEvent } from "../core/intelligence/engine.js";
+import { handleMemoryEvent } from "../core/memory/collector.js";
 
 /**
  * Emit a system-wide event.
@@ -39,6 +40,7 @@ export async function emitEvent(env, eventType, payload = {}) {
   await Promise.allSettled([
     handleGrowthEvent(eventContext),
     handleNotificationEvent(eventContext),
-    handleIntelligenceEvent(eventContext)
+    handleIntelligenceEvent(eventContext),
+    handleMemoryEvent(eventContext),
   ]);
 }

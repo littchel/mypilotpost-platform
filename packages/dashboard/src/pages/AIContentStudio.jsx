@@ -568,13 +568,36 @@ function AssetCardGrid({ cards, activeBrand, switchTab, source }) {
   const [saveErr,   setSaveErr]   = useState("");
 
   useEffect(() => {
-    cards.forEach((_, i) => {
-      const url = PEXELS_POOL[i % PEXELS_POOL.length];
-      preloadImg(url)
-        .then(u => setImageMap(m => ({ ...m, [i]: { url: u, ready: true } })))
-        .catch(() => setImageMap(m => ({ ...m, [i]: { url: PEXELS_POOL[0], ready: true } })));
-    });
-  }, [cards]);
+    if (!cards.length) return;
+    const text = cards.slice(0, 5).map(c => c.title || c.idea || '').join(' ');
+    const platform = (cards[0]?.platforms || [])[0] || 'instagram';
+    fetchMediaSuggestions({
+      platform,
+      contentType: 'social',
+      text,
+      brand: activeBrand?.name || '',
+      industry: activeBrand?.industry || '',
+    })
+      .then(buckets => {
+        const pool = [...(buckets.agencyPicks || []), ...(buckets.trending || [])];
+        if (!pool.length) throw new Error('empty');
+        cards.forEach((_, i) => {
+          const img = pool[i % pool.length];
+          const url = img?.preview_url || img?.url || PEXELS_POOL[i % PEXELS_POOL.length];
+          preloadImg(url)
+            .then(u => setImageMap(m => ({ ...m, [i]: { url: u, ready: true } })))
+            .catch(() => setImageMap(m => ({ ...m, [i]: { url: PEXELS_POOL[i % PEXELS_POOL.length], ready: true } })));
+        });
+      })
+      .catch(() => {
+        cards.forEach((_, i) => {
+          const url = PEXELS_POOL[i % PEXELS_POOL.length];
+          preloadImg(url)
+            .then(u => setImageMap(m => ({ ...m, [i]: { url: u, ready: true } })))
+            .catch(() => setImageMap(m => ({ ...m, [i]: { url: PEXELS_POOL[0], ready: true } })));
+        });
+      });
+  }, [cards]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSave(card, imageUrl) {
     try {

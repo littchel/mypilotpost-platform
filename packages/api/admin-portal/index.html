@@ -171,6 +171,11 @@ pre{font-size:.72rem;background:#f8fafc;border:1px solid var(--border);padding:.
   <div class="nav-item" data-section="messaging">📣 Messaging</div>
   <div class="nav-item" data-section="comm_ops">📡 Comms Monitor</div>
 
+  <div class="nav-section">Memory</div>
+  <div class="nav-item" data-section="mem_events">📡 Events</div>
+  <div class="nav-item" data-section="mem_features">📈 Features</div>
+  <div class="nav-item" data-section="mem_memory">🧠 Memory</div>
+
   <div class="nav-section">Operations</div>
   <div class="nav-item" data-section="operations">⚙️ Operations</div>
   <div class="nav-item" data-section="integrations">🔌 Integrations</div>
@@ -476,6 +481,29 @@ pre{font-size:.72rem;background:#f8fafc;border:1px solid var(--border);padding:.
       <tbody id="commBody"><tr><td colspan="3" class="empty">Click Refresh to load.</td></tr></tbody>
     </table>
   </div>
+</div>
+
+<!-- MEMORY EVENTS -->
+<div class="section" id="mem_events">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+    <div><h4 style="font-size:1rem;font-weight:700;margin-bottom:.2rem">Memory Events</h4><p style="font-size:.78rem;color:var(--muted)">Raw events captured by the memory layer. Read-only.</p></div>
+    <button onclick="loadMemEvents()" style="padding:.35rem .9rem;border:1px solid var(--border);border-radius:8px;background:var(--panel);cursor:pointer;font-size:.78rem;font-weight:600">Refresh</button>
+  </div>
+  <div class="table-wrap"><table><thead><tr><th>Brand</th><th>Tool</th><th>Event</th><th>Value</th><th>Time</th></tr></thead><tbody id="memEventsBody"><tr><td colspan="5" class="empty">Click Refresh.</td></tr></tbody></table></div>
+</div>
+<div class="section" id="mem_features">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+    <div><h4 style="font-size:1rem;font-weight:700;margin-bottom:.2rem">Memory Features</h4><p style="font-size:.78rem;color:var(--muted)">Aggregated feature values per brand.</p></div>
+    <div style="display:flex;gap:.5rem"><input id="memFeatBrand" placeholder="brand_id" style="padding:.35rem .75rem;border:1px solid var(--border);border-radius:8px;font-size:.78rem;width:180px"><button onclick="loadMemFeatures()" style="padding:.35rem .9rem;border:1px solid var(--border);border-radius:8px;background:var(--panel);cursor:pointer;font-size:.78rem;font-weight:600">Load</button></div>
+  </div>
+  <div class="table-wrap"><table><thead><tr><th>Brand</th><th>Feature</th><th>Value</th><th>Window</th><th>Computed</th></tr></thead><tbody id="memFeatBody"><tr><td colspan="5" class="empty">Enter brand ID or leave blank.</td></tr></tbody></table></div>
+</div>
+<div class="section" id="mem_memory">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+    <div><h4 style="font-size:1rem;font-weight:700;margin-bottom:.2rem">Brand Memory</h4><p style="font-size:.78rem;color:var(--muted)">Key-value intelligence derived from events. Read-only.</p></div>
+    <div style="display:flex;gap:.5rem"><input id="memMemBrand" placeholder="brand_id" style="padding:.35rem .75rem;border:1px solid var(--border);border-radius:8px;font-size:.78rem;width:180px"><button onclick="loadMemMemory()" style="padding:.35rem .9rem;border:1px solid var(--border);border-radius:8px;background:var(--panel);cursor:pointer;font-size:.78rem;font-weight:600">Load</button></div>
+  </div>
+  <div class="table-wrap"><table><thead><tr><th>Brand</th><th>Namespace</th><th>Key</th><th>Value</th><th>Confidence</th><th>Updated</th></tr></thead><tbody id="memMemBody"><tr><td colspan="6" class="empty">Enter brand ID.</td></tr></tbody></table></div>
 </div>
 
 <!-- INTEGRATIONS / PLATFORM OPERATIONS CENTER -->
