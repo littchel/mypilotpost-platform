@@ -18,9 +18,10 @@ export async function billingOverview(env) {
     FROM users
   `).first();
 
-  // 2. Calculate Correct MRR (Only Active, non-trial)
+  // 2. Calculate Correct MRR — use price_cents (canonical cents column)
+  // Fall back to price_monthly * 100 for plans created before price_cents was added
   const mrrRow = await db.prepare(`
-    SELECT SUM(p.price_monthly) as total_mrr
+    SELECT SUM(COALESCE(p.price_cents, p.price_monthly * 100, 0)) as total_mrr_cents
     FROM users u
     JOIN plans p ON u.plan_id = p.id
     WHERE u.subscription_status = 'active'
@@ -45,7 +46,7 @@ export async function billingOverview(env) {
     total_customers: stats?.total_users || 0,
     active_subscriptions: stats?.active_subs || 0,
     trial_subscriptions: stats?.trial_subs || 0,
-    mrr: (mrrRow?.total_mrr || 0) / 100, // Convert cents to dollars
+    mrr: mrrRow?.total_mrr_cents || 0,
     currency: "ZAR",
     distribution,
     conversion_rate: auditConversion.total_audits > 0 ? (auditConversion.active_users / auditConversion.total_audits * 100).toFixed(1) + "%" : "0%"

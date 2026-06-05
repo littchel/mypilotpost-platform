@@ -3,6 +3,7 @@
 // Canon: storage + wiring only (no automation, no sending)
 
 import { nanoid } from 'nanoid';
+import { getDB } from '../../lib/db.js';
 
 export async function handleCampaigns(req, env) {
   const url = new URL(req.url);
@@ -10,7 +11,7 @@ export async function handleCampaigns(req, env) {
   if (!brandId) return json({ error: 'missing brand' }, 400);
 
   if (req.method === 'GET') {
-    const { results } = await env.DB.prepare(
+    const { results } = await getDB(env).prepare(
       `SELECT * FROM campaigns WHERE brand_id = ? ORDER BY created_at DESC`
     ).bind(brandId).all();
     return json({ campaigns: results });
@@ -19,7 +20,7 @@ export async function handleCampaigns(req, env) {
   if (req.method === 'POST') {
     const body = await req.json();
     const id = nanoid();
-    await env.DB.prepare(`
+    await getDB(env).prepare(`
       INSERT INTO campaigns (id, brand_id, name, objective, channel, status)
       VALUES (?, ?, ?, ?, ?, 'draft')
     `).bind(id, brandId, body.name, body.objective, body.channel).run();
@@ -34,7 +35,7 @@ export async function handleCampaignContent(req, env, campaignId) {
   const body = await req.json();
   const id = nanoid();
 
-  await env.DB.prepare(`
+  await getDB(env).prepare(`
     INSERT INTO campaign_content (id, campaign_id, content_id, content_type)
     VALUES (?, ?, ?, ?)
   `).bind(id, campaignId, body.content_id, body.content_type).run();
@@ -50,7 +51,7 @@ export async function handleEmailCampaigns(req, env) {
   if (!brandId) return json({ error: 'missing brand' }, 400);
 
   if (req.method === 'GET') {
-    const { results } = await env.DB.prepare(
+    const { results } = await getDB(env).prepare(
       `SELECT * FROM email_campaigns WHERE brand_id = ? ORDER BY created_at DESC`
     ).bind(brandId).all();
     return json({ campaigns: results });
@@ -59,7 +60,7 @@ export async function handleEmailCampaigns(req, env) {
   if (req.method === 'POST') {
     const body = await req.json();
     const id = nanoid();
-    await env.DB.prepare(`
+    await getDB(env).prepare(`
       INSERT INTO email_campaigns (id, brand_id, campaign_id, name, objective)
       VALUES (?, ?, ?, ?, ?)
     `).bind(id, brandId, body.campaign_id ?? null, body.name, body.objective).run();
@@ -74,7 +75,7 @@ export async function handleEmailMessages(req, env) {
   if (!brandId) return json({ error: 'missing brand' }, 400);
 
   if (req.method === 'GET') {
-    const { results } = await env.DB.prepare(
+    const { results } = await getDB(env).prepare(
       `SELECT * FROM email_messages WHERE brand_id = ? ORDER BY created_at DESC`
     ).bind(brandId).all();
     return json({ messages: results });
@@ -83,7 +84,7 @@ export async function handleEmailMessages(req, env) {
   if (req.method === 'POST') {
     const body = await req.json();
     const id = nanoid();
-    await env.DB.prepare(`
+    await getDB(env).prepare(`
       INSERT INTO email_messages (id, brand_id, campaign_id, template_id, subject, html, text)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).bind(
@@ -106,7 +107,7 @@ export async function handleEmailTemplates(req, env) {
   if (!brandId) return json({ error: 'missing brand' }, 400);
 
   if (req.method === 'GET') {
-    const { results } = await env.DB.prepare(
+    const { results } = await getDB(env).prepare(
       `SELECT * FROM email_templates WHERE brand_id = ? ORDER BY created_at DESC`
     ).bind(brandId).all();
     return json({ templates: results });
@@ -115,7 +116,7 @@ export async function handleEmailTemplates(req, env) {
   if (req.method === 'POST') {
     const body = await req.json();
     const id = nanoid();
-    await env.DB.prepare(`
+    await getDB(env).prepare(`
       INSERT INTO email_templates (id, brand_id, name, subject, html, text)
       VALUES (?, ?, ?, ?, ?, ?)
     `).bind(id, brandId, body.name, body.subject, body.html, body.text).run();
@@ -129,6 +130,6 @@ export async function handleEmailTemplates(req, env) {
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json' }
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Module': 'campaigns-emails' }
   });
 }

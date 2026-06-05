@@ -46,7 +46,7 @@ async function generateSeed() {
 
   const accounts = [
     { email: "admin@mypilotpost.com", role: "super_admin", password: superAdminPassword },
-    { email: "ops@mypilotpost.com", role: "operations", password: opsPassword },
+    { email: "ops@mypilotpost.com", role: "ops", password: opsPassword },
     { email: "support@mypilotpost.com", role: "support", password: supportPassword }
   ];
 

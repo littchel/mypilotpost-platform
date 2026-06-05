@@ -1135,10 +1135,15 @@ export default {
           return withCors(request, adminComplianceAuditLog(request, env));
         }
 
-        /* ---------- SYSTEM STATUS ---------- */
+        /* ---------- SYSTEM STATUS & EVENTS ---------- */
         if (path === "/api/v1/admin/system/status") {
           await requireAdminAuth(request, env);
           return getAdminSystemStatus(env);
+        }
+
+        if (path === "/api/v1/admin/system/events" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return getSystemEvents(request, env);
         }
 
         /* ---------- OPERATIONS / HEALTH ---------- */

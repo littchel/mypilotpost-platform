@@ -68,7 +68,7 @@ export async function requireAuth(request, env) {
 
     if (!link) {
       // Admin roles operate without a brand context — bypass the brand gate
-      const ADMIN_ROLES = ['super_admin', 'admin', 'operations', 'support'];
+      const ADMIN_ROLES = ['super_admin', 'admin', 'ops', 'operations', 'support'];
       if (ADMIN_ROLES.includes(payload.role || '')) {
         brand_id = null;
       } else {
@@ -134,7 +134,7 @@ export async function requirePermission(request, env, permission) {
  */
 export async function requireAdmin(request, env) {
   const auth = await requireAuth(request, env);
-  const adminRoles = ['super_admin', 'admin', 'operations', 'support'];
+  const adminRoles = ['super_admin', 'admin', 'ops', 'operations', 'support'];
   
   if (!adminRoles.includes(auth.role)) {
     throw error("Access denied: administrator role required", "FORBIDDEN", null, 403);

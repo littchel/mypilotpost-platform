@@ -8,7 +8,7 @@ import { json, error } from "../lib/json.js";
 import { getDB } from "../lib/db.js";
 import { verifyJWT, issueJWT } from "./jwt.js";
 
-const ADMIN_ROLES = ["super_admin", "admin", "operations", "support"];
+const ADMIN_ROLES = ["super_admin", "admin", "ops", "operations", "support"];
 
 /**
  * POST /api/admin/login

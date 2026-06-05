@@ -6,19 +6,23 @@
 export const PERMISSIONS = {
   super_admin: ["*"],
 
-  admin: [
+  // legacy alias — treated as super_admin for backward compat
+  admin: ["*"],
+
+  // ops: customers, growth, content, integrations, notifications, reports, health — NO permission changes
+  ops: [
     "users:read", "users:write",
     "audits:read",
     "analytics:read",
     "billing:read",
     "blog:write", "blog:read",
     "support:read", "support:write",
-    "pricing:write", "pricing:read",
-    "promotions:write", "promotions:read",
+    "pricing:read",
     "messaging:write",
     "operations:read"
   ],
 
+  // operations: DB-stored alias for ops — same permissions
   operations: [
     "users:read", "users:write",
     "audits:read",
@@ -31,6 +35,7 @@ export const PERMISSIONS = {
     "operations:read"
   ],
 
+  // support: tickets, customers, notifications, activity, reports — NO billing, NO system, NO roles
   support: [
     "users:read",
     "audits:read",
@@ -38,7 +43,6 @@ export const PERMISSIONS = {
     "support:read", "support:write",
     "reports:read",
     "connections:read",
-    "blog:read",
     "messaging:write"
   ],
 

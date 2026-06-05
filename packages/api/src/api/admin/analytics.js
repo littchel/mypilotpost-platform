@@ -87,8 +87,8 @@ export async function deliveryAnalytics(env) {
     total_jobs: total,
     delivered,
     failed,
-    success_rate: total > 0 ? delivered / total : 0,
-    failure_rate: total > 0 ? failed / total : 0,
+    success_rate: total > 0 ? Math.round((delivered / total) * 100) : 0,
+    failure_rate: total > 0 ? Math.round((failed / total) * 100) : 0,
 
     retry_stats: {
       total_attempts: retryStats?.total_attempts ?? 0,

@@ -682,7 +682,7 @@ pre{font-size:.72rem;background:#f8fafc;border:1px solid var(--border);padding:.
 
 <script>
 /* ── BUILD INFO ── */
-const BUILD_VERSION = "v2.1.0";
+const BUILD_VERSION = "v2.2.0";
 const BUILD_TIMESTAMP = "2026-05-28T13:00:00Z";
 const ENVIRONMENT = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "development" : "production";
 
@@ -708,7 +708,7 @@ document.addEventListener("DOMContentLoaded", () => {
 let token = localStorage.getItem("adminToken");
 let currentAdmin = null;
 
-const ADMIN_ROLES = ["admin", "super_admin", "operations", "support"];
+const ADMIN_ROLES = ["super_admin", "admin", "ops", "operations", "support"];
 
 function decodeJwt(t) {
   try {
@@ -774,10 +774,53 @@ document.getElementById("loginForm").onsubmit = async (e) => {
   loadSection("overview");
 };
 
+// Sections accessible by role. super_admin/admin see everything.
+const SECTION_ROLES = {
+  overview:         ["super_admin","admin","ops","operations","support"],
+  customers:        ["super_admin","admin","ops","operations","support"],
+  analytics:        ["super_admin","admin","ops","operations","support"],
+  billing:          ["super_admin","admin","ops","operations"],
+  pricing:          ["super_admin","admin"],
+  promotions:       ["super_admin","admin"],
+  blog:             ["super_admin","admin","ops","operations"],
+  emails:           ["super_admin","admin","ops","operations"],
+  support:          ["super_admin","admin","ops","operations","support"],
+  support_requests: ["super_admin","admin","ops","operations","support"],
+  messaging:        ["super_admin","admin","ops","operations","support"],
+  comm_ops:         ["super_admin","admin","ops","operations","support"],
+  mem_events:       ["super_admin","admin","ops","operations"],
+  mem_features:     ["super_admin","admin","ops","operations"],
+  mem_memory:       ["super_admin","admin","ops","operations"],
+  operations:       ["super_admin","admin","ops","operations"],
+  integrations:     ["super_admin","admin","ops","operations"],
+  attribution:      ["super_admin","admin","ops","operations"],
+  certification:    ["super_admin","admin","ops","operations"],
+  system:           ["super_admin","admin"],
+  compliance:       ["super_admin","admin"],
+};
+
 function applySession() {
   if (!currentAdmin) return;
   document.getElementById("adminEmail").textContent = currentAdmin.email;
-  document.getElementById("adminRoleBadge").textContent = currentAdmin.role.toUpperCase().replace("_", " ");
+  document.getElementById("adminRoleBadge").textContent = currentAdmin.role.toUpperCase().replace(/_/g, " ");
+  applyRBAC(currentAdmin.role);
+}
+
+function applyRBAC(role) {
+  document.querySelectorAll(".nav-item[data-section]").forEach(n => {
+    const allowed = SECTION_ROLES[n.dataset.section];
+    n.style.display = (!allowed || allowed.includes(role)) ? "" : "none";
+  });
+  // Hide section nav-section labels that have no visible children
+  document.querySelectorAll(".nav-section").forEach(label => {
+    let sibling = label.nextElementSibling;
+    let anyVisible = false;
+    while (sibling && !sibling.classList.contains("nav-section")) {
+      if (sibling.style.display !== "none") anyVisible = true;
+      sibling = sibling.nextElementSibling;
+    }
+    label.style.display = anyVisible ? "" : "none";
+  });
 }
 
 function logout() {
@@ -811,8 +854,11 @@ function loadSection(id) {
     overview: loadOverview, customers: loadCustomers, analytics: loadAnalytics,
     billing: loadBilling, pricing: loadPricing, promotions: loadPromotions,
     blog: loadBlog, emails: loadEmails, support: loadSupport,
-    messaging: loadMessaging, operations: loadOperations, integrations: loadIntegrations,
-    attribution: loadAttribution, certification: loadCertification, system: loadSystem, compliance: loadCompliance
+    support_requests: loadSupportRequests, messaging: loadMessaging,
+    comm_ops: loadCommOps, mem_events: loadMemEvents, mem_features: loadMemFeatures,
+    mem_memory: loadMemMemory, operations: loadOperations, integrations: loadIntegrations,
+    attribution: loadAttribution, certification: loadCertification,
+    system: loadSystem, compliance: loadCompliance
   };
   if (map[id]) map[id]();
 }
@@ -820,7 +866,7 @@ function loadSection(id) {
 /* ── UTIL ── */
 function fmt(n) { return n?.toLocaleString() ?? "—"; }
 function fmtDate(s) { return s ? new Date(s).toLocaleDateString() : "—"; }
-// price_monthly is stored in cents (49900 = R499). Divide by 100 for display.
+// Prices are stored in cents in price_cents column; divide by 100 for display.
 function fmtMoney(cents) { return cents != null ? `R${Math.round(Number(cents) / 100).toLocaleString()}` : "—"; }
 
 function debounce(fn, delay) {
@@ -938,7 +984,7 @@ async function loadPricing() {
   body.innerHTML = plans.map(p => `
     <tr>
       <td><strong>${p.name}</strong><br><span style="font-size:.7rem;color:var(--muted)">${p.id}</span></td>
-      <td>${fmtMoney(p.price_monthly)}</td>
+      <td>${fmtMoney(p.price_cents != null ? p.price_cents : p.price_monthly * 100)}</td>
       <td>${p.posts_per_month_limit ?? "—"}</td>
       <td>${p.ai_generations_limit ?? "—"}</td>
       <td>${p.social_accounts_limit ?? "—"}</td>
@@ -1540,7 +1586,7 @@ async function certValidateMedia() {
   if (!url || !brand_id || !out) return;
   out.innerHTML = `<div style="font-size:.75rem;color:var(--muted)">Checking…</div>`;
   const res = await apiFetch(`/v1/admin/certification/validate-media?brand_id=${brand_id}`, {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url })
+    method: "POST", body: JSON.stringify({ url })
   });
   if (!res) { out.innerHTML = `<div style="font-size:.75rem;color:var(--bad)">Request failed.</div>`; return; }
   const bg = res.ok ? "#f0fdf4" : "#fef2f2";
@@ -1656,11 +1702,12 @@ async function loadAttribution() {
 /* SYSTEM LOG */
 async function loadSystem() {
   const sev = document.getElementById("systemSeverity")?.value || "";
-  const d = await apiFetch(`/v1/admin/system/status`);
+  const qs = sev ? `?severity=${encodeURIComponent(sev)}` : "";
+  const d = await apiFetch(`/v1/admin/system/events${qs}`);
   const out = document.getElementById("systemOut");
   if (!d) { out.innerHTML = `<div class="empty">Failed to load</div>`; return; }
-  const events = d.recent_events || [];
-  if (!events.length) { out.innerHTML = `<div class="empty">No events logged</div>`; return; }
+  const events = d.events || [];
+  if (!events.length) { out.innerHTML = `<div class="empty">No events logged${sev ? " for severity: " + sev : ""}</div>`; return; }
   out.innerHTML = `<table style="width:100%;border-collapse:collapse">
     <thead><tr>
       <th style="padding:.5rem;background:#f1f5f9;font-size:.7rem;text-align:left">Time</th>
@@ -1672,7 +1719,7 @@ async function loadSystem() {
       <tr>
         <td style="padding:.5rem;font-size:.75rem;white-space:nowrap">${fmtDate(e.created_at)}</td>
         <td style="padding:.5rem"><span class="badge ${e.severity==='critical'?'bad':e.severity==='warning'?'warn':'neutral'}">${e.severity}</span></td>
-        <td style="padding:.5rem;font-size:.75rem">${e.source}</td>
+        <td style="padding:.5rem;font-size:.75rem">${e.source || "—"}</td>
         <td style="padding:.5rem;font-size:.75rem">${e.message}</td>
       </tr>
     `).join("")}</tbody>
@@ -1776,12 +1823,12 @@ async function loadSupportRequests() {
   if (!tbody) return;
   tbody.innerHTML = '<tr><td colspan="6" class="empty">Loading…</td></tr>';
   try {
-    const data = await apiFetch(`/api/v1/admin/support/requests?status=${status}`);
+    const data = await apiFetch(`/v1/admin/support/requests?status=${status}`);
     const rows = (data.data || []);
     if (!rows.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">No requests.</td></tr>'; return; }
     tbody.innerHTML = rows.map(r => `
       <tr>
-        <td style="padding:.6rem 1rem;font-size:.82rem">${r.name || '—')}<div style="font-size:.7rem;color:var(--muted)">${r.email || '')}</div></td>
+        <td style="padding:.6rem 1rem;font-size:.82rem">${r.name || '—'}<div style="font-size:.7rem;color:var(--muted)">${r.email || '—'}</div></td>
         <td style="padding:.6rem 1rem"><span style="font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:100px;background:#eff6ff;color:#2563eb;text-transform:capitalize">${r.category}</span></td>
         <td style="padding:.6rem 1rem;font-size:.82rem">${r.subject}</td>
         <td style="padding:.6rem 1rem"><span style="font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:100px;background:${r.status==='resolved'?'#f0fdf4':'#fff7ed'};color:${r.status==='resolved'?'#16a34a':'#d97706'}">${r.status}</span></td>
@@ -1795,7 +1842,7 @@ async function loadSupportRequests() {
 
 async function resolveSupportRequest(id) {
   try {
-    await apiFetch(`/api/v1/admin/support/requests/${id}`, { method: 'PUT', body: JSON.stringify({ status: 'resolved' }) });
+    await apiFetch(`/v1/admin/support/requests/${id}`, { method: 'PUT', body: JSON.stringify({ status: 'resolved' }) });
     loadSupportRequests();
   } catch(e) { alert('Error: ' + e.message); }
 }
@@ -1806,7 +1853,7 @@ async function loadCommOps() {
   if (!tbody) return;
   tbody.innerHTML = '<tr><td colspan="3" class="empty">Loading…</td></tr>';
   try {
-    const data = await apiFetch('/api/v1/admin/comms/delivery');
+    const data = await apiFetch('/v1/admin/comms/delivery');
     const rows = data.data || [];
 
     // Compute summary
