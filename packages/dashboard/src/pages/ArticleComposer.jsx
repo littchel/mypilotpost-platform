@@ -1,5 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import BlogAssistantModal from "../components/shared/BlogAssistantModal";
+import MediaSourceModal from "../components/shared/MediaSourceModal";
+import { useBrand } from "../contexts/BrandContext";
+import { apiRequest } from "../lib/api/client";
 
 /**
  * ArticleComposer — Content Intelligence Edition
@@ -260,6 +263,8 @@ function DomainAutosuggest({ value, onChange }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function ArticleComposer({ campaigns = [] }) {
+  const { activeBrand } = useBrand();
+
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [primaryKeyword, setPrimaryKeyword] = useState('');
@@ -268,6 +273,12 @@ export default function ArticleComposer({ campaigns = [] }) {
   const [campaignId, setCampaignId] = useState('');
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [contentSubTab, setContentSubTab] = useState("compose");
+  const [generating, setGenerating] = useState(false);
+  const [imageOpen, setImageOpen] = useState(false);
+  const [attachedImage, setAttachedImage] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem('mpp_article_image') || 'null'); } catch { return null; }
+  });
+  const [articleId, setArticleId] = useState(() => sessionStorage.getItem('mpp_article_id') || null);
 
   const wordCount = countWords(body);
   const seoScore = computeSEO({ title, body, primaryKeyword, secondaryKeywords });
@@ -277,14 +288,94 @@ export default function ArticleComposer({ campaigns = [] }) {
   const kwWords = primaryKeyword.trim() ? (body.toLowerCase().match(new RegExp(`\\b${primaryKeyword.toLowerCase()}\\b`, 'g')) || []).length : 0;
   const kwDensity = wordCount > 0 && kwWords > 0 ? ((kwWords / wordCount) * 100).toFixed(1) : null;
 
-  const handleAssistantGenerate = (data) => {
-    setTitle(`${data.goal} for ${data.audience}`);
-    setBody(`# ${data.goal} Strategy\n\nThis article focuses on ${data.primaryKeyword} to target ${data.audience}.\n\nSecondary focus areas: ${data.secondaryKeywords}.\n\nLocalization set to ${data.domain}.\n\nGenerated with myPilotPost Assistant.`);
-    setPrimaryKeyword(data.primaryKeyword);
-    setSecondaryKeywords(data.secondaryKeywords);
+  const handleAssistantGenerate = async (data) => {
+    setGenerating(true);
+    setContentSubTab("compose");
+    try {
+      const res = await apiRequest("/api/customer/ai/generate/blog", {
+        method: "POST",
+        body: JSON.stringify({
+          goal:               data.goal,
+          audience:           data.audience,
+          primary_keyword:    data.primaryKeyword,
+          secondary_keywords: data.secondaryKeywords,
+          domain:             data.domain,
+          brand_id:           activeBrand?.id,
+        }),
+      });
+      if (res?.title) setTitle(res.title);
+      if (res?.body)  setBody(res.body);
+      if (data.primaryKeyword)    setPrimaryKeyword(data.primaryKeyword);
+      if (data.secondaryKeywords) setSecondaryKeywords(data.secondaryKeywords);
+    } catch {
+      // Fallback to structured template when API unavailable
+      setTitle(`${data.goal} for ${data.audience}`);
+      setBody(`# ${data.goal} Strategy\n\nThis article focuses on ${data.primaryKeyword} to target ${data.audience}.\n\nSecondary focus areas: ${data.secondaryKeywords}.\n\nLocalization set to ${data.domain}.\n\nGenerated with myPilotPost Assistant.`);
+      setPrimaryKeyword(data.primaryKeyword);
+      setSecondaryKeywords(data.secondaryKeywords);
+    } finally {
+      setGenerating(false);
+    }
     const selectedDomain = GOOGLE_DOMAINS.find(d => d.domain === data.domain) || GOOGLE_DOMAINS[0];
     setDomain(selectedDomain);
-    setContentSubTab("compose");
+  };
+
+  const handleImageSelect = async (media) => {
+    const url = media.preview_url || media.url || "";
+    const entry = { url, assetId: media.id };
+    setAttachedImage(entry);
+    try { sessionStorage.setItem('mpp_article_image', JSON.stringify(entry)); } catch {}
+    if (articleId && media.id) {
+      apiRequest("/api/customer/media/attach", {
+        method: "POST",
+        body: JSON.stringify({ content_type: "blog", content_id: articleId, media_id: media.id }),
+      }).catch(() => {});
+    }
+  };
+
+  const handleSave = async () => {
+    if (!title.trim() && !body.trim()) return null;
+    try {
+      const resp = await apiRequest("/api/customer/vault", {
+        method: "POST",
+        body: JSON.stringify({
+          content_type:     "blog",
+          title,
+          body,
+          campaign_id:      campaignId || null,
+          lifecycle_status: "draft",
+          metadata:         JSON.stringify({ keyword: primaryKeyword, secondaryKeywords, domain: domain?.domain }),
+        }),
+      });
+      const newId = resp?.content_id;
+      if (newId) {
+        setArticleId(newId);
+        try { sessionStorage.setItem('mpp_article_id', newId); } catch {}
+        if (attachedImage?.assetId) {
+          apiRequest("/api/customer/media/attach", {
+            method: "POST",
+            body: JSON.stringify({ content_type: "blog", content_id: newId, media_id: attachedImage.assetId }),
+          }).catch(() => {});
+        }
+      }
+      return newId;
+    } catch { return null; }
+  };
+
+  const handlePost = async () => {
+    const id = await handleSave();
+    if (id) {
+      await apiRequest(`/api/customer/vault/${id}/publish-now`, { method: "POST" }).catch(() => {});
+      alert("Article queued for delivery.");
+    } else {
+      alert("Nothing to post — add a title or content first.");
+    }
+  };
+
+  const handleSchedule = async () => {
+    const id = await handleSave();
+    if (id) alert("Draft saved. Use Calendar to set a publish date.");
+    else alert("Nothing to save — add a title or content first.");
   };
 
   return (
@@ -299,7 +390,7 @@ export default function ArticleComposer({ campaigns = [] }) {
           <button className={`btn-grey${contentSubTab === "drafts" ? " active" : ""}`} onClick={() => setContentSubTab("drafts")}>Drafts</button>
           <button className={`btn-grey${contentSubTab === "scheduled" ? " active" : ""}`} onClick={() => setContentSubTab("scheduled")}>Scheduled</button>
           <button className={`btn-grey${contentSubTab === "approval" ? " active" : ""}`} onClick={() => setContentSubTab("approval")}>Share for Approval</button>
-          <button className="btn-grey" onClick={() => alert("Media Library opened")}>Image</button>
+          <button className="btn-grey" onClick={() => setImageOpen(true)}>Image</button>
         </div>
         <div>
           <button className="btn-pilot" onClick={() => setAssistantOpen(true)}>myPilotPost Assistant</button>
@@ -313,7 +404,14 @@ export default function ArticleComposer({ campaigns = [] }) {
           </div>
           <div className="row g-3">
             <div className="col-md-9">
-              <textarea className="card-workspace p-3 border-0 shadow-sm min-h-500 small line-height-1-6 w-100 res-none" id="art-editor" placeholder="Start writing your masterpiece or generate content with the Assistant." value={body} onChange={(e) => setBody(e.target.value)} style={{ outline: 'none', fontFamily: 'inherit' }} />
+              {attachedImage && (
+                <div className="mb-2 d-flex align-items-center gap-2" style={{ padding: '6px 10px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <img src={attachedImage.url} alt="" style={{ width: 56, height: 40, objectFit: 'cover', borderRadius: 5, flexShrink: 0 }} />
+                  <span className="extra-small text-muted flex-fill" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Featured image attached</span>
+                  <button onClick={() => { setAttachedImage(null); try { sessionStorage.removeItem('mpp_article_image'); } catch {} }} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
+                </div>
+              )}
+              <textarea className="card-workspace p-3 border-0 shadow-sm min-h-500 small line-height-1-6 w-100 res-none" id="art-editor" placeholder={generating ? "Generating content…" : "Start writing your masterpiece or generate content with the Assistant."} value={generating ? "" : body} onChange={(e) => !generating && setBody(e.target.value)} disabled={generating} style={{ outline: 'none', fontFamily: 'inherit', opacity: generating ? 0.5 : 1, cursor: generating ? 'wait' : 'auto' }} />
             </div>
             <div className="col-md-3">
               <div className="card-workspace health-sidebar-card">
@@ -334,9 +432,9 @@ export default function ArticleComposer({ campaigns = [] }) {
                 <button className="btn-grey btn-sm w-100 mb-1">Grammar Check</button>
               </div>
               <div className="d-grid gap-2 mt-2">
-                <button className="btn-grey" onClick={() => alert('Scheduled')}>Schedule Article</button>
+                <button className="btn-grey" onClick={handleSchedule}>Schedule Article</button>
                 <div className="d-flex gap-2">
-                  <button className="btn-pilot flex-fill" onClick={() => alert('Posted')}>Post Now</button>
+                  <button className="btn-pilot flex-fill" onClick={handlePost}>Post Now</button>
                   <button className="btn-grey flex-fill" onClick={() => { navigator.clipboard.writeText(`${title}\n\n${body}`); alert('Copied'); }}>Copy</button>
                 </div>
               </div>
@@ -351,6 +449,7 @@ export default function ArticleComposer({ campaigns = [] }) {
       )}
 
       <BlogAssistantModal isOpen={assistantOpen} onClose={() => setAssistantOpen(false)} onGenerate={handleAssistantGenerate} />
+      <MediaSourceModal isOpen={imageOpen} onClose={() => setImageOpen(false)} onSelect={handleImageSelect} activeBrand={activeBrand} socialContent={title} />
     </div>
   );
 }
