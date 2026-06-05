@@ -255,7 +255,8 @@ const ArticleCreator = ({ activeBrandOverride, initialArticle, onSaveSuccess }) 
   const fetchCampaigns = useCallback(async () => {
     setCampaignsState(prev => ({ ...prev, status: "loading" }));
     const res = await apiSafeFetch("/api/customer/campaigns");
-    setCampaignsState(res);
+    const arr = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+    setCampaignsState({ status: res.status, data: arr });
   }, []);
 
   useEffect(() => { if (token) fetchCampaigns(); }, [token, fetchCampaigns]);
@@ -456,7 +457,7 @@ const ArticleCreator = ({ activeBrandOverride, initialArticle, onSaveSuccess }) 
   const wordCount    = countWords(content);
   const readability  = computeReadability(content);
   const statusMeta   = articleStatusMeta(articleStatus);
-  const campaigns    = campaignsState.data || [];
+  const campaigns    = Array.isArray(campaignsState.data) ? campaignsState.data : [];
   const featuredImg  = mediaState.data[0] || null;
 
   // ── RENDER ────────────────────────────────────────────────────────────────
