@@ -448,7 +448,13 @@ function PostsTab({ activeBrand, connectedPlatforms, switchTab }) {
       const list = (data.opportunities || []).map((o, i) => ({ ...o, _index: i }));
       setOpps(list);
       // Fetch live images from media engine based on opportunity context
-      fetchMediaSuggestions({ platform: 'instagram', contentType: 'social', text: list.slice(0, 3).map(o => o.title || o.idea || '').join(' ') })
+      fetchMediaSuggestions({
+        platform:    (connectedPlatforms?.[0]?.platform) || activeBrand?.primary_platform || 'instagram',
+        contentType: 'social',
+        text:        list.slice(0, 3).map(o => o.title || o.idea || '').join(' '),
+        brand:       activeBrand?.name || '',
+        industry:    activeBrand?.industry || '',
+      })
         .then(buckets => {
           const pool = [...(buckets.agencyPicks || []), ...(buckets.trending || [])];
           list.forEach((_, i) => {

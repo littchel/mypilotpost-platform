@@ -163,6 +163,11 @@ function PexelsCard({ item, onUse, loading }) {
       {res && (
         <div style={{ padding: "2px 5px 0", fontSize: 8, color: "#94a3b8", fontVariantNumeric: "tabular-nums" }}>{res}</div>
       )}
+      {item.reasons?.[0] && (
+        <div title={item.reasons.join(' · ')} style={{ padding: "1px 5px 0", fontSize: 8, color: "#0ea5e9", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {item.reasons[0]}
+        </div>
+      )}
       <div style={{ padding: "3px 5px 5px" }}>
         <button
           onClick={() => onUse(item)}
@@ -546,6 +551,7 @@ export default function CreatePost({
   campaigns = [],
   connections = [],
   brandName = "Your Brand",
+  brandIndustry = "",
   brandTimezone = null,
 }) {
   const [content, setContent]               = useState("");
@@ -748,7 +754,7 @@ export default function CreatePost({
     setMediaError(false);
     try {
       const platform = selectedPlatforms[0] || "instagram";
-      const buckets = await fetchMediaSuggestions({ platform, contentType: "social", text: content, brand: brandName, industry: "" });
+      const buckets = await fetchMediaSuggestions({ platform, contentType: "social", text: content, brand: brandName, industry: brandIndustry });
       setMediaBuckets(buckets);
       setPexelsItems(buckets.agencyPicks); // legacy compat
     } catch {
@@ -756,7 +762,7 @@ export default function CreatePost({
     } finally {
       setMediaLoading(false);
     }
-  }, [mediaBuckets, selectedPlatforms, content, brandName]);
+  }, [mediaBuckets, selectedPlatforms, content, brandName, brandIndustry]);
 
   const handleSuggestedToggle = () => {
     const next = !showSuggested;

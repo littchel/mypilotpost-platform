@@ -1336,6 +1336,7 @@ function App() {
             campaigns={campaignsList}
             connections={connectionsData?.connections || []}
             brandName={activeBrand?.name || companyName || "Your Brand"}
+            brandIndustry={activeBrand?.industry || ""}
             brandTimezone={activeBrand?.timezone || null}
           />
         </TabContent>
