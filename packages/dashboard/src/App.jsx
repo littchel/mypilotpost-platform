@@ -21,7 +21,7 @@ import ActivationStep from "./components/onboarding/steps/ActivationStep";
 import BrandAuditPage from "./pages/BrandAuditPage";
 import ContentVault from "./pages/ContentVault";
 import CalendarSchedule from "./pages/CalendarSchedule";
-import ArticleCreator from "./pages/ArticleCreator";
+import ArticleComposer from "./pages/ArticleComposer";
 import Campaigns from "./pages/Campaigns";
 import Analytics from "./pages/Analytics";
 import SEOCentre from "./pages/SEOCentre";
@@ -1343,7 +1343,7 @@ function App() {
 
         {/* Blog Tab */}
         <TabContent id="blog" activeTab={activeTab}>
-          <ArticleCreator />
+          <ArticleComposer campaigns={campaignsList} />
         </TabContent>
 
         {/* Campaigns Tab */}

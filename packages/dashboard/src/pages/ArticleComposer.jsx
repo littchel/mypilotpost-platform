@@ -259,12 +259,13 @@ function DomainAutosuggest({ value, onChange }) {
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function ArticleComposer() {
+export default function ArticleComposer({ campaigns = [] }) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [primaryKeyword, setPrimaryKeyword] = useState('');
   const [secondaryKeywords, setSecondaryKeywords] = useState('');
   const [domain, setDomain] = useState(GOOGLE_DOMAINS[0]);
+  const [campaignId, setCampaignId] = useState('');
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [contentSubTab, setContentSubTab] = useState("compose");
 
@@ -291,6 +292,10 @@ export default function ArticleComposer() {
       {/* ── TOP BAR ── */}
       <div className="d-flex justify-content-between align-items-center mb-3">
         <div className="d-flex gap-1 align-items-center">
+          <select className="form-select form-select-sm border-subtle" style={{ width: 160, fontSize: 12 }} value={campaignId} onChange={e => setCampaignId(e.target.value)}>
+            <option value="">No Campaign</option>
+            {campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
           <button className={`btn-grey${contentSubTab === "drafts" ? " active" : ""}`} onClick={() => setContentSubTab("drafts")}>Drafts</button>
           <button className={`btn-grey${contentSubTab === "scheduled" ? " active" : ""}`} onClick={() => setContentSubTab("scheduled")}>Scheduled</button>
           <button className={`btn-grey${contentSubTab === "approval" ? " active" : ""}`} onClick={() => setContentSubTab("approval")}>Share for Approval</button>
