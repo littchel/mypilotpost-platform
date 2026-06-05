@@ -570,7 +570,7 @@ export default function CreatePost({
   const [campaignId, setCampaignId]         = useState(propCampaignId || "");
   const [scheduledTime, setScheduledTime]   = useState("");
   const [timezone, setTimezone]             = useState(brandTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
-  const [activeTopTab, setActiveTopTab]     = useState("drafts");
+  const [activeTopTab, setActiveTopTab]     = useState("editor");
   const [vaultItems, setVaultItems]         = useState([]);
   const [vaultLoading, setVaultLoading]     = useState(false);
   const [actionLoading, setActionLoading]   = useState(false);
@@ -587,7 +587,6 @@ export default function CreatePost({
   const fileInputRef    = useRef(null);
   const canvaFileRef    = useRef(null);
   const replaceIndexRef = useRef(null);
-  const editorRef       = useRef(null);
 
   useEffect(() => { if (propCampaignId) setCampaignId(propCampaignId); }, [propCampaignId]);
   useEffect(() => { if (brandTimezone) setTimezone(brandTimezone); }, [brandTimezone]);
@@ -831,7 +830,6 @@ export default function CreatePost({
       loadMediaSuggestions();
     }
     setAssistantOpen(false);
-    setTimeout(() => editorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 200);
   };
 
   // ── Vault lifecycle panel ────────────────────────────────────────────────
@@ -867,7 +865,16 @@ export default function CreatePost({
     } catch {}
   }, []);
 
-  useEffect(() => { loadVault("drafts"); loadTabCounts(); }, [loadVault, loadTabCounts]);
+  useEffect(() => { loadTabCounts(); }, [loadTabCounts]);
+
+  const handleTabSwitch = useCallback((tabId) => {
+    if (tabId === "editor") {
+      setActiveTopTab("editor");
+      setSelectedVaultItem(null);
+    } else {
+      loadVault(tabId);
+    }
+  }, [loadVault]);
 
   const handleVaultEdit = (item) => {
     setContent(item.body || item.text || "");
@@ -876,7 +883,7 @@ export default function CreatePost({
       : [];
     if (platforms.length) setSelectedPlatforms(platforms);
     setSelectedVaultItem(item);
-    editorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setActiveTopTab("editor");
   };
 
   const handleVaultDelete = async (item) => {
@@ -985,7 +992,7 @@ export default function CreatePost({
       await saveDraft();
       showToast("Draft saved");
       setVerificationOpen(false);
-      loadVault("drafts");
+      loadTabCounts();
     } catch (e) {
       showToast(e.message || "Could not save draft", "error");
     } finally {
@@ -1001,7 +1008,7 @@ export default function CreatePost({
       const content_id = await saveDraft();
       await apiJSON(`/api/customer/vault/${content_id}/approval`, "POST", { action: "submit" });
       showToast("Sent for approval");
-      loadVault("approvals");
+      loadTabCounts();
     } catch (e) {
       showToast(e.message || "Approval request failed", "error");
     } finally {
@@ -1044,7 +1051,7 @@ export default function CreatePost({
       setPublishPhase("queued");
       setPublishResult({ content_id: asset.content_id, platforms: selectedPlatforms });
       showToast(scheduledTime ? "Post scheduled" : "Post queued for delivery");
-      loadVault(scheduledTime ? "scheduled" : "drafts");
+      loadTabCounts();
     } catch (e) {
       setPublishPhase("failed");
       showToast(e.message || "Publish failed", "error");
@@ -1057,6 +1064,7 @@ export default function CreatePost({
     setVerificationOpen(false);
     setContent(""); setOverrides({}); setMediaItems([]);
     setScheduledTime(""); setSelectedPlatforms(activeConnections.slice(0, 1).map(c => c.platform));
+    setActiveTopTab("editor");
   };
 
   const canPublish = content.trim().length > 0 && selectedPlatforms.length > 0;
@@ -1089,10 +1097,11 @@ export default function CreatePost({
     ? (VAULT_STATUS_META[selectedVaultItem.lifecycle_status] || { label: selectedVaultItem.lifecycle_status, color: "#64748b", bg: "#f1f5f9" })
     : null;
 
-  const TOP_TABS = [
+  const WORKSPACE_TABS = [
+    { id: "editor",    label: "Editor",    icon: "fas fa-pen"        },
     { id: "drafts",    label: "Drafts",    icon: "fas fa-file-alt"   },
-    { id: "scheduled", label: "Scheduled", icon: "fas fa-clock"      },
     { id: "approvals", label: "Approvals", icon: "fas fa-user-check" },
+    { id: "scheduled", label: "Scheduled", icon: "fas fa-clock"      },
   ];
 
   const scheduleLabel = (() => {
@@ -1106,16 +1115,16 @@ export default function CreatePost({
       <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple style={{ display: "none" }} onChange={handleFileSelect} />
       <input ref={canvaFileRef} type="file" accept="image/*,video/*" style={{ display: "none" }} onChange={handleCanvaFileSelect} />
 
-      {/* ── TOP BAR: Lifecycle tabs + Assistant ─────────────────────────── */}
+      {/* ── TOP BAR: Workspace tabs + Assistant ─────────────────────────── */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexShrink: 0, gap: 12 }}>
         <div style={{ display: "flex", gap: 5 }}>
-          {TOP_TABS.map(tab => {
-            const count = tabCounts[tab.id] || 0;
+          {WORKSPACE_TABS.map(tab => {
+            const count = tab.id !== "editor" ? (tabCounts[tab.id] || 0) : 0;
             const active = activeTopTab === tab.id;
             return (
               <button
                 key={tab.id}
-                onClick={() => loadVault(tab.id)}
+                onClick={() => handleTabSwitch(tab.id)}
                 style={{
                   display: "flex", alignItems: "center", gap: 6,
                   border: `1px solid ${active ? "#2563eb" : "#e2e8f0"}`,
@@ -1149,73 +1158,12 @@ export default function CreatePost({
         </button>
       </div>
 
-      {/* ── LIFECYCLE ROWS — collapsible, shown when items present ────── */}
-      {(vaultLoading || vaultItems.length > 0) && (
-        <div style={{ marginBottom: 8, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, flexShrink: 0, overflow: "hidden" }}>
-          <div style={{ maxHeight: 210, overflowY: "auto" }}>
-            {vaultLoading ? (
-              <div style={{ textAlign: "center", padding: "14px 0", color: "#94a3b8", fontSize: 12 }}>
-                <span className="spinner-border spinner-border-sm" style={{ color: "#2563eb", width: 14, height: 14, borderWidth: 2, marginRight: 6 }}></span>
-                Loading…
-              </div>
-            ) : (
-              vaultItems.map((item, i) => {
-                const preview = item.body || item.title || "—";
-                const itemPlatforms = item.platforms ? (Array.isArray(item.platforms) ? item.platforms : JSON.parse(item.platforms || "[]")) : [];
-                const date = item.updated_at ? new Date(item.updated_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "—";
-                const isSelected = selectedVaultItem?.id === item.id;
-                return (
-                  <div
-                    key={item.id || i}
-                    onClick={() => setSelectedVaultItem(isSelected ? null : item)}
-                    style={{
-                      padding: "9px 14px", borderBottom: "1px solid #f8fafc",
-                      display: "flex", alignItems: "center", gap: 10,
-                      cursor: "pointer",
-                      background: isSelected ? "#eff6ff" : "#fff",
-                      borderLeft: `3px solid ${isSelected ? "#2563eb" : "transparent"}`,
-                      transition: "background 0.1s",
-                    }}
-                  >
-                    {itemPlatforms.length > 0 && (
-                      <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
-                        {itemPlatforms.slice(0, 3).map(p => <PlatformIcon key={p} platform={p} size={12} />)}
-                      </div>
-                    )}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 500, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
-                        {preview.slice(0, 80)}
-                      </div>
-                      <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 1 }}>{date}</div>
-                    </div>
-                    <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                      {activeTopTab === "drafts" && (<>
-                        <VaultActionBtn color="#2563eb" onClick={() => handleVaultEdit(item)}>Edit</VaultActionBtn>
-                        <VaultActionBtn color="#10b981" onClick={() => handleVaultSendApproval(item)}>Send for Approval</VaultActionBtn>
-                        <VaultActionBtn color="#ef4444" onClick={() => handleVaultDelete(item)}>Delete</VaultActionBtn>
-                      </>)}
-                      {activeTopTab === "scheduled" && (<>
-                        <VaultActionBtn color="#2563eb" onClick={() => handleVaultEdit(item)}>Edit</VaultActionBtn>
-                        <VaultActionBtn color="#10b981" onClick={() => handleVaultPublishNow(item)}>Publish Now</VaultActionBtn>
-                        <VaultActionBtn color="#ef4444" onClick={() => handleVaultCancel(item)}>Cancel</VaultActionBtn>
-                      </>)}
-                      {activeTopTab === "approvals" && (<>
-                        <VaultActionBtn color="#2563eb" onClick={() => handleVaultEdit(item)}>Edit</VaultActionBtn>
-                        <VaultActionBtn color="#10b981" onClick={() => handleVaultPublishNow(item)}>Publish</VaultActionBtn>
-                        <VaultActionBtn color="#7c3aed" onClick={() => handleVaultDuplicate(item)}>Duplicate</VaultActionBtn>
-                        <VaultActionBtn color="#64748b" onClick={() => handleVaultWithdraw(item)}>Withdraw</VaultActionBtn>
-                      </>)}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-      )}
+      {/* ── WORKSPACE: Editor tab ↔ Vault tabs ───────────────────────────── */}
+      {activeTopTab === "editor" ? (
+        <>
 
-      {/* ── CANVA BANNER ────────────────────────────────────────────────── */}
-      {canvaBanner && (
+          {/* ── CANVA BANNER ────────────────────────────────────────────────── */}
+          {canvaBanner && (
         <div style={{
           background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: 8,
           padding: "10px 14px", marginBottom: 10, flexShrink: 0,
@@ -1296,7 +1244,7 @@ export default function CreatePost({
             </div>
 
             {/* ── CONTENT EDITOR ─────────────────────────────────────── */}
-            <div ref={editorRef} style={{ padding: "0 14px", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+            <div style={{ padding: "0 14px", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, flexShrink: 0 }}>
                 <label className="extra-small fw-bold text-muted text-uppercase mb-0">Post</label>
                 <span style={{ fontSize: 10, color: content.length > 2200 ? "#ef4444" : "#94a3b8" }}>{content.length} chars</span>
@@ -1527,6 +1475,89 @@ export default function CreatePost({
           <i className="fas fa-rocket"></i> {scheduledTime ? "Schedule" : "Publish"}
         </button>
       </div>
+
+        </>
+      ) : (
+
+        /* ── VAULT WORKSPACE ─────────────────────────────────────────────── */
+        <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+          <div style={{
+            flex: 1, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10,
+            overflow: "hidden", display: "flex", flexDirection: "column",
+          }}>
+            {vaultLoading ? (
+              <div style={{ textAlign: "center", padding: "60px 0", color: "#94a3b8", fontSize: 12 }}>
+                <span className="spinner-border spinner-border-sm" style={{ color: "#2563eb", width: 18, height: 18, borderWidth: 2, marginRight: 6 }}></span>
+                Loading…
+              </div>
+            ) : vaultItems.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "60px 20px", color: "#94a3b8" }}>
+                <i className={WORKSPACE_TABS.find(t => t.id === activeTopTab)?.icon} style={{ fontSize: 30, marginBottom: 12, display: "block" }} />
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#64748b", marginBottom: 6 }}>
+                  No {WORKSPACE_TABS.find(t => t.id === activeTopTab)?.label}
+                </div>
+                <div style={{ fontSize: 12, marginBottom: 20 }}>
+                  {activeTopTab === "drafts" ? "Save a draft to see it here." : activeTopTab === "approvals" ? "Send content for approval to see it here." : "Schedule a post to see it here."}
+                </div>
+                <button onClick={() => handleTabSwitch("editor")} style={{ background: "#2563eb", border: "none", borderRadius: 8, color: "#fff", fontSize: 13, fontWeight: 700, padding: "9px 20px", cursor: "pointer" }}>
+                  <i className="fas fa-pen" style={{ marginRight: 6 }} /> Create Post
+                </button>
+              </div>
+            ) : (
+              <div style={{ flex: 1, overflowY: "auto" }}>
+                {vaultItems.map((item, i) => {
+                  const preview = item.body || item.title || "—";
+                  const itemPlatforms = item.platforms ? (Array.isArray(item.platforms) ? item.platforms : JSON.parse(item.platforms || "[]")) : [];
+                  const date = item.updated_at ? new Date(item.updated_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "—";
+                  const isSelected = selectedVaultItem?.id === item.id;
+                  return (
+                    <div
+                      key={item.id || i}
+                      style={{
+                        padding: "12px 16px", borderBottom: "1px solid #f1f5f9",
+                        display: "flex", alignItems: "flex-start", gap: 12,
+                        background: isSelected ? "#eff6ff" : "#fff",
+                        borderLeft: `3px solid ${isSelected ? "#2563eb" : "transparent"}`,
+                      }}
+                    >
+                      {itemPlatforms.length > 0 && (
+                        <div style={{ display: "flex", gap: 3, flexShrink: 0, paddingTop: 3 }}>
+                          {itemPlatforms.slice(0, 3).map(p => <PlatformIcon key={p} platform={p} size={14} />)}
+                        </div>
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, color: "#0f172a", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {preview.slice(0, 120)}
+                        </div>
+                        <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>{date}</div>
+                      </div>
+                      <div style={{ display: "flex", gap: 5, flexShrink: 0, alignItems: "center" }}>
+                        {activeTopTab === "drafts" && (<>
+                          <VaultActionBtn color="#2563eb" onClick={() => handleVaultEdit(item)}>Edit</VaultActionBtn>
+                          <VaultActionBtn color="#10b981" onClick={() => handleVaultSendApproval(item)}>Send for Approval</VaultActionBtn>
+                          <VaultActionBtn color="#ef4444" onClick={() => handleVaultDelete(item)}>Delete</VaultActionBtn>
+                        </>)}
+                        {activeTopTab === "scheduled" && (<>
+                          <VaultActionBtn color="#2563eb" onClick={() => handleVaultEdit(item)}>Edit</VaultActionBtn>
+                          <VaultActionBtn color="#10b981" onClick={() => handleVaultPublishNow(item)}>Publish Now</VaultActionBtn>
+                          <VaultActionBtn color="#ef4444" onClick={() => handleVaultCancel(item)}>Cancel</VaultActionBtn>
+                        </>)}
+                        {activeTopTab === "approvals" && (<>
+                          <VaultActionBtn color="#2563eb" onClick={() => handleVaultEdit(item)}>Edit</VaultActionBtn>
+                          <VaultActionBtn color="#10b981" onClick={() => handleVaultPublishNow(item)}>Publish</VaultActionBtn>
+                          <VaultActionBtn color="#7c3aed" onClick={() => handleVaultDuplicate(item)}>Duplicate</VaultActionBtn>
+                          <VaultActionBtn color="#64748b" onClick={() => handleVaultWithdraw(item)}>Withdraw</VaultActionBtn>
+                        </>)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+      )}
 
       {/* ── MODALS ────────────────────────────────────────────────────────── */}
       {assistantOpen && (

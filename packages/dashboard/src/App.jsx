@@ -21,7 +21,7 @@ import ActivationStep from "./components/onboarding/steps/ActivationStep";
 import BrandAuditPage from "./pages/BrandAuditPage";
 import ContentVault from "./pages/ContentVault";
 import CalendarSchedule from "./pages/CalendarSchedule";
-import ArticleComposer from "./pages/ArticleComposer";
+import ArticleCreator from "./pages/ArticleCreator";
 import Campaigns from "./pages/Campaigns";
 import Analytics from "./pages/Analytics";
 import SEOCentre from "./pages/SEOCentre";
@@ -1343,7 +1343,7 @@ function App() {
 
         {/* Blog Tab */}
         <TabContent id="blog" activeTab={activeTab}>
-          <ArticleComposer onOpenAssistant={() => setAssistantOpen(true)} />
+          <ArticleCreator />
         </TabContent>
 
         {/* Campaigns Tab */}

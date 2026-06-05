@@ -5,10 +5,11 @@
  * No LLM. No new routes. Uses existing Pexels provider + KV cache.
  */
 
-import { generateBrief } from './brief.js';
-import { fetchPexels }   from './providers/pexels.js';
-import { dedupe }        from './dedupe.js';
-import { rankImages }    from './ranking.js';
+import { generateBrief }     from './brief.js';
+import { buildVisualContext } from './visual_context.js';
+import { fetchPexels }        from './providers/pexels.js';
+import { dedupe }             from './dedupe.js';
+import { rankImages }         from './ranking.js';
 import { cacheGet, cacheSet } from './providers/cache.js';
 
 function groupByCategory(images) {
@@ -98,27 +99,31 @@ function calcConfidence(ranked) {
 }
 
 export async function runMediaEngine(
-  { platform, contentType, format, text = '', title = '', brand = '', industry = '', goal = '' },
+  { platform, contentType, format, text = '', title = '', brand = '', industry = '', goal = '', brandDna = null },
   env
 ) {
   const brief = generateBrief({ platform, contentType, format, text, title, brand, industry, goal });
+
+  // Build visual_context ONCE — single source of truth for guardrails + match scoring (Step 3)
+  const visualContext = buildVisualContext({ industry, title, goal, format, brandDna });
 
   // Cache key includes format for format-specific caching
   const cacheKey = `${brief.query}::${brief.format}`;
   const cached = await cacheGet(cacheKey, platform, env).catch(() => null);
   if (cached) return cached;
 
-  // Fetch wider pool to survive stricter quality filter (1600px floor)
+  // Fetch wider pool to survive stricter quality filter (1600px floor + guardrails)
   const raw = await fetchPexels({ query: brief.query, orientation: brief.orientation, limit: 60 }, env);
 
   // Deduplicate (author limit 2, URL dedup)
   const unique = dedupe(raw);
 
-  // Rank with full brief context
+  // Rank with visual_context — industry guardrails + title↔image match scoring applied inside
   const ranked = rankImages(unique, {
-    tags:        brief.tags,
-    orientation: brief.orientation,
-    subjects:    brief.subjects,
+    tags:          brief.tags,
+    orientation:   brief.orientation,
+    subjects:      brief.subjects,
+    visualContext,
   });
 
   const confidence = calcConfidence(ranked);
@@ -150,11 +155,12 @@ export async function runMediaEngine(
     more:        more.map(strip),
     byCategory,
     meta: {
-      query:       brief.query,
-      orientation: brief.orientation,
-      style:       brief.style,
-      format:      brief.format,
+      query:         brief.query,
+      orientation:   brief.orientation,
+      style:         brief.style,
+      format:        brief.format,
       confidence,
+      visual_context: visualContext,
     },
   };
 
