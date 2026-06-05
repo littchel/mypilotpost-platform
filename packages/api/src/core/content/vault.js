@@ -389,9 +389,9 @@ export async function vaultApproval(request, env, auth) {
     ]);
 
     // Notify content creator
-    const creator = await db.prepare('SELECT u.email, u.full_name FROM users u JOIN content_vault cv ON cv.created_by = u.id WHERE cv.id = ?').bind(id).first().catch(() => null);
+    const creator = await db.prepare('SELECT u.email, u.full_name FROM users u JOIN content_vault cv ON cv.user_id = u.id WHERE cv.id = ?').bind(id).first().catch(() => null);
     if (creator) {
-      notify(env, { event: 'approval_approved', brandId: brand_id, recipientId: item.created_by, recipientEmail: creator.email, title: 'Content approved ✓', message: `"${item.title || 'Your content'}" was approved and is ready to schedule.`, data: { content_title: item.title }, link: `https://app.mypilotpost.com/dashboard` }).catch(() => {});
+      notify(env, { event: 'approval_approved', brandId: brand_id, recipientId: item.user_id, recipientEmail: creator.email, title: 'Content approved ✓', message: `"${item.title || 'Your content'}" was approved and is ready to schedule.`, data: { content_title: item.title }, link: `https://app.mypilotpost.com/dashboard` }).catch(() => {});
     }
 
     emit(env, { tool: TOOLS.APPROVAL, event: EVENTS.CONTENT_APPROVED, brandId: brand_id, userId: user_id });
@@ -405,9 +405,9 @@ export async function vaultApproval(request, env, auth) {
       db.prepare(`UPDATE approval_requests SET rejected_by = ?, rejection_reason = ? WHERE content_id = ? AND brand_id = ? AND approved_at IS NULL`).bind(user_id, notes || null, id, brand_id),
     ]);
 
-    const creator = await db.prepare('SELECT u.email, u.full_name FROM users u JOIN content_vault cv ON cv.created_by = u.id WHERE cv.id = ?').bind(id).first().catch(() => null);
+    const creator = await db.prepare('SELECT u.email, u.full_name FROM users u JOIN content_vault cv ON cv.user_id = u.id WHERE cv.id = ?').bind(id).first().catch(() => null);
     if (creator) {
-      notify(env, { event: 'approval_rejected', brandId: brand_id, recipientId: item.created_by, recipientEmail: creator.email, title: 'Content rejected', message: `"${item.title || 'Your content'}" was rejected.${notes ? ` Reason: ${notes}` : ''}`, data: { content_title: item.title, notes }, link: `https://app.mypilotpost.com/dashboard` }).catch(() => {});
+      notify(env, { event: 'approval_rejected', brandId: brand_id, recipientId: item.user_id, recipientEmail: creator.email, title: 'Content rejected', message: `"${item.title || 'Your content'}" was rejected.${notes ? ` Reason: ${notes}` : ''}`, data: { content_title: item.title, notes }, link: `https://app.mypilotpost.com/dashboard` }).catch(() => {});
     }
 
     return json({ success: true, status: "archived" });
@@ -420,9 +420,9 @@ export async function vaultApproval(request, env, auth) {
       db.prepare(`UPDATE approval_requests SET rejection_reason = ? WHERE content_id = ? AND brand_id = ? AND approved_at IS NULL`).bind(notes || null, id, brand_id),
     ]);
 
-    const creator = await db.prepare('SELECT u.email FROM users u JOIN content_vault cv ON cv.created_by = u.id WHERE cv.id = ?').bind(id).first().catch(() => null);
+    const creator = await db.prepare('SELECT u.email FROM users u JOIN content_vault cv ON cv.user_id = u.id WHERE cv.id = ?').bind(id).first().catch(() => null);
     if (creator) {
-      notify(env, { event: 'approval_rejected', brandId: brand_id, recipientId: item.created_by, recipientEmail: creator.email, title: 'Changes requested', message: `"${item.title || 'Your content'}" needs changes before approval.${notes ? ` Notes: ${notes}` : ''}`, data: { content_title: item.title, notes }, link: `https://app.mypilotpost.com/dashboard` }).catch(() => {});
+      notify(env, { event: 'approval_rejected', brandId: brand_id, recipientId: item.user_id, recipientEmail: creator.email, title: 'Changes requested', message: `"${item.title || 'Your content'}" needs changes before approval.${notes ? ` Notes: ${notes}` : ''}`, data: { content_title: item.title, notes }, link: `https://app.mypilotpost.com/dashboard` }).catch(() => {});
     }
 
     return json({ success: true, status: "draft" });
@@ -444,8 +444,7 @@ export async function getApprovalItems(request, env, auth) {
       cv.id, cv.title, cv.body, cv.content_type, cv.platforms,
       cv.lifecycle_status, cv.share_for_approval,
       cv.created_at AS content_created_at,
-      cv.updated_at, cv.created_by, cv.updated_by,
-      cv.campaign_objective, cv.objective,
+      cv.updated_at, cv.user_id AS created_by,
       ar.id           AS ar_id,
       ar.requested_by, ar.reviewer_type,
       ar.review_notes, ar.reviewer_email,
@@ -480,9 +479,6 @@ export async function getApprovalItems(request, env, auth) {
     content_created_at: row.content_created_at,
     updated_at: row.updated_at,
     created_by: row.created_by,
-    updated_by: row.updated_by,
-    campaign_objective: row.campaign_objective,
-    objective: row.objective,
     _approval: {
       id: row.ar_id,
       requested_by: row.requested_by,

@@ -2087,9 +2087,6 @@ export default {
         if (method === "GET" && (path === "/api/customer/dashboard/summary" || path === "/api/customer/dashboard/overview"))
           return withCors(request, getDashboardSummary(request, env, auth));
 
-        if (method === "GET" && path === "/api/customer/activity")
-          return withCors(request, getActivity(request, env, auth));
-
         if (method === "GET" && path === "/api/customer/experience")
           return withCors(request, getExperienceSummary(request, env, auth));
 

@@ -45,6 +45,6 @@ export async function getActivity(request, env, auth) {
   q += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
   binds.push(limit, offset);
 
-  const { results } = await db.prepare(q).bind(...binds).all();
+  const { results } = await db.prepare(q).bind(...binds).all().catch(() => ({ results: [] }));
   return json({ data: results || [] });
 }

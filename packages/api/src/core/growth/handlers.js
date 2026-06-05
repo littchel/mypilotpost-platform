@@ -164,7 +164,7 @@ export async function processGrowthAction(request, env, auth) {
   ];
 
   if (!allowedActions.includes(action)) {
-    return error("Action type not allowed via this endpoint", 403);
+    return json({ success: true, tracked: false });
   }
 
   await handleGrowthEvent({
