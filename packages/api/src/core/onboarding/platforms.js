@@ -3,7 +3,7 @@
 
 import { json } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
-import { markOnboardingStep } from "./progress.js";
+
 import { checkAndIncrement } from "../billing/enforcement.js";
 
 // Locked enum — frontend must mirror
@@ -95,12 +95,6 @@ export async function savePlatforms(request, env, auth) {
     await db.batch(statements);
   }
 
-  try {
-    await markOnboardingStep(env, auth.brand_id, "platforms");
-  } catch (e) {
-    console.warn("[PLATFORMS] progress update failed:", e.message);
-  }
-
   return json({ success: true, platforms: selected });
 }
 
@@ -120,10 +114,10 @@ export async function connectPlatform(request, env, auth, platform) {
 
   await db
     .prepare(
-      `UPDATE brand_platforms
-       SET status = 'connected',
-           connected_at = datetime('now')
-       WHERE brand_id = ? AND platform = ?`
+      `INSERT INTO brand_platforms (brand_id, platform, status, connected_at)
+       VALUES (?, ?, 'connected', datetime('now'))
+       ON CONFLICT(brand_id, platform)
+       DO UPDATE SET status = 'connected', connected_at = datetime('now')`
     )
     .bind(auth.brand_id, platform)
     .run();

@@ -1390,6 +1390,17 @@ export default {
         if (method === "POST" && path === "/api/customer/onboarding/platforms")
           return withCors(request, savePlatforms(request, env, auth));
 
+        if (method === "GET" && path === "/api/customer/onboarding/readiness")
+          return withCors(request, getReadiness(request, env, auth));
+
+        if (path.startsWith("/api/customer/onboarding/platforms/")) {
+          const platformName = path.split("/")[5];
+          if (method === "POST" && path.endsWith("/connect"))
+            return withCors(request, connectPlatform(request, env, auth, platformName));
+          if (method === "POST" && path.endsWith("/disconnect"))
+            return withCors(request, disconnectPlatform(request, env, auth, platformName));
+        }
+
         /* ---------- BILLING ---------- */
         if (method === "GET" && path === "/api/customer/billing/plan") {
            const db = env.mypilotpost;

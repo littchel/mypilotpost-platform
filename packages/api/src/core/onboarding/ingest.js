@@ -1,14 +1,12 @@
 // packages/api/src/core/onboarding/ingest.js
-// myPilotPost — Onboarding Ingestion Engine v1 (AUTHORITATIVE)
 
 import { json } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
 import { nanoid } from "nanoid";
-import { markOnboardingStep } from "./progress.js";
 
 /*
   POST /api/customer/onboarding/ingest/website
-  Seeds brand intelligence from website
+  Seeds brand intelligence from website (future activation path — not yet wired to a route)
 */
 export async function ingestWebsite(request, env, auth) {
   const db = getDB(env);
@@ -55,16 +53,12 @@ export async function ingestWebsite(request, env, auth) {
     )
     .run();
 
-  // Website usually informs goals + audience
-  await markOnboardingStep(env, auth.brand_id, "audience");
-  await markOnboardingStep(env, auth.brand_id, "goals");
-
   return json({ success: true });
 }
 
 /*
   POST /api/customer/onboarding/ingest/social
-  Seeds brand intelligence from social profiles
+  Seeds brand intelligence from social profiles (future activation path — not yet wired to a route)
 */
 export async function ingestSocial(request, env, auth) {
   const db = getDB(env);

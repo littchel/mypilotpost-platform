@@ -11,23 +11,59 @@ const ScheduleStep = () => {
     setLoading(true);
     setError("");
     try {
+      // Scheduled time: now+1min for "post now", tomorrow for "later"
       const date = new Date();
-      if (type === 'later') date.setDate(date.getDate() + 1);
+      if (type === 'later') {
+        date.setDate(date.getDate() + 1);
+      } else {
+        date.setMinutes(date.getMinutes() + 1);
+      }
 
-      const contentId = data.generatedContent?.content_id;
-      if (contentId) {
+      // generatedContent is stored in-memory by GenerationStep.
+      // Social generation has no content_id, so save a draft first to get one.
+      const generated = data.generatedContent;
+      let contentId = generated?.content_id;
+
+      if (!contentId && generated?.posts?.[0]) {
+        const post = generated.posts[0];
+        const platform = post.platform || "instagram";
+        const saveRes = await apiRequest("/api/customer/content/social", {
+          method: "POST",
+          body: JSON.stringify({
+            text: post.baseCaption || post.content || "",
+            platforms: [platform],
+            lifecycle_status: "approved"
+          })
+        });
+        contentId = saveRes?.content_id;
+
+        if (contentId) {
+          await apiRequest("/api/customer/schedule", {
+            method: "POST",
+            body: JSON.stringify({
+              content_id: contentId,
+              content_type: "social",
+              platform,
+              scheduled_at: date.toISOString()
+            })
+          });
+          trackOnboardingEvent("first_post_scheduled", { type, content_id: contentId });
+        }
+      } else if (contentId) {
+        const platform = generated?.posts?.[0]?.platform || "instagram";
         await apiRequest("/api/customer/schedule", {
           method: "POST",
           body: JSON.stringify({
             content_id: contentId,
-            scheduled_at: date.toISOString(),
-            status: type === 'now' ? 'published' : 'scheduled'
+            content_type: "social",
+            platform,
+            scheduled_at: date.toISOString()
           })
         });
         trackOnboardingEvent("first_post_scheduled", { type, content_id: contentId });
       }
 
-      await updateStep(step + 1, { isScheduled: true });
+      await updateStep(step + 1, { isScheduled: true, scheduledContentId: contentId });
     } catch {
       setError("Scheduling failed. Please try again.");
     } finally {
@@ -46,16 +82,16 @@ const ScheduleStep = () => {
       {error && <div className="alert alert-danger py-2 small mb-3">{error}</div>}
 
       <div className="d-grid gap-3">
-        <button 
-          className="btn btn-pilot-ob" 
+        <button
+          className="btn btn-pilot-ob"
           onClick={() => handleSchedule('now')}
           disabled={loading}
         >
           {loading ? <span className="spinner-border spinner-border-sm me-2"></span> : <i className="fas fa-paper-plane me-2"></i>}
           Post Now
         </button>
-        <button 
-          className="btn btn-grey" 
+        <button
+          className="btn btn-grey"
           onClick={() => handleSchedule('later')}
           disabled={loading}
         >
