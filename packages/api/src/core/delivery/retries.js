@@ -33,13 +33,16 @@ export async function manualRetryJob(request, env, auth) {
     }
   } else if (content_id) {
     // 2. All Failed Jobs for Content (Surgical)
+    // Only include jobs that have not exhausted the 3-attempt limit.
+    // Without this filter, exhausted jobs (delivery_attempts=3) would be
+    // included in retried_count even though executeDeliveryJob silently no-ops them.
     const failedJobs = await db.prepare(`
-      SELECT * FROM delivery_jobs 
-      WHERE content_id = ? AND brand_id = ? AND status = 'failed'
+      SELECT * FROM delivery_jobs
+      WHERE content_id = ? AND brand_id = ? AND status = 'failed' AND delivery_attempts < 3
     `).bind(content_id, auth.brand_id).all();
 
     if (!failedJobs.results || failedJobs.results.length === 0) {
-      return error("No failed jobs found for this content", 404);
+      return error("No retryable failed jobs found for this content", "MAX_ATTEMPTS_REACHED", null, 400);
     }
 
     const tasks = [];

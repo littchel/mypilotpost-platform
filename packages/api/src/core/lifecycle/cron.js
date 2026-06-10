@@ -123,26 +123,26 @@ async function runChurnRiskEmails(env) {
 async function runWeeklyDigestEmails(env) {
   const db = getDB(env);
 
+  // posts_this_week is folded into the outer query to avoid a per-user SELECT (N+1).
   const { results } = await db.prepare(`
-    SELECT DISTINCT u.id as user_id, u.first_name, u.email,
-                    b.id as brand_id, b.name as brand_name
+    SELECT u.id as user_id, u.first_name, u.email,
+           b.id as brand_id, b.name as brand_name,
+           COUNT(cv.id) as posts_this_week
     FROM users u
     JOIN brand_users bu ON bu.user_id = u.id
     JOIN brands b ON b.id = bu.brand_id
+    LEFT JOIN content_vault cv
+      ON cv.brand_id = b.id
+      AND cv.created_at >= datetime('now', '-7 days')
+      AND cv.lifecycle_status = 'published'
     WHERE u.verified_at IS NOT NULL
+    GROUP BY u.id, b.id
     LIMIT 500
   `).all();
 
   let sent = 0;
   for (const row of results || []) {
     try {
-      // Get brand score and post count for digest data
-      const stats = await db.prepare(`
-        SELECT COUNT(*) as posts_this_week
-        FROM content_vault
-        WHERE brand_id = ? AND created_at >= datetime('now', '-7 days') AND lifecycle_status = 'published'
-      `).bind(row.brand_id).first();
-
       const result = await triggerLifecycleEmail(env, {
         userId: row.user_id,
         brandId: row.brand_id,
@@ -151,7 +151,7 @@ async function runWeeklyDigestEmails(env) {
           first_name: row.first_name,
           brand_name: row.brand_name,
           score: null,
-          posts_this_week: stats?.posts_this_week || 0,
+          posts_this_week: row.posts_this_week || 0,
           top_insight: null,
         }
       });
