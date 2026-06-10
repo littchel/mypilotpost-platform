@@ -18,12 +18,21 @@ export async function getAIAnalysis(db, brandId, type, contextId, env, forceRefr
   const now = new Date();
   
   // 1. Plan & Meta Collection
-  const [customer, brand] = await Promise.all([
-    db.prepare("SELECT plan FROM customers WHERE brand_id = ?").bind(brandId).first(),
+  const [planRow, brand] = await Promise.all([
+    db.prepare(`
+      SELECT u.plan_id, pe.enabled AS intel_enabled
+      FROM users u
+      JOIN brands b ON b.owner_user_id = u.id
+      LEFT JOIN plan_entitlements pe ON pe.plan_id = u.plan_id AND pe.feature_key = 'intelligence'
+      WHERE b.id = ?
+    `).bind(brandId).first(),
     db.prepare("SELECT first_ai_run_at, current_score, archetype FROM brands WHERE id = ?").bind(brandId).first()
   ]);
-  
-  const isStarter = customer?.plan === 'starter' || customer?.plan === 'free';
+
+  // Starter = no intelligence entitlement (or entitlement explicitly disabled)
+  const isStarter = planRow?.intel_enabled !== undefined
+    ? !planRow.intel_enabled
+    : (planRow?.plan_id || 'starter') === 'starter';
 
   // 2. Starter Strategy (On-the-fly, No Cache, No Limit)
   if (isStarter) {

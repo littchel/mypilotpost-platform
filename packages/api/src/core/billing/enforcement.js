@@ -32,12 +32,17 @@ const USAGE_COL_MAP = {
 export async function checkAndIncrement(db, userId, action) {
   const now = new Date().toISOString();
   
-  // 1. Fetch User + Plan + Usage in one go (LEFT JOIN plans for self-healing)
+  // 1. Fetch User + Plan + Usage + next visible plan for upsell recommendation
   let data = await db.prepare(`
-    SELECT 
+    SELECT
       u.plan_id, u.subscription_status, u.trial_ends_at, u.current_period_end,
       p.social_accounts_limit, p.posts_per_month_limit, p.ai_generations_limit,
-      t.posts_used, t.ai_generations_used, t.social_accounts_used
+      t.posts_used, t.ai_generations_used, t.social_accounts_used,
+      (SELECT id FROM plans
+       WHERE COALESCE(price_monthly, price_cents/100, 0) > COALESCE(p.price_monthly, p.price_cents/100, 0)
+         AND status = 'active' AND visible = 1
+       ORDER BY COALESCE(sort_order, 99), COALESCE(price_monthly, price_cents/100, 0)
+       LIMIT 1) AS next_plan_id
     FROM users u
     LEFT JOIN plans p ON u.plan_id = p.id
     LEFT JOIN usage_tracking t ON u.id = t.user_id
@@ -137,9 +142,8 @@ function throwLimitError(data, action, message, status) {
   const limitKey = LIMIT_MAP[action];
   const usageKey = USAGE_COL_MAP[action];
   
-  // Deterministic recommendation
-  let recommended = "growth";
-  if (data.plan_id === 'growth') recommended = "pro";
+  // Recommend the next visible plan above the current one (resolved at runtime, not hardcoded)
+  const recommended = data.next_plan_id || null;
 
   throw error(message, "UPGRADE_REQUIRED", {
     current_plan: data.plan_id,

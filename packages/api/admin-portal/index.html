@@ -97,6 +97,25 @@ pre{font-size:.72rem;background:#f8fafc;border:1px solid var(--border);padding:.
 .search-bar{display:flex;gap:.5rem;margin-bottom:1rem}
 .search-bar input{flex:1;padding:.6rem .75rem;border:1px solid var(--border);border-radius:8px;font-size:.85rem}
 
+/* ── TOGGLE SWITCH ── */
+.toggle{position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0;position:absolute}
+.toggle-slider{
+  position:absolute;inset:0;background:#cbd5e1;border-radius:10px;cursor:pointer;transition:.2s
+}
+.toggle-slider:before{
+  content:"";position:absolute;left:3px;top:3px;
+  width:14px;height:14px;background:#fff;border-radius:50%;transition:.2s
+}
+.toggle input:checked+.toggle-slider{background:var(--accent)}
+.toggle input:checked+.toggle-slider:before{transform:translateX(16px)}
+/* ── ENTITLEMENT GRID ── */
+.ent-row{display:grid;grid-template-columns:1fr 80px 160px;gap:.75rem;align-items:center;
+  padding:.6rem 1rem;border-bottom:1px solid var(--border);font-size:.82rem}
+.ent-row:last-child{border-bottom:none}
+.ent-feat{font-weight:600}
+.ent-cat{font-size:.7rem;color:var(--muted)}
+
 /* ── LOGIN OVERLAY ── */
 #loginScreen{
   display:none;position:fixed;inset:0;
@@ -157,8 +176,11 @@ pre{font-size:.72rem;background:#f8fafc;border:1px solid var(--border);padding:.
   <div class="nav-item" data-section="analytics">📈 Analytics</div>
   <div class="nav-item" data-section="billing">💰 Billing</div>
 
-  <div class="nav-section">Commerce</div>
-  <div class="nav-item" data-section="pricing">🏷 Pricing</div>
+  <div class="nav-section">Commercial</div>
+  <div class="nav-item" data-section="commercial_plans">📦 Plans</div>
+  <div class="nav-item" data-section="commercial_features">🔧 Features</div>
+  <div class="nav-item" data-section="commercial_entitlements">⚙️ Entitlements</div>
+  <div class="nav-item" data-section="commercial_metrics">📊 Metrics</div>
   <div class="nav-item" data-section="promotions">🎁 Promotions</div>
 
   <div class="nav-section">Content</div>
@@ -262,37 +284,138 @@ pre{font-size:.72rem;background:#f8fafc;border:1px solid var(--border);padding:.
 </div>
 
 <!-- PRICING -->
-<div class="section" id="pricing">
+<!-- COMMERCIAL PLANS -->
+<div class="section" id="commercial_plans">
   <div class="table-wrap">
     <div class="table-header">
       <h5>Pricing Plans</h5>
-      <button class="btn btn-primary btn-sm" onclick="showPlanForm()">+ New Plan</button>
+      <button class="btn btn-primary btn-sm" onclick="showCPlanForm()">+ New Plan</button>
     </div>
     <table>
-      <thead><tr><th>Name</th><th>Price / mo</th><th>Posts</th><th>AI Gen</th><th>Accounts</th><th>Trial</th><th>Status</th><th>Actions</th></tr></thead>
-      <tbody id="pricingBody"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
+      <thead><tr><th>Name</th><th>Slug</th><th>Price/mo</th><th>Trial</th><th>Sort</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody id="cplansBody"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
     </table>
   </div>
 
-  <div class="card-flat" id="planForm" style="display:none">
-    <h5 style="font-size:.85rem;font-weight:700;margin-bottom:1rem" id="planFormTitle">New Plan</h5>
+  <div class="card-flat" id="cplanForm" style="display:none">
+    <h5 style="font-size:.85rem;font-weight:700;margin-bottom:1rem" id="cplanFormTitle">New Plan</h5>
     <div class="two-col">
-      <div class="form-group"><label>Plan Name</label><input type="text" id="pf_name" placeholder="e.g. Solo"></div>
-      <div class="form-group"><label>Price (ZAR / month)</label><input type="number" id="pf_price" placeholder="499"></div>
+      <div class="form-group"><label>Plan Name</label><input type="text" id="cpf_name" placeholder="e.g. Solo"></div>
+      <div class="form-group"><label>Price (ZAR / month)</label><input type="number" id="cpf_price" placeholder="499"></div>
     </div>
     <div class="two-col">
-      <div class="form-group"><label>Posts / Month Limit</label><input type="number" id="pf_posts" placeholder="60"></div>
-      <div class="form-group"><label>AI Generations Limit</label><input type="number" id="pf_ai" placeholder="50"></div>
+      <div class="form-group"><label>Description</label><input type="text" id="cpf_desc" placeholder="Short description"></div>
+      <div class="form-group"><label>Trial Days</label><input type="number" id="cpf_trial" placeholder="14"></div>
     </div>
     <div class="two-col">
-      <div class="form-group"><label>Social Accounts Limit</label><input type="number" id="pf_accounts" placeholder="5"></div>
-      <div class="form-group"><label>Trial Days</label><input type="number" id="pf_trial" placeholder="14"></div>
+      <div class="form-group"><label>Badge (optional)</label><input type="text" id="cpf_badge" placeholder="Popular"></div>
+      <div class="form-group"><label>Sort Order</label><input type="number" id="cpf_sort" placeholder="1"></div>
+    </div>
+    <div class="form-group" style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem">
+      <label class="toggle"><input type="checkbox" id="cpf_visible" checked><span class="toggle-slider"></span></label>
+      <span style="font-size:.82rem;font-weight:600">Visible to customers</span>
     </div>
     <div style="display:flex;gap:.75rem">
-      <button class="btn btn-primary" onclick="savePlan()">Save Plan</button>
-      <button class="btn btn-outline" onclick="hidePlanForm()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCPlan()">Save Plan</button>
+      <button class="btn btn-outline" onclick="hideCPlanForm()">Cancel</button>
+      <button class="btn btn-outline btn-sm" id="cplanVersionsBtn" style="display:none;margin-left:auto" onclick="showCPlanVersions()">Version History</button>
     </div>
-    <div id="planFormError" class="error-msg" style="display:none;margin-top:.75rem"></div>
+    <div id="cplanFormError" class="error-msg" style="display:none;margin-top:.75rem"></div>
+  </div>
+
+  <div class="card-flat" id="cplanVersions" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+      <h5 style="font-size:.85rem;font-weight:700">Version History</h5>
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('cplanVersions').style.display='none'">Close</button>
+    </div>
+    <table>
+      <thead><tr><th>Version</th><th>Changed At</th><th>Changed By</th><th>Reason</th></tr></thead>
+      <tbody id="cplanVersionsBody"><tr><td colspan="4" class="empty">No versions yet</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- COMMERCIAL FEATURES -->
+<div class="section" id="commercial_features">
+  <div class="table-wrap">
+    <div class="table-header">
+      <h5>Feature Catalog</h5>
+      <button class="btn btn-primary btn-sm" onclick="showCFeatureForm()">+ New Feature</button>
+    </div>
+    <table>
+      <thead><tr><th>Key</th><th>Name</th><th>Category</th><th>Description</th><th>Visible</th><th>Actions</th></tr></thead>
+      <tbody id="cfeaturesBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="card-flat" id="cfeatureForm" style="display:none">
+    <h5 style="font-size:.85rem;font-weight:700;margin-bottom:1rem" id="cfeatureFormTitle">New Feature</h5>
+    <div id="cfeatureKeyField">
+      <div class="form-group"><label>Feature Key (immutable, snake_case)</label><input type="text" id="cff_key" placeholder="e.g. white_label"></div>
+    </div>
+    <div id="cfeatureKeyDisplay" style="display:none;margin-bottom:.75rem">
+      <span style="font-size:.75rem;font-weight:600;color:var(--muted)">KEY (immutable):</span>
+      <code id="cff_keyval" style="font-size:.82rem;margin-left:.5rem;font-family:monospace"></code>
+    </div>
+    <div class="two-col">
+      <div class="form-group"><label>Display Name</label><input type="text" id="cff_name" placeholder="White Label"></div>
+      <div class="form-group"><label>Category</label><input type="text" id="cff_cat" placeholder="Branding"></div>
+    </div>
+    <div class="form-group"><label>Description</label><input type="text" id="cff_desc" placeholder="Short description shown to users"></div>
+    <div class="form-group" style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem">
+      <label class="toggle"><input type="checkbox" id="cff_visible" checked><span class="toggle-slider"></span></label>
+      <span style="font-size:.82rem;font-weight:600">Visible in feature lists</span>
+    </div>
+    <div style="display:flex;gap:.75rem">
+      <button class="btn btn-primary" onclick="saveCFeature()">Save Feature</button>
+      <button class="btn btn-outline" onclick="hideCFeatureForm()">Cancel</button>
+    </div>
+    <div id="cfeatureFormError" class="error-msg" style="display:none;margin-top:.75rem"></div>
+  </div>
+</div>
+
+<!-- COMMERCIAL ENTITLEMENTS -->
+<div class="section" id="commercial_entitlements">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem">
+    <div>
+      <h5 style="font-size:.95rem;font-weight:700;margin-bottom:.25rem">Plan Entitlements</h5>
+      <p style="font-size:.78rem;color:var(--muted)">Toggle features and set limits per plan. Changes are saved instantly.</p>
+    </div>
+    <select id="entPlanSel" style="padding:.55rem .75rem;border:1px solid var(--border);border-radius:8px;font-size:.85rem" onchange="loadEntitlementGrid()">
+      <option value="">— Select Plan —</option>
+    </select>
+  </div>
+  <div id="entGrid">
+    <p style="color:var(--muted);font-size:.85rem">Select a plan above to manage its feature entitlements.</p>
+  </div>
+</div>
+
+<!-- COMMERCIAL METRICS -->
+<div class="section" id="commercial_metrics">
+  <h5 style="font-size:.95rem;font-weight:700;margin-bottom:1.25rem">Commercial Metrics</h5>
+
+  <p style="font-size:.72rem;text-transform:uppercase;font-weight:700;color:var(--muted);margin-bottom:.75rem;letter-spacing:.06em">Revenue</p>
+  <div class="grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:1.5rem">
+    <div class="card"><h6>MRR</h6><div class="value" id="cmMRR">—</div></div>
+    <div class="card"><h6>ARR</h6><div class="value" id="cmARR">—</div></div>
+    <div class="card"><h6>ARPU</h6><div class="value" id="cmARPU">—</div></div>
+    <div class="card"><h6>LTV</h6><div class="value" id="cmLTV">—</div></div>
+  </div>
+
+  <p style="font-size:.72rem;text-transform:uppercase;font-weight:700;color:var(--muted);margin-bottom:.75rem;letter-spacing:.06em">Growth &amp; Retention</p>
+  <div class="grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:1.5rem">
+    <div class="card"><h6>Active Trials</h6><div class="value" id="cmTrials">—</div></div>
+    <div class="card"><h6>Conversion Rate</h6><div class="value" id="cmConversion">—</div></div>
+    <div class="card"><h6>New Subscribers</h6><div class="value" id="cmNewSubs">—</div></div>
+    <div class="card"><h6>Churn Rate</h6><div class="value" id="cmChurn">—</div></div>
+  </div>
+
+  <p style="font-size:.72rem;text-transform:uppercase;font-weight:700;color:var(--muted);margin-bottom:.75rem;letter-spacing:.06em">Per-Plan Breakdown</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Plan</th><th>Active Subs</th><th>Trials</th><th>MRR</th><th>Conversion</th><th>Churn</th></tr></thead>
+      <tbody id="cmPlanBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+    </table>
   </div>
 </div>
 
@@ -792,7 +915,7 @@ pre{font-size:.72rem;background:#f8fafc;border:1px solid var(--border);padding:.
 
 <script>
 /* ── BUILD INFO ── */
-const BUILD_VERSION = "v2.3.0";
+const BUILD_VERSION = "v2.4.0";
 const BUILD_TIMESTAMP = "2026-06-10T00:00:00Z";
 const ENVIRONMENT = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "development" : "production";
 
@@ -890,8 +1013,11 @@ const SECTION_ROLES = {
   customers:        ["super_admin","admin","ops","operations","support"],
   analytics:        ["super_admin","admin","ops","operations","support"],
   billing:          ["super_admin","admin","ops","operations"],
-  pricing:          ["super_admin","admin"],
-  promotions:       ["super_admin","admin"],
+  commercial_plans:        ["super_admin","admin"],
+  commercial_features:     ["super_admin","admin"],
+  commercial_entitlements: ["super_admin","admin"],
+  commercial_metrics:      ["super_admin","admin","ops","operations"],
+  promotions:              ["super_admin","admin"],
   blog:             ["super_admin","admin","ops","operations"],
   emails:           ["super_admin","admin","ops","operations"],
   campaigns:        ["super_admin","admin","ops","operations"],
@@ -966,7 +1092,9 @@ document.querySelectorAll(".nav-item").forEach(n => {
 function loadSection(id) {
   const map = {
     overview: loadOverview, customers: loadCustomers, analytics: loadAnalytics,
-    billing: loadBilling, pricing: loadPricing, promotions: loadPromotions,
+    billing: loadBilling, promotions: loadPromotions,
+    commercial_plans: loadCommercialPlans, commercial_features: loadCommercialFeatures,
+    commercial_entitlements: loadCommercialEntitlements, commercial_metrics: loadCommercialMetrics,
     blog: loadBlog, emails: loadEmails, campaigns: loadCampaigns,
     approvals: loadApprovals, support: loadSupport,
     support_requests: loadSupportRequests, messaging: loadMessaging,
@@ -1109,81 +1237,300 @@ async function loadBilling() {
   ).join("") || `<tr><td colspan="2" class="empty">No data</td></tr>`;
 }
 
-async function loadPricing() {
-  const d = await apiFetch("/v1/admin/pricing");
-  const body = document.getElementById("pricingBody");
-  if (!d) { body.innerHTML = `<tr><td colspan="8" class="empty">Failed to load</td></tr>`; return; }
+/* ── COMMERCIAL — Plans ── */
+async function loadCommercialPlans() {
+  const d = await apiFetch("/v1/admin/commercial/plans");
+  const body = document.getElementById("cplansBody");
+  if (!d) { if (body) body.innerHTML = `<tr><td colspan="7" class="empty">Failed to load</td></tr>`; return; }
   const plans = d.plans || [];
-  if (!plans.length) { body.innerHTML = `<tr><td colspan="8" class="empty">No plans yet</td></tr>`; return; }
-  body.innerHTML = plans.map(p => `
-    <tr>
-      <td><strong>${p.name}</strong><br><span style="font-size:.7rem;color:var(--muted)">${p.id}</span></td>
-      <td>${fmtMoney(p.price_cents != null ? p.price_cents : p.price_monthly * 100)}</td>
-      <td>${p.posts_per_month_limit ?? "—"}</td>
-      <td>${p.ai_generations_limit ?? "—"}</td>
-      <td>${p.social_accounts_limit ?? "—"}</td>
-      <td>${p.trial_days ?? 14}d</td>
-      <td><span class="badge ${p.is_active ? 'ok' : 'neutral'}">${p.is_active ? 'Active' : 'Inactive'}</span></td>
-      <td>
-        <button class="btn btn-outline btn-sm" onclick="editPlan(${JSON.stringify(JSON.stringify(p))})">Edit</button>
-        <button class="btn btn-outline btn-sm" onclick="togglePlan('${p.id}')">${p.is_active ? 'Disable' : 'Enable'}</button>
-      </td>
-    </tr>
-  `).join("");
-
-  // Populate broadcast plan filter
+  if (body) {
+    if (!plans.length) { body.innerHTML = `<tr><td colspan="7" class="empty">No plans yet</td></tr>`; }
+    else {
+      body.innerHTML = plans.map(p => `
+        <tr>
+          <td>
+            <strong>${p.name}</strong>
+            ${p.badge ? `<span class="badge accent" style="margin-left:.4rem;font-size:.6rem">${p.badge}</span>` : ""}
+            <br><span style="font-size:.7rem;color:var(--muted)">${p.id}</span>
+          </td>
+          <td><code style="font-size:.72rem;font-family:monospace">${p.slug || p.id}</code></td>
+          <td>${p.price_monthly != null ? `R${p.price_monthly}/mo` : fmtMoney(p.price_cents)}</td>
+          <td>${p.trial_days ?? 14}d</td>
+          <td>${p.sort_order ?? "—"}</td>
+          <td><span class="badge ${p.status === 'active' || p.is_active ? 'ok' : p.status === 'archived' ? 'neutral' : 'warn'}">${p.status || (p.is_active ? 'active' : 'inactive')}</span></td>
+          <td>
+            <button class="btn btn-outline btn-sm" onclick="editCPlan(${JSON.stringify(JSON.stringify(p))})">Edit</button>
+            <button class="btn btn-outline btn-sm" onclick="cloneCPlan('${p.id}')">Clone</button>
+            ${(p.status !== 'archived' && p.is_active !== 0) ? `<button class="btn btn-outline btn-sm" onclick="archiveCPlan('${p.id}')">Archive</button>` : ""}
+          </td>
+        </tr>
+      `).join("");
+    }
+  }
+  // Populate broadcast plan dropdown for Messaging section
   const sel = document.getElementById("broadcastPlan");
-  if (sel && plans.length) {
+  if (sel) {
     sel.innerHTML = `<option value="">All Active Users</option>` +
-      plans.map(p => `<option value="${p.id}">${p.name}</option>`).join("");
+      plans.filter(p => p.status === 'active' || p.is_active).map(p => `<option value="${p.id}">${p.name}</option>`).join("");
   }
 }
 
-let editingPlanId = null;
-function showPlanForm(id) {
-  editingPlanId = id || null;
-  document.getElementById("planFormTitle").textContent = id ? "Edit Plan" : "New Plan";
-  document.getElementById("planForm").style.display = "block";
-  document.getElementById("planFormError").style.display = "none";
+let editingCPlanId = null;
+function showCPlanForm(id) {
+  editingCPlanId = id || null;
+  document.getElementById("cplanFormTitle").textContent = id ? "Edit Plan" : "New Plan";
+  document.getElementById("cplanForm").style.display = "block";
+  document.getElementById("cplanFormError").style.display = "none";
+  document.getElementById("cplanVersionsBtn").style.display = id ? "inline-block" : "none";
+  document.getElementById("cplanVersions").style.display = "none";
   if (!id) {
-    ["pf_name","pf_price","pf_posts","pf_ai","pf_accounts","pf_trial"].forEach(f => document.getElementById(f).value = "");
+    ["cpf_name","cpf_desc","cpf_price","cpf_trial","cpf_badge","cpf_sort"].forEach(f => document.getElementById(f).value = "");
+    document.getElementById("cpf_visible").checked = true;
   }
 }
-function hidePlanForm() { document.getElementById("planForm").style.display = "none"; }
-
-async function editPlan(jsonStr) {
-  const p = JSON.parse(jsonStr);
-  showPlanForm(p.id);
-  document.getElementById("pf_name").value = p.name || "";
-  document.getElementById("pf_price").value = p.price_monthly || "";
-  document.getElementById("pf_posts").value = p.posts_per_month_limit || "";
-  document.getElementById("pf_ai").value = p.ai_generations_limit || "";
-  document.getElementById("pf_accounts").value = p.social_accounts_limit || "";
-  document.getElementById("pf_trial").value = p.trial_days || 14;
+function hideCPlanForm() {
+  document.getElementById("cplanForm").style.display = "none";
+  document.getElementById("cplanVersions").style.display = "none";
+  editingCPlanId = null;
 }
 
-async function savePlan() {
-  const errEl = document.getElementById("planFormError");
+async function editCPlan(jsonStr) {
+  const p = JSON.parse(jsonStr);
+  showCPlanForm(p.id);
+  document.getElementById("cpf_name").value = p.name || "";
+  document.getElementById("cpf_desc").value = p.description || "";
+  document.getElementById("cpf_price").value = p.price_monthly ?? (p.price_cents != null ? p.price_cents / 100 : "");
+  document.getElementById("cpf_trial").value = p.trial_days ?? 14;
+  document.getElementById("cpf_badge").value = p.badge || "";
+  document.getElementById("cpf_sort").value = p.sort_order ?? "";
+  document.getElementById("cpf_visible").checked = p.visible !== 0;
+}
+
+async function saveCPlan() {
+  const errEl = document.getElementById("cplanFormError");
   errEl.style.display = "none";
+  const name = document.getElementById("cpf_name").value.trim();
+  if (!name) { errEl.textContent = "Plan name is required"; errEl.style.display = "block"; return; }
   const body = {
-    name: document.getElementById("pf_name").value,
-    price_monthly: parseFloat(document.getElementById("pf_price").value),
-    posts_per_month_limit: parseInt(document.getElementById("pf_posts").value),
-    ai_generations_limit: parseInt(document.getElementById("pf_ai").value),
-    social_accounts_limit: parseInt(document.getElementById("pf_accounts").value),
-    trial_days: parseInt(document.getElementById("pf_trial").value || "14"),
-    is_active: 1
+    name,
+    description: document.getElementById("cpf_desc").value.trim() || null,
+    price_monthly: parseFloat(document.getElementById("cpf_price").value) || 0,
+    trial_days: parseInt(document.getElementById("cpf_trial").value) || 14,
+    badge: document.getElementById("cpf_badge").value.trim() || null,
+    sort_order: parseInt(document.getElementById("cpf_sort").value) || null,
+    visible: document.getElementById("cpf_visible").checked ? 1 : 0
   };
-  const url = editingPlanId ? `/v1/admin/pricing/${editingPlanId}` : "/v1/admin/pricing";
-  const method = editingPlanId ? "PUT" : "POST";
+  const url = editingCPlanId ? `/v1/admin/commercial/plans/${editingCPlanId}` : "/v1/admin/commercial/plans";
+  const method = editingCPlanId ? "PATCH" : "POST";
   const d = await apiFetch(url, { method, body: JSON.stringify(body) });
-  if (d?.success || d?.id) { hidePlanForm(); loadPricing(); }
+  if (d?.id || d?.success) { hideCPlanForm(); loadCommercialPlans(); }
   else { errEl.textContent = d?.error || "Save failed"; errEl.style.display = "block"; }
 }
 
-async function togglePlan(id) {
-  const d = await apiFetch(`/v1/admin/pricing/${id}/toggle`, { method: "PATCH" });
-  if (d?.success) loadPricing();
+async function cloneCPlan(id) {
+  if (!confirm("Clone this plan? A draft copy with all entitlements will be created.")) return;
+  const d = await apiFetch(`/v1/admin/commercial/plans/${id}/clone`, { method: "POST" });
+  if (d?.id || d?.success) loadCommercialPlans();
+  else alert(d?.error || "Clone failed");
+}
+
+async function archiveCPlan(id) {
+  if (!confirm("Archive this plan? Existing subscribers are not affected, but new sign-ups can no longer choose it.")) return;
+  const d = await apiFetch(`/v1/admin/commercial/plans/${id}/archive`, { method: "POST" });
+  if (d?.success) loadCommercialPlans();
+  else alert(d?.error || "Archive failed — plan may have active subscribers");
+}
+
+async function showCPlanVersions() {
+  if (!editingCPlanId) return;
+  const d = await apiFetch(`/v1/admin/commercial/plans/${editingCPlanId}/versions`);
+  const body = document.getElementById("cplanVersionsBody");
+  const versionsEl = document.getElementById("cplanVersions");
+  const versions = d?.versions || [];
+  if (!versions.length) body.innerHTML = `<tr><td colspan="4" class="empty">No versions yet</td></tr>`;
+  else body.innerHTML = versions.map(v => `
+    <tr>
+      <td>${v.version}</td>
+      <td>${fmtDate(v.created_at)}</td>
+      <td>${v.changed_by || "—"}</td>
+      <td>${v.change_reason || "—"}</td>
+    </tr>
+  `).join("");
+  versionsEl.style.display = "block";
+}
+
+/* ── COMMERCIAL — Features ── */
+async function loadCommercialFeatures() {
+  const d = await apiFetch("/v1/admin/commercial/features");
+  const body = document.getElementById("cfeaturesBody");
+  if (!d) { body.innerHTML = `<tr><td colspan="6" class="empty">Failed to load</td></tr>`; return; }
+  const features = d.features || [];
+  if (!features.length) { body.innerHTML = `<tr><td colspan="6" class="empty">No features defined</td></tr>`; return; }
+  body.innerHTML = features.map(f => `
+    <tr>
+      <td><code style="font-size:.72rem;font-family:monospace">${f.key}</code></td>
+      <td><strong>${f.name}</strong></td>
+      <td>${f.category || "—"}</td>
+      <td style="color:var(--muted);font-size:.78rem">${f.description || "—"}</td>
+      <td><span class="badge ${f.visible ? 'ok' : 'neutral'}">${f.visible ? 'Visible' : 'Hidden'}</span></td>
+      <td><button class="btn btn-outline btn-sm" onclick="editCFeature(${JSON.stringify(JSON.stringify(f))})">Edit</button></td>
+    </tr>
+  `).join("");
+}
+
+let editingCFeatureKey = null;
+function showCFeatureForm(key) {
+  editingCFeatureKey = key || null;
+  document.getElementById("cfeatureFormTitle").textContent = key ? "Edit Feature" : "New Feature";
+  document.getElementById("cfeatureKeyField").style.display = key ? "none" : "block";
+  document.getElementById("cfeatureKeyDisplay").style.display = key ? "block" : "none";
+  document.getElementById("cfeatureForm").style.display = "block";
+  document.getElementById("cfeatureFormError").style.display = "none";
+  if (!key) {
+    ["cff_key","cff_name","cff_cat","cff_desc"].forEach(f => document.getElementById(f).value = "");
+    document.getElementById("cff_visible").checked = true;
+  }
+}
+function hideCFeatureForm() { document.getElementById("cfeatureForm").style.display = "none"; editingCFeatureKey = null; }
+
+async function editCFeature(jsonStr) {
+  const f = JSON.parse(jsonStr);
+  showCFeatureForm(f.key);
+  document.getElementById("cff_keyval").textContent = f.key;
+  document.getElementById("cff_name").value = f.name || "";
+  document.getElementById("cff_cat").value = f.category || "";
+  document.getElementById("cff_desc").value = f.description || "";
+  document.getElementById("cff_visible").checked = f.visible !== 0;
+}
+
+async function saveCFeature() {
+  const errEl = document.getElementById("cfeatureFormError");
+  errEl.style.display = "none";
+  const name = document.getElementById("cff_name").value.trim();
+  if (!name) { errEl.textContent = "Feature name is required"; errEl.style.display = "block"; return; }
+  const body = {
+    name,
+    category: document.getElementById("cff_cat").value.trim() || null,
+    description: document.getElementById("cff_desc").value.trim() || null,
+    visible: document.getElementById("cff_visible").checked ? 1 : 0
+  };
+  let url, method;
+  if (editingCFeatureKey) {
+    url = `/v1/admin/commercial/features/${editingCFeatureKey}`;
+    method = "PATCH";
+  } else {
+    const key = document.getElementById("cff_key").value.trim().toLowerCase().replace(/[^a-z0-9_]/g, "_");
+    if (!key) { errEl.textContent = "Feature key is required"; errEl.style.display = "block"; return; }
+    body.key = key;
+    url = "/v1/admin/commercial/features";
+    method = "POST";
+  }
+  const d = await apiFetch(url, { method, body: JSON.stringify(body) });
+  if (d?.key || d?.success) { hideCFeatureForm(); loadCommercialFeatures(); }
+  else { errEl.textContent = d?.error || "Save failed"; errEl.style.display = "block"; }
+}
+
+/* ── COMMERCIAL — Entitlements ── */
+let entSelectedPlanId = null;
+async function loadCommercialEntitlements() {
+  const d = await apiFetch("/v1/admin/commercial/plans");
+  const sel = document.getElementById("entPlanSel");
+  if (!d) return;
+  const plans = d.plans || [];
+  sel.innerHTML = `<option value="">— Select Plan —</option>` +
+    plans.map(p => `<option value="${p.id}">${p.name}</option>`).join("");
+  if (entSelectedPlanId) {
+    sel.value = entSelectedPlanId;
+    await loadEntitlementGrid();
+  }
+}
+
+async function loadEntitlementGrid() {
+  entSelectedPlanId = document.getElementById("entPlanSel").value;
+  const grid = document.getElementById("entGrid");
+  if (!entSelectedPlanId) {
+    grid.innerHTML = `<p style="color:var(--muted);font-size:.85rem">Select a plan above to manage its feature entitlements.</p>`;
+    return;
+  }
+  grid.innerHTML = `<p style="color:var(--muted);font-size:.85rem">Loading…</p>`;
+  const d = await apiFetch(`/v1/admin/commercial/entitlements/${entSelectedPlanId}`);
+  if (!d) { grid.innerHTML = `<p style="color:var(--bad);font-size:.85rem">Failed to load entitlements.</p>`; return; }
+  const items = d.entitlements || [];
+  if (!items.length) { grid.innerHTML = `<p style="color:var(--muted);font-size:.85rem">No features in catalog yet.</p>`; return; }
+  const byCategory = {};
+  items.forEach(e => {
+    const cat = e.category || "General";
+    if (!byCategory[cat]) byCategory[cat] = [];
+    byCategory[cat].push(e);
+  });
+  let html = `<div class="table-wrap"><div class="ent-row" style="background:#f1f5f9;font-size:.7rem;text-transform:uppercase;color:var(--muted);font-weight:700"><div>Feature</div><div>Enabled</div><div>Limit Value</div></div>`;
+  for (const [cat, feats] of Object.entries(byCategory)) {
+    html += `<div style="padding:.35rem 1rem .15rem;background:#f8fafc;font-size:.65rem;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:.06em;border-bottom:1px solid var(--border)">${cat}</div>`;
+    feats.forEach(e => {
+      const isUnlimited = e.limit_type === 'unlimited';
+      html += `
+        <div class="ent-row">
+          <div>
+            <div class="ent-feat">${e.name}</div>
+            <div class="ent-cat">${e.key}</div>
+          </div>
+          <div>
+            <label class="toggle">
+              <input type="checkbox" ${e.enabled ? "checked" : ""}
+                onchange="patchEntitlement('${entSelectedPlanId}','${e.key}',{enabled:this.checked?1:0})">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div>
+            <input type="number" style="width:100%;padding:.3rem .5rem;border:1px solid var(--border);border-radius:6px;font-size:.78rem"
+              placeholder="${isUnlimited ? '∞ unlimited' : 'enter limit'}"
+              value="${e.limit_value ?? ''}"
+              ${isUnlimited ? 'disabled style="opacity:.4;background:#f1f5f9"' : ''}
+              onchange="patchEntitlement('${entSelectedPlanId}','${e.key}',{limit_value:this.value===''?null:parseInt(this.value)})">
+          </div>
+        </div>`;
+    });
+  }
+  html += `</div>`;
+  grid.innerHTML = html;
+}
+
+async function patchEntitlement(planId, featureKey, update) {
+  await apiFetch(`/v1/admin/commercial/entitlements/${planId}/${featureKey}`, {
+    method: "PATCH",
+    body: JSON.stringify(update)
+  });
+}
+
+/* ── COMMERCIAL — Metrics ── */
+async function loadCommercialMetrics() {
+  const d = await apiFetch("/v1/admin/commercial/metrics");
+  if (!d) { document.getElementById("cmMRR").textContent = "Error"; return; }
+  const m = d.metrics || d;
+  document.getElementById("cmMRR").textContent = m.mrr != null ? `R${fmt(Math.round(m.mrr))}` : "—";
+  document.getElementById("cmARR").textContent = m.arr != null ? `R${fmt(Math.round(m.arr))}` : "—";
+  document.getElementById("cmARPU").textContent = m.arpu != null ? `R${Math.round(m.arpu)}` : "—";
+  document.getElementById("cmLTV").textContent = m.ltv != null ? `R${Math.round(m.ltv)}` : "—";
+  document.getElementById("cmTrials").textContent = fmt(m.trials_active ?? m.trials);
+  document.getElementById("cmConversion").textContent = m.conversion_rate != null ? `${m.conversion_rate.toFixed(1)}%` : "—";
+  document.getElementById("cmNewSubs").textContent = fmt(m.new_subscribers ?? m.new_subs);
+  document.getElementById("cmChurn").textContent = m.churn_rate != null ? `${m.churn_rate.toFixed(1)}%` : "—";
+  const plans = m.plans || m.plan_breakdown || [];
+  const tableBody = document.getElementById("cmPlanBody");
+  if (!plans.length) {
+    tableBody.innerHTML = `<tr><td colspan="6" class="empty">No plan data</td></tr>`;
+  } else {
+    tableBody.innerHTML = plans.map(p => `
+      <tr>
+        <td><strong>${p.name || p.plan_id}</strong></td>
+        <td>${fmt(p.active_subscribers ?? p.subscribers)}</td>
+        <td>${fmt(p.trial_subscribers ?? p.trials)}</td>
+        <td>${p.mrr != null ? `R${fmt(Math.round(p.mrr))}` : "—"}</td>
+        <td>${p.conversion_rate != null ? `${p.conversion_rate.toFixed(1)}%` : "—"}</td>
+        <td>${p.churn_rate != null ? `${p.churn_rate.toFixed(1)}%` : "—"}</td>
+      </tr>
+    `).join("");
+  }
 }
 
 /* PROMOTIONS */
@@ -1408,7 +1755,7 @@ async function sendSupportReply() {
 
 /* MESSAGING */
 async function loadMessaging() {
-  await loadPricing();
+  await loadCommercialPlans();
 }
 
 async function sendBroadcast() {

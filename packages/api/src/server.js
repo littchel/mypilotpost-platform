@@ -374,6 +374,13 @@ import { getIntegrationsDiagnostics } from "./api/admin/integrations-diagnostics
 import { runBackfill, getBackfillStatus } from "./core/delivery/performance/backfill/engine.js";
 import { getAttributionDiagnostics } from "./api/admin/attribution-diagnostics.js";
 import { getAdminRewardsOverview } from "./api/admin/rewards.js";
+import {
+  listPlans, createPlan, updatePlan, archivePlan, clonePlan, getPlanVersions,
+  listFeatures, createFeature, updateFeature,
+  listPlanEntitlements, updateEntitlement,
+  getCommercialMetrics,
+} from "./api/admin/commercial.js";
+import { requireEntitlement, getCustomerEntitlementSummary } from "./lib/entitlements.js";
 
 /* ======================================================
    PLATFORM SANDBOX
@@ -1427,6 +1434,83 @@ export default {
           return createAdminPromotion(request, env, auth);
         }
 
+        /* ---------- COMMERCIAL CONTROL SYSTEM ---------- */
+
+        // Plans
+        if (path === "/api/v1/admin/commercial/plans" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return withCors(request, listPlans(env));
+        }
+        if (path === "/api/v1/admin/commercial/plans" && method === "POST") {
+          const auth = await requireAdminAuth(request, env);
+          if (!hasPermission(auth.role, "*") && !["super_admin","admin"].includes(auth.role))
+            throw error("admin role required", "FORBIDDEN", null, 403);
+          return withCors(request, createPlan(request, env, auth));
+        }
+        if (path.startsWith("/api/v1/admin/commercial/plans/") && path.endsWith("/archive")) {
+          const auth = await requireAdminAuth(request, env);
+          const planId = path.split("/")[6];
+          if (!hasPermission(auth.role, "*") && !["super_admin","admin"].includes(auth.role))
+            throw error("admin role required", "FORBIDDEN", null, 403);
+          logAdminAction(env, auth, "archive_plan", "plans", planId, {}).catch(() => {});
+          return withCors(request, archivePlan(request, env, auth, planId));
+        }
+        if (path.startsWith("/api/v1/admin/commercial/plans/") && path.endsWith("/clone")) {
+          const auth = await requireAdminAuth(request, env);
+          const planId = path.split("/")[6];
+          logAdminAction(env, auth, "clone_plan", "plans", planId, {}).catch(() => {});
+          return withCors(request, clonePlan(request, env, auth, planId));
+        }
+        if (path.startsWith("/api/v1/admin/commercial/plans/") && path.endsWith("/versions")) {
+          await requireAdminAuth(request, env);
+          const planId = path.split("/")[6];
+          return withCors(request, getPlanVersions(env, planId));
+        }
+        if (path.startsWith("/api/v1/admin/commercial/plans/") && method === "PATCH") {
+          const auth = await requireAdminAuth(request, env);
+          const planId = path.split("/")[6];
+          logAdminAction(env, auth, "update_plan", "plans", planId, {}).catch(() => {});
+          return withCors(request, updatePlan(request, env, auth, planId));
+        }
+
+        // Features catalog
+        if (path === "/api/v1/admin/commercial/features" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return withCors(request, listFeatures(env));
+        }
+        if (path === "/api/v1/admin/commercial/features" && method === "POST") {
+          const auth = await requireAdminAuth(request, env);
+          logAdminAction(env, auth, "create_feature", "plan_features", "new", {}).catch(() => {});
+          return withCors(request, createFeature(request, env));
+        }
+        if (path.startsWith("/api/v1/admin/commercial/features/") && method === "PATCH") {
+          const auth = await requireAdminAuth(request, env);
+          const featureKey = path.split("/")[6];
+          logAdminAction(env, auth, "update_feature", "plan_features", featureKey, {}).catch(() => {});
+          return withCors(request, updateFeature(request, env, featureKey));
+        }
+
+        // Entitlements
+        if (path.startsWith("/api/v1/admin/commercial/entitlements/")) {
+          const auth = await requireAdminAuth(request, env);
+          const parts = path.split("/");
+          const planId = parts[6];
+          const featureKey = parts[7];
+          if (method === "GET") {
+            return withCors(request, listPlanEntitlements(env, planId));
+          }
+          if (method === "PATCH" && featureKey) {
+            logAdminAction(env, auth, "update_entitlement", "plan_entitlements", `${planId}:${featureKey}`, {}).catch(() => {});
+            return withCors(request, updateEntitlement(request, env, auth, planId, featureKey));
+          }
+        }
+
+        // Commercial metrics
+        if (path === "/api/v1/admin/commercial/metrics" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return withCors(request, getCommercialMetrics(env));
+        }
+
         /* ---------- STUBS (authenticated, not yet implemented) ---------- */
         for (const stubPath of [
           "/api/v1/admin/memory",
@@ -1553,6 +1637,12 @@ export default {
            const db = env.mypilotpost;
            const plan = await getCurrentPlan(db, auth.user_id);
            return json({ plan }, 200, getCorsHeaders(request));
+        }
+
+        if (method === "GET" && path === "/api/customer/entitlements") {
+          const db = getDB(env);
+          const summary = await getCustomerEntitlementSummary(db, auth.user_id);
+          return json(summary, 200, getCorsHeaders(request));
         }
 
         if (method === "POST" && path === "/api/customer/billing/upgrade") {

@@ -42,13 +42,33 @@ export async function getCurrentPlan(db, userId) {
 
 /**
  * checkFeatureAccess(request, env, auth, feature)
- * Standardized gate for campaigns, seo, intelligence, reports, white_label
+ * Standardized gate for campaigns, seo, intelligence, reports, white_label.
+ * Reads plan_entitlements first; falls back to features_json for backward compat.
  */
 export async function checkFeatureAccess(request, env, auth, feature) {
   const db = getDB(env);
   const plan = await getCurrentPlan(db, auth.user_id);
-  const allowedFeatures = JSON.parse(plan.features_json || '[]');
 
+  // 1. plan_entitlements (new authoritative source)
+  const ent = await db.prepare(
+    "SELECT enabled FROM plan_entitlements WHERE plan_id = ? AND feature_key = ?"
+  ).bind(plan.id, feature).first().catch(() => null);
+
+  if (ent !== null && ent !== undefined) {
+    if (!ent.enabled) {
+      return {
+        allowed: false,
+        response: error("UPGRADE_REQUIRED", "UPGRADE_REQUIRED", {
+          message: `Upgrade your plan to access ${feature.toUpperCase()}`,
+          feature
+        }, 403)
+      };
+    }
+    return { allowed: true };
+  }
+
+  // 2. Fallback: features_json
+  const allowedFeatures = JSON.parse(plan.features_json || '[]');
   if (!allowedFeatures.includes(feature)) {
     return {
       allowed: false,
@@ -58,7 +78,6 @@ export async function checkFeatureAccess(request, env, auth, feature) {
       }, 403)
     };
   }
-
   return { allowed: true };
 }
 
