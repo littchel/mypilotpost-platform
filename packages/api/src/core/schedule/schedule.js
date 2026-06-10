@@ -7,6 +7,7 @@ import { error, json } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
 import { toLocalTime } from "../../lib/dates.js";
 import { logEvent } from "../../lib/events.js";
+import { emitEvent } from "../../lib/bus.js";
 import { isValidUUID, isValidISO8601 } from "../../lib/validation.js";
 
 /* =====================================================
@@ -244,6 +245,14 @@ export async function createSchedule(request, env, auth) {
     } catch (e) {
       // Slient fail for events in production
     }
+
+    // Memory signal: brand is using the scheduler
+    emitEvent(env, 'schedule_created', {
+      brand_id: brandId,
+      user_id: auth.user_id || null,
+      content_id,
+      metadata: { platform }
+    });
 
     return json(
       {

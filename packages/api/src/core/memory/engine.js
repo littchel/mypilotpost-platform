@@ -87,9 +87,17 @@ const MEMORY_RULES = {
 async function incrementPlatformCount(db, brandId, platform) {
   // Store platform usage counts, then derive preferred_platform
   const key = `platform_count_${platform}`;
-  const row = await db.prepare(`SELECT value FROM brand_memory WHERE brand_id=? AND namespace='brand' AND key=?`).bind(brandId, key).first().catch(() => null);
-  const count = (parseFloat(row?.value || '0') || 0) + 1;
-  await upsertMemory(db, brandId, 'brand', key, count, 1.0, 'content_published');
+  // Atomic increment via SQL to avoid read-modify-write race condition
+  const id = crypto.randomUUID();
+  await db.prepare(`
+    INSERT INTO brand_memory (id, brand_id, namespace, key, value, confidence, source, updated_at)
+    VALUES (?, ?, 'brand', ?, '1', 1.0, 'content_published', datetime('now'))
+    ON CONFLICT(brand_id, namespace, key) DO UPDATE SET
+      value = json(CAST(CAST(json_extract(value, '$') AS REAL) + 1 AS TEXT)),
+      confidence = 1.0,
+      source = 'content_published',
+      updated_at = datetime('now')
+  `).bind(id, brandId, key).run();
 
   // Derive preferred_platform from all platform counts
   const { results } = await db.prepare(`
@@ -111,9 +119,17 @@ async function incrementPlatformCount(db, brandId, platform) {
 
 async function incrementContentTypeCount(db, brandId, contentType) {
   const key = `content_type_count_${contentType}`;
-  const row = await db.prepare(`SELECT value FROM brand_memory WHERE brand_id=? AND namespace='content' AND key=?`).bind(brandId, key).first().catch(() => null);
-  const count = (parseFloat(row?.value || '0') || 0) + 1;
-  await upsertMemory(db, brandId, 'content', key, count, 1.0, 'content_published');
+  // Atomic increment — consistent with incrementPlatformCount
+  const id = crypto.randomUUID();
+  await db.prepare(`
+    INSERT INTO brand_memory (id, brand_id, namespace, key, value, confidence, source, updated_at)
+    VALUES (?, ?, 'content', ?, '1', 1.0, 'content_published', datetime('now'))
+    ON CONFLICT(brand_id, namespace, key) DO UPDATE SET
+      value = json(CAST(CAST(json_extract(value, '$') AS REAL) + 1 AS TEXT)),
+      confidence = 1.0,
+      source = 'content_published',
+      updated_at = datetime('now')
+  `).bind(id, brandId, key).run();
 
   const { results } = await db.prepare(`
     SELECT key, value FROM brand_memory WHERE brand_id=? AND namespace='content' AND key LIKE 'content_type_count_%'

@@ -2316,8 +2316,12 @@ export default {
         // Daily 3am: memory aggregation + retention
         if (cron === "0 3 * * *") {
           try {
-            const { runDailyAggregation } = await import("./core/memory/aggregator.js");
+            const { runDailyAggregation, runWeeklyAggregation } = await import("./core/memory/aggregator.js");
             await runDailyAggregation(env);
+            // Weekly aggregation on Mondays (getDay() === 1)
+            if (new Date().getDay() === 1) {
+              await runWeeklyAggregation(env);
+            }
           } catch (err) { console.error("[CRON] Memory aggregation failed:", err?.message); }
 
           try {

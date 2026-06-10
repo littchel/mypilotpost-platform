@@ -27,9 +27,39 @@ export async function handleDataDeletionRequest(request, env, auth) {
       db.prepare("DELETE FROM content_drafts WHERE user_id = ?").bind(userId),
       // Wipe brand memberships
       db.prepare("DELETE FROM brand_users WHERE user_id = ?").bind(userId),
+      // Wipe behavioral memory events scoped to this user
+      db.prepare("DELETE FROM memory_events WHERE user_id = ?").bind(userId),
+      // Wipe brand_memory_events scoped to this user's brands
+      // (brand-level tables purged below if the brand is now member-less)
       // Deactivate user
       db.prepare("UPDATE users SET is_active = 0, email = 'deleted-' || id || '@mypilotpost.com', password_hash = 'DELETED' WHERE id = ?").bind(userId)
     ]);
+
+    // Purge brand-level memory for any brands now owned solely by this user
+    // (brands where this user was the only member)
+    const { results: orphanBrands } = await db.prepare(`
+      SELECT id FROM brands
+      WHERE id NOT IN (SELECT DISTINCT brand_id FROM brand_users)
+        AND id IN (
+          SELECT DISTINCT brand_id FROM memory_events WHERE user_id = ?
+          UNION
+          SELECT DISTINCT brand_id FROM brand_memory WHERE brand_id IN (
+            SELECT id FROM brands WHERE id NOT IN (SELECT DISTINCT brand_id FROM brand_users)
+          )
+        )
+    `).bind(userId).all().catch(() => ({ results: [] }));
+
+    if (orphanBrands?.length) {
+      for (const { id: brandId } of orphanBrands) {
+        await db.batch([
+          db.prepare("DELETE FROM memory_events WHERE brand_id = ?").bind(brandId),
+          db.prepare("DELETE FROM memory_features WHERE brand_id = ?").bind(brandId),
+          db.prepare("DELETE FROM brand_memory WHERE brand_id = ?").bind(brandId),
+          db.prepare("DELETE FROM memory_snapshots WHERE brand_id = ?").bind(brandId),
+          db.prepare("DELETE FROM brand_memory_events WHERE brand_id = ?").bind(brandId),
+        ]).catch(() => {});
+      }
+    }
 
     return json({ 
       ok: true, 

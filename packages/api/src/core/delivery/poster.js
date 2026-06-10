@@ -206,7 +206,7 @@ async function syncContentStatusWithJobs(db, job, platformStatus, errorType = nu
       brand_id: job.brand_id,
       user_id: job.user_id,
       content_id: job.content_id,
-      meta: { platform: job.platform }
+      metadata: { platform: job.platform, content_type: job.content_type || 'social' }
     });
   } else {
     await insertExperienceNotification(db, job.brand_id, "failure", `Delivery Failed: ${job.platform}`, errorType);
