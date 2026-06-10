@@ -52,7 +52,10 @@ function PlansTab() {
   const qc = useQueryClient();
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState({ name: "", description: "", price_monthly: "", trial_days: "14" });
+  const [createForm, setCreateForm] = useState({
+    name: "", description: "", price_monthly: "", trial_days: "14",
+    billing_interval: "monthly", currency: "ZAR",
+  });
 
   const { data, isLoading } = useQuery({ queryKey: ["plans"], queryFn: apiListPlans });
   const plans = data?.plans ?? [];
@@ -135,7 +138,34 @@ function PlansTab() {
         <div className="space-y-4">
           <Input label="Name" value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} placeholder="Growth" />
           <Input label="Description" value={createForm.description} onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })} />
-          <Input label="Monthly price ($)" type="number" value={createForm.price_monthly} onChange={(e) => setCreateForm({ ...createForm, price_monthly: e.target.value })} placeholder="49" />
+          <Input label="Monthly price" type="number" value={createForm.price_monthly} onChange={(e) => setCreateForm({ ...createForm, price_monthly: e.target.value })} placeholder="49" />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">Billing interval</label>
+              <select
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+                value={createForm.billing_interval}
+                onChange={(e) => setCreateForm({ ...createForm, billing_interval: e.target.value })}
+              >
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+                <option value="lifetime">Lifetime</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">Currency</label>
+              <select
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+                value={createForm.currency}
+                onChange={(e) => setCreateForm({ ...createForm, currency: e.target.value })}
+              >
+                <option value="ZAR">ZAR</option>
+                <option value="USD">USD</option>
+                <option value="GBP">GBP</option>
+                <option value="EUR">EUR</option>
+              </select>
+            </div>
+          </div>
           <Input label="Trial days" type="number" value={createForm.trial_days} onChange={(e) => setCreateForm({ ...createForm, trial_days: e.target.value })} />
           <div className="flex gap-2">
             <Button loading={create.isPending} disabled={!createForm.name} onClick={() => create.mutate()}>Create plan</Button>
@@ -166,6 +196,8 @@ function PlanDetail({
     trial_days: String(plan.trial_days),
     badge: plan.badge ?? "",
     visible: plan.visible,
+    billing_interval: plan.billing_interval ?? "monthly",
+    currency: plan.currency ?? "ZAR",
   });
 
   const { data: entData } = useQuery({
@@ -210,8 +242,33 @@ function PlanDetail({
           <div className="grid grid-cols-2 gap-4">
             <Input label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             <Input label="Badge" value={form.badge} onChange={(e) => setForm({ ...form, badge: e.target.value })} placeholder="Popular" />
-            <Input label="Monthly price ($)" type="number" value={form.price_monthly} onChange={(e) => setForm({ ...form, price_monthly: e.target.value })} />
+            <Input label="Monthly price" type="number" value={form.price_monthly} onChange={(e) => setForm({ ...form, price_monthly: e.target.value })} />
             <Input label="Trial days" type="number" value={form.trial_days} onChange={(e) => setForm({ ...form, trial_days: e.target.value })} />
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">Billing interval</label>
+              <select
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+                value={form.billing_interval}
+                onChange={(e) => setForm({ ...form, billing_interval: e.target.value })}
+              >
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+                <option value="lifetime">Lifetime</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">Currency</label>
+              <select
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+                value={form.currency}
+                onChange={(e) => setForm({ ...form, currency: e.target.value })}
+              >
+                <option value="ZAR">ZAR</option>
+                <option value="USD">USD</option>
+                <option value="GBP">GBP</option>
+                <option value="EUR">EUR</option>
+              </select>
+            </div>
             <div className="col-span-2">
               <Input label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
             </div>
@@ -222,7 +279,8 @@ function PlanDetail({
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 text-sm">
-            <div><span className="text-slate-500">Price</span><p className="font-semibold text-slate-900">${plan.price_monthly}/mo</p></div>
+            <div><span className="text-slate-500">Price</span><p className="font-semibold text-slate-900">{plan.currency ?? "ZAR"} {plan.price_monthly}/mo</p></div>
+            <div><span className="text-slate-500">Billing</span><p className="font-semibold capitalize">{plan.billing_interval ?? "monthly"}</p></div>
             <div><span className="text-slate-500">Trial</span><p className="font-semibold text-slate-900">{plan.trial_days} days</p></div>
             <div><span className="text-slate-500">Status</span><p className="font-semibold capitalize">{plan.status}</p></div>
             <div><span className="text-slate-500">Visible</span><p className="font-semibold">{plan.visible ? "Yes" : "No"}</p></div>

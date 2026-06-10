@@ -161,7 +161,10 @@ export interface Plan {
   description?: string;
   price_monthly: number;
   price_cents: number;
+  price_yearly?: number;
   trial_days: number;
+  billing_interval?: string;
+  currency?: string;
   badge?: string;
   sort_order?: number;
   visible: number;

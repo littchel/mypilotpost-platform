@@ -46,15 +46,23 @@ export async function listPlans(env) {
 export async function createPlan(request, env, auth) {
   const db = getDB(env);
   const body = await request.json().catch(() => ({}));
-  const { name, description, price_monthly, price_yearly, currency, trial_days, badge, visible, sort_order } = body;
+  const {
+    name, description, price_monthly, price_yearly, currency,
+    trial_days, badge, visible, sort_order, billing_interval,
+  } = body;
 
   if (!name?.trim()) throw error("name required", "BAD_REQUEST", null, 400);
 
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  if (!slug) throw error("name produces empty slug", "BAD_REQUEST", null, 400);
+
   const existing = await db.prepare("SELECT id FROM plans WHERE id = ?").bind(slug).first();
   if (existing) throw error(`Plan ID '${slug}' already exists`, "CONFLICT", null, 409);
 
   const priceCents = Math.round((price_monthly || 0) * 100);
+  // billing_interval and limits are NOT NULL with no DB default — always provide them
+  const interval = billing_interval || 'monthly';
+
   await db.prepare(`
     INSERT INTO plans (
       id, slug, name, description,
@@ -64,10 +72,11 @@ export async function createPlan(request, env, auth) {
       brand_limit, user_limit, features_json,
       social_accounts_limit, posts_per_month_limit, ai_generations_limit,
       created_at, updated_at
-    ) VALUES (?,?,?,?,?,?,?,'monthly','{}',?,?,1,'active',?,?,?,3,5,'[]',5,60,200,datetime('now'),datetime('now'))
+    ) VALUES (?,?,?,?,?,?,?,?,'{}',?,?,1,'active',?,?,?,3,5,'[]',5,60,200,datetime('now'),datetime('now'))
   `).bind(
     slug, slug, name.trim(), description || null,
     price_monthly || 0, priceCents, price_yearly || Math.round(priceCents * 10),
+    interval,
     currency || 'ZAR', trial_days ?? 14,
     visible ?? 1, sort_order || null, badge || null
   ).run();
@@ -104,7 +113,9 @@ export async function updatePlan(request, env, auth, planId) {
   if (body.social_accounts_limit !== undefined) { fields.push("social_accounts_limit = ?"); binds.push(body.social_accounts_limit); }
   if (body.posts_per_month_limit !== undefined)  { fields.push("posts_per_month_limit = ?");  binds.push(body.posts_per_month_limit); }
   if (body.ai_generations_limit !== undefined)   { fields.push("ai_generations_limit = ?");   binds.push(body.ai_generations_limit); }
-  if (body.brand_limit !== undefined)   { fields.push("brand_limit = ?");   binds.push(body.brand_limit); }
+  if (body.brand_limit !== undefined)         { fields.push("brand_limit = ?");         binds.push(body.brand_limit); }
+  if (body.billing_interval !== undefined)    { fields.push("billing_interval = ?");    binds.push(body.billing_interval || 'monthly'); }
+  if (body.user_limit !== undefined)          { fields.push("user_limit = ?");          binds.push(body.user_limit); }
 
   if (!fields.length) throw error("No fields to update", "BAD_REQUEST", null, 400);
 
@@ -145,6 +156,10 @@ export async function clonePlan(request, env, auth, planId) {
   const existing = await db.prepare("SELECT id FROM plans WHERE id = ?").bind(newSlug).first();
   if (existing) throw error(`Plan ID '${newSlug}' already exists`, "CONFLICT", null, 409);
 
+  // billing_interval and limits are NOT NULL with no DB default — always provide a value
+  const cloneInterval = source.billing_interval || 'monthly';
+  const cloneLimits   = source.limits || '{}';
+
   await db.prepare(`
     INSERT INTO plans (
       id, slug, name, description, price_monthly, price_cents, price_yearly,
@@ -157,10 +172,10 @@ export async function clonePlan(request, env, auth, planId) {
   `).bind(
     newSlug, newSlug, newName, source.description,
     source.price_monthly, source.price_cents, source.price_yearly,
-    source.billing_interval || 'monthly', source.limits || '{}',
+    cloneInterval, cloneLimits,
     source.currency, source.trial_days, source.sort_order || null, source.badge || null,
-    source.brand_limit, source.user_limit, source.features_json,
-    source.social_accounts_limit, source.posts_per_month_limit, source.ai_generations_limit
+    source.brand_limit || 3, source.user_limit || 5, source.features_json || '[]',
+    source.social_accounts_limit || 5, source.posts_per_month_limit || 60, source.ai_generations_limit || 200
   ).run();
 
   // Copy entitlements
