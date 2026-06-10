@@ -1,0 +1,10 @@
+name = "mypilotpost-admin-v3"
+account_id = "2e36b917221c87af13a139c07842b5b2"
+compatibility_date = "2026-06-10"
+
+[assets]
+directory = "./out"
+binding = "ASSETS"
+
+[vars]
+NEXT_PUBLIC_API_BASE = "https://api.mypilotpost.com/api"
