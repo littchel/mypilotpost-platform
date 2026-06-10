@@ -637,7 +637,7 @@ async function getAdminSystemStatus(env) {
     db.prepare(`
       SELECT COUNT(*) as total,
              SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
-             SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed
+             SUM(CASE WHEN status = 'published' THEN 1 ELSE 0 END) as completed
       FROM delivery_jobs WHERE created_at > datetime('now', '-24 hours')
     `).first(),
     db.prepare("SELECT severity, source, message, created_at FROM admin_system_events ORDER BY created_at DESC LIMIT 20").all()
@@ -1033,6 +1033,22 @@ export default {
 
         if (path === "/api/v1/admin/campaigns") {
           const auth = await requireAdminAuth(request, env);
+          if (method === 'GET') {
+            // Admin-level: list all campaigns across all brands (no X-Brand-Id required)
+            const db = getDB(env);
+            const url2 = new URL(request.url);
+            const brand_id = url2.searchParams.get('brand_id');
+            let q = `SELECT c.id, c.brand_id, c.name, c.objective, c.channel, c.status, c.created_at,
+                            b.name as brand_name
+                     FROM campaigns c JOIN brands b ON b.id = c.brand_id`;
+            const binds = [];
+            if (brand_id) { q += ' WHERE c.brand_id = ?'; binds.push(brand_id); }
+            q += ' ORDER BY c.created_at DESC LIMIT 200';
+            const { results } = binds.length
+              ? await db.prepare(q).bind(...binds).all()
+              : await db.prepare(q).all();
+            return json({ campaigns: results || [] });
+          }
           const res = await handleCampaigns(request, env);
           if (method === 'POST') logAdminAction(env, auth, 'create_campaign', 'campaign', 'new', {}).catch(() => {});
           return res;
@@ -1212,6 +1228,46 @@ export default {
         if (path === "/api/v1/admin/compliance/audit-log" && method === "GET") {
           await requireAdminAuth(request, env);
           return withCors(request, adminComplianceAuditLog(request, env));
+        }
+
+        /* ---------- CONTENT APPROVAL QUEUE (admin view) ---------- */
+        if (path === "/api/v1/admin/approvals" && method === "GET") {
+          await requireAdminAuth(request, env);
+          const db = getDB(env);
+          const url2 = new URL(request.url);
+          const status = url2.searchParams.get('status') || 'pending';
+          const { results } = await db.prepare(`
+            SELECT ar.id, ar.brand_id, ar.content_id, ar.status, ar.type,
+                   ar.expires_at, ar.created_at, ar.updated_at,
+                   b.name AS brand_name,
+                   COALESCE(sp.title, bp.title, 'Untitled') AS content_title,
+                   COALESCE(sp.content_type, 'post') AS content_type
+            FROM approval_requests ar
+            LEFT JOIN brands b ON b.id = ar.brand_id
+            LEFT JOIN social_posts sp ON sp.id = ar.content_id
+            LEFT JOIN blog_posts bp ON bp.id = ar.content_id
+            WHERE ar.status = ?
+            ORDER BY ar.created_at DESC
+            LIMIT 100
+          `).bind(status).all().catch(() => ({ results: [] }));
+          return withCors(request, json({ approvals: results || [], status }));
+        }
+
+        /* ---------- CONTENT APPROVAL QUEUE — update status ---------- */
+        if (path.startsWith("/api/v1/admin/approvals/") && method === "PATCH") {
+          const auth = await requireAdminAuth(request, env);
+          const approvalId = path.split("/")[5];
+          if (!approvalId) throw error("Approval ID required", "BAD_REQUEST", null, 400);
+          const body = await request.json().catch(() => ({}));
+          const VALID = ["pending","review","approved","rejected","changes_requested"];
+          if (!VALID.includes(body.status)) throw error("Invalid status", "BAD_REQUEST", null, 400);
+          const db = getDB(env);
+          const existing = await db.prepare("SELECT id, brand_id, content_id FROM approval_requests WHERE id = ?").bind(approvalId).first();
+          if (!existing) throw error("Approval request not found", "NOT_FOUND", null, 404);
+          await db.prepare(`UPDATE approval_requests SET status = ?, updated_at = datetime('now') WHERE id = ?`).bind(body.status, approvalId).run();
+          logAdminAction(env, auth, `approval_${body.status}`, "approval_requests", approvalId, { brand_id: existing.brand_id }).catch(() => {});
+          writeSystemEvent(env, { severity: "info", source: "approvals", message: `Approval ${approvalId} set to ${body.status} by admin ${auth.user_id}` }).catch(() => {});
+          return withCors(request, json({ success: true, id: approvalId, status: body.status }));
         }
 
         /* ---------- ADMIN ACTION AUDIT LOG (admin_audit_logs) ---------- */

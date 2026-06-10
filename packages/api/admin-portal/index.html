@@ -164,6 +164,8 @@ pre{font-size:.72rem;background:#f8fafc;border:1px solid var(--border);padding:.
   <div class="nav-section">Content</div>
   <div class="nav-item" data-section="blog">📝 Blog</div>
   <div class="nav-item" data-section="emails">📧 Emails</div>
+  <div class="nav-item" data-section="campaigns">📢 Campaigns</div>
+  <div class="nav-item" data-section="approvals">✅ Approvals</div>
 
   <div class="nav-section">Support</div>
   <div class="nav-item" data-section="support">💬 Support</div>
@@ -178,6 +180,8 @@ pre{font-size:.72rem;background:#f8fafc;border:1px solid var(--border);padding:.
 
   <div class="nav-section">Operations</div>
   <div class="nav-item" data-section="operations">⚙️ Operations</div>
+  <div class="nav-item" data-section="controls">🎛️ Controls</div>
+  <div class="nav-item" data-section="audit_log">🗒️ Audit Log</div>
   <div class="nav-item" data-section="integrations">🔌 Integrations</div>
   <div class="nav-item" data-section="attribution">🎯 Attribution</div>
   <div class="nav-item" data-section="certification">📋 Platform Certification</div>
@@ -191,11 +195,17 @@ pre{font-size:.72rem;background:#f8fafc;border:1px solid var(--border);padding:.
 
 <!-- OVERVIEW -->
 <div class="section active" id="overview">
-  <div class="grid">
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
     <div class="card"><h6>Total Customers</h6><div class="value" id="ovCustomers">—</div></div>
     <div class="card"><h6>Active Subs</h6><div class="value" id="ovActive">—</div></div>
-    <div class="card"><h6>Trial Accounts</h6><div class="value" id="ovTrial">—</div></div>
+    <div class="card"><h6>Trials</h6><div class="value" id="ovTrial">—</div></div>
     <div class="card"><h6>Monthly MRR</h6><div class="value" id="ovMRR">—</div></div>
+    <div class="card"><h6>Total Brands</h6><div class="value" id="ovBrands">—</div></div>
+    <div class="card"><h6>New Users (7d)</h6><div class="value" id="ovNew7d">—</div></div>
+    <div class="card"><h6>Published (24h)</h6><div class="value" id="ovPublished">—</div></div>
+    <div class="card"><h6>Failures (24h)</h6><div class="value" id="ovFailed">—</div></div>
+    <div class="card"><h6>Active Integrations</h6><div class="value" id="ovIntegrations">—</div></div>
+    <div class="card"><h6>Critical Alerts</h6><div class="value" id="ovAlerts">—</div></div>
     <div class="card"><h6>Delivery Health</h6><div class="value" id="ovDelivery">—</div></div>
     <div class="card"><h6>Audit Conversion</h6><div class="value" id="ovConversion">—</div></div>
   </div>
@@ -375,8 +385,19 @@ pre{font-size:.72rem;background:#f8fafc;border:1px solid var(--border);padding:.
 
 <!-- EMAILS -->
 <div class="section" id="emails">
-  <div class="card-flat">
-    <div id="emailsOut" class="empty">Loading…</div>
+  <div class="table-wrap" style="margin-bottom:1rem">
+    <div class="table-header"><h5>Email Campaigns</h5><button class="btn btn-outline btn-sm" onclick="loadEmails()">Refresh</button></div>
+    <table>
+      <thead><tr><th>Name</th><th>Subject</th><th>Status</th><th>Trigger</th><th>Sent</th><th>Created</th></tr></thead>
+      <tbody id="emailCampaignsBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+    </table>
+  </div>
+  <div class="table-wrap">
+    <div class="table-header"><h5>Recent Messages (last 50)</h5></div>
+    <table>
+      <thead><tr><th>To</th><th>Template</th><th>Status</th><th>Channel</th><th>Sent At</th></tr></thead>
+      <tbody id="emailMessagesBody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+    </table>
   </div>
 </div>
 
@@ -677,13 +698,102 @@ pre{font-size:.72rem;background:#f8fafc;border:1px solid var(--border);padding:.
   </div>
 </div>
 
+<!-- CAMPAIGNS -->
+<div class="section" id="campaigns">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+    <div>
+      <h4 style="font-size:1rem;font-weight:700;margin-bottom:.2rem">Campaigns</h4>
+      <p style="font-size:.78rem;color:var(--muted)">All brand campaigns across the platform.</p>
+    </div>
+    <div style="display:flex;gap:.5rem">
+      <input id="campaignBrandFilter" placeholder="Filter by brand ID" style="padding:.35rem .75rem;border:1px solid var(--border);border-radius:8px;font-size:.78rem;width:200px">
+      <button onclick="loadCampaigns()" style="padding:.35rem .9rem;border:1px solid var(--border);border-radius:8px;background:var(--panel);cursor:pointer;font-size:.78rem;font-weight:600">Refresh</button>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Campaign</th><th>Brand</th><th>Objective</th><th>Channel</th><th>Status</th><th>Created</th></tr></thead>
+      <tbody id="campaignsBody"><tr><td colspan="6" class="empty">Click Refresh to load.</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- APPROVALS -->
+<div class="section" id="approvals">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+    <div>
+      <h4 style="font-size:1rem;font-weight:700;margin-bottom:.2rem">Content Approvals</h4>
+      <p style="font-size:.78rem;color:var(--muted)">Internal approval queue — pending, in review, approved, rejected.</p>
+    </div>
+    <div style="display:flex;gap:.5rem">
+      <select id="approvalsStatusFilter" onchange="loadApprovals()" style="padding:.35rem .75rem;border:1px solid var(--border);border-radius:8px;font-size:.78rem">
+        <option value="pending">Pending</option>
+        <option value="review">In Review</option>
+        <option value="approved">Approved</option>
+        <option value="rejected">Rejected</option>
+        <option value="changes_requested">Changes Requested</option>
+      </select>
+      <button onclick="loadApprovals()" style="padding:.35rem .9rem;border:1px solid var(--border);border-radius:8px;background:var(--panel);cursor:pointer;font-size:.78rem;font-weight:600">Refresh</button>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Content</th><th>Brand</th><th>Type</th><th>Status</th><th>Expires</th><th>Submitted</th><th>Actions</th></tr></thead>
+      <tbody id="approvalsBody"><tr><td colspan="7" class="empty">Click Refresh to load.</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- PLATFORM CONTROLS -->
+<div class="section" id="controls">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+    <div>
+      <h4 style="font-size:1rem;font-weight:700;margin-bottom:.2rem">Platform Controls</h4>
+      <p style="font-size:.78rem;color:var(--muted)">Kill switches for platform features. Requires admin role. Changes take effect immediately.</p>
+    </div>
+    <button onclick="loadControls()" style="padding:.35rem .9rem;border:1px solid var(--border);border-radius:8px;background:var(--panel);cursor:pointer;font-size:.78rem;font-weight:600">Refresh</button>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Control Key</th><th>Status</th><th>Reason</th><th>Last Updated By</th><th>Updated</th><th>Action</th></tr></thead>
+      <tbody id="controlsBody"><tr><td colspan="6" class="empty">Click Refresh to load.</td></tr></tbody>
+    </table>
+  </div>
+  <div id="controlsError" class="error-msg" style="display:none;margin-top:.75rem"></div>
+</div>
+
+<!-- AUDIT LOG -->
+<div class="section" id="audit_log">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+    <div>
+      <h4 style="font-size:1rem;font-weight:700;margin-bottom:.2rem">Admin Audit Log</h4>
+      <p style="font-size:.78rem;color:var(--muted)">All admin actions: creates, updates, toggles, broadcasts, and control changes.</p>
+    </div>
+    <div style="display:flex;gap:.5rem">
+      <input id="auditActionFilter" placeholder="Filter by action…" style="padding:.35rem .75rem;border:1px solid var(--border);border-radius:8px;font-size:.78rem;width:180px">
+      <button onclick="loadAuditLog()" style="padding:.35rem .9rem;border:1px solid var(--border);border-radius:8px;background:var(--panel);cursor:pointer;font-size:.78rem;font-weight:600">Refresh</button>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Action</th><th>Target Type</th><th>Target ID</th><th>IP</th><th>Time</th></tr></thead>
+      <tbody id="auditLogBody"><tr><td colspan="5" class="empty">Click Refresh to load.</td></tr></tbody>
+    </table>
+  </div>
+  <div style="display:flex;justify-content:flex-end;margin-top:.75rem;gap:.5rem" id="auditLogPager" style="display:none">
+    <button id="auditPrevBtn" onclick="auditLogPage(-1)" class="btn btn-outline btn-sm">← Prev</button>
+    <span id="auditPageLabel" style="font-size:.78rem;color:var(--muted);align-self:center">Page 1</span>
+    <button id="auditNextBtn" onclick="auditLogPage(1)" class="btn btn-outline btn-sm">Next →</button>
+  </div>
+</div>
+
 </main>
 </div>
 
 <script>
 /* ── BUILD INFO ── */
-const BUILD_VERSION = "v2.2.0";
-const BUILD_TIMESTAMP = "2026-05-28T13:00:00Z";
+const BUILD_VERSION = "v2.3.0";
+const BUILD_TIMESTAMP = "2026-06-10T00:00:00Z";
 const ENVIRONMENT = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "development" : "production";
 
 /* ── CONFIG ── */
@@ -784,6 +894,8 @@ const SECTION_ROLES = {
   promotions:       ["super_admin","admin"],
   blog:             ["super_admin","admin","ops","operations"],
   emails:           ["super_admin","admin","ops","operations"],
+  campaigns:        ["super_admin","admin","ops","operations"],
+  approvals:        ["super_admin","admin","ops","operations"],
   support:          ["super_admin","admin","ops","operations","support"],
   support_requests: ["super_admin","admin","ops","operations","support"],
   messaging:        ["super_admin","admin","ops","operations","support"],
@@ -792,6 +904,8 @@ const SECTION_ROLES = {
   mem_features:     ["super_admin","admin","ops","operations"],
   mem_memory:       ["super_admin","admin","ops","operations"],
   operations:       ["super_admin","admin","ops","operations"],
+  controls:         ["super_admin","admin"],
+  audit_log:        ["super_admin","admin","ops","operations"],
   integrations:     ["super_admin","admin","ops","operations"],
   attribution:      ["super_admin","admin","ops","operations"],
   certification:    ["super_admin","admin","ops","operations"],
@@ -853,10 +967,13 @@ function loadSection(id) {
   const map = {
     overview: loadOverview, customers: loadCustomers, analytics: loadAnalytics,
     billing: loadBilling, pricing: loadPricing, promotions: loadPromotions,
-    blog: loadBlog, emails: loadEmails, support: loadSupport,
+    blog: loadBlog, emails: loadEmails, campaigns: loadCampaigns,
+    approvals: loadApprovals, support: loadSupport,
     support_requests: loadSupportRequests, messaging: loadMessaging,
     comm_ops: loadCommOps, mem_events: loadMemEvents, mem_features: loadMemFeatures,
-    mem_memory: loadMemMemory, operations: loadOperations, integrations: loadIntegrations,
+    mem_memory: loadMemMemory, operations: loadOperations,
+    controls: loadControls, audit_log: loadAuditLog,
+    integrations: loadIntegrations,
     attribution: loadAttribution, certification: loadCertification,
     system: loadSystem, compliance: loadCompliance
   };
@@ -877,29 +994,46 @@ function debounce(fn, delay) {
 /* ── LOADERS ── */
 
 async function loadOverview() {
-  const [bil, sys] = await Promise.all([
-    apiFetch("/v1/admin/billing/overview"),
-    apiFetch("/v1/admin/system/status")
+  const [ov, bil] = await Promise.all([
+    apiFetch("/v1/admin/overview"),
+    apiFetch("/v1/admin/billing/overview")
   ]);
-  if (bil) {
-    document.getElementById("ovCustomers").textContent = fmt(bil.total_customers);
-    document.getElementById("ovActive").textContent = fmt(bil.active_subscriptions);
-    document.getElementById("ovTrial").textContent = fmt(bil.trial_subscriptions);
-    document.getElementById("ovMRR").textContent = fmtMoney(bil.mrr);
-    document.getElementById("ovConversion").textContent = bil.conversion_rate || "0%";
-  }
-  if (sys) {
-    const rate = sys.delivery_24h?.fail_rate ?? 0;
+  if (ov) {
+    document.getElementById("ovCustomers").textContent  = fmt(ov.users?.total);
+    document.getElementById("ovActive").textContent     = fmt(ov.users?.active);
+    document.getElementById("ovTrial").textContent      = fmt(ov.users?.trial);
+    document.getElementById("ovBrands").textContent     = fmt(ov.brands?.total);
+    document.getElementById("ovNew7d").textContent      = fmt(ov.users?.new_7d);
+    document.getElementById("ovPublished").textContent  = fmt(ov.delivery?.published_24h);
+    document.getElementById("ovIntegrations").textContent = fmt(ov.integrations?.active_connections);
+    const failedEl = document.getElementById("ovFailed");
+    const failed = ov.delivery?.failed_24h ?? 0;
+    failedEl.innerHTML = failed > 0
+      ? `<span class="badge bad">${fmt(failed)}</span>`
+      : `<span class="badge ok">0</span>`;
+    const alertsEl = document.getElementById("ovAlerts");
+    const alerts = ov.alerts?.critical_events_24h ?? 0;
+    alertsEl.innerHTML = alerts > 0
+      ? `<span class="badge bad">${alerts}</span>`
+      : `<span class="badge ok">0</span>`;
+    document.getElementById("ovMRR").textContent = fmtMoney(ov.revenue?.mrr_cents);
+    const rate = ov.delivery?.fail_rate ?? 0;
     const health = rate > 0.3 ? "Degraded" : rate > 0.1 ? "Warning" : "Healthy";
-    const cls = rate > 0.3 ? "bad" : rate > 0.1 ? "warn" : "ok";
+    const cls   = rate > 0.3 ? "bad"      : rate > 0.1 ? "warn"    : "ok";
     document.getElementById("ovDelivery").innerHTML = `<span class="badge ${cls}">${health}</span>`;
     document.getElementById("overviewStatus").innerHTML = `
-      <div style="display:flex;gap:1rem;flex-wrap:wrap">
-        <div><strong>${sys.delivery_24h?.total ?? 0}</strong> jobs in last 24h</div>
-        <div><strong>${sys.delivery_24h?.failed ?? 0}</strong> failed</div>
-        <div>Status: <span class="badge ${sys.status === 'operational' ? 'ok' : 'warn'}">${sys.status}</span></div>
-      </div>
-    `;
+      <div style="display:flex;gap:1.5rem;flex-wrap:wrap;font-size:.85rem">
+        <div><strong>${fmt(ov.delivery?.total_24h)}</strong> jobs last 24h</div>
+        <div><strong>${fmt(ov.delivery?.published_24h)}</strong> published</div>
+        <div><strong style="color:${failed > 0 ? 'var(--bad)' : 'var(--good)'}">${failed}</strong> failed</div>
+        <div><strong>${fmt(ov.brands?.new_7d)}</strong> new brands (7d)</div>
+        <div>Status: <span class="badge ${ov.delivery?.fail_rate > 0.1 ? 'warn' : 'ok'}">${rate > 0.3 ? 'degraded' : 'operational'}</span></div>
+        <div style="margin-left:auto;font-size:.72rem;color:var(--muted)">Updated ${new Date(ov.timestamp).toLocaleTimeString()}</div>
+      </div>`;
+  }
+  if (bil) {
+    if (!ov) document.getElementById("ovMRR").textContent = fmtMoney(bil.mrr);
+    document.getElementById("ovConversion").textContent = bil.conversion_rate || "0%";
   }
 }
 
@@ -1192,10 +1326,42 @@ async function deleteBlogPost(id) {
 
 /* EMAILS */
 async function loadEmails() {
-  const d = await apiFetch("/v1/admin/emails/campaigns");
-  const out = document.getElementById("emailsOut");
-  if (!d) { out.innerHTML = `<div class="empty">Failed to load</div>`; return; }
-  out.innerHTML = `<pre>${JSON.stringify(d, null, 2)}</pre>`;
+  const [campaigns, messages] = await Promise.all([
+    apiFetch("/v1/admin/emails/campaigns"),
+    apiFetch("/v1/admin/emails/messages"),
+  ]);
+
+  const cBody = document.getElementById("emailCampaignsBody");
+  const mBody = document.getElementById("emailMessagesBody");
+
+  const cRows = campaigns?.campaigns || campaigns?.data || (Array.isArray(campaigns) ? campaigns : []);
+  if (!cRows.length) {
+    cBody.innerHTML = `<tr><td colspan="6" class="empty">No email campaigns configured.</td></tr>`;
+  } else {
+    cBody.innerHTML = cRows.map(c => `
+      <tr>
+        <td><strong>${c.name || c.id}</strong></td>
+        <td>${c.subject || "—"}</td>
+        <td><span class="badge ${c.is_active || c.status === 'active' ? 'ok' : 'neutral'}">${c.is_active ? 'Active' : (c.status || 'inactive')}</span></td>
+        <td style="font-size:.75rem;color:var(--muted)">${c.trigger || c.event || "—"}</td>
+        <td>${fmt(c.sent_count ?? c.total_sent)}</td>
+        <td>${fmtDate(c.created_at)}</td>
+      </tr>`).join("");
+  }
+
+  const mRows = messages?.messages || messages?.data || (Array.isArray(messages) ? messages : []);
+  if (!mRows.length) {
+    mBody.innerHTML = `<tr><td colspan="5" class="empty">No messages yet.</td></tr>`;
+  } else {
+    mBody.innerHTML = mRows.map(m => `
+      <tr>
+        <td style="font-size:.78rem">${m.to || m.recipient_email || m.user_id || "—"}</td>
+        <td>${m.template || m.subject || "—"}</td>
+        <td><span class="badge ${m.status === 'sent' || m.status === 'delivered' ? 'ok' : m.status === 'failed' ? 'bad' : 'neutral'}">${m.status || "—"}</span></td>
+        <td>${m.channel || "email"}</td>
+        <td>${fmtDate(m.sent_at || m.created_at)}</td>
+      </tr>`).join("");
+  }
 }
 
 /* SUPPORT */
@@ -1266,17 +1432,79 @@ async function sendBroadcast() {
   resultEl.style.display = "block";
 }
 
+/* MEMORY LOADERS */
+async function loadMemEvents() {
+  const tbody = document.getElementById("memEventsBody");
+  if (!tbody) return;
+  tbody.innerHTML = `<tr><td colspan="5" class="empty">Loading…</td></tr>`;
+  const d = await apiFetch("/v1/admin/memory/events?limit=100");
+  const rows = d?.data || [];
+  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="5" class="empty">No memory events recorded.</td></tr>`; return; }
+  tbody.innerHTML = rows.map(e => `
+    <tr>
+      <td style="padding:.6rem 1rem;font-size:.82rem;font-family:monospace">${e.brand_id || "—"}</td>
+      <td style="padding:.6rem 1rem;font-size:.82rem">${e.tool || "—"}</td>
+      <td style="padding:.6rem 1rem;font-size:.82rem">${e.event || "—"}</td>
+      <td style="padding:.6rem 1rem;font-size:.82rem;max-width:200px;overflow:hidden;text-overflow:ellipsis">${e.value ?? "—"}</td>
+      <td style="padding:.6rem 1rem;font-size:.75rem;color:var(--muted)">${fmtDate(e.created_at)}</td>
+    </tr>`).join("");
+}
+
+async function loadMemFeatures() {
+  const tbody = document.getElementById("memFeatBody");
+  if (!tbody) return;
+  const brand_id = document.getElementById("memFeatBrand")?.value?.trim() || "";
+  tbody.innerHTML = `<tr><td colspan="5" class="empty">Loading…</td></tr>`;
+  const qs = brand_id ? `?brand_id=${encodeURIComponent(brand_id)}` : "";
+  const d = await apiFetch(`/v1/admin/memory/features${qs}`);
+  const rows = d?.data || [];
+  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="5" class="empty">No features found${brand_id ? " for this brand" : ""}.</td></tr>`; return; }
+  tbody.innerHTML = rows.map(f => `
+    <tr>
+      <td style="padding:.6rem 1rem;font-size:.82rem;font-family:monospace">${f.brand_id || "—"}</td>
+      <td style="padding:.6rem 1rem;font-size:.82rem">${f.feature || "—"}</td>
+      <td style="padding:.6rem 1rem;font-size:.82rem">${f.value ?? "—"}</td>
+      <td style="padding:.6rem 1rem;font-size:.82rem">${f.window || "—"}</td>
+      <td style="padding:.6rem 1rem;font-size:.75rem;color:var(--muted)">${fmtDate(f.computed_at)}</td>
+    </tr>`).join("");
+}
+
+async function loadMemMemory() {
+  const tbody = document.getElementById("memMemBody");
+  if (!tbody) return;
+  const brand_id = document.getElementById("memMemBrand")?.value?.trim() || "";
+  tbody.innerHTML = `<tr><td colspan="6" class="empty">Loading…</td></tr>`;
+  const qs = brand_id ? `?brand_id=${encodeURIComponent(brand_id)}` : "";
+  const d = await apiFetch(`/v1/admin/memory/brands${qs}`);
+  const rows = d?.data || [];
+  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="6" class="empty">No memory entries found${brand_id ? " for this brand" : ""}.</td></tr>`; return; }
+  tbody.innerHTML = rows.map(m => `
+    <tr>
+      <td style="padding:.6rem 1rem;font-size:.82rem;font-family:monospace">${m.brand_id || "—"}</td>
+      <td style="padding:.6rem 1rem;font-size:.82rem">${m.namespace || "—"}</td>
+      <td style="padding:.6rem 1rem;font-size:.82rem">${m.key || "—"}</td>
+      <td style="padding:.6rem 1rem;font-size:.82rem;max-width:180px;overflow:hidden;text-overflow:ellipsis">${m.value ?? "—"}</td>
+      <td style="padding:.6rem 1rem;font-size:.82rem">${m.confidence != null ? (Number(m.confidence) * 100).toFixed(0) + "%" : "—"}</td>
+      <td style="padding:.6rem 1rem;font-size:.75rem;color:var(--muted)">${fmtDate(m.updated_at)}</td>
+    </tr>`).join("");
+}
+
 /* OPERATIONS */
 async function loadOperations() {
-  const d = await apiFetch("/v1/admin/operations/health");
-  if (!d) return;
-  document.getElementById("opAI").textContent = fmt(d.ai_generations_last_hour);
-  document.getElementById("opOAuth").textContent = fmt(d.oauth_failures_24h);
-  document.getElementById("opDelivery").textContent = fmt(d.delivery_failures_last_hour);
-  const sys = await apiFetch("/v1/admin/system/status");
+  const [health, sys] = await Promise.all([
+    apiFetch("/v1/admin/operations/health"),
+    apiFetch("/v1/admin/system/status"),
+  ]);
+  if (health) {
+    document.getElementById("opAI").textContent = fmt(health.ai_generations_last_hour);
+    document.getElementById("opOAuth").textContent = fmt(health.oauth_failures_24h);
+    document.getElementById("opDelivery").textContent = fmt(health.delivery_failures_last_hour);
+  }
   if (sys) {
-    const cls = sys.status === "operational" ? "ok" : "warn";
-    document.getElementById("opStatus").innerHTML = `<span class="badge ${cls}">${sys.status}</span>`;
+    const rate = sys.delivery_24h?.fail_rate ?? 0;
+    const cls = sys.status === "operational" && rate <= 0.1 ? "ok" : rate > 0.3 ? "bad" : "warn";
+    const label = rate > 0.3 ? "Degraded" : sys.status === "operational" ? "Operational" : sys.status;
+    document.getElementById("opStatus").innerHTML = `<span class="badge ${cls}">${label}</span>`;
   }
 }
 
@@ -1812,6 +2040,153 @@ async function loadCompliance() {
           <td style="padding:6px 10px;color:var(--muted)">${e.details ? e.details.substring(0, 80) : "—"}</td>
         </tr>`).join("")}</tbody></table>`;
   }
+}
+
+/* CAMPAIGNS */
+async function loadCampaigns() {
+  const tbody = document.getElementById("campaignsBody");
+  if (!tbody) return;
+  tbody.innerHTML = `<tr><td colspan="6" class="empty">Loading…</td></tr>`;
+  const brand_id = document.getElementById("campaignBrandFilter")?.value?.trim() || "";
+  const qs = brand_id ? `?brand_id=${encodeURIComponent(brand_id)}` : "";
+  const d = await apiFetch(`/v1/admin/campaigns${qs}`);
+  const rows = d?.campaigns || [];
+  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="6" class="empty">No campaigns found.</td></tr>`; return; }
+  tbody.innerHTML = rows.map(c => `
+    <tr>
+      <td><strong>${c.name}</strong><br><span style="font-size:.7rem;color:var(--muted);font-family:monospace">${c.id}</span></td>
+      <td>${c.brand_name || c.brand_id}</td>
+      <td>${c.objective || "—"}</td>
+      <td>${c.channel || "—"}</td>
+      <td><span class="badge ${c.status === 'active' ? 'ok' : c.status === 'paused' ? 'warn' : 'neutral'}">${c.status || "—"}</span></td>
+      <td>${fmtDate(c.created_at)}</td>
+    </tr>`).join("");
+}
+
+/* APPROVALS */
+async function loadApprovals() {
+  const tbody = document.getElementById("approvalsBody");
+  if (!tbody) return;
+  tbody.innerHTML = `<tr><td colspan="7" class="empty">Loading…</td></tr>`;
+  const status = document.getElementById("approvalsStatusFilter")?.value || "pending";
+  const d = await apiFetch(`/v1/admin/approvals?status=${encodeURIComponent(status)}`);
+  const rows = d?.approvals || [];
+  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="7" class="empty">No ${status} approval requests.</td></tr>`; return; }
+  tbody.innerHTML = rows.map(a => {
+    const expired = a.expires_at && new Date(a.expires_at) < new Date();
+    const canAct = a.status === "pending" || a.status === "review";
+    return `<tr>
+      <td><strong>${a.content_title || "Untitled"}</strong><br><span style="font-size:.7rem;color:var(--muted)">${a.content_type || "post"}</span></td>
+      <td>${a.brand_name || a.brand_id}</td>
+      <td>${a.type || "—"}</td>
+      <td><span class="badge ${a.status === 'approved' ? 'ok' : a.status === 'rejected' ? 'bad' : a.status === 'review' ? 'accent' : 'warn'}">${a.status}</span>${expired ? ' <span class="badge bad">expired</span>' : ''}</td>
+      <td style="font-size:.75rem;color:${expired ? 'var(--bad)' : 'var(--muted)'}">${a.expires_at ? fmtDate(a.expires_at) : "—"}</td>
+      <td>${fmtDate(a.created_at)}</td>
+      <td style="white-space:nowrap">
+        ${canAct ? `
+          <button class="btn btn-outline btn-sm" style="color:var(--good)" onclick="actionApproval('${a.id}','approved')">Approve</button>
+          <button class="btn btn-outline btn-sm" style="color:var(--bad)" onclick="actionApproval('${a.id}','rejected')">Reject</button>
+          <button class="btn btn-outline btn-sm" onclick="actionApproval('${a.id}','changes_requested')">Request Changes</button>
+        ` : "—"}
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+async function actionApproval(id, newStatus) {
+  const label = { approved: "approve", rejected: "reject", changes_requested: "request changes for" }[newStatus] || newStatus;
+  if (!confirm(`${label.charAt(0).toUpperCase() + label.slice(1)} this approval request?`)) return;
+  const d = await apiFetch(`/v1/admin/approvals/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status: newStatus }),
+  });
+  if (d?.success) {
+    loadApprovals();
+  } else {
+    alert(d?.error || "Action failed");
+  }
+}
+
+/* PLATFORM CONTROLS */
+async function loadControls() {
+  const tbody = document.getElementById("controlsBody");
+  const errEl = document.getElementById("controlsError");
+  if (!tbody) return;
+  tbody.innerHTML = `<tr><td colspan="6" class="empty">Loading…</td></tr>`;
+  if (errEl) errEl.style.display = "none";
+  const d = await apiFetch("/v1/admin/controls");
+  if (!d) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty">Failed to load. Check permissions (admin role required).</td></tr>`;
+    return;
+  }
+  const rows = d.controls || [];
+  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="6" class="empty">No platform controls defined.</td></tr>`; return; }
+  tbody.innerHTML = rows.map(c => `
+    <tr id="ctrl-row-${c.key}">
+      <td><code style="font-size:.8rem;background:#f1f5f9;padding:.15rem .4rem;border-radius:4px">${c.key}</code></td>
+      <td><span class="badge ${c.enabled ? 'ok' : 'bad'}">${c.enabled ? 'ENABLED' : 'DISABLED'}</span></td>
+      <td style="font-size:.78rem;color:var(--muted);max-width:200px">${c.reason || "—"}</td>
+      <td style="font-size:.75rem;color:var(--muted)">${c.updated_by || "—"}</td>
+      <td style="font-size:.75rem;color:var(--muted)">${fmtDate(c.updated_at)}</td>
+      <td>
+        <button class="btn btn-outline btn-sm ${c.enabled ? '' : 'btn-primary'}" onclick="toggleControl('${c.key}', ${c.enabled ? 0 : 1})">
+          ${c.enabled ? 'Disable' : 'Enable'}
+        </button>
+      </td>
+    </tr>`).join("");
+}
+
+async function toggleControl(key, enable) {
+  const verb = enable ? "enable" : "disable";
+  const reason = prompt(`Reason for ${verb} "${key}" (optional):`);
+  if (reason === null) return; // cancelled
+  const d = await apiFetch(`/v1/admin/controls/${encodeURIComponent(key)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ enabled: enable === 1, reason: reason || null }),
+  });
+  const errEl = document.getElementById("controlsError");
+  if (d?.success) {
+    loadControls();
+  } else {
+    if (errEl) { errEl.textContent = d?.error || "Toggle failed"; errEl.style.display = "block"; }
+    else alert(d?.error || "Toggle failed");
+  }
+}
+
+/* AUDIT LOG */
+let _auditPage = 1;
+async function loadAuditLog(page) {
+  if (page !== undefined) _auditPage = page;
+  const tbody = document.getElementById("auditLogBody");
+  if (!tbody) return;
+  tbody.innerHTML = `<tr><td colspan="5" class="empty">Loading…</td></tr>`;
+  const action = document.getElementById("auditActionFilter")?.value?.trim() || "";
+  const qs = new URLSearchParams({ page: _auditPage, limit: 50 });
+  if (action) qs.set("action", action);
+  const d = await apiFetch(`/v1/admin/audit-log?${qs}`);
+  if (!d) { tbody.innerHTML = `<tr><td colspan="5" class="empty">Failed to load audit log.</td></tr>`; return; }
+  const rows = d.items || [];
+  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="5" class="empty">No audit entries found.</td></tr>`; return; }
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td><strong style="font-size:.82rem">${r.action}</strong></td>
+      <td style="font-size:.78rem;color:var(--muted)">${r.target_type || "—"}</td>
+      <td style="font-size:.75rem;font-family:monospace;color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis">${r.target_id || "—"}</td>
+      <td style="font-size:.75rem;color:var(--muted)">${r.ip_masked || "—"}</td>
+      <td style="font-size:.75rem;color:var(--muted);white-space:nowrap">${fmtDate(r.created_at)}</td>
+    </tr>`).join("");
+  const pager = document.getElementById("auditLogPager");
+  const label = document.getElementById("auditPageLabel");
+  const prevBtn = document.getElementById("auditPrevBtn");
+  const nextBtn = document.getElementById("auditNextBtn");
+  if (pager) { pager.style.display = "flex"; }
+  if (label) label.textContent = `Page ${_auditPage} of ${Math.ceil((d.total || rows.length) / 50)}`;
+  if (prevBtn) prevBtn.disabled = _auditPage <= 1;
+  if (nextBtn) nextBtn.disabled = rows.length < 50;
+}
+
+function auditLogPage(delta) {
+  loadAuditLog(_auditPage + delta);
 }
 
 init();
