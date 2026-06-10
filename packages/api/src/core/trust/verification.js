@@ -84,21 +84,21 @@ export async function sendOTP(request, env, auth) {
     const id = crypto.randomUUID();
     const token = crypto.randomUUID(); // backward-compat link token
 
-    await db.prepare(
-      `INSERT INTO email_verifications (id, user_id, token, expires_at, otp_hash, otp_expires_at, attempts)
-       VALUES (?, ?, ?, datetime('now','+1 day'), ?, ${expires}, 0)`
-    ).bind(id, auth.user_id, token, otp_hash).run();
-
-    // Queue OTP email
-    await db.prepare(
-      `INSERT INTO email_outbox (id, customer_id, template, to_email, subject, payload, status)
-       VALUES (?, ?, 'otp_verification', ?, 'Your myPilotPost verification code', ?, 'pending')`
-    ).bind(
-      crypto.randomUUID(),
-      auth.user_id,
-      user.email,
-      JSON.stringify({ otp, user_id: auth.user_id, expires_minutes: OTP_TTL_MINUTES })
-    ).run();
+    await db.batch([
+      db.prepare(
+        `INSERT INTO email_verifications (id, user_id, token, expires_at, otp_hash, otp_expires_at, attempts)
+         VALUES (?, ?, ?, datetime('now','+1 day'), ?, ${expires}, 0)`
+      ).bind(id, auth.user_id, token, otp_hash),
+      db.prepare(
+        `INSERT INTO email_outbox (id, customer_id, template, to_email, subject, payload, status)
+         VALUES (?, ?, 'otp_verification', ?, 'Your myPilotPost verification code', ?, 'pending')`
+      ).bind(
+        crypto.randomUUID(),
+        auth.user_id,
+        user.email,
+        JSON.stringify({ otp, user_id: auth.user_id, expires_minutes: OTP_TTL_MINUTES })
+      ),
+    ]);
 
     return json({ ok: true, expires_in_minutes: OTP_TTL_MINUTES });
   } catch (err) {
@@ -204,21 +204,22 @@ export async function queueOTPEmail(userId, env) {
     const id = crypto.randomUUID();
     const token = crypto.randomUUID();
 
-    await db.prepare(
-      `INSERT INTO email_verifications (id, user_id, token, expires_at, otp_hash, otp_expires_at, attempts)
-       VALUES (?, ?, ?, datetime('now','+1 day'), ?, datetime('now','+${OTP_TTL_MINUTES} minutes'), 0)`
-    ).bind(id, userId, token, otp_hash).run();
-
-    await db.prepare(
-      `INSERT INTO email_outbox (id, customer_id, template, to_email, subject, payload, status)
-       VALUES (?, ?, 'otp_verification', ?, ?, ?, 'pending')`
-    ).bind(
-      crypto.randomUUID(),
-      userId,
-      user.email,
-      `${otp} — Your myPilotPost verification code`,
-      JSON.stringify({ otp, user_id: userId, expires_minutes: OTP_TTL_MINUTES })
-    ).run();
+    await db.batch([
+      db.prepare(
+        `INSERT INTO email_verifications (id, user_id, token, expires_at, otp_hash, otp_expires_at, attempts)
+         VALUES (?, ?, ?, datetime('now','+1 day'), ?, datetime('now','+${OTP_TTL_MINUTES} minutes'), 0)`
+      ).bind(id, userId, token, otp_hash),
+      db.prepare(
+        `INSERT INTO email_outbox (id, customer_id, template, to_email, subject, payload, status)
+         VALUES (?, ?, 'otp_verification', ?, ?, ?, 'pending')`
+      ).bind(
+        crypto.randomUUID(),
+        userId,
+        user.email,
+        `${otp} — Your myPilotPost verification code`,
+        JSON.stringify({ otp, user_id: userId, expires_minutes: OTP_TTL_MINUTES })
+      ),
+    ]);
   } catch (err) {
     console.warn("[TRUST:OTP:AUTO-SEND]", err.message);
   }

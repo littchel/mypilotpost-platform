@@ -40,7 +40,7 @@ export async function runDeliveryScheduler(env, ctx) {
       `
       SELECT *
       FROM delivery_jobs
-      WHERE ((status = 'scheduled' AND scheduled_at <= ?)
+      WHERE ((status IN ('scheduled','pending') AND scheduled_at <= ?)
          OR (status = 'processing' AND updated_at < datetime('now', '-5 minutes')))
          AND delivery_attempts < 3
       ORDER BY scheduled_at ASC

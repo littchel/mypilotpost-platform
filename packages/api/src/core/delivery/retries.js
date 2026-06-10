@@ -21,13 +21,10 @@ export async function manualRetryJob(request, env, auth) {
     // 1. Single Job Retry
     const job = await db.prepare(`SELECT * FROM delivery_jobs WHERE id = ? AND brand_id = ?`).bind(job_id, auth.brand_id).first();
     if (!job) return error("Job not found", 404);
-    if (job.status !== 'failed' && job.status !== 'partial_failure') return error("Only failed jobs can be retried", 400);
-    if (job.delivery_attempts >= 3) return error("Maximum retry attempts (3) reached for this job", 400);
+    if (job.status !== 'failed' && job.status !== 'partial_failure') return error("Only failed jobs can be retried", "BAD_REQUEST", null, 400);
+    if (job.delivery_attempts >= 3) return error("Maximum retry attempts reached for this job", "MAX_ATTEMPTS_REACHED", null, 400);
 
-    // Reset status to processing (to avoid scheduler picking it up twice if we trigger now)
-    await db.prepare(`UPDATE delivery_jobs SET status = 'processing', updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(job_id).run();
-
-    // Trigger execution
+    // Trigger execution using the normal delivery lock path.
     try {
       await executeDeliveryJob(env, job);
       return json({ success: true, message: "Retry triggered" });
@@ -47,7 +44,6 @@ export async function manualRetryJob(request, env, auth) {
 
     const tasks = [];
     for (const job of failedJobs.results) {
-       await db.prepare(`UPDATE delivery_jobs SET status = 'processing', updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(job.id).run();
        tasks.push(executeDeliveryJob(env, job));
     }
 

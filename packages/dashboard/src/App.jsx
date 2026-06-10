@@ -36,6 +36,7 @@ import CreatePost from "./pages/CreatePost";
 import Teams from "./pages/Teams";
 import Growth from "./pages/Growth";
 import GrowthEngine from "./pages/GrowthEngine";
+import Promotions from "./pages/Promotions";
 import DashboardInsights from "./pages/DashboardInsights";
 import InsightsFeed from "./pages/InsightsFeed";
 import BrandDNA from "./pages/BrandDNA";
@@ -964,7 +965,7 @@ function App() {
         const platform = oauthSuccess;
         setGooglePickerState({ platform, connId, accounts: [], loading: true, error: null });
         setTimeout(() => setActiveTab("integrations"), 300);
-        apiRequest(`/api/oauth/${platform}/accounts?conn_id=${connId}`, "GET")
+        apiRequest(`/api/oauth/${platform}/accounts?conn_id=${connId}`)
           .then(data => setGooglePickerState(s => ({ ...s, accounts: data.accounts || [], loading: false })))
           .catch(err => setGooglePickerState(s => ({ ...s, loading: false, error: err.message || "Failed to load accounts" })));
       } else {
@@ -1368,7 +1369,11 @@ function App() {
           <Teams brandId={activeBrand?.id} />
         </TabContent>
         <TabContent id="growth" activeTab={activeTab}>
-          <Growth brandId={activeBrand?.id} />
+          <Growth brandId={activeBrand?.id} growth={growth} switchTab={switchTab} />
+        </TabContent>
+
+        <TabContent id="promotions" activeTab={activeTab}>
+          <Promotions />
         </TabContent>
 
         <TabContent id="growth-engine" activeTab={activeTab}>
@@ -1520,10 +1525,13 @@ function App() {
                   key={acc.id}
                   onClick={async () => {
                     try {
-                      await apiRequest(`/api/oauth/${googlePickerState.platform}/select`, "POST", {
-                        conn_id: googlePickerState.connId,
-                        account_id: acc.id,
-                        account_name: acc.name
+                      await apiRequest(`/api/oauth/${googlePickerState.platform}/select`, {
+                        method: "POST",
+                        body: JSON.stringify({
+                          conn_id: googlePickerState.connId,
+                          account_id: acc.id,
+                          account_name: acc.name
+                        })
                       });
                       setGooglePickerState(null);
                       setListVersion(v => v + 1);

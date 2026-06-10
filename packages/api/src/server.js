@@ -45,7 +45,9 @@ import {
   forgotPassword,
   resetPassword,
   getProfile,
-  changePassword
+  changePassword,
+  logout,
+  refreshSession
 } from "./auth/customer.js";
 
 /* ======================================================
@@ -108,6 +110,7 @@ import {
   getGrowthActivity,
   getGrowthRewards,
   processGrowthAction,
+  redeemReward,
   registerReferral as registerGrowthReferral
 } from "./core/growth/handlers.js";
 import { getGrowthEngine } from "./core/growth/growth_engine.js";
@@ -190,7 +193,7 @@ import {
   servePublicMediaFile
 } from "./core/media/media.js";
 
-import { getMediaSuggestions } from "./core/media/intelligence/index.js";
+import { getMediaSuggestions } from "./core/media/intelligence/controller.js";
 
 /* 🔒 CANON 3 — MEDIA PROVIDERS */
 import { importFromGoogleDrive } from "./core/media/providers/google-drive.js";
@@ -225,7 +228,8 @@ import {
   getTimeline,
   getCampaignInsights,
   getCampaignComparison,
-  detectCampaignPatterns
+  detectCampaignPatterns,
+  updateCampaignStatus,
 } from "./core/campaigns/campaigns.js";
 
 import { generateCampaignPlan, generatePostIdea, generateRecommendation, generateVisualBrief } from "./core/templates/templates.js";
@@ -242,7 +246,7 @@ import {
   handleEmailTemplates
 } from "./api/admin/campaigns-emails.js";
 
-import { handleAdminUsers, handleAdminUserDetail, toggleAdminUserStatus } from "./api/admin/users.js";
+import { handleAdminUsers, handleAdminUserDetail, toggleAdminUserStatus, forceVerifyUser } from "./api/admin/users.js";
 
 import { 
   billingOverview,
@@ -364,6 +368,7 @@ import { getSystemEvents } from "./api/admin/observability-api.js";
 import { getIntegrationsDiagnostics } from "./api/admin/integrations-diagnostics.js";
 import { runBackfill, getBackfillStatus } from "./core/delivery/performance/backfill/engine.js";
 import { getAttributionDiagnostics } from "./api/admin/attribution-diagnostics.js";
+import { getAdminRewardsOverview } from "./api/admin/rewards.js";
 
 /* ======================================================
    PLATFORM SANDBOX
@@ -724,21 +729,24 @@ export default {
 
       /* ================= INTERNAL PERFORMANCE INGESTION ================= */
       if (method === "POST" && path === "/api/internal/performance/ingest") {
-        await requireAdmin(request, env);
+        // requireAdminAuth (not requireAdmin) — internal ops must require is_admin:true JWT.
+        // requireAdmin accepts customer JWTs whose brand role happens to be 'admin', which
+        // would allow any brand admin to trigger platform-wide performance ingestion.
+        await requireAdminAuth(request, env);
         await runPerformanceIngestion(env);
         return json({ success: true }, 200, { ...securityHeaders, ...defaultCorsHeaders });
       }
 
       /* ================= INTERNAL BRAND INTELLIGENCE ================= */
       if (method === "POST" && path === "/api/internal/intelligence/run") {
-        await requireAdmin(request, env);
+        await requireAdminAuth(request, env);
         // Trigger for ALL brands or specific? Let's allow specific via query
         return withCors(request, generateInsights(request, env));
       }
 
       /* ================= INTERNAL DELIVERY JOB EXECUTION ================= */
       if (method === "POST" && path === "/api/internal/delivery/run") {
-        await requireAdmin(request, env);
+        await requireAdminAuth(request, env);
 
         const { results } = await env.mypilotpost.prepare(`
           SELECT *
@@ -846,6 +854,17 @@ export default {
         return withCors(request, login(request, env));
       }
 
+      if (method === "POST" && (path === "/api/customer/auth/logout" || path === "/api/v1/auth/logout")) {
+        const auth = await requireAuth(request, env);
+        return withCors(request, logout(request, env, auth));
+      }
+
+      if (method === "POST" && (path === "/api/customer/auth/refresh" || path === "/api/v1/auth/refresh")) {
+        const limited = await rateLimit(request, env, "auth");
+        if (limited) return withCors(request, Promise.resolve(limited));
+        return withCors(request, refreshSession(request, env));
+      }
+
       if (method === "POST" && path === "/api/customer/verify-email") {
         const limited = await rateLimit(request, env, "auth");
         if (limited) return limited;
@@ -900,12 +919,14 @@ export default {
         return withCors(request, acceptInvite(request, env));
       }
 
-      /* ================= OAUTH STARKS / CALLBACKS (PUBLIC) ================= */
-      // All callbacks are public (state verification handles security)
+      /* ================= OAUTH CALLBACKS (PUBLIC) ================= */
+      // Legacy path: /api/customer/oauth/:platform/callback
+      // Proxied to unified flow — writes to social_connections (not connected_accounts)
       if (method === "GET" && path.startsWith("/api/customer/oauth/") && path.endsWith("/callback")) {
         const provider = path.split("/")[4];
-        request.params = { provider };
-        return handleCallback(request, env);
+        const unifiedUrl = new URL(request.url);
+        unifiedUrl.pathname = `/api/oauth/${provider}/callback`;
+        return handleUnifiedCallback(new Request(unifiedUrl.toString(), request), env);
       }
 
       /* ---------- UNIFIED OAUTH CALLBACK (PUBLIC) ---------- */
@@ -979,8 +1000,8 @@ export default {
         }
 
         if (path.startsWith("/api/v1/admin/users/") && path.endsWith("/toggle")) {
-          await requireAdminAuth(request, env);
-          return toggleAdminUserStatus(request, env, path.split("/")[5]);
+          const auth = await requireAdminAuth(request, env);
+          return toggleAdminUserStatus(request, env, path.split("/")[5], auth);
         }
 
         if (path === "/api/v1/admin/campaigns") {
@@ -1032,8 +1053,13 @@ export default {
         }
 
         if (path.startsWith("/api/v1/admin/pricing/")) {
-          await requireAdminAuth(request, env);
-          return handleAdminPricingById(request, env);
+          const auth = await requireAdminAuth(request, env);
+          const res = await handleAdminPricingById(request, env);
+          if (method === "PUT") {
+            const planId = path.split("/")[5];
+            await logAdminAction(env, auth, "update_plan", "pricing", planId, { method });
+          }
+          return res;
         }
 
         /* ---------- CUSTOMERS (alias to /users for portal compat) ---------- */
@@ -1043,8 +1069,13 @@ export default {
         }
 
         if (path.startsWith("/api/v1/admin/customers/") && path.endsWith("/toggle")) {
-          await requireAdminAuth(request, env);
-          return toggleAdminUserStatus(request, env, path.split("/")[5]);
+          const auth = await requireAdminAuth(request, env);
+          return toggleAdminUserStatus(request, env, path.split("/")[5], auth);
+        }
+
+        if (path.startsWith("/api/v1/admin/customers/") && path.endsWith("/verify") && method === "POST") {
+          const auth = await requireAdminAuth(request, env);
+          return forceVerifyUser(request, env, path.split("/")[5], auth);
         }
 
         if (path.startsWith("/api/v1/admin/customers/") && method === "GET") {
@@ -1064,8 +1095,8 @@ export default {
         }
 
         if (path.startsWith("/api/v1/admin/support/requests/") && method === "PUT") {
-          await requireAdminAuth(request, env);
-          return withCors(request, adminUpdateSupport(request, env));
+          const auth = await requireAdminAuth(request, env);
+          return withCors(request, adminUpdateSupport(request, env, auth));
         }
 
         if (path === "/api/v1/admin/comms/delivery" && method === "GET") {
@@ -1184,6 +1215,12 @@ export default {
           return getAttributionDiagnostics(env);
         }
 
+        /* ---------- REWARDS (READ-ONLY) ---------- */
+        if (path === "/api/v1/admin/rewards" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return withCors(request, getAdminRewardsOverview(request, env));
+        }
+
         /* ---------- PLATFORM CERTIFICATION ---------- */
         if (path.startsWith("/api/v1/admin/certification")) {
           await requireAdminAuth(request, env);
@@ -1239,16 +1276,26 @@ export default {
         }
 
         /* ---------- STUBS for future sections (return empty, no error) ---------- */
-        if (path === "/api/v1/admin/memory")
+        if (path === "/api/v1/admin/memory") {
+          await requireAdminAuth(request, env);
           return withCors(request, Promise.resolve(json({ brands: [], total: 0 })));
-        if (path === "/api/v1/admin/seo/overview")
+        }
+        if (path === "/api/v1/admin/seo/overview") {
+          await requireAdminAuth(request, env);
           return withCors(request, Promise.resolve(json({ pages: [], coverage: 0 })));
-        if (path === "/api/v1/admin/automation/rules")
+        }
+        if (path === "/api/v1/admin/automation/rules") {
+          await requireAdminAuth(request, env);
           return withCors(request, Promise.resolve(json({ rules: [] })));
-        if (path === "/api/v1/admin/ml/health")
+        }
+        if (path === "/api/v1/admin/ml/health") {
+          await requireAdminAuth(request, env);
           return withCors(request, Promise.resolve(json({ status: "ok", models: [] })));
-        if (path === "/api/v1/admin/experiments")
+        }
+        if (path === "/api/v1/admin/experiments") {
+          await requireAdminAuth(request, env);
           return withCors(request, Promise.resolve(json({ experiments: [] })));
+        }
       })());
       }
 
@@ -1273,10 +1320,13 @@ export default {
         }
 
         /* ---------- UNIFIED INTEGRATIONS (PHASE 1.1) ---------- */
+        // Legacy path: /api/customer/oauth/:platform/start
+        // Proxied to unified flow — stores state in KV, writes to social_connections on callback
         if (method === "GET" && path.startsWith("/api/customer/oauth/") && path.endsWith("/start")) {
           const provider = path.split("/")[4];
-          request.params = { provider };
-          return startOAuth(request, env, auth);
+          const unifiedUrl = new URL(request.url);
+          unifiedUrl.pathname = `/api/oauth/${provider}/connect`;
+          return withCors(request, startUnifiedOAuth(new Request(unifiedUrl.toString(), request), env, auth));
         }
 
         if (method === "GET" && path === "/api/customer/integrations")
@@ -1333,6 +1383,12 @@ export default {
         
         if (method === "POST" && path === "/api/customer/onboarding/complete")
           return withCors(request, completeOnboarding(request, env, auth));
+
+        if (method === "GET" && path === "/api/customer/onboarding/platforms")
+          return withCors(request, listPlatforms(request, env, auth));
+
+        if (method === "POST" && path === "/api/customer/onboarding/platforms")
+          return withCors(request, savePlatforms(request, env, auth));
 
         /* ---------- BILLING ---------- */
         if (method === "GET" && path === "/api/customer/billing/plan") {
@@ -1495,6 +1551,9 @@ export default {
          if (method === "POST" && path === "/api/customer/growth/referral")
            return withCors(request, registerGrowthReferral(request, env, auth));
 
+         if (method === "POST" && path === "/api/customer/growth/reward/redeem")
+           return withCors(request, redeemReward(request, env, auth));
+
          if (method === "GET" && path === "/api/customer/growth-engine")
            return withCors(request, getGrowthEngine(request, env, auth));
 
@@ -1652,26 +1711,11 @@ export default {
           if (method === "POST" && path === "/api/customer/intelligence/weekly-plan/fix") {
              const db = env.mypilotpost;
              try {
-                // 1. Get AI fixes
+                // 1. Get AI fixes (analysis only — no delivery_jobs created here)
                 const plan = await getAIAnalysis(db, auth.brand_id, 'weekly_plan', null, env);
                 const fixes = plan?.fixes || [];
 
-                // 2. Map to actual placeholder jobs
-                const stmt = db.prepare(`
-                  INSERT INTO delivery_jobs (id, brand_id, content_id, platform, status, scheduled_at, created_at)
-                  VALUES (?, ?, ?, ?, 'draft', ?, CURRENT_TIMESTAMP)
-                `);
-
-                for (const fix of fixes) {
-                   const jobId = crypto.randomUUID();
-                   // Determine future slot (e.g., next occurring instance of 'day')
-                   const scheduledAt = new Date();
-                   scheduledAt.setDate(scheduledAt.getDate() + 2); // Simulating gap filling
-
-                   await stmt.bind(jobId, auth.brand_id, 'STRATEGIC_PLACEHOLDER', 'linkedin', scheduledAt.toISOString()).run();
-                }
-
-                // 3. Grant XP for strategic alignment
+                // 2. Grant XP for strategic alignment
                 await grantExp(db, auth.brand_id, 25);
                 await db.prepare("UPDATE brands SET current_score = current_score + 2 WHERE id = ?").bind(auth.brand_id).run();
 
@@ -1926,6 +1970,11 @@ export default {
 
         if (path.startsWith("/api/customer/content/social")) {
           const auth = await requireBrandContext(request, env);
+          if (path.endsWith("/variants")) {
+            const contentId = path.split("/")[5];
+            if (method === "GET") return withCors(request, getSocialVariants(request, env, contentId, auth));
+            if (method === "PUT" || method === "PATCH") return withCors(request, saveSocialVariants(request, env, contentId, auth));
+          }
           if (method === "POST" && path.endsWith("/submit-approval")) return withCors(request, import("./core/content/social.js").then(m => m.submitForApproval(request, env, auth)));
           if (method === "POST" && path.endsWith("/approve")) return withCors(request, import("./core/content/social.js").then(m => m.approveContent(request, env, auth)));
           if (method === "POST" && path.endsWith("/reject")) return withCors(request, import("./core/content/social.js").then(m => m.rejectContent(request, env, auth)));
@@ -1944,13 +1993,14 @@ export default {
         }
 
         /* ---------- REPORTING SYSTEM ---------- */
+        // Legacy paths redirect to canonical analytics.js report engine
         if (path === "/api/customer/reports/generate") {
           const auth = await requireBrandContext(request, env);
-          return withCors(request, import("./core/reporting/engine.js").then(m => m.generateReport(request, env, auth)));
+          return withCors(request, generateReport(request, env, auth));
         }
-        if (path === "/api/customer/reports") {
+        if (path === "/api/customer/reports" && method === "GET") {
           const auth = await requireBrandContext(request, env);
-          return withCors(request, import("./core/reporting/engine.js").then(m => m.listReports(request, env, auth)));
+          return withCors(request, listReports(request, env, auth));
         }
 
         /* ---------- UNIFIED MESSAGING ---------- */
@@ -2125,15 +2175,15 @@ export default {
         if (method === "GET" && path === "/api/customer/campaigns/patterns")
           return withCors(request, detectCampaignPatterns(request, env, auth));
 
-        if (method === "GET" && path.startsWith("/api/customer/campaigns/")) {
+        if (path.startsWith("/api/customer/campaigns/")) {
           const parts = path.split("/");
           const campaignId = parts[4];
           const subRoute = parts[5];
 
-          if (subRoute === "timeline") return withCors(request, getTimeline(request, env, auth, campaignId));
-          if (subRoute === "insights") return withCors(request, getCampaignInsights(request, env, auth, campaignId));
-
-          return withCors(request, getCampaignDetails(request, env, auth, campaignId));
+          if (method === "PATCH" && !subRoute) return withCors(request, updateCampaignStatus(request, env, auth, campaignId));
+          if (method === "GET" && subRoute === "timeline") return withCors(request, getTimeline(request, env, auth, campaignId));
+          if (method === "GET" && subRoute === "insights") return withCors(request, getCampaignInsights(request, env, auth, campaignId));
+          if (method === "GET" && !subRoute) return withCors(request, getCampaignDetails(request, env, auth, campaignId));
         }
 
         /* ---------- AI CONTENT STUDIO ---------- */
@@ -2199,7 +2249,10 @@ export default {
     ctx.waitUntil(
       (async () => {
         // Every-minute cron: delivery scheduler + email worker
-        if (cron === "* * * * *") {
+        if (cron === "* * * * *" || cron === "") {
+          if (cron === "") {
+            console.warn("[CRON] Received test scheduled event without cron string. Running every-minute delivery/email workers.");
+          }
           try {
             await runDeliveryScheduler(env, ctx);
           } catch (err) {

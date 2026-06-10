@@ -36,11 +36,29 @@ export async function requireAuth(request, env) {
   if (!user_id) throw error("Unauthorized", "UNAUTHORIZED", null, 401);
 
   const db = getDB(env);
+  const url = new URL(request.url);
+  const is_email_exempt_route =
+    url.pathname.includes("/trust/") ||
+    url.pathname.includes("/verify-email") ||
+    url.pathname.includes("/register") ||
+    url.pathname.includes("/login") ||
+    url.pathname.includes("/auth/logout") ||
+    url.pathname.includes("/auth/refresh");
+
+  if (!is_email_exempt_route) {
+    const verified = await db.prepare(
+      `SELECT verified_at FROM users WHERE id = ? LIMIT 1`
+    ).bind(user_id).first();
+    if (!verified?.verified_at) {
+      throw error("Email verification required", "EMAIL_NOT_VERIFIED", null, 403);
+    }
+  }
 
   // --------------------------------------------------
   // Resolve brand (token → fallback → DB)
   // --------------------------------------------------
   let brand_id = payload.brand_id || null;
+  let brand_role = null;
 
   // 1. Mandatory membership check
   // Even if brand_id is in the token, we MUST verify the user still belongs to it.
@@ -56,6 +74,7 @@ export async function requireAuth(request, env) {
       // Token is stale or unauthorized for this brand
       throw error("Access to this brand is denied or revoked", "FORBIDDEN", null, 403);
     }
+    brand_role = link.role;
   } else {
     // 2. Fallback to primary brand if none specified in token
     const link = await db.prepare(`
@@ -74,7 +93,6 @@ export async function requireAuth(request, env) {
       } else {
       // 🚨 HARD BLOCK: NO BRANDS EXIST FOR THIS USER
       // We only allow this if the user is currently on an onboarding route
-      const url = new URL(request.url);
       const is_onboarding_route =
         url.pathname.includes("/onboarding") ||
         url.pathname.includes("/brands/create") ||
@@ -90,6 +108,7 @@ export async function requireAuth(request, env) {
       }
     } else {
       brand_id = link.brand_id;
+      brand_role = link.role;
     }
 
   }
@@ -98,7 +117,7 @@ export async function requireAuth(request, env) {
     user_id,
     brand_id,
     email: payload.email || null,
-    role: payload.role || "user"
+    role: brand_role || payload.role || "member"
   };
 }
 

@@ -107,8 +107,8 @@ export async function runMediaEngine(
   // Build visual_context ONCE — single source of truth for guardrails + match scoring (Step 3)
   const visualContext = buildVisualContext({ industry, title, goal, format, brandDna });
 
-  // Cache key includes format for format-specific caching
-  const cacheKey = `${brief.query}::${brief.format}`;
+  // Cache key includes format + industry so brand-specific ranking is not shared across brands
+  const cacheKey = `${brief.query}::${brief.format}::${visualContext.industryKey || 'generic'}`;
   const cached = await cacheGet(cacheKey, platform, env).catch(() => null);
   if (cached) return cached;
 

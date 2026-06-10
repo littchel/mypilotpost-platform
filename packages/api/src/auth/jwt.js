@@ -37,7 +37,7 @@ export async function issueJWT(payload, env, options = {}) {
   return `${data}.${arrayBufferToBase64Url(signatureBuffer)}`;
 }
 
-export async function verifyJWT(token, secretFromEnv) {
+export async function verifyJWT(token, secretFromEnv, options = {}) {
   const secret = secretFromEnv;
   if (!secret) throw new Error("JWT_SECRET is not defined");
 
@@ -56,7 +56,9 @@ export async function verifyJWT(token, secretFromEnv) {
     if (!valid) throw new Error("Invalid signature");
 
     const payload = JSON.parse(new TextDecoder().decode(base64UrlToUint8Array(payloadB64)));
-    if (payload.exp && Date.now() / 1000 > payload.exp) throw new Error("Expired");
+    if (!options.ignoreExpiration && payload.exp && Date.now() / 1000 > payload.exp) {
+      throw new Error("Expired");
+    }
 
     return payload;
   } catch (err) {

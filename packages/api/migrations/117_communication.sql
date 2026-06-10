@@ -32,5 +32,5 @@ CREATE INDEX IF NOT EXISTS idx_notif_events_user  ON notification_events(user_id
 
 -- Delivery log (extend existing notification_delivery_logs with WhatsApp)
 -- Add whatsapp_message_id to track Meta delivery status
-ALTER TABLE notification_delivery_logs ADD COLUMN IF NOT EXISTS provider_ref TEXT;
-ALTER TABLE notification_delivery_logs ADD COLUMN IF NOT EXISTS metadata TEXT;
+ALTER TABLE notification_delivery_logs ADD COLUMN provider_ref TEXT;
+ALTER TABLE notification_delivery_logs ADD COLUMN metadata TEXT;

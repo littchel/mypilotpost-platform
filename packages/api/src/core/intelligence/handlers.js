@@ -6,6 +6,7 @@
 import { json, error } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
 import { emitEvent } from "../../lib/bus.js";
+import { checkAndIncrement } from "../billing/enforcement.js";
 import { generateBrandIntelligence } from "./brand_intelligence_engine.js";
 import {
   storeIntelligenceBatch,
@@ -56,7 +57,7 @@ export async function resolveInsight(request, env, auth) {
   `).bind(user_id, insight_id, brand_id).run();
 
   if (success) {
-    await emitEvent(env, 'insight_resolved', { brand_id, user_id, metadata: { insight_id } });
+    await emitEvent(env, 'insight_resolved', { brand_id, user_id, meta: { insight_id } });
   }
 
   return json({ success: !!success });
@@ -105,7 +106,7 @@ function getBenchmarks(industry) {
  * Core generation function — called by the API handler and the daily cron.
  * Checks daily gate, runs Groq once, stores to queue.
  */
-export async function runDailyIntelligence(env, brandId, force = false) {
+export async function runDailyIntelligence(env, brandId, force = false, userId = null) {
   const db = getDB(env);
 
   if (!force) {
@@ -120,7 +121,7 @@ export async function runDailyIntelligence(env, brandId, force = false) {
 
   let groqResult;
   try {
-    groqResult = await generateBrandIntelligence(db, brandId, env);
+    groqResult = await generateBrandIntelligence(db, brandId, env, userId);
   } catch (err) {
     console.error(`[INTEL_DAILY] Groq failed for brand=${brandId}: ${err.message}`);
     return { generated: false, reason: 'groq_error', error: err.message };
@@ -150,7 +151,8 @@ export async function getIntelligenceFeedHandler(request, env, auth) {
   // Check daily gate and generate if needed
   const eligible = await isEligibleForGeneration(db, brand_id);
   if (eligible) {
-    const result = await runDailyIntelligence(env, brand_id, true);
+    await checkAndIncrement(db, auth.user_id, "ai");
+    const result = await runDailyIntelligence(env, brand_id, true, auth.user_id);
     justGenerated = result.generated;
     generationStatus = result;
   }

@@ -7,7 +7,7 @@ import { getDB } from '../../lib/db.js';
 
 export async function handleCampaigns(req, env) {
   const url = new URL(req.url);
-  const brandId = req.headers.get('X-Brand-Id');
+  const brandId = await resolveBrandId(req, env);
   if (!brandId) return json({ error: 'missing brand' }, 400);
 
   if (req.method === 'GET') {
@@ -47,7 +47,7 @@ export async function handleCampaignContent(req, env, campaignId) {
 
 export async function handleEmailCampaigns(req, env) {
   const url = new URL(req.url);
-  const brandId = req.headers.get('X-Brand-Id');
+  const brandId = await resolveBrandId(req, env);
   if (!brandId) return json({ error: 'missing brand' }, 400);
 
   if (req.method === 'GET') {
@@ -71,7 +71,7 @@ export async function handleEmailCampaigns(req, env) {
 }
 
 export async function handleEmailMessages(req, env) {
-  const brandId = req.headers.get('X-Brand-Id');
+  const brandId = await resolveBrandId(req, env);
   if (!brandId) return json({ error: 'missing brand' }, 400);
 
   if (req.method === 'GET') {
@@ -103,7 +103,7 @@ export async function handleEmailMessages(req, env) {
 }
 
 export async function handleEmailTemplates(req, env) {
-  const brandId = req.headers.get('X-Brand-Id');
+  const brandId = await resolveBrandId(req, env);
   if (!brandId) return json({ error: 'missing brand' }, 400);
 
   if (req.method === 'GET') {
@@ -132,4 +132,11 @@ function json(data, status = 200) {
     status,
     headers: { 'Content-Type': 'application/json', 'X-Admin-Module': 'campaigns-emails' }
   });
+}
+
+async function resolveBrandId(req, env) {
+  const brandId = req.headers.get('X-Brand-Id');
+  if (!brandId) return null;
+  const row = await getDB(env).prepare('SELECT id FROM brands WHERE id = ? LIMIT 1').bind(brandId).first();
+  return row ? brandId : null;
 }

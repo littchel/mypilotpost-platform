@@ -22,24 +22,31 @@ export async function getDashboardSummary(request, env, customer) {
   const stats = await db.prepare(`
     SELECT
       (SELECT COUNT(*) FROM delivery_jobs WHERE brand_id = ?) as scheduled,
-      (SELECT COUNT(*) FROM delivery_jobs WHERE brand_id = ? AND status = 'delivered') as published,
-      (SELECT COUNT(*) FROM social_assets WHERE brand_id = ?) + 
+      (SELECT COUNT(*) FROM delivery_jobs WHERE brand_id = ? AND status = 'published') as published,
+      (SELECT COUNT(*) FROM social_assets WHERE brand_id = ?) +
       (SELECT COUNT(*) FROM blog_posts WHERE brand_id = ?) as total_content
   `).bind(brandId, brandId, brandId, brandId).first();
 
-  // 2. Metrics (This Week)
-  // Assumes start of week is Monday
+  // 2. Metrics (This Week) — status='published' matches what poster.js writes
   const thisWeek = await db.prepare(`
     SELECT
       COUNT(CASE WHEN status = 'scheduled' THEN 1 END) as scheduled,
-      COUNT(CASE WHEN status = 'delivered' THEN 1 END) as published
+      COUNT(CASE WHEN status = 'published' THEN 1 END) as published
     FROM delivery_jobs
     WHERE brand_id = ?
       AND scheduled_at >= date('now', 'weekday 0', '-6 days')
   `).bind(brandId).first();
 
-  // 3. Engagement (Fake for now as per analytics truth, but structured)
-  const engagement = "0%"; 
+  // 3. Engagement Rate — computed from content_analytics (last 30 days)
+  const engRow = await db.prepare(`
+    SELECT SUM(impressions) as imps, SUM(engagements) as engs
+    FROM content_analytics
+    WHERE brand_id = ?
+      AND reported_at >= date('now', '-30 days')
+  `).bind(brandId).first();
+  const engagement = (engRow?.imps || 0) > 0
+    ? ((engRow.engs / engRow.imps) * 100).toFixed(1) + "%"
+    : "0%";
 
   return json({
     metrics: {

@@ -253,7 +253,7 @@ export async function generateReport(request, env, auth) {
 
   const db = getDB(env);
   const brandId = auth.brand_id;
-  const userId = auth.userId;
+  const userId = auth.user_id;
   const { title, period, campaign_id } = await request.json();
 
   // Gather current snapshots
@@ -400,7 +400,7 @@ export async function listReports(_req, env, auth) {
 
   const db = getDB(env);
   const { results } = await db.prepare(`
-    SELECT id, title, period, created_at FROM reports WHERE brand_id = ? ORDER BY created_at DESC
+    SELECT id, title, period, created_at FROM reports WHERE brand_id = ? ORDER BY created_at DESC LIMIT 100
   `).bind(auth.brand_id).all();
 
   return json({ results: results || [] });
@@ -483,22 +483,30 @@ export async function getContentAnalytics(request, env, auth) {
   const cutoff = new Date(Date.now() - days * 86400000).toISOString();
 
   const platformClause = platform !== 'all' ? 'AND COALESCE(ca.platform, dj.platform) = ?' : '';
+  // brandId appears twice: once for the deduped dj subquery, once for the outer WHERE
   const bindArgs = platform !== 'all'
-    ? [brandId, cutoff, cutoff, platform]
-    : [brandId, cutoff, cutoff];
+    ? [brandId, brandId, cutoff, cutoff, platform]
+    : [brandId, brandId, cutoff, cutoff];
 
+  // Deduped delivery_jobs subquery: one row per content_id (latest published/failed job).
+  // Prevents fan-out when content is delivered to multiple platforms.
   const { results } = await db.prepare(`
     SELECT
-      COALESCE(cv.title, dj.content_type, 'Untitled') AS title,
-      COALESCE(ca.platform, dj.platform, 'unknown')   AS platform,
-      COALESCE(dj.status, 'published')                AS status,
-      ca.impressions                                   AS reach,
-      ca.engagements                                   AS engagement,
+      COALESCE(cv.title, ca.content_type, 'Untitled')       AS title,
+      COALESCE(ca.platform, dj.platform, 'unknown')         AS platform,
+      COALESCE(dj.status, 'published')                      AS status,
+      ca.impressions                                         AS reach,
+      ca.engagements                                         AS engagement,
       ca.clicks,
       strftime('%Y-%m-%d', COALESCE(dj.scheduled_at, ca.reported_at, ca.created_at)) AS date
     FROM content_analytics ca
-    LEFT JOIN delivery_jobs dj ON dj.content_id = ca.content_id AND dj.brand_id = ca.brand_id
-    LEFT JOIN content_vault  cv ON cv.id = ca.content_id
+    LEFT JOIN (
+      SELECT content_id, platform, status, MAX(scheduled_at) AS scheduled_at
+      FROM delivery_jobs
+      WHERE brand_id = ? AND status IN ('published', 'failed')
+      GROUP BY content_id
+    ) dj ON dj.content_id = ca.content_id
+    LEFT JOIN content_vault cv ON cv.id = ca.content_id
     WHERE ca.brand_id = ?
       AND (ca.reported_at >= ? OR (ca.reported_at IS NULL AND ca.created_at >= ?))
       ${platformClause}

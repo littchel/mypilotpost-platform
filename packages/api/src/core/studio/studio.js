@@ -4,6 +4,7 @@
 import { json, error } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
 import { trackedRunLLM } from "../ai/ai_client.js";
+import { checkAndIncrement } from "../billing/enforcement.js";
 
 // ── Brand context ─────────────────────────────────────────────────────────────
 async function fetchBrandCtx(db, brand_id) {
@@ -53,6 +54,7 @@ export async function getStudioOpportunities(request, env, auth) {
   if (!auth?.brand_id) return error("Unauthorized", 401);
 
   const db = getDB(env);
+  await checkAndIncrement(db, auth.user_id, "ai");
   const { brand, context, brandName, industry, activePlatforms } = await fetchBrandCtx(db, auth.brand_id);
   const platforms = activePlatforms.length ? activePlatforms.join(", ") : "Facebook, Instagram, LinkedIn";
   const month = new Date().toLocaleString("en", { month: "long" });
@@ -97,7 +99,7 @@ Rules:
     brand_id: auth.brand_id,
     user_id: auth.user_id || null,
     content_type: "studio_opportunities",
-    options: { mode: "deep" },
+    options: { mode: "deep", systemPromptType: "campaign" },
   });
 
   const opps = result?.opportunities;
@@ -117,6 +119,7 @@ export async function generateStudioPost(request, env, auth) {
   if (!framework) return error("framework is required", 400);
 
   const db = getDB(env);
+  await checkAndIncrement(db, auth.user_id, "ai");
   const { brand, context, brandName } = await fetchBrandCtx(db, auth.brand_id);
   const platformList = platforms.join(", ") || "Facebook, Instagram";
 
@@ -155,7 +158,7 @@ Rules:
     brand_id: auth.brand_id,
     user_id: auth.user_id || null,
     content_type: "studio_post",
-    options: { mode: "deep" },
+    options: { mode: "deep", systemPromptType: "social" },
   });
 
   if (!result?.body) return error("Generation failed. Try again.", 500);
@@ -176,6 +179,9 @@ export async function scrapeWebsite(request, env, auth) {
   const body = await request.json().catch(() => ({}));
   const { url } = body;
   if (!url) return error("url is required", 400);
+
+  const db = getDB(env);
+  await checkAndIncrement(db, auth.user_id, "ai");
 
   // Ensure URL has protocol
   const targetUrl = url.startsWith("http") ? url : `https://${url}`;
@@ -204,7 +210,6 @@ export async function scrapeWebsite(request, env, auth) {
     return json({ success: false, brandContext: null, error: "Page returned insufficient content." });
   }
 
-  const db = getDB(env);
   const { brand } = await fetchBrandCtx(db, auth.brand_id);
 
   const prompt = `You are extracting business context from website content.
@@ -261,6 +266,7 @@ export async function runPlaybook(request, env, auth) {
   if (!playbook_type) return error("playbook_type is required", 400);
 
   const db = getDB(env);
+  await checkAndIncrement(db, auth.user_id, "ai");
   const { brand, context, brandName, industry } = await fetchBrandCtx(db, auth.brand_id);
 
   const targetIndustry = reqIndustry || industry;
@@ -321,7 +327,7 @@ Rules:
     brand_id: auth.brand_id,
     user_id: auth.user_id || null,
     content_type: "studio_playbook",
-    options: { mode: "deep" },
+    options: { mode: "deep", systemPromptType: "campaign" },
   });
 
   if (!result) return error("Generation failed. Please try again.", 500);
@@ -360,6 +366,7 @@ export async function generateCampaignContent(request, env, auth) {
   if (!campaign_name || !offer) return error("campaign_name and offer are required", 400);
 
   const db = getDB(env);
+  await checkAndIncrement(db, auth.user_id, "ai");
   const { brand, context, brandName } = await fetchBrandCtx(db, auth.brand_id);
   const channelList = channels.length ? channels.join(", ") : "Facebook, Instagram, LinkedIn";
 
@@ -408,7 +415,7 @@ Rules:
     brand_id: auth.brand_id,
     user_id: auth.user_id || null,
     content_type: "studio_campaign",
-    options: { mode: "deep" },
+    options: { mode: "deep", systemPromptType: "campaign" },
   });
 
   if (!result) return error("Generation failed. Please try again.", 500);

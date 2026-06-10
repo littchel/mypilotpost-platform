@@ -15,9 +15,11 @@
  */
 
 import { buildAuditContextSafe, estimateTokens, dynamicOutputBudget } from './audit_context_builder.js';
+import { getDB } from '../../lib/db.js';
 
-const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL   = 'llama-3.3-70b-versatile';
+const GROQ_API_URL        = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODEL          = 'llama-3.3-70b-versatile';
+const GROQ_FALLBACK_MODEL = 'llama-3.1-8b-instant';
 
 // ─── System prompt ────────────────────────────────────────────────────────────
 
@@ -196,6 +198,33 @@ Return a single JSON object with exactly the following structure. Every string m
 }`;
 }
 
+// ─── Internal fetch helper ────────────────────────────────────────────────────
+
+async function callGroqAPI(apiKey, model, systemPrompt, userPrompt, maxOutputTokens) {
+  const response = await fetch(GROQ_API_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.25,
+      max_tokens: maxOutputTokens,
+      response_format: { type: 'json_object' },
+    }),
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`Groq API ${response.status}: ${body.slice(0, 300)}`);
+  }
+  return response.json();
+}
+
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export async function generateGroqAudit(website, socialSummary, env) {
@@ -215,46 +244,50 @@ export async function generateGroqAudit(website, socialSummary, env) {
   const totalEstimate = inputTokens + maxOutputTokens;
   console.log(`[AUDIT_TOKEN_ESTIMATE] input=~${inputTokens}tok output_max=${maxOutputTokens}tok total=~${totalEstimate}tok compressed=${compressed}`);
 
-  // ── Step 4: Send to Groq ──────────────────────────────────────────────────
+  // ── Step 4: Send to Groq (with 8B fallback) ──────────────────────────────
   console.log(`[AUDIT_GROQ_REQUEST] model=${GROQ_MODEL} temp=0.25 max_tokens=${maxOutputTokens}`);
 
-  let response;
+  const reqStart = Date.now();
+  let data;
+  let usedModel = GROQ_MODEL;
   try {
-    response = await fetch(GROQ_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: userPrompt },
-        ],
-        temperature: 0.25,
-        max_tokens: maxOutputTokens,
-        response_format: { type: 'json_object' },
-      }),
-    });
-  } catch (fetchErr) {
-    console.error(`[AUDIT_GROQ_FAILURE] network error: ${fetchErr.message}`);
-    throw fetchErr;
+    data = await callGroqAPI(apiKey, GROQ_MODEL, SYSTEM_PROMPT, userPrompt, maxOutputTokens);
+  } catch (err70b) {
+    console.warn(`[AUDIT_GROQ_70B_FAIL] ${err70b.message} — retrying with ${GROQ_FALLBACK_MODEL}`);
+    try {
+      data = await callGroqAPI(apiKey, GROQ_FALLBACK_MODEL, SYSTEM_PROMPT, userPrompt, maxOutputTokens);
+      usedModel = GROQ_FALLBACK_MODEL;
+    } catch (err8b) {
+      console.error(`[AUDIT_GROQ_FAILURE] fallback also failed: ${err8b.message}`);
+      throw err8b;
+    }
   }
 
-  if (!response.ok) {
-    const body = await response.text().catch(() => '');
-    console.error(`[AUDIT_GROQ_FAILURE] status=${response.status} body="${body.slice(0, 300)}"`);
-    throw new Error(`Groq API ${response.status}: ${body.slice(0, 300)}`);
-  }
-
-  const data = await response.json();
   const raw  = data.choices?.[0]?.message?.content;
   if (!raw) throw new Error('Groq returned an empty response');
 
-  const usedInput  = data.usage?.prompt_tokens     || 0;
-  const usedOutput = data.usage?.completion_tokens  || 0;
-  console.log(`[AUDIT_GROQ_RESPONSE] actual_input=${usedInput}tok actual_output=${usedOutput}tok total=${usedInput + usedOutput}tok`);
+  const usedInput   = data.usage?.prompt_tokens     || 0;
+  const usedOutput  = data.usage?.completion_tokens  || 0;
+  const totalTokens = usedInput + usedOutput;
+  const latencyMs   = Date.now() - reqStart;
+  console.log(`[AUDIT_GROQ_RESPONSE] model=${usedModel} actual_input=${usedInput}tok actual_output=${usedOutput}tok total=${totalTokens}tok`);
+
+  // Track to ai_generations (public audit — no user_id or brand_id)
+  try {
+    const db = getDB(env);
+    await db.prepare(`
+      INSERT INTO ai_generations
+        (id, brand_id, user_id, content_type, platform, input_prompt, output,
+         model, provider, tokens_used, latency_ms, success, status, created_at)
+      VALUES (?, null, null, 'public_audit', null, ?, ?, ?, 'groq', ?, ?, 1, 'ok', datetime('now'))
+    `).bind(
+      crypto.randomUUID(),
+      userPrompt.slice(0, 2000), raw.slice(0, 4000),
+      usedModel, totalTokens, latencyMs
+    ).run();
+  } catch (trackErr) {
+    console.error('[AUDIT_TRACKING_ERROR]', trackErr.message);
+  }
 
   try {
     return JSON.parse(raw);

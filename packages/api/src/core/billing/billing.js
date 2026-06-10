@@ -55,21 +55,11 @@ export async function checkFeatureAccess(request, env, auth, feature) {
   const plan = await getCurrentPlan(db, auth.user_id);
   const allowedFeatures = JSON.parse(plan.features_json || '[]');
 
-  if (!allowedFeatures.includes(feature) && plan.id === 'starter') {
+  if (!allowedFeatures.includes(feature)) {
     return {
       allowed: false,
-      response: error("UPGRADE_REQUIRED", "UPGRADE_REQUIRED", { 
-        message: `Upgrade to Professional to access ${feature.toUpperCase()}`,
-        feature
-      }, 403)
-    };
-  }
-
-  if (feature === 'white_label' && plan.id !== 'agency') {
-    return {
-      allowed: false,
-      response: error("UPGRADE_REQUIRED", "UPGRADE_REQUIRED", { 
-        message: "Upgrade to Agency for white-label reports",
+      response: error("UPGRADE_REQUIRED", "UPGRADE_REQUIRED", {
+        message: `Upgrade your plan to access ${feature.toUpperCase()}`,
         feature
       }, 403)
     };
@@ -143,11 +133,18 @@ export async function updateSubscription(db, userId, newPlanId) {
   const current = await db.prepare("SELECT plan_id FROM subscriptions WHERE user_id = ?").bind(userId).first();
   const eventId = crypto.randomUUID();
 
+  // Update both subscriptions AND users so that enforcement.js and getCurrentPlan()
+  // (which read from users) see the new plan immediately.
   await db.batch([
     db.prepare(`
-      UPDATE subscriptions 
+      UPDATE subscriptions
       SET plan_id = ?, status = 'active', updated_at = datetime('now')
       WHERE user_id = ?
+    `).bind(newPlanId, userId),
+    db.prepare(`
+      UPDATE users
+      SET plan_id = ?, subscription_status = 'active'
+      WHERE id = ?
     `).bind(newPlanId, userId),
     db.prepare(`
       INSERT INTO subscription_events (id, user_id, old_plan_id, new_plan_id, event_type)

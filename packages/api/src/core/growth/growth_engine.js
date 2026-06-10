@@ -260,7 +260,7 @@ export async function getGrowthEngine(request, env, auth) {
       brand_id),
 
     safeCount(db,
-      "SELECT COUNT(*) as count FROM delivery_jobs WHERE brand_id = ? AND status = 'success'",
+      "SELECT COUNT(*) as count FROM delivery_jobs WHERE brand_id = ? AND status = 'published'",
       brand_id),
 
     safeFirst(db,
@@ -381,6 +381,10 @@ export async function getGrowthEngine(request, env, auth) {
 
   const achievedMilestones = milestones.filter(m => m.achieved).length;
   const nextMilestone      = milestones.find(m => !m.achieved) || null;
+
+  // Roadmap progress: milestone-based (buildRoadmap's bucket-count formula is wrong)
+  roadmap.progress = milestones.length === 0 ? 100
+    : Math.round((achievedMilestones / milestones.length) * 100);
 
   // ── Section 6: Growth Experiments ────────────────────────────────────────
 

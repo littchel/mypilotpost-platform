@@ -21,9 +21,9 @@ export async function createInvite(request, env, auth) {
 
   const db = getDB(env);
 
-  // Check permissions (Only owner/admin)
-  const member = await db.prepare(`SELECT role FROM team_members WHERE brand_id = ? AND user_id = ?`).bind(brand_id, user_id).first();
-  if (!member || !['owner', 'admin'].includes(member.role)) {
+  // Check permissions via brand_users (canonical membership)
+  const member = await db.prepare(`SELECT role FROM brand_users WHERE brand_id = ? AND user_id = ?`).bind(brand_id, user_id).first();
+  if (!member || member.role !== 'owner') {
     return error("Insufficient permissions", "FORBIDDEN", null, 403);
   }
 
@@ -111,18 +111,33 @@ export async function acceptInvite(request, env) {
     return error("Invite has expired", "GONE", null, 410);
   }
 
-  // 1. Mark invite accepted
-  await db.prepare(`UPDATE invites SET status = 'accepted' WHERE id = ?`).bind(invite.id).run();
+  // Verify the accepting user's email matches the invite's target email.
+  // This prevents a token interceptor from granting access to a different account.
+  const acceptingUser = await db.prepare(`SELECT email FROM users WHERE id = ?`).bind(user_id).first();
+  if (!acceptingUser) return error("User not found", "NOT_FOUND", null, 404);
+  if (acceptingUser.email.toLowerCase() !== invite.email.toLowerCase()) {
+    return error("This invite was sent to a different email address", "FORBIDDEN", null, 403);
+  }
 
-  // 2. Add to team_members
+  // 1–3. Atomic membership grant.
+  // brand_users is the canonical auth table (checked by requireAuth middleware).
+  // Write invite.role to BOTH tables so the middleware sees the correct role immediately.
   const memberId = crypto.randomUUID();
-  await db.prepare(`
-    INSERT INTO team_members (id, brand_id, user_id, role)
-    VALUES (?, ?, ?, ?)
-    ON CONFLICT(brand_id, user_id) DO UPDATE SET role = EXCLUDED.role
-  `).bind(memberId, invite.brand_id, user_id, invite.role).run();
+  await db.batch([
+    db.prepare(`UPDATE invites SET status = 'accepted' WHERE id = ?`).bind(invite.id),
+    db.prepare(`
+      INSERT INTO team_members (id, brand_id, user_id, role)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(brand_id, user_id) DO UPDATE SET role = EXCLUDED.role
+    `).bind(memberId, invite.brand_id, user_id, invite.role),
+    db.prepare(`
+      INSERT INTO brand_users (user_id, brand_id, role, created_at)
+      VALUES (?, ?, ?, datetime('now'))
+      ON CONFLICT(user_id, brand_id) DO UPDATE SET role = excluded.role
+    `).bind(user_id, invite.brand_id, invite.role),
+  ]);
 
-  // 3. Emit event
+  // 4. Emit event
   await emitEvent(env, 'invite_accepted', {
     brand_id: invite.brand_id,
     user_id: user_id,

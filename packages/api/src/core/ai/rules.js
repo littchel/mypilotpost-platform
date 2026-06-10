@@ -5,7 +5,7 @@
  */
 
 export const SOCIAL_RULES = {
-  Facebook: {
+  facebook: {
     max_chars: 63206,
     hashtags: { allowed: true, max: 5 },
     emojis: { allowed: true },
@@ -13,7 +13,7 @@ export const SOCIAL_RULES = {
     tone_blacklist: []
   },
 
-  Instagram: {
+  instagram: {
     max_chars: 2200,
     hashtags: { allowed: true, max: 15 },
     emojis: { allowed: true },
@@ -21,7 +21,7 @@ export const SOCIAL_RULES = {
     tone_blacklist: []
   },
 
-  "X (Twitter)": {
+  x: {
     max_chars: 280,
     hashtags: { allowed: true, max: 3 },
     emojis: { allowed: true },
@@ -29,7 +29,7 @@ export const SOCIAL_RULES = {
     tone_blacklist: ["long_form"]
   },
 
-  LinkedIn: {
+  linkedin: {
     max_chars: 3000,
     hashtags: { allowed: true, max: 5 },
     emojis: { allowed: false },
@@ -37,7 +37,7 @@ export const SOCIAL_RULES = {
     tone_blacklist: ["humorous_excess"]
   },
 
-  TikTok: {
+  tiktok: {
     max_chars: 2200,
     hashtags: { allowed: true, max: 5 },
     emojis: { allowed: true },
@@ -45,7 +45,7 @@ export const SOCIAL_RULES = {
     tone_blacklist: []
   },
 
-  YouTube: {
+  youtube: {
     max_chars: 5000,
     hashtags: { allowed: true, max: 5 },
     emojis: { allowed: true },
@@ -53,7 +53,7 @@ export const SOCIAL_RULES = {
     tone_blacklist: []
   },
 
-  Pinterest: {
+  pinterest: {
     max_chars: 500,
     hashtags: { allowed: true, max: 5 },
     emojis: { allowed: true },
@@ -61,7 +61,7 @@ export const SOCIAL_RULES = {
     tone_blacklist: []
   },
 
-  Threads: {
+  threads: {
     max_chars: 500,
     hashtags: { allowed: true, max: 5 },
     emojis: { allowed: true },

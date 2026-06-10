@@ -187,19 +187,24 @@ export async function handleNotificationEvent({ env, eventType, payload }) {
   const { brand_id, user_id, message, title } = payload;
   if (!brand_id) return;
 
-  const db = getDB(env);
+  // Only create a notification for events with a defined title mapping.
+  // Unmapped events (audit_generated, insight_resolved, report_generated,
+  // content_submitted, invite_created, etc.) would produce a generic
+  // "Notification / You have a new update" record — skip them.
+  const resolvedTitle = title || getTitleForEvent(eventType);
+  if (!resolvedTitle || resolvedTitle === 'Notification') return;
 
-  const id = crypto.randomUUID();
+  const db = getDB(env);
   const type = mapEventTypeToNotificationType(eventType);
 
   await db.prepare(`
     INSERT INTO notifications (id, brand_id, type, title, message)
     VALUES (?, ?, ?, ?, ?)
   `).bind(
-    id,
+    crypto.randomUUID(),
     brand_id,
     type,
-    title || getTitleForEvent(eventType),
+    resolvedTitle,
     message || getMessageForEvent(eventType, payload)
   ).run();
 }

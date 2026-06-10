@@ -10,7 +10,7 @@ import { getDB } from "../../lib/db.js";
  * GET /api/customer/brand-dna
  */
 export async function getBrandDNA(request, env, auth) {
-  const brandId = request.headers.get("x-brand-id") || auth.brand_id;
+  const brandId = auth.brand_id;
   if (!brandId) return error("Brand context required", "MISSING_BRAND", null, 400);
 
   const db = getDB(env);
@@ -50,13 +50,15 @@ export async function hydrateAuditIntoDNA(db, brandId, auditId) {
 
   const breakdown = JSON.parse(audit.score_breakdown_json || '{}');
   const insights = JSON.parse(audit.strategic_actions_json || '[]');
+  const fullReport = JSON.parse(audit.full_report_json || '{}');
+  const primaryOffer = fullReport?.business_profile?.primary_offer || null;
 
-  // 1. Hydrate Profile
+  // 1. Hydrate Profile — use primary_offer for value_proposition if available
   await db.prepare(`
     INSERT INTO brand_dna_profiles (brand_id, brand_name, industry, value_proposition, updated_at)
     VALUES (?, ?, ?, ?, datetime('now'))
     ON CONFLICT(brand_id) DO UPDATE SET updated_at = datetime('now')
-  `).bind(brandId, audit.brand_name, audit.industry || 'General', audit.brand_name).run();
+  `).bind(brandId, audit.brand_name, audit.industry || 'General', primaryOffer || audit.brand_name).run();
 
   // 2. Hydrate Objectives based on gaps
   await db.prepare(`
@@ -82,7 +84,7 @@ export async function hydrateAuditIntoDNA(db, brandId, auditId) {
  * POST/PATCH /api/customer/brand-dna
  */
 export async function updateBrandDNA(request, env, auth) {
-  const brandId = request.headers.get("x-brand-id") || auth.brand_id;
+  const brandId = auth.brand_id;
   if (!brandId) return error("Brand context required", "MISSING_BRAND", null, 400);
 
   const db = getDB(env);

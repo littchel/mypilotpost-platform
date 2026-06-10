@@ -5,7 +5,7 @@
 
 import { json, error } from "../lib/json.js";
 import { getDB } from "../lib/db.js";
-import { issueJWT } from "./jwt.js";
+import { issueJWT, verifyJWT } from "./jwt.js";
 import { getRegion } from "../lib/geo.js";
 import { generateReferralCode, registerReferral } from "../core/promotions/promotions.js";
 import { emitEvent } from "../lib/bus.js";
@@ -222,10 +222,11 @@ export async function login(request, env) {
       }
     }
 
+    let brandRole = "member";
     if (resolvedBrandId) {
       const membership = await db
         .prepare(
-          `SELECT 1
+          `SELECT role
            FROM brand_users
            WHERE user_id = ? AND brand_id = ?`
         )
@@ -235,15 +236,15 @@ export async function login(request, env) {
       if (!membership) {
         return error("Brand access denied", "FORBIDDEN", null, 403);
       }
+      brandRole = membership.role || "member";
     }
 
-    // ✅ ISSUE JWT (FIXED WITH ROLE)
     const jwt = await issueJWT(
       {
         user_id: user.id,
         brand_id: resolvedBrandId,
         email,
-        role: user.role || "user",
+        role: brandRole,
         first_name: user.first_name || null
       },
       env
@@ -473,6 +474,85 @@ export async function changePassword(request, env) {
   } catch (err) {
     console.error("[AUTH:CHANGE_PASSWORD:FAILED]", err);
     return error("Password change failed", "SERVER_ERROR", String(err), 500);
+  }
+}
+
+/* ================================
+   LOGOUT (PROTECTED — stateless JWT)
+ ================================ */
+
+export async function logout(_request, _env, _auth) {
+  return json({ ok: true });
+}
+
+/* ================================
+   REFRESH JWT (PROTECTED)
+ ================================ */
+
+export async function refreshSession(request, env) {
+  try {
+    const authHeader = request.headers.get("Authorization");
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
+    if (!token) return error("Unauthorized", "UNAUTHORIZED", null, 401);
+
+    let payload;
+    try {
+      payload = await verifyJWT(token, env.JWT_SECRET);
+    } catch (err) {
+      if (err.message !== "Expired") {
+        return error("Unauthorized", "UNAUTHORIZED", null, 401);
+      }
+      payload = await verifyJWT(token, env.JWT_SECRET, { ignoreExpiration: true });
+    }
+
+    const user_id = payload?.user_id;
+    if (!user_id) return error("Unauthorized", "UNAUTHORIZED", null, 401);
+
+    const db = getDB(env);
+
+    const verified = await db.prepare(
+      `SELECT verified_at FROM users WHERE id = ? LIMIT 1`
+    ).bind(user_id).first();
+    if (!verified?.verified_at) {
+      return error("Email verification required", "EMAIL_NOT_VERIFIED", null, 403);
+    }
+
+    let brand_id = payload.brand_id || null;
+    let brand_role = payload.role || "member";
+
+    if (brand_id) {
+      const link = await db.prepare(`
+        SELECT brand_id, role FROM brand_users
+        WHERE user_id = ? AND brand_id = ? LIMIT 1
+      `).bind(user_id, brand_id).first();
+      if (!link) return error("Access to this brand is denied or revoked", "FORBIDDEN", null, 403);
+      brand_role = link.role;
+    } else {
+      const link = await db.prepare(`
+        SELECT brand_id, role FROM brand_users
+        WHERE user_id = ? ORDER BY created_at ASC LIMIT 1
+      `).bind(user_id).first();
+      if (link) {
+        brand_id = link.brand_id;
+        brand_role = link.role;
+      }
+    }
+
+    const jwt = await issueJWT(
+      {
+        user_id,
+        brand_id,
+        email: payload.email,
+        role: brand_role,
+        first_name: payload.first_name || null
+      },
+      env
+    );
+
+    return json({ token: jwt });
+  } catch (err) {
+    console.error("[AUTH:REFRESH:FAILED]", err);
+    return error("Refresh failed", "SERVER_ERROR", String(err), 500);
   }
 }
 

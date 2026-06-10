@@ -29,7 +29,9 @@ export const BrandProvider = ({ children }) => {
         const current = data.brands.find(b => b.id === jwtBrandId);
         
         if (!current) {
-          // Force a backend context switch to the first brand if JWT is out of sync
+          // Set activeBrand immediately from local data — stale closure in switchBrand cannot do this
+          setActiveBrand(data.brands[0]);
+          // Async: update JWT on backend so subsequent requests carry the correct brand
           switchBrand(data.brands[0].id);
         } else {
           setActiveBrand(current);

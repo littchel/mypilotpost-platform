@@ -37,15 +37,17 @@ export async function notify(env, {
 }) {
   const db = getDB(env);
 
-  // 1. Insert in-app notification
-  try {
-    const notifId = crypto.randomUUID();
-    await db.prepare(`
-      INSERT INTO notifications (id, brand_id, recipient_id, recipient_type, type, title, message, data, read, created_at)
-      VALUES (?, ?, ?, 'customer', ?, ?, ?, ?, 0, datetime('now'))
-    `).bind(notifId, brandId || null, recipientId || null, event, title, message, JSON.stringify({ ...data, link })).run();
-  } catch (e) {
-    console.error('[NOTIFY] in-app insert failed:', e.message);
+  // 1. Insert in-app notification (only for known platform users with an account)
+  if (recipientId) {
+    try {
+      const notifId = crypto.randomUUID();
+      await db.prepare(`
+        INSERT INTO notifications (id, brand_id, recipient_id, recipient_type, type, title, message, data, read, created_at)
+        VALUES (?, ?, ?, 'customer', ?, ?, ?, ?, 0, datetime('now'))
+      `).bind(notifId, brandId || null, recipientId, event, title, message, JSON.stringify({ ...data, link })).run();
+    } catch (e) {
+      console.error('[NOTIFY] in-app insert failed:', e.message);
+    }
   }
 
   // 2. External delivery (email / WhatsApp) if channel mapped

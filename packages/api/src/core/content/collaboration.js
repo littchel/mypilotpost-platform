@@ -6,7 +6,8 @@ import { isValidUUID } from "../../lib/validation.js";
  * Add Comment for Agency-Grade Workflow
  */
 export async function addComment(request, env, auth) {
-  if (!auth?.id) return error("Unauthorized", "UNAUTHORIZED", null, 401);
+  const actorId = auth?.user_id || auth?.id;
+  if (!actorId) return error("Unauthorized", "UNAUTHORIZED", null, 401);
 
   const url = new URL(request.url);
   const contentId = url.searchParams.get("id");
@@ -30,7 +31,7 @@ export async function addComment(request, env, auth) {
   await db.prepare(`
     INSERT INTO content_comments (id, content_id, parent_id, user_id, message, type)
     VALUES (?, ?, ?, ?, ?, ?)
-  `).bind(commentId, contentId, parent_id || null, auth.id, message, type).run();
+  `).bind(commentId, contentId, parent_id || null, actorId, message, type).run();
 
   return json({ success: true, id: commentId });
 }
@@ -83,11 +84,11 @@ export async function updateContentStatus(request, env, auth, idFromPath = null)
   // Map internal actions to canonical statuses
   if (action === 'reject' || action === 'request_changes' || status === 'rejected') {
     targetStatus = 'draft';
-  } else if (status === 'in_review') {
-    targetStatus = 'approval';
+  } else if (status === 'in_review' || status === 'approval') {
+    targetStatus = 'approval_requested';
   }
 
-  const validStatuses = ['draft', 'approval', 'approved', 'scheduled', 'published', 'failed', 'partial_failure'];
+  const validStatuses = ['draft', 'approval_requested', 'approved', 'scheduled', 'published', 'failed', 'partial_failure'];
   if (!validStatuses.includes(targetStatus)) {
     return error(`Invalid status: ${targetStatus}`, 400);
   }
@@ -121,15 +122,16 @@ export async function updateContentStatus(request, env, auth, idFromPath = null)
 
   // 3. Role Enforcement (Only owner/admin can approve)
   if (targetStatus === 'approved') {
+    const actorId = auth.user_id || auth.id;
     const brandUser = await db.prepare(`
       SELECT role FROM brand_users WHERE user_id = ? AND brand_id = ?
-    `).bind(auth.id, auth.brand_id).first();
+    `).bind(actorId, auth.brand_id).first();
 
     const brand = await db.prepare(`
       SELECT owner_user_id FROM brands WHERE id = ?
     `).bind(auth.brand_id).first();
 
-    const isOwner = brand?.owner_user_id === auth.id;
+    const isOwner = brand?.owner_user_id === actorId;
     const isAdmin = brandUser?.role === 'admin' || brandUser?.role === 'owner';
 
     if (!isOwner && !isAdmin) {
@@ -138,7 +140,8 @@ export async function updateContentStatus(request, env, auth, idFromPath = null)
   }
 
   // Logic: if status is 'approved', track who did it
-  const approvedBy = targetStatus === 'approved' ? auth.id : null;
+  const actorId = auth.user_id || auth.id;
+  const approvedBy = targetStatus === 'approved' ? actorId : null;
 
   // Update vault (source of truth) + mirror tables
   const writes = [
@@ -171,7 +174,7 @@ export async function updateContentStatus(request, env, auth, idFromPath = null)
     await db.prepare(`
       INSERT INTO content_comments (id, content_id, user_id, message, type)
       VALUES (?, ?, ?, ?, ?)
-    `).bind(commentId, contentId, auth.id, finalMessage, 'internal').run();
+    `).bind(commentId, contentId, actorId, finalMessage, 'internal').run();
   }
 
   return json({ success: true, status: targetStatus, approved_by: approvedBy });

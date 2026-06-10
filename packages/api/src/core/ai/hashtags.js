@@ -3,7 +3,8 @@
 import { json, error } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
 import { logEvent } from "../../lib/events.js";
-import { runLLM } from "./ai_client.js";
+import { trackedRunLLM } from "./ai_client.js";
+import { checkAndIncrement } from "../billing/enforcement.js";
 
 const FALLBACK_HASHTAGS = {
   trending: ["#marketing", "#socialmedia", "#business", "#growth"],
@@ -39,21 +40,25 @@ Respond in strict JSON:
 Use only real, commonly-used hashtags. No invented or random tags.`;
 
   const db = getDB(env);
-  const brand = await db.prepare("SELECT * FROM brands WHERE id = ?").bind(auth.brand_id).first();
+  await checkAndIncrement(db, auth.user_id, "ai");
+  const brand = await db.prepare("SELECT id, name, industry FROM brands WHERE id = ?").bind(auth.brand_id).first();
 
-  const { output } = await runLLM(env, prompt, { brand });
+  const result = await trackedRunLLM(env, {
+    brand,
+    prompt,
+    brand_id: auth.brand_id,
+    user_id: auth.user_id || null,
+    content_type: "hashtags",
+    platform,
+    options: { systemPromptType: 'utility' },
+  });
 
   let groups = FALLBACK_HASHTAGS;
-  try {
-    const parsed = JSON.parse(output);
-    if (parsed?.trending?.length > 0 || parsed?.niche?.length > 0) {
-      groups = {
-        trending: parsed.trending || FALLBACK_HASHTAGS.trending,
-        niche: parsed.niche || FALLBACK_HASHTAGS.niche,
-      };
-    }
-  } catch {
-    // fall through to FALLBACK_HASHTAGS
+  if (result?.trending?.length > 0 || result?.niche?.length > 0) {
+    groups = {
+      trending: result.trending || FALLBACK_HASHTAGS.trending,
+      niche: result.niche || FALLBACK_HASHTAGS.niche,
+    };
   }
 
   try {

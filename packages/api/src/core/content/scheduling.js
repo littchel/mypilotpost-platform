@@ -8,6 +8,7 @@ import { getDB } from "../../lib/db.js";
 import { isValidUUID, isValidISO8601 } from "../../lib/validation.js";
 import { normalizeForSQLite, hasConflict } from "../schedule/schedule.js";
 import { completeReferral } from "../promotions/promotions.js";
+import { checkAndIncrement } from "../billing/enforcement.js";
 
 /* =====================================================
    CORE SCHEDULING LOGIC
@@ -41,22 +42,23 @@ export async function scheduleContent(request, env, auth) {
 
   const db = getDB(env);
 
-  // 3. Status Validation
+  // 3. Status Validation — read from canonical vault (not mirror tables)
   const contentTable = content_type === 'blog' ? 'blog_posts' : 'social_assets';
-  const asset = await db.prepare(`SELECT status, campaign_id FROM ${contentTable} WHERE id = ? AND brand_id = ?`).bind(content_id, brand_id).first();
+  const asset = await db.prepare(`SELECT lifecycle_status, campaign_id FROM content_vault WHERE id = ? AND brand_id = ?`).bind(content_id, brand_id).first();
 
   if (!asset) return error("Content not found", "NOT_FOUND", null, 404);
 
-  // Blog statuses: draft, structured, reviewed, published
-  // Social statuses: draft, approval, approved, scheduled, published
-  const approvedStates = content_type === 'blog' ? ['structured', 'reviewed'] : ['approved', 'scheduled'];
-  if (!approvedStates.includes(asset.status)) {
-    return error(`Content in state '${asset.status}' cannot be scheduled.`, "BAD_REQUEST", null, 400);
+  const schedulableStates = ['approved', 'scheduled'];
+  if (!schedulableStates.includes(asset.lifecycle_status)) {
+    return error(`Content in state '${asset.lifecycle_status}' cannot be scheduled. Approve content first.`, "BAD_REQUEST", null, 400);
   }
 
   const campaignId = asset.campaign_id || null;
 
-  // 4. Atomic Job Creation
+  // 4. Quota Enforcement — check posts_per_month_limit before creating delivery jobs
+  await checkAndIncrement(db, auth.user_id, 'posts');
+
+  // 5. Atomic Job Creation
   const batch = [];
   for (const platform of platforms) {
      // Conflict check (15 min window)
@@ -73,15 +75,16 @@ export async function scheduleContent(request, env, auth) {
   if (batch.length === 0) return error("All platform slots are conflicted or already scheduled.", "CONFLICT", null, 409);
 
   // Update asset status to 'scheduled'
-  batch.push(db.prepare(`UPDATE ${contentTable} SET status = 'scheduled', updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(content_id));
-  batch.push(db.prepare(`UPDATE content_drafts SET state = 'scheduled', updated_at = CURRENT_TIMESTAMP WHERE content_id = ?`).bind(content_id));
+  batch.push(db.prepare(`UPDATE ${contentTable} SET status = 'scheduled', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(content_id, brand_id));
+  batch.push(db.prepare(`UPDATE content_vault SET lifecycle_status = 'scheduled', scheduled_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(normalized, content_id, brand_id));
+  batch.push(db.prepare(`UPDATE content_drafts SET state = 'scheduled', updated_at = CURRENT_TIMESTAMP WHERE content_id = ? AND brand_id = ?`).bind(content_id, brand_id));
 
   await db.batch(batch);
 
   // Trigger referral completion (Activity check)
   await completeReferral(db, auth.user_id, env);
 
-  return json({ success: true, count: batch.length - 2 });
+  return json({ success: true, count: batch.length - 3 });
 }
 
 /**
@@ -158,6 +161,17 @@ export async function postNow(request, env, auth) {
   }
 
   if (batch.length > 0) {
+    const contentTable = content_type === 'blog' ? 'blog_posts' : 'social_assets';
+    batch.push(db.prepare(`
+      UPDATE content_vault
+      SET lifecycle_status = 'queued', updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND brand_id = ?
+    `).bind(content_id, brand_id));
+    batch.push(db.prepare(`
+      UPDATE ${contentTable}
+      SET lifecycle_status = 'queued', status = 'scheduled', updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND brand_id = ?
+    `).bind(content_id, brand_id));
     await db.batch(batch);
     // Trigger referral completion (Activity check)
     await completeReferral(db, auth.user_id, env);

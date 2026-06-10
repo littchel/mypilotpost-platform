@@ -33,7 +33,12 @@ export async function updateMemberRole(req, env, auth) {
   if (!member) return error('Member not found', 404);
   if (member.role === 'owner') return error('Cannot change owner role', 403);
 
-  await db.prepare(`UPDATE team_members SET role = ?, updated_at = datetime('now') WHERE id = ?`).bind(role, memberId).run();
+  // Sync role to BOTH tables so the middleware (which reads brand_users) sees
+  // the updated role immediately on the next request.
+  await db.batch([
+    db.prepare(`UPDATE team_members SET role = ?, updated_at = datetime('now') WHERE id = ?`).bind(role, memberId),
+    db.prepare(`UPDATE brand_users SET role = ? WHERE user_id = ? AND brand_id = ?`).bind(role, member.user_id, auth.brand_id),
+  ]);
   await logActivity(env, { brand_id: auth.brand_id, actor_id: auth.user_id, action: 'member.role_changed', entity_type: 'member', entity_id: memberId, before_state: { role: member.role }, after_state: { role } });
   return json({ success: true });
 }
@@ -52,7 +57,13 @@ export async function removeMember(req, env, auth) {
   if (!member) return error('Member not found', 404);
   if (member.role === 'owner') return error('Cannot remove owner', 403);
 
-  await db.prepare('DELETE FROM team_members WHERE id = ?').bind(memberId).run();
+  // Remove from BOTH tables: team_members (ops) and brand_users (auth gate).
+  // Deleting only team_members leaves the user in brand_users, which the
+  // middleware checks on every request — meaning they would still pass requireAuth.
+  await db.batch([
+    db.prepare('DELETE FROM team_members WHERE id = ?').bind(memberId),
+    db.prepare('DELETE FROM brand_users WHERE user_id = ? AND brand_id = ?').bind(member.user_id, auth.brand_id),
+  ]);
   await logActivity(env, { brand_id: auth.brand_id, actor_id: auth.user_id, action: 'member.removed', entity_type: 'member', entity_id: memberId });
   return json({ success: true });
 }

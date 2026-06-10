@@ -14,6 +14,7 @@ import { insertExperienceNotification } from "../notifications/utils.js";
 import { sendEmail } from "../email/send-email.js";
 import { notify } from "../communication/notify.js";
 import { emit, TOOLS, EVENTS } from "../events/emit.js";
+import { writeVersion } from "./versions.js";
 
 const LOCKED_STATUSES = new Set(['scheduled', 'queued', 'publishing', 'published']);
 
@@ -25,6 +26,13 @@ function safe(v, fallback = '[]') {
   if (!v) return fallback;
   if (typeof v === 'string') return v;
   return JSON.stringify(v);
+}
+
+function parseJson(value, fallback) {
+  if (!value) return fallback;
+  if (typeof value !== 'string') return value;
+  try { return JSON.parse(value); }
+  catch { return fallback; }
 }
 
 async function fetchVaultItem(db, id, brand_id) {
@@ -106,7 +114,9 @@ export async function saveToVault(request, env, auth) {
     return error("Content body or title required", "BAD_REQUEST", null, 400);
   }
 
-  const id = (content_id && isValidUUID(content_id)) ? content_id : crypto.randomUUID();
+  const routeId = request.params?.id || new URL(request.url).pathname.split("/").slice(-1)[0];
+  const requestedId = content_id || routeId;
+  const id = (requestedId && isValidUUID(requestedId)) ? requestedId : crypto.randomUUID();
   const db = getDB(env);
 
   // Lock check — prevent editing scheduled/published content
@@ -118,11 +128,33 @@ export async function saveToVault(request, env, auth) {
     );
   }
 
-  const derivedTitle = title || (bodyText.slice(0, 60) + (bodyText.length > 60 ? "…" : ""));
+  const variantsObj = parseJson(platform_variants, {});
+  const platformsArrInput = parseJson(platforms, []);
+  const mediaIdsArr = parseJson(media_ids, []);
+  const hashtagsArr = parseJson(hashtags, []);
+  const metadataObj = parseJson(metadata, {});
+  const derivedTitle = title || (bodyText.slice(0, 60) + (bodyText.length > 60 ? "..." : ""));
   const version      = existing ? (existing.version || 1) + 1 : 1;
+  const snapshot = {
+    content_type,
+    title: derivedTitle,
+    body: bodyText,
+    hook: hook || null,
+    cta: cta || null,
+    hashtags: hashtagsArr,
+    platforms: platformsArrInput,
+    platform_variants: variantsObj,
+    media_ids: mediaIdsArr,
+    lifecycle_status,
+    scheduled_at: scheduled_at || null,
+    campaign_id: campaign_id || null,
+    metadata: metadataObj,
+    source,
+  };
 
   if (existing) {
-    await db.prepare(`
+    await db.batch([
+      db.prepare(`
       UPDATE content_vault SET
         title             = ?,
         body              = ?,
@@ -141,12 +173,13 @@ export async function saveToVault(request, env, auth) {
       WHERE id = ? AND brand_id = ?
     `).bind(
       derivedTitle, bodyText, hook || null, cta || null,
-      safe(hashtags), safe(platforms), safe(platform_variants, '{}'),
-      safe(media_ids), lifecycle_status,
+      safe(hashtagsArr), safe(platformsArrInput), safe(variantsObj, '{}'),
+      safe(mediaIdsArr), lifecycle_status,
       scheduled_at || null, campaign_id || null,
-      safe(metadata, '{}'), version,
+      safe(metadataObj, '{}'), version,
       id, brand_id
-    ).run();
+    ),
+    ]);
   } else {
     await db.prepare(`
       INSERT INTO content_vault
@@ -157,23 +190,30 @@ export async function saveToVault(request, env, auth) {
     `).bind(
       id, brand_id, user_id || null, content_type,
       derivedTitle, bodyText, hook || null, cta || null,
-      safe(hashtags), safe(platforms), safe(platform_variants, '{}'),
-      safe(media_ids), lifecycle_status,
+      safe(hashtagsArr), safe(platformsArrInput), safe(variantsObj, '{}'),
+      safe(mediaIdsArr), lifecycle_status,
       scheduled_at || null, campaign_id || null,
-      safe(metadata, '{}'), 1, source
+      safe(metadataObj, '{}'), 1, source
     ).run();
   }
 
+  await writeVersion(env, {
+    contentId: id,
+    contentType: content_type,
+    payload: snapshot,
+    version,
+  }).catch(() => {});
+
   // Mirror write to social_assets for delivery engine backward compat
   if (content_type === 'social') {
-    const platformsArr = Array.isArray(platforms) ? platforms : JSON.parse(safe(platforms));
+    const platformsArr = Array.isArray(platformsArrInput) ? platformsArrInput : [];
     try {
       if (existing) {
         await db.prepare(`
           UPDATE social_assets
-          SET title = ?, text = ?, lifecycle_status = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+          SET title = ?, text = ?, campaign_id = ?, lifecycle_status = ?, status = ?, updated_at = CURRENT_TIMESTAMP
           WHERE id = ? AND brand_id = ?
-        `).bind(derivedTitle, bodyText, lifecycle_status, lifecycle_status, id, brand_id).run();
+        `).bind(derivedTitle, bodyText, campaign_id || null, lifecycle_status, lifecycle_status, id, brand_id).run();
       } else {
         const ctxId = crypto.randomUUID();
         await db.batch([
@@ -185,13 +225,15 @@ export async function saveToVault(request, env, auth) {
           `).bind(id, brand_id, user_id || '', ctxId, derivedTitle, bodyText, campaign_id || null, lifecycle_status, lifecycle_status),
         ]);
       }
-      // Sync social_variants
-      await db.prepare(`DELETE FROM social_variants WHERE social_asset_id = ?`).bind(id).run();
-      const variantBatch = [{ platform: 'base', caption: bodyText }, ...platformsArr.map(p => ({ platform: p, caption: (platform_variants?.[p] || bodyText) }))];
-      await db.batch(variantBatch.map(v =>
-        db.prepare(`INSERT INTO social_variants (id, social_asset_id, platform, caption, status) VALUES (?, ?, ?, ?, 'draft')`)
-          .bind(crypto.randomUUID(), id, v.platform, v.caption)
-      ));
+      // Sync social_variants (atomic delete + insert)
+      const variantEntries = [{ platform: 'base', caption: bodyText }, ...platformsArr.map(p => ({ platform: p, caption: (variantsObj?.[p] || bodyText) }))];
+      await db.batch([
+        db.prepare(`DELETE FROM social_variants WHERE social_asset_id = ?`).bind(id),
+        ...variantEntries.map(v =>
+          db.prepare(`INSERT INTO social_variants (id, social_asset_id, platform, caption, status) VALUES (?, ?, ?, ?, 'draft')`)
+            .bind(crypto.randomUUID(), id, v.platform, v.caption)
+        ),
+      ]);
     } catch { /* mirror writes must not block vault write */ }
   }
 
@@ -268,8 +310,12 @@ export async function deleteVaultItem(request, env, auth) {
   await db.batch([
     db.prepare(`DELETE FROM content_vault WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
     db.prepare(`DELETE FROM social_assets WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
+    db.prepare(`DELETE FROM blog_posts WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
     db.prepare(`DELETE FROM social_variants WHERE social_asset_id = ?`).bind(id),
     db.prepare(`DELETE FROM content_media_links WHERE content_id = ? AND brand_id = ?`).bind(id, brand_id),
+    db.prepare(`DELETE FROM delivery_jobs WHERE content_id = ? AND brand_id = ?`).bind(id, brand_id),
+    db.prepare(`DELETE FROM approval_requests WHERE content_id = ? AND brand_id = ?`).bind(id, brand_id),
+    db.prepare(`DELETE FROM content_shares WHERE content_id = ? AND brand_id = ?`).bind(id, brand_id),
   ]);
 
   return json({ success: true });
@@ -317,11 +363,7 @@ export async function vaultApproval(request, env, auth) {
     const hashBuf  = await crypto.subtle.digest("SHA-256", msgUint8);
     const tokenHash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
 
-    await db.prepare(
-      `INSERT INTO content_shares (id, brand_id, content_id, share_type, access_token_hash, expires_at) VALUES (?, ?, ?, 'client_review', ?, ?)`
-    ).bind(shareId, brand_id, id, tokenHash, expires).run();
-
-    share_url = `https://app.mypilotpost.com/approve/${token}`;
+    share_url = `${env.FRONTEND_URL || 'https://app.mypilotpost.com'}/public/approval/${id}`;
 
     const nowStr = new Date().toISOString();
 
@@ -335,8 +377,10 @@ export async function vaultApproval(request, env, auth) {
     );
 
     await db.batch([
+      db.prepare(`INSERT INTO content_shares (id, brand_id, content_id, share_type, access_token_hash, expires_at) VALUES (?, ?, ?, 'client_review', ?, ?)`)
+        .bind(shareId, brand_id, id, tokenHash, expires),
       db.prepare(`UPDATE content_vault SET lifecycle_status = 'approval_requested', share_for_approval = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
-      db.prepare(`UPDATE social_assets SET lifecycle_status = 'pending_approval', status = 'pending_approval', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
+      db.prepare(`UPDATE social_assets SET lifecycle_status = 'pending_approval', status = 'approval', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
       db.prepare(`INSERT INTO approval_requests (id, brand_id, content_id, content_type, requested_by, reviewer_type, review_notes, reviewer_email, channel, reviewer_name, reviewer_phone, delivery_channels, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
         .bind(approvalId, brand_id, id, item.content_type, user_id, reviewer_type, notes || null, reviewer_email || null, channel, reviewer_name || null, reviewer_phone || null, deliveryChannelsStr, expires_at),
     ]);
@@ -382,6 +426,16 @@ export async function vaultApproval(request, env, auth) {
   }
 
   if (action === "approve") {
+    // Only owners, admins, approvers and brand_managers may approve content.
+    // Matches the same check enforced in collaboration.js updateContentStatus.
+    const approverRow = await db.prepare(`SELECT role FROM brand_users WHERE user_id = ? AND brand_id = ?`).bind(user_id, brand_id).first();
+    const brandMeta   = await db.prepare(`SELECT owner_user_id FROM brands WHERE id = ?`).bind(brand_id).first();
+    const isOwner     = brandMeta?.owner_user_id === user_id;
+    const approvingRoles = ['owner', 'admin', 'approver', 'brand_manager', 'client'];
+    if (!isOwner && !approvingRoles.includes(approverRow?.role)) {
+      return error("Only owners, admins or approvers can approve content", "FORBIDDEN", null, 403);
+    }
+
     await db.batch([
       db.prepare(`UPDATE content_vault SET lifecycle_status = 'approved', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
       db.prepare(`UPDATE social_assets SET lifecycle_status = 'approved', status = 'approved', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
@@ -401,7 +455,7 @@ export async function vaultApproval(request, env, auth) {
   if (action === "reject") {
     await db.batch([
       db.prepare(`UPDATE content_vault SET lifecycle_status = 'archived', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
-      db.prepare(`UPDATE social_assets SET lifecycle_status = 'archived', status = 'archived', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
+      db.prepare(`UPDATE social_assets SET lifecycle_status = 'archived', status = 'failed', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
       db.prepare(`UPDATE approval_requests SET rejected_by = ?, rejection_reason = ? WHERE content_id = ? AND brand_id = ? AND approved_at IS NULL`).bind(user_id, notes || null, id, brand_id),
     ]);
 
@@ -576,6 +630,13 @@ export async function vaultCancel(request, env, auth) {
     return error("Only scheduled or queued content can be cancelled", "CONFLICT", null, 409);
   }
 
+  const processingJob = await db.prepare(`
+    SELECT 1 FROM delivery_jobs WHERE content_id = ? AND brand_id = ? AND status = 'processing' LIMIT 1
+  `).bind(id, brand_id).first();
+  if (processingJob) {
+    return error("Cannot cancel while delivery is in progress", "CONFLICT", null, 409);
+  }
+
   await db.batch([
     db.prepare(`DELETE FROM delivery_jobs WHERE content_id = ? AND brand_id = ? AND status IN ('scheduled','pending')`).bind(id, brand_id),
     db.prepare(`UPDATE content_vault SET lifecycle_status = 'draft', scheduled_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
@@ -628,7 +689,7 @@ export async function vaultPublishNow(request, env, auth) {
   if (batch.length) {
     batch.push(
       db.prepare(`UPDATE content_vault SET lifecycle_status = 'queued', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
-      db.prepare(`UPDATE social_assets SET lifecycle_status = 'queued', status = 'queued', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
+      db.prepare(`UPDATE social_assets SET lifecycle_status = 'queued', status = 'scheduled', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
     );
     await db.batch(batch);
     await completeReferral(db, user_id, env).catch(() => {});

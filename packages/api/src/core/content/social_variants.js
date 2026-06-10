@@ -43,32 +43,22 @@ export async function saveSocialVariants(request, env, contentId, ctx) {
   // 2️⃣ content_id IS the social_assets.id
   const assetId = contentId;
 
-  // 3️⃣ Upsert variants
+  // 3️⃣ Upsert variants (atomic: all variants + vault update in one batch)
+  const savedVariants = {};
+  const statements = [];
   for (const [platform, content] of Object.entries(variants)) {
     if (!platform || typeof content !== "string") continue;
-
-    const existing = await db.prepare(`
-      SELECT id FROM social_variants
-      WHERE social_asset_id = ? AND platform = ?
-    `).bind(assetId, platform).first();
-
-    if (existing) {
-      await db.prepare(`
-        UPDATE social_variants
-        SET caption = ?
-        WHERE id = ?
-      `).bind(content, existing.id).run();
-    } else {
-      await db.prepare(`
-        INSERT INTO social_variants (id, social_asset_id, platform, caption)
-        VALUES (?, ?, ?, ?)
-      `).bind(crypto.randomUUID(), assetId, platform, content).run();
-    }
+    savedVariants[platform] = content;
+    statements.push(
+      db.prepare(`INSERT INTO social_variants (id, social_asset_id, platform, caption) VALUES (?, ?, ?, ?) ON CONFLICT(social_asset_id, platform) DO UPDATE SET caption = excluded.caption`)
+        .bind(crypto.randomUUID(), assetId, platform, content)
+    );
   }
-
-  await db.prepare(`
-    UPDATE content_vault SET updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?
-  `).bind(contentId, brand_id).run();
+  statements.push(
+    db.prepare(`UPDATE content_vault SET platform_variants = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`)
+      .bind(JSON.stringify(savedVariants), contentId, brand_id)
+  );
+  await db.batch(statements);
 
   return json({ saved: true });
 }

@@ -69,7 +69,13 @@ export async function createBrand(request, env, session) {
         INSERT INTO brand_users (user_id, brand_id, role, created_at)
         VALUES (?, ?, 'owner', datetime('now'))
         `
-      ).bind(session.user_id, brandId)
+      ).bind(session.user_id, brandId),
+      db.prepare(
+        `
+        INSERT INTO team_members (id, brand_id, user_id, role)
+        VALUES (?, ?, ?, 'owner')
+        `
+      ).bind(crypto.randomUUID(), brandId, session.user_id)
     ]);
 
     // 2. RECALCULATE USAGE
@@ -97,13 +103,16 @@ export async function createBrandRequest(request, env, session) {
   const result = await createBrand(request, env, session);
   if (result.status === 201) {
     const data = await result.json();
-    // ✅ ISSUE NEW JWT IMMEDIATELY FOR THE NEW BRAND
+    const db = getDB(env);
+    const membership = await db.prepare(
+      `SELECT role FROM brand_users WHERE user_id = ? AND brand_id = ? LIMIT 1`
+    ).bind(session.user_id, data.id).first();
     const jwt = await issueJWT(
       {
         user_id: session.user_id,
         brand_id: data.id,
         email: session.email,
-        role: session.role
+        role: membership?.role || "owner"
       },
       env
     );
@@ -194,13 +203,16 @@ export async function switchBrand(request, env, session) {
     return error("Brand not accessible", 403);
   }
 
-  // ✅ ISSUE NEW JWT WITH BRAND CONTEXT
+  const membership = await db.prepare(
+    `SELECT role FROM brand_users WHERE user_id = ? AND brand_id = ? LIMIT 1`
+  ).bind(session.user_id, brand_id).first();
+
   const jwt = await issueJWT(
     {
       user_id: session.user_id,
       brand_id: brand_id,
       email: session.email,
-      role: session.role
+      role: membership?.role || "member"
     },
     env
   );
@@ -214,6 +226,9 @@ export async function switchBrand(request, env, session) {
 export async function getBrandSettings(request, env, session) {
   const brandId = request.url.split("/").slice(-2)[0];
   if (!isValidUUID(brandId)) return error("Invalid brand ID", 400);
+  if (session.brand_id && brandId !== session.brand_id) {
+    return error("Brand context mismatch — switch brand first", "FORBIDDEN", null, 403);
+  }
 
   const db = getDB(env);
 
@@ -244,6 +259,9 @@ export async function getBrandSettings(request, env, session) {
 export async function updateBrandSettings(request, env, session) {
   const brandId = request.url.split("/").slice(-2)[0];
   if (!isValidUUID(brandId)) return error("Invalid brand ID", 400);
+  if (session.brand_id && brandId !== session.brand_id) {
+    return error("Brand context mismatch — switch brand first", "FORBIDDEN", null, 403);
+  }
 
   let body;
   try {

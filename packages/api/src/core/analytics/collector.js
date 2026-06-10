@@ -19,37 +19,41 @@ export async function recordAnalytics(env, event) {
     brand_id,
     content_type,
     content_id,
+    platform = null,
     impressions = 0,
     engagements = 0,
     clicks = 0,
+    reported_at = null,
   } = event;
 
-  /* Upsert content analytics */
+  // Default reported_at to now so timeseries queries (which filter on reported_at) return data
+  const reportedAt = reported_at || new Date().toISOString();
+
+  /* Upsert content analytics — include platform + reported_at (added in migration 032) */
   await db.prepare(`
     INSERT INTO content_analytics (
-      id,
-      brand_id,
-      content_type,
-      content_id,
-      impressions,
-      engagements,
-      clicks
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      id, brand_id, content_type, content_id,
+      platform, impressions, engagements, clicks, reported_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(content_type, content_id)
     DO UPDATE SET
-      impressions = impressions + excluded.impressions,
-      engagements = engagements + excluded.engagements,
-      clicks = clicks + excluded.clicks,
-      updated_at = CURRENT_TIMESTAMP
+      impressions  = impressions  + excluded.impressions,
+      engagements  = engagements  + excluded.engagements,
+      clicks       = clicks       + excluded.clicks,
+      platform     = COALESCE(excluded.platform, platform),
+      reported_at  = excluded.reported_at,
+      updated_at   = CURRENT_TIMESTAMP
   `)
     .bind(
       crypto.randomUUID(),
       brand_id,
       content_type,
       content_id,
+      platform,
       impressions,
       engagements,
-      clicks
+      clicks,
+      reportedAt
     )
     .run();
 

@@ -15,20 +15,18 @@ export async function startOAuth(request, env, auth) {
   try {
     const stateId = await generateState(auth.brand_id, auth.user_id, providerKey, env);
     const provider = PROVIDERS[providerKey];
-    
-    const client_id = env[`${providerKey.toUpperCase()}_CLIENT_ID`];
+
+    const credKey = (provider.credential_key || providerKey).toUpperCase();
+    const client_id = env[`${credKey}_CLIENT_ID`];
     const redirect_uri = `${env.BASE_URL}/api/customer/oauth/${providerKey}/callback`;
-    
-    // Construct Auth URL (Simplified - some providers need more specific scopes/params)
+
+    // Construct Auth URL using registry scopes — same as unified flow
     const authUrl = new URL(provider.endpoints.auth);
     authUrl.searchParams.set("client_id", client_id);
     authUrl.searchParams.set("redirect_uri", redirect_uri);
     authUrl.searchParams.set("state", stateId);
     authUrl.searchParams.set("response_type", "code");
-    
-    // Add default scopes based on type
-    if (providerKey === "linkedin") authUrl.searchParams.set("scope", "openid profile email w_member_social r_organization_social");
-    if (providerKey === "facebook") authUrl.searchParams.set("scope", "pages_show_list,pages_read_engagement,pages_manage_posts");
+    if (provider.scopes) authUrl.searchParams.set("scope", provider.scopes);
 
     return json({ url: authUrl.toString() });
   } catch (err) {

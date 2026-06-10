@@ -361,7 +361,7 @@ export async function generateInsights(env, auth) {
     UPDATE brands SET last_intelligence_run_at = CURRENT_TIMESTAMP WHERE id = ?
   `).bind(brandId).run();
 
-  await emitEvent(env, 'audit_generated', { brand_id: brandId, audit_id: auditId });
+  await emitEvent(env, 'audit_generated', { brand_id: brandId, user_id: auth.user_id, audit_id: auditId });
 
   return getInsights(request, env, auth);
 }

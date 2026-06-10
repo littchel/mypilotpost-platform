@@ -13,7 +13,14 @@ import { getProvider } from "./registry.js";
 export async function refreshSocialConnection(db, connection, env) {
   const provider = getProvider(connection.platform);
   const secret = env.ENCRYPTION_SECRET;
-  
+
+  // Connections without a refresh_token (e.g. Meta long-lived tokens) cannot be refreshed
+  // via standard grant. Return early — do NOT set status='error'.
+  if (!connection.refresh_token) {
+    console.warn(`[REFRESH_SKIP] ${connection.platform}:${connection.id} — no refresh_token, skipping`);
+    return { success: false, status: 'no_refresh_token' };
+  }
+
   try {
     const refreshToken = await decrypt(connection.refresh_token, secret);
 

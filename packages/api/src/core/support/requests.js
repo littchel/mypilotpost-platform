@@ -7,8 +7,9 @@
 import { json, error } from '../../lib/json.js';
 import { getDB } from '../../lib/db.js';
 import { sendEmail } from '../email/send-email.js';
+import { logAdminAction } from '../../lib/admin_logger.js';
 
-const ADMIN_EMAIL  = 'support@mypilotpost.com';
+const DEFAULT_SUPPORT_EMAIL = 'support@mypilotpost.com';
 const CATEGORIES   = ['technical', 'billing', 'platform', 'approval', 'bug'];
 
 // ── POST /api/customer/support ────────────────────────────────────────────────
@@ -44,7 +45,7 @@ export async function createSupportRequest(req, env, auth) {
 <p><strong>Message:</strong></p>
 <pre style="background:#f1f5f9;padding:12px;border-radius:8px;white-space:pre-wrap">${message}</pre>
 <p><a href="https://admin.mypilotpost.com">View in Admin Portal</a></p>`;
-    await sendEmail({ to: ADMIN_EMAIL, subject: `[Support] ${category}: ${subject}`, html, env });
+    await sendEmail({ to: env?.SUPPORT_EMAIL || DEFAULT_SUPPORT_EMAIL, subject: `[Support] ${category}: ${subject}`, html, env });
   } catch { /* non-fatal */ }
 
   // In-app notification for the user confirming receipt
@@ -81,7 +82,9 @@ export async function adminListSupport(req, env) {
 }
 
 // ── Admin: PUT /api/v1/admin/support/:id ─────────────────────────────────────
-export async function adminUpdateSupport(req, env) {
+const VALID_SUPPORT_STATUSES = ['open', 'in_progress', 'resolved', 'closed'];
+
+export async function adminUpdateSupport(req, env, auth) {
   const parts = req.url.split('/');
   const reqId = parts[parts.length - 1];
   const body  = await req.json().catch(() => ({}));
@@ -89,12 +92,24 @@ export async function adminUpdateSupport(req, env) {
 
   const updates = [];
   const binds   = [];
-  if (body.status)      { updates.push('status = ?');      binds.push(body.status); }
+  if (body.status) {
+    if (!VALID_SUPPORT_STATUSES.includes(body.status)) {
+      return error(`Invalid status. Must be one of: ${VALID_SUPPORT_STATUSES.join(', ')}`, "BAD_REQUEST", null, 400);
+    }
+    updates.push('status = ?');
+    binds.push(body.status);
+  }
   if (body.admin_notes) { updates.push('admin_notes = ?'); binds.push(body.admin_notes); }
   if (body.status === 'resolved') { updates.push('resolved_at = datetime(\'now\')'); }
   updates.push('updated_at = datetime(\'now\')');
   binds.push(reqId);
 
   await db.prepare(`UPDATE support_requests SET ${updates.join(', ')} WHERE id = ?`).bind(...binds).run();
+
+  await logAdminAction(env, auth, 'update_support_request', 'support_request', reqId, {
+    status: body.status || null,
+    has_notes: Boolean(body.admin_notes),
+  });
+
   return json({ success: true });
 }

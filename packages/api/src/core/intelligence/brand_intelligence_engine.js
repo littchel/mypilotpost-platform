@@ -13,8 +13,9 @@
 
 import { buildIntelligenceContext } from './intelligence_context_builder.js';
 
-const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL   = 'llama-3.3-70b-versatile';
+const GROQ_API_URL      = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODEL        = 'llama-3.3-70b-versatile';
+const GROQ_FALLBACK_MODEL = 'llama-3.1-8b-instant';
 
 const SYSTEM_PROMPT = `You are a senior brand strategist and growth analyst producing an AI-powered Brand Intelligence Report for a real business.
 
@@ -202,7 +203,32 @@ function estimateTokens(text) {
   return Math.ceil((text || '').length / 4);
 }
 
-export async function generateBrandIntelligence(db, brandId, env) {
+async function callGroqAPI(apiKey, model, systemPrompt, userPrompt, maxOutput) {
+  const response = await fetch(GROQ_API_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type':  'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user',   content: userPrompt   },
+      ],
+      temperature:     0.3,
+      max_tokens:      maxOutput,
+      response_format: { type: 'json_object' },
+    }),
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`Groq API ${response.status}: ${body.slice(0, 300)}`);
+  }
+  return response.json();
+}
+
+export async function generateBrandIntelligence(db, brandId, env, userId = null) {
   const apiKey = env.GROQ_API_KEY;
   if (!apiKey) throw new Error('GROQ_API_KEY not configured');
 
@@ -219,43 +245,57 @@ export async function generateBrandIntelligence(db, brandId, env) {
 
   console.log(`[INTEL_GROQ_REQUEST] model=${GROQ_MODEL} temp=0.3 max_tokens=${maxOutput}`);
 
-  let response;
+  const reqStart = Date.now();
+  let data;
+  let usedModel = GROQ_MODEL;
   try {
-    response = await fetch(GROQ_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type':  'application/json',
-      },
-      body: JSON.stringify({
-        model:    GROQ_MODEL,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user',   content: userPrompt   },
-        ],
-        temperature:     0.3,
-        max_tokens:      maxOutput,
-        response_format: { type: 'json_object' },
-      }),
-    });
-  } catch (fetchErr) {
-    console.error(`[INTEL_GROQ_FAILURE] network error: ${fetchErr.message}`);
-    throw fetchErr;
+    data = await callGroqAPI(apiKey, GROQ_MODEL, systemPrompt, userPrompt, maxOutput);
+  } catch (err70b) {
+    console.warn(`[INTEL_GROQ_70B_FAIL] ${err70b.message} — retrying with ${GROQ_FALLBACK_MODEL}`);
+    try {
+      data = await callGroqAPI(apiKey, GROQ_FALLBACK_MODEL, systemPrompt, userPrompt, maxOutput);
+      usedModel = GROQ_FALLBACK_MODEL;
+    } catch (err8b) {
+      console.error(`[INTEL_GROQ_FAILURE] fallback also failed: ${err8b.message}`);
+      throw err8b;
+    }
   }
 
-  if (!response.ok) {
-    const body = await response.text().catch(() => '');
-    console.error(`[INTEL_GROQ_FAILURE] status=${response.status} body="${body.slice(0, 300)}"`);
-    throw new Error(`Groq API ${response.status}: ${body.slice(0, 300)}`);
-  }
-
-  const data = await response.json();
   const raw  = data.choices?.[0]?.message?.content;
   if (!raw) throw new Error('Groq returned empty response');
 
-  const usedInput  = data.usage?.prompt_tokens    || 0;
-  const usedOutput = data.usage?.completion_tokens || 0;
-  console.log(`[INTEL_GROQ_RESPONSE] actual_input=${usedInput}tok actual_output=${usedOutput}tok total=${usedInput + usedOutput}tok`);
+  const usedInput   = data.usage?.prompt_tokens    || 0;
+  const usedOutput  = data.usage?.completion_tokens || 0;
+  const totalTokens = usedInput + usedOutput;
+  const latencyMs   = Date.now() - reqStart;
+  console.log(`[INTEL_GROQ_RESPONSE] model=${usedModel} actual_input=${usedInput}tok actual_output=${usedOutput}tok total=${totalTokens}tok`);
+
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    await db.prepare(`
+      INSERT INTO ai_generations
+        (id, brand_id, user_id, content_type, platform, input_prompt, output,
+         model, provider, tokens_used, latency_ms, success, status, created_at)
+      VALUES (?, ?, ?, 'intelligence', null, ?, ?, ?, 'groq', ?, ?, 1, 'ok', datetime('now'))
+    `).bind(
+      crypto.randomUUID(), brandId, userId,
+      userPrompt.slice(0, 2000), raw.slice(0, 4000),
+      usedModel, totalTokens, latencyMs
+    ).run();
+
+    if (userId) {
+      await db.prepare(`
+        INSERT INTO ai_usage_quota (user_id, brand_id, date, generation_count, token_count)
+        VALUES (?, ?, ?, 1, ?)
+        ON CONFLICT(user_id, brand_id, date)
+        DO UPDATE SET
+          generation_count = generation_count + 1,
+          token_count = token_count + excluded.token_count
+      `).bind(userId, brandId, today, totalTokens).run();
+    }
+  } catch (trackErr) {
+    console.error('[INTEL_TRACKING_ERROR]', trackErr.message);
+  }
 
   try {
     return JSON.parse(raw);

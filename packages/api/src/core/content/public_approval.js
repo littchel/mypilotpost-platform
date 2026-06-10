@@ -17,7 +17,7 @@ export async function getPublicContent(request, env, contentId) {
 
   // Fetch the content from vault (source of truth)
   const draft = await db.prepare(`
-    SELECT id AS content_id, content_type, brand_id, title, lifecycle_status AS status
+    SELECT id AS content_id, content_type, brand_id, title, body, lifecycle_status AS status
     FROM content_vault
     WHERE id = ?
     LIMIT 1
@@ -37,13 +37,13 @@ export async function getPublicContent(request, env, contentId) {
   `).bind(draft.brand_id).first();
 
   // Fetch content body by type
-  let contentBody = null;
+  let contentBody = { content: draft.body || "", platform: null };
   if (draft.content_type === 'social') {
     const variant = await db.prepare(`
       SELECT caption as content, platform FROM social_variants
       WHERE social_asset_id = ? AND platform = 'base' LIMIT 1
     `).bind(contentId).first();
-    contentBody = variant;
+    contentBody = variant || contentBody;
   }
 
   // Fetch external comments only
@@ -83,7 +83,7 @@ export async function submitPublicDecision(request, env, contentId) {
 
   // Verify content exists and is in approval state (vault is source of truth)
   const draft = await db.prepare(`
-    SELECT id AS content_id, content_type, brand_id, lifecycle_status AS status
+    SELECT id AS content_id, content_type, brand_id, user_id, lifecycle_status AS status
     FROM content_vault
     WHERE id = ? LIMIT 1
   `).bind(contentId).first();
@@ -112,6 +112,21 @@ export async function submitPublicDecision(request, env, contentId) {
       WHERE id = ?
     `).bind(newStatus, newStatus, contentId));
   }
+
+  if (status === 'approved') {
+    updates.push(db.prepare(`
+      UPDATE approval_requests
+      SET approved_at = CURRENT_TIMESTAMP
+      WHERE content_id = ? AND brand_id = ? AND approved_at IS NULL
+    `).bind(contentId, draft.brand_id));
+  } else {
+    updates.push(db.prepare(`
+      UPDATE approval_requests
+      SET rejected_by = COALESCE(rejected_by, 'public'), rejection_reason = COALESCE(?, rejection_reason)
+      WHERE content_id = ? AND brand_id = ? AND approved_at IS NULL
+    `).bind(comment || null, contentId, draft.brand_id));
+  }
+
   await db.batch(updates);
 
   // Store the comment (marked as 'external')
@@ -127,7 +142,7 @@ export async function submitPublicDecision(request, env, contentId) {
   if (newStatus === 'approved') {
     await emitEvent(env, 'content_approved', {
       brand_id: draft.brand_id,
-      user_id: draft.user_id || 'system', // Ideally we'd know who requested approval
+      user_id: draft.user_id,
       content_id: contentId,
       meta: { source: 'public_link' }
     });

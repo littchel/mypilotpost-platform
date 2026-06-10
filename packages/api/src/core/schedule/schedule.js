@@ -347,17 +347,32 @@ export async function deleteSchedule(_request, env, auth, jobId) {
     const db = getDB(env);
     const brandId = auth.brand_id;
 
-    const res = await db
-      .prepare(`
-        UPDATE delivery_jobs
-        SET status = 'cancelled'
-        WHERE id = ? AND brand_id = ? AND status = 'scheduled'
-      `)
-      .bind(jobId, brandId)
-      .run();
+    // Fetch job details before cancellation so we can revert content state
+    const job = await db.prepare(`
+      SELECT content_id, content_type FROM delivery_jobs WHERE id = ? AND brand_id = ? AND status = 'scheduled'
+    `).bind(jobId, brandId).first();
 
-    if (res.changes === 0) {
+    if (!job) {
       return error("Only scheduled jobs can be cancelled", "CONFLICT", null, 409);
+    }
+
+    await db.prepare(`
+      UPDATE delivery_jobs SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND brand_id = ? AND status = 'scheduled'
+    `).bind(jobId, brandId).run();
+
+    // If no active scheduled/processing jobs remain for this content, unlock it back to 'draft'
+    const remaining = await db.prepare(`
+      SELECT COUNT(*) as count FROM delivery_jobs
+      WHERE content_id = ? AND brand_id = ? AND status IN ('scheduled', 'processing', 'pending')
+    `).bind(job.content_id, brandId).first();
+
+    if ((remaining?.count || 0) === 0) {
+      const contentTable = job.content_type === 'blog' ? 'blog_posts' : 'social_assets';
+      await db.batch([
+        db.prepare(`UPDATE content_vault SET lifecycle_status = 'draft', scheduled_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(job.content_id, brandId),
+        db.prepare(`UPDATE ${contentTable} SET lifecycle_status = 'draft', status = 'draft', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(job.content_id, brandId),
+      ]);
     }
 
     return json({ success: true });

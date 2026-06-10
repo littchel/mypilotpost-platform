@@ -4,7 +4,7 @@
 
 import { json, error } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
-import { handleGrowthEvent } from "./engine.js";
+import { handleGrowthEvent, applyReward } from "./engine.js";
 
 /**
  * GET /api/customer/growth/summary
@@ -174,6 +174,31 @@ export async function processGrowthAction(request, env, auth) {
   });
 
   return json({ success: true });
+}
+
+/**
+ * POST /api/customer/growth/reward/redeem
+ */
+export async function redeemReward(request, env, auth) {
+  const { user_id, brand_id } = auth;
+
+  let body;
+  try {
+    body = await request.json();
+  } catch (e) {
+    return error("Invalid JSON", 400);
+  }
+
+  const { reward_id } = body;
+  if (!reward_id) return error("reward_id required", 400);
+
+  try {
+    const result = await applyReward(env, user_id, brand_id, reward_id);
+    return json({ success: true, ...result });
+  } catch (e) {
+    if (e.message === 'Reward not found') return error("Reward not found", 404);
+    throw e;
+  }
 }
 
 /**

@@ -3,7 +3,8 @@
 import { json, error } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
 import { logEvent } from "../../lib/events.js";
-import { runLLM } from "./ai_client.js";
+import { trackedRunLLM } from "./ai_client.js";
+import { checkAndIncrement } from "../billing/enforcement.js";
 
 export async function grammarCheck(request, env, auth) {
   let body;
@@ -35,17 +36,20 @@ Respond in strict JSON:
 
   if (auth?.brand_id) {
     const db = getDB(env);
-    const brand = await db.prepare("SELECT * FROM brands WHERE id = ?").bind(auth.brand_id).first();
+    await checkAndIncrement(db, auth.user_id, "ai");
+    const brand = await db.prepare("SELECT id, name, industry FROM brands WHERE id = ?").bind(auth.brand_id).first();
 
-    const { output } = await runLLM(env, prompt, { brand, mode: 'fast' });
-    try {
-      const parsed = JSON.parse(output);
-      if (parsed?.corrected) {
-        correctedText = parsed.corrected;
-        suggestions = parsed.suggestions || [];
-      }
-    } catch {
-      // AI unavailable — return original text unchanged
+    const result = await trackedRunLLM(env, {
+      brand,
+      prompt,
+      brand_id: auth.brand_id,
+      user_id: auth.user_id || null,
+      content_type: "grammar",
+      options: { mode: 'fast', systemPromptType: 'utility' },
+    });
+    if (result?.corrected) {
+      correctedText = result.corrected;
+      suggestions = result.suggestions || [];
     }
   }
 

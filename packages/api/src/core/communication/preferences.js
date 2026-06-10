@@ -79,7 +79,12 @@ export async function resolveChannels(userId, brandId, notifType, db) {
 
   function inQuiet(start, end) {
     if (!start || !end) return false;
-    return start <= hhmm || hhmm <= end; // handles overnight ranges
+    if (start > end) {
+      // Overnight range (e.g. 22:00–08:00): quiet if at or after start OR at or before end
+      return hhmm >= start || hhmm <= end;
+    }
+    // Same-day range (e.g. 14:00–18:00): quiet only if strictly between start and end
+    return hhmm >= start && hhmm <= end;
   }
 
   const emailRow  = results?.find(r => r.channel === 'email');

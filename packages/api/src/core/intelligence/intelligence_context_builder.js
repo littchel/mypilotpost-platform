@@ -35,6 +35,13 @@ export async function buildIntelligenceContext(db, brandId) {
     connectedRows,
     blogStats,
     campaignStats,
+    dnaProfile,
+    dnaVoice,
+    dnaAudience,
+    dnaObjectives,
+    dnaPillars,
+    dnaCompetitors,
+    memoryRows,
   ] = await Promise.all([
     // Only columns that exist on brands table
     db.prepare(`
@@ -85,6 +92,48 @@ export async function buildIntelligenceContext(db, brandId) {
              SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active
       FROM campaigns WHERE brand_id = ?
     `).bind(brandId).first(),
+
+    // Brand DNA — strategy, voice, audience, objectives, pillars, competitors
+    db.prepare(`
+      SELECT mission, positioning, value_proposition, brand_personality, differentiators
+      FROM brand_dna_profiles WHERE brand_id = ?
+    `).bind(brandId).first().catch(() => null),
+
+    db.prepare(`
+      SELECT voice_traits, messaging_style, cta_style
+      FROM brand_dna_voice WHERE brand_id = ?
+    `).bind(brandId).first().catch(() => null),
+
+    db.prepare(`
+      SELECT icp_name, pain_points, desires
+      FROM brand_dna_audience WHERE brand_id = ?
+    `).bind(brandId).first().catch(() => null),
+
+    db.prepare(`
+      SELECT awareness_goal, leads_goal, conversions_goal, authority_goal
+      FROM brand_dna_objectives WHERE brand_id = ?
+    `).bind(brandId).first().catch(() => null),
+
+    db.prepare(`
+      SELECT title FROM brand_dna_content_pillars WHERE brand_id = ? LIMIT 5
+    `).bind(brandId).all().catch(() => ({ results: [] })),
+
+    db.prepare(`
+      SELECT name, strategy_notes FROM brand_dna_competitors WHERE brand_id = ? LIMIT 4
+    `).bind(brandId).all().catch(() => ({ results: [] })),
+
+    // Brand memory — derived signals (preferred platform, top content type, etc.)
+    db.prepare(`
+      SELECT namespace, key, value, confidence
+      FROM brand_memory
+      WHERE brand_id = ?
+        AND namespace IN ('brand', 'content', 'scheduler', 'customer')
+        AND key IN (
+          'preferred_platform', 'top_content_type',
+          'uses_approval_workflow', 'uses_scheduler',
+          'is_team_account', 'has_clients'
+        )
+    `).bind(brandId).all().catch(() => ({ results: [] })),
   ]);
 
   // ── Parse audit report ────────────────────────────────────────────────────
@@ -94,6 +143,19 @@ export async function buildIntelligenceContext(db, brandId) {
   const moatMap     = auditReport?.competitive_moat_map      || {};
   const convArch    = auditReport?.conversion_architecture_review || {};
   const contentDNA  = auditReport?.content_genome_analysis   || {};
+
+  // ── Parse Brand DNA ───────────────────────────────────────────────────────
+  const voiceTraits  = safeJSON(dnaVoice?.voice_traits, []);
+  const painPoints   = safeJSON(dnaAudience?.pain_points, []);
+  const desires      = safeJSON(dnaAudience?.desires, []);
+  const pillarTitles = (dnaPillars?.results || []).map(p => p.title).filter(Boolean);
+  const competitors  = (dnaCompetitors?.results || []);
+
+  // ── Parse brand_memory signals ────────────────────────────────────────────
+  const memMap = {};
+  for (const r of (memoryRows?.results || [])) {
+    try { memMap[r.key] = { value: JSON.parse(r.value), confidence: r.confidence }; } catch {}
+  }
 
   // ── Process delivery stats ────────────────────────────────────────────────
   const platformActivity = {};
@@ -147,6 +209,47 @@ export async function buildIntelligenceContext(db, brandId) {
     if (friction.length) L.push(`Conversion Friction: ${friction.join(' | ')}`);
   } else {
     L.push(`No audit data available.`);
+  }
+
+  // ── Brand DNA section (injected into context for intelligence quality) ─────
+  const dnaLines = [];
+  if (dnaProfile?.mission)           dnaLines.push(`Mission: ${dnaProfile.mission}`);
+  if (dnaProfile?.positioning)       dnaLines.push(`Positioning: ${dnaProfile.positioning}`);
+  if (dnaProfile?.value_proposition) dnaLines.push(`Value Prop: ${dnaProfile.value_proposition}`);
+  if (voiceTraits.length)            dnaLines.push(`Voice: ${voiceTraits.slice(0, 4).join(', ')}`);
+  if (dnaVoice?.messaging_style)     dnaLines.push(`Messaging Style: ${dnaVoice.messaging_style}`);
+  if (dnaAudience?.icp_name)         dnaLines.push(`Target Audience: ${dnaAudience.icp_name}`);
+  if (painPoints.length)             dnaLines.push(`Audience Pain Points: ${painPoints.slice(0, 3).join(' | ')}`);
+  if (desires.length)                dnaLines.push(`Audience Desires: ${desires.slice(0, 2).join(' | ')}`);
+  if (dnaObjectives?.awareness_goal) dnaLines.push(`Awareness Goal: ${dnaObjectives.awareness_goal}`);
+  if (dnaObjectives?.leads_goal)     dnaLines.push(`Leads Goal: ${dnaObjectives.leads_goal}`);
+  if (dnaObjectives?.authority_goal) dnaLines.push(`Authority Goal: ${dnaObjectives.authority_goal}`);
+  if (pillarTitles.length)           dnaLines.push(`Content Pillars: ${pillarTitles.join(', ')}`);
+  if (competitors.length) {
+    const compStr = competitors.map(c => c.strategy_notes ? `${c.name} (${c.strategy_notes.slice(0, 60)})` : c.name).join(' | ');
+    dnaLines.push(`Competitors: ${compStr}`);
+  }
+
+  if (dnaLines.length) {
+    L.push(`\n=== BRAND DNA ===`);
+    L.push(...dnaLines);
+  } else {
+    L.push(`\n=== BRAND DNA ===`);
+    L.push(`Not yet configured. Recommendations will be based on activity data only.`);
+  }
+
+  // ── Memory signals section ────────────────────────────────────────────────
+  const memLines = [];
+  if (memMap.preferred_platform)       memLines.push(`Preferred Platform: ${memMap.preferred_platform.value} (confidence ${memMap.preferred_platform.confidence})`);
+  if (memMap.top_content_type)         memLines.push(`Top Content Type: ${memMap.top_content_type.value}`);
+  if (memMap.uses_approval_workflow?.value) memLines.push(`Uses Approval Workflow: yes`);
+  if (memMap.uses_scheduler?.value)    memLines.push(`Uses Scheduler: yes`);
+  if (memMap.is_team_account?.value)   memLines.push(`Account Type: team`);
+  if (memMap.has_clients?.value)       memLines.push(`Has Client Accounts: yes`);
+
+  if (memLines.length) {
+    L.push(`\n=== BRAND MEMORY (LEARNED SIGNALS) ===`);
+    L.push(...memLines);
   }
 
   L.push(`\n=== PUBLISHING ACTIVITY (30 DAYS) ===`);

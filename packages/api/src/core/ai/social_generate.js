@@ -5,6 +5,8 @@ import { json, error } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
 import { checkAndIncrement } from "../billing/enforcement.js";
 import { trackedRunLLM } from "./ai_client.js";
+import { scoreSocialPost } from "./quality.js";
+import { postProcessSocial } from "./postprocess.js";
 
 const ALLOWED_PLATFORMS = [
   "facebook", "instagram", "x", "linkedin",
@@ -202,6 +204,7 @@ export async function generateSocialContent(request, env, auth) {
     user_id: auth.user_id,
     content_type: "social",
     platform: platforms[0] || null,
+    options: { systemPromptType: 'social' },
   });
 
   const generatedPosts = result?.posts || [];
@@ -210,8 +213,44 @@ export async function generateSocialContent(request, env, auth) {
     return json({ error: "AI service temporarily unavailable. Please try again." }, 503);
   }
 
+  // Apply platform rules enforcement and quality scoring to each post
+  const scoredPosts = generatedPosts.map(post => {
+    const platform = post.platform || platforms[0] || 'instagram';
+    const hashtags = Array.isArray(post.hashtags) ? post.hashtags : [];
+
+    const rawQuality = scoreSocialPost({
+      platform,
+      content: post.baseCaption || '',
+      hashtags,
+      cta_present: !!(post.cta),
+    });
+
+    const processed = postProcessSocial({
+      platform,
+      content: post.baseCaption || '',
+      hashtags,
+    });
+
+    const quality = scoreSocialPost({
+      platform,
+      content: processed.content,
+      hashtags: processed.hashtags,
+      cta_present: !!(post.cta),
+    });
+
+    return {
+      ...post,
+      baseCaption: processed.content || post.baseCaption,
+      hashtags: processed.hashtags.length ? processed.hashtags : hashtags,
+      quality_score_raw: rawQuality.score,
+      quality_score: quality.score,
+      quality_grade: quality.grade,
+      quality_breakdown: quality.breakdown,
+    };
+  });
+
   return json({
-    posts: generatedPosts,
+    posts: scoredPosts,
     brand_name: dna.brand?.name || null,
   });
 }

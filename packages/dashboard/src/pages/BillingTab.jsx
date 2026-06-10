@@ -48,8 +48,7 @@ const BillingTab = () => {
   const [usage, setUsage] = useState({ status: 'loading', data: [] });
   const [currentPlan, setCurrentPlan] = useState(null);
   const [isUpgrading, setIsUpgrading] = useState(false);
-
-  const growthStats = { level: "—", points: "—", streak: "—", progress: 0 };
+  const [growthStats, setGrowthStats] = useState({ level: '—', points: '—', streak: '—', progress: 0, next_reward: null });
 
   const PLANS = [
     { id: "starter", name: "Starter", price: "R0", desc: "Free forever" },
@@ -78,10 +77,11 @@ const BillingTab = () => {
     setHistory(prev => ({ ...prev, status: 'loading' }));
     setUsage(prev => ({ ...prev, status: 'loading' }));
 
-    const [planRes, histRes, usageRes] = await Promise.all([
+    const [planRes, histRes, usageRes, growthRes] = await Promise.all([
       apiSafeFetch('/api/customer/billing/plan'),
       apiSafeFetch('/api/customer/billing/history'),
       apiSafeFetch('/api/customer/billing/usage'),
+      apiSafeFetch('/api/customer/growth/summary'),
     ]);
 
     if (planRes.status === 'success' && planRes.data?.plan) {
@@ -89,6 +89,17 @@ const BillingTab = () => {
     }
     setHistory(histRes);
     setUsage(usageRes);
+
+    if (growthRes.status === 'success' && growthRes.data) {
+      const g = growthRes.data;
+      setGrowthStats({
+        level: g.level || '—',
+        points: g.points ?? '—',
+        streak: g.streak_days ?? '—',
+        progress: g.progress_percentage ?? 0,
+        next_reward: g.next_reward || null,
+      });
+    }
   }, []);
 
   useEffect(() => {
@@ -278,7 +289,9 @@ const BillingTab = () => {
                 />
               </div>
               <div className="extra-small text-center mt-3 opacity-90 fw-medium bg-white bg-opacity-10 py-1 rounded" style={{ fontSize: '0.6rem' }}>
-                Start publishing to earn rewards
+                {growthStats.next_reward
+                  ? `${growthStats.next_reward.points_required - (growthStats.points === '—' ? 0 : growthStats.points)} pts to unlock ${growthStats.next_reward.title}`
+                  : 'Start publishing to earn rewards'}
               </div>
             </div>
 

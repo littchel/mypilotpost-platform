@@ -1,5 +1,6 @@
 import { json, error } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
+import { logAdminAction } from "../../lib/admin_logger.js";
 
 export async function handleAdminUsers(request, env) {
   try {
@@ -74,7 +75,7 @@ export async function handleAdminUserDetail(request, env, userId) {
   }
 }
 
-export async function toggleAdminUserStatus(request, env, userId) {
+export async function toggleAdminUserStatus(request, env, userId, auth) {
   try {
     const db = getDB(env);
     const result = await db.prepare(`
@@ -88,9 +89,34 @@ export async function toggleAdminUserStatus(request, env, userId) {
       return error("User not found", "NOT_FOUND", null, 404);
     }
 
-    return json({ success: true, data: result.results[0] });
+    const updated = result.results[0];
+    await logAdminAction(env, auth, "toggle_user_status", "user", userId, {
+      email: updated.email,
+      new_status: updated.is_active ? "active" : "disabled",
+    });
+
+    return json({ success: true, data: updated });
   } catch (err) {
     console.error("[ADMIN:USERS:TOGGLE_FAILED]", err);
     return error("Failed to toggle user status", "SERVER_ERROR", String(err), 500);
+  }
+}
+
+export async function forceVerifyUser(request, env, userId, auth) {
+  try {
+    const db = getDB(env);
+    const result = await db.prepare(
+      "UPDATE users SET verified_at = datetime('now') WHERE id = ? RETURNING id, email, verified_at"
+    ).bind(userId).all();
+    if (!result?.results?.length) return error("User not found", "NOT_FOUND", null, 404);
+
+    const updated = result.results[0];
+    await logAdminAction(env, auth, "force_verify_user", "user", userId, {
+      email: updated.email,
+    });
+
+    return json({ success: true, data: updated });
+  } catch (err) {
+    return error("Failed to verify user", "SERVER_ERROR", String(err), 500);
   }
 }

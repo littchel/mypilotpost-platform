@@ -1,6 +1,7 @@
 // packages/api/src/core/experience/engine.js
 
 import { getDB } from "../../lib/db.js";
+import { json } from "../../lib/json.js";
 import { insertExperienceNotification } from "../notifications/utils.js";
 
 /**
@@ -31,23 +32,22 @@ export async function getExperienceSummary(request, env, auth) {
     // 6. Unread Count
     const unread_count = await getUnreadCount(db, brandId, userId);
 
-    return {
+    return json({
       notifications,
       unread_count,
       badges,
       dashboard_state,
       stats
-    };
+    });
   } catch (err) {
     console.error("EXPERIENCE_ENGINE_ERROR:", err);
-    // Safe defaults
-    return {
+    return json({
       notifications: [],
       unread_count: 0,
       badges: [],
       dashboard_state: "empty",
       stats: { drafts: 0, scheduled: 0, published: 0, failed: 0 }
-    };
+    });
   }
 }
 
@@ -74,7 +74,8 @@ async function getStats(db, brandId) {
 }
 
 function determineDashboardState(stats) {
-  if (stats.drafts === 0) return "empty";
+  if (stats.drafts === 0 && stats.scheduled === 0 && stats.published === 0 && stats.failed === 0)
+    return "empty";
   if (stats.scheduled === 0 && stats.published === 0) return "close";
   return "active";
 }

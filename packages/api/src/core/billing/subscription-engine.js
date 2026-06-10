@@ -106,10 +106,18 @@ export async function applyBillingEvent(env, { customerId, eventType, amount, pl
      4. PAYMENT FAILED → PAST_DUE
      ========================================================= */
   if (eventType === "payment_failed" && subscription.status === "active") {
-    await env.DB.prepare(`
-      UPDATE subscriptions SET status = 'past_due', updated_at = ?
-      WHERE customer_id = ?
-    `).bind(now, customerId).run();
+    const updates = [
+      env.DB.prepare(`UPDATE subscriptions SET status = 'past_due', updated_at = ? WHERE customer_id = ?`)
+        .bind(now, customerId),
+    ];
+    // Sync to users table so enforcement.js sees past_due and blocks further usage.
+    if (subscription.user_id) {
+      updates.push(
+        env.DB.prepare(`UPDATE users SET subscription_status = 'past_due' WHERE id = ?`)
+          .bind(subscription.user_id)
+      );
+    }
+    await env.DB.batch(updates);
   }
 
   /* =========================================================

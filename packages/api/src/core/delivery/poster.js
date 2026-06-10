@@ -166,10 +166,10 @@ async function syncContentStatusWithJobs(db, job, platformStatus, errorType = nu
     job.id
   ).run();
 
-  // 2. Aggregate status for parent asset
-  const allJobs = await db.prepare(`SELECT status FROM delivery_jobs WHERE content_id = ?`).bind(job.content_id).all();
+  // 2. Aggregate status for parent asset (brand-scoped)
+  const allJobs = await db.prepare(`SELECT status FROM delivery_jobs WHERE content_id = ? AND brand_id = ?`).bind(job.content_id, job.brand_id).all();
   const statuses = (allJobs.results || []).map(j => j.status);
-  
+
   let aggregateStatus = 'processing';
   const publishedCount = statuses.filter(s => s === 'published').length;
   const failedCount = statuses.filter(s => s === 'failed').length;
@@ -182,11 +182,20 @@ async function syncContentStatusWithJobs(db, job, platformStatus, errorType = nu
   }
 
   // 3. Sync Asset, Drafts, and Content Vault
-  await db.batch([
-    db.prepare(`UPDATE ${contentTable} SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(aggregateStatus, job.content_id),
-    db.prepare(`UPDATE content_drafts SET state = ?, updated_at = CURRENT_TIMESTAMP WHERE content_id = ?`).bind(aggregateStatus, job.content_id),
-    db.prepare(`UPDATE content_vault SET lifecycle_status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(aggregateStatus, job.content_id),
-  ]);
+  // social_assets.status has a constrained CHECK — only update when aggregateStatus is a valid value.
+  // Wrap in try/catch: intermediate 'processing' state must never abort the delivery success path.
+  const VALID_LEGACY_STATUS = new Set(['draft','enriched','ready','approval','approved','scheduled','published','failed']);
+  try {
+    const syncBatch = [];
+    if (VALID_LEGACY_STATUS.has(aggregateStatus)) {
+      syncBatch.push(db.prepare(`UPDATE ${contentTable} SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(aggregateStatus, job.content_id));
+    }
+    syncBatch.push(db.prepare(`UPDATE content_drafts SET state = ?, updated_at = CURRENT_TIMESTAMP WHERE content_id = ?`).bind(aggregateStatus, job.content_id));
+    syncBatch.push(db.prepare(`UPDATE content_vault SET lifecycle_status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(aggregateStatus, job.content_id));
+    await db.batch(syncBatch);
+  } catch (syncErr) {
+    console.error(`POSTER: Status sync non-fatal error — ${syncErr.message}`);
+  }
 
   // 4. Notifications
   if (platformStatus === 'success') {

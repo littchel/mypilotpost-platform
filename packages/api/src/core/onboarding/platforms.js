@@ -65,29 +65,41 @@ export async function savePlatforms(request, env, auth) {
     .filter((p) => SUPPORTED_PLATFORMS.includes(p));
 
   const db = getDB(env);
-  const tx = db.batch();
+  const statements = [];
 
-  // Remove platforms no longer selected
-  tx.prepare(
-    `DELETE FROM brand_platforms
-     WHERE brand_id = ?
-       AND platform NOT IN (${selected.map(() => "?").join(",") || "''"})`
-  ).bind(auth.brand_id, ...selected);
-
-  // Upsert selected platforms
-  for (const platform of selected) {
-    tx.prepare(
-      `INSERT INTO brand_platforms (brand_id, platform, status)
-       VALUES (?, ?, 'selected')
-       ON CONFLICT(brand_id, platform)
-       DO UPDATE SET status = 'selected'`
-    ).bind(auth.brand_id, platform);
+  if (selected.length === 0) {
+    statements.push(
+      db.prepare(`DELETE FROM brand_platforms WHERE brand_id = ?`).bind(auth.brand_id)
+    );
+  } else {
+    statements.push(
+      db.prepare(
+        `DELETE FROM brand_platforms
+         WHERE brand_id = ?
+           AND platform NOT IN (${selected.map(() => "?").join(",")})`
+      ).bind(auth.brand_id, ...selected)
+    );
+    for (const platform of selected) {
+      statements.push(
+        db.prepare(
+          `INSERT INTO brand_platforms (brand_id, platform, status)
+           VALUES (?, ?, 'selected')
+           ON CONFLICT(brand_id, platform)
+           DO UPDATE SET status = 'selected'`
+        ).bind(auth.brand_id, platform)
+      );
+    }
   }
 
-  await tx.run();
+  if (statements.length > 0) {
+    await db.batch(statements);
+  }
 
-  // Mark onboarding progress
-  await markOnboardingStep(env, auth.brand_id, "platforms");
+  try {
+    await markOnboardingStep(env, auth.brand_id, "platforms");
+  } catch (e) {
+    console.warn("[PLATFORMS] progress update failed:", e.message);
+  }
 
   return json({ success: true, platforms: selected });
 }

@@ -78,7 +78,7 @@ export async function getScheduled(request, env, auth) {
     SELECT dj.*, 
       CASE WHEN dj.content_type = 'social' THEN sa.title ELSE bp.title END as title,
       CASE WHEN dj.content_type = 'social' THEN sa.lifecycle_status ELSE bp.lifecycle_status END as lifecycle_status
-    FROM content_delivery_jobs dj
+    FROM delivery_jobs dj
     LEFT JOIN social_assets sa ON sa.id = dj.content_id AND dj.content_type = 'social'
     LEFT JOIN blog_posts bp ON bp.id = dj.content_id AND dj.content_type = 'blog'
     WHERE dj.brand_id = ? AND dj.user_id = ?

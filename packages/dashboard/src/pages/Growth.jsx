@@ -1,20 +1,50 @@
-import React from "react";
+import React, { useState } from "react";
 import { useApi } from "../lib/api/hooks";
-import { Trophy, Star, TrendingUp, Zap, Target, Award } from "lucide-react";
+import { apiRequest } from "../lib/api/client";
+import { Trophy, Star, TrendingUp, Zap, Target, Award, CheckCircle } from "lucide-react";
 
-const Growth = ({ brandId, growth }) => {
+const Growth = ({ brandId, growth, switchTab }) => {
   const { data: historyData } = useApi(brandId ? `/api/customer/growth/activity?brandId=${brandId}` : null, [brandId]);
+  const [copied, setCopied] = useState(false);
 
   const profile = growth || { points: 0, level: 'Starter', streak_days: 0, progress_percentage: 0 };
   const quests = growth?.quests || { social_consistency: { current: 0, goal: 3 }, seo_optimizer: { current: 0, goal: 5 } };
-  const history = historyData?.data || [];
-  const _nextReward = growth?.next_reward || null;
+  const history = historyData?.activity || [];
+
+  const handleGetInviteLink = async () => {
+    if (growth?.referral_code) {
+      const link = `https://mypilotpost.com/signup?ref=${growth.referral_code}`;
+      navigator.clipboard.writeText(link).catch(() => {});
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    }
+
+    if (brandId) {
+      apiRequest(`/api/customer/growth/action`, {
+        method: 'POST',
+        body: JSON.stringify({ type: 'referral_shared' }),
+      }).catch(() => {});
+    }
+
+    switchTab?.('promotions');
+  };
 
   return (
     <div className="container-fluid py-4 animate__animated animate__fadeIn">
+
+      {/* Copy toast */}
+      {copied && (
+        <div
+          className="position-fixed d-flex align-items-center gap-2 px-4 py-2 rounded-pill shadow-lg text-white fw-bold small animate__animated animate__fadeInDown"
+          style={{ top: 24, left: '50%', transform: 'translateX(-50%)', background: '#16a34a', zIndex: 9999 }}
+        >
+          <CheckCircle size={16} /> Invite link copied!
+        </div>
+      )}
+
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h2 className="fw-bold text-main mb-1">Loyalty & Growth</h2>
+          <h2 className="fw-bold text-main mb-1">Rewards</h2>
           <p className="text-muted small">Earn points by engaging with the platform and growing your brand.</p>
         </div>
         <div className="d-flex gap-2">
@@ -42,31 +72,30 @@ const Growth = ({ brandId, growth }) => {
                     </div>
                   </div>
                   <div className="mb-2 d-flex justify-content-between small fw-bold">
-                    <span>Progress to Next Milestone</span>
+                    <span>Progress to Next Reward Level</span>
                     <span>{profile.progress_percentage}%</span>
                   </div>
                   <div className="progress rounded-pill bg-white bg-opacity-20" style={{ height: '12px' }}>
-                    <div 
-                      className="progress-bar bg-white rounded-pill animate__animated animate__slideInLeft" 
-                      role="progressbar" 
+                    <div
+                      className="progress-bar bg-white rounded-pill animate__animated animate__slideInLeft"
+                      role="progressbar"
                       style={{ width: `${profile.progress_percentage}%` }}
                     ></div>
                   </div>
                 </div>
                 <div className="col-md-6 text-md-end mt-4 mt-md-0">
                   <div className="display-4 fw-bold mb-0">{profile.points}</div>
-                  <div className="opacity-75 uppercase extra-small tracking-wider fw-bold">Current Growth Points</div>
+                  <div className="opacity-75 uppercase extra-small tracking-wider fw-bold">Points</div>
                 </div>
               </div>
             </div>
-            {/* Decorative background circles */}
             <div className="position-absolute top-0 end-0 p-5 opacity-10">
               <Star size={200} />
             </div>
           </div>
         </div>
 
-        {/* Quest/Activity Cards */}
+        {/* Quest Cards */}
         <div className="col-md-4">
           <div className="card border-0 shadow-sm rounded-4 p-4 h-100">
             <div className="p-3 bg-primary bg-opacity-10 text-primary rounded-4 w-fit mb-3">
@@ -112,42 +141,45 @@ const Growth = ({ brandId, growth }) => {
             </div>
             <h5 className="fw-bold mb-2">Brand Advocate</h5>
             <p className="text-muted small mb-4">Refer another brand and earn 2,500pts plus 20% off your next month.</p>
-            <button className="btn btn-outline-warning w-100 rounded-pill fw-bold btn-sm mt-4">
-              Get Invite Link
+            <button
+              className="btn btn-outline-warning w-100 rounded-pill fw-bold btn-sm mt-4"
+              onClick={handleGetInviteLink}
+            >
+              {copied ? 'Copied!' : 'Get Invite Link'}
             </button>
           </div>
         </div>
 
         {/* Activity Log */}
-        <div className="col-lg-12">
-          <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
-            <div className="p-4 border-bottom bg-white">
-              <h5 className="fw-bold mb-0">Activity Log</h5>
-            </div>
-            <div className="list-group list-group-flush">
-              {history.length === 0 ? (
-                <div className="p-5 text-center text-muted small">No recent activity found.</div>
-              ) : history.map(item => (
-                <div key={item.id} className="list-group-item p-4 border-0 border-bottom">
-                  <div className="d-flex justify-content-between align-items-center">
-                    <div className="d-flex gap-3 align-items-center">
-                      <div className="p-2 bg-light rounded-circle">
-                        <Star size={16} className="text-primary" />
+        {history.length > 0 && (
+          <div className="col-lg-12">
+            <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
+              <div className="p-4 border-bottom bg-white">
+                <h5 className="fw-bold mb-0">Reward History</h5>
+              </div>
+              <div className="list-group list-group-flush">
+                {history.map((item, idx) => (
+                  <div key={item.id || idx} className="list-group-item p-4 border-0 border-bottom">
+                    <div className="d-flex justify-content-between align-items-center">
+                      <div className="d-flex gap-3 align-items-center">
+                        <div className="p-2 bg-light rounded-circle">
+                          <Star size={16} className="text-primary" />
+                        </div>
+                        <div>
+                          <div className="fw-bold text-main">{item.action_type.replace(/_/g, ' ').toUpperCase()}</div>
+                          <div className="extra-small text-muted">{new Date(item.created_at).toLocaleString()}</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="fw-bold text-main">{item.activity_type.replace(/_/g, ' ').toUpperCase()}</div>
-                        <div className="extra-small text-muted">{new Date(item.created_at).toLocaleString()}</div>
+                      <div className="text-success fw-bold">
+                        +{item.points_awarded} PTS
                       </div>
-                    </div>
-                    <div className="text-success fw-bold">
-                      +{item.points_earned} PTS
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

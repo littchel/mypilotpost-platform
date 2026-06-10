@@ -54,12 +54,13 @@ export async function getCampaigns(request, env, auth) {
 
   // Return list with basic stats
   const { results } = await db.prepare(`
-    SELECT c.*, 
-      (SELECT COUNT(*) FROM social_assets WHERE campaign_id = c.id) + 
+    SELECT c.*,
+      (SELECT COUNT(*) FROM social_assets WHERE campaign_id = c.id) +
       (SELECT COUNT(*) FROM blog_posts WHERE campaign_id = c.id) as content_count
     FROM campaigns c
     WHERE brand_id = ?
     ORDER BY created_at DESC
+    LIMIT 200
   `).bind(auth.brand_id).all();
 
   return json({ data: results || [] });
@@ -191,14 +192,16 @@ export async function refreshPerformanceCache(db, campaignId) {
        WHERE sa.campaign_id = ?) as total_clicks
   `).bind(campaignId, campaignId, campaignId, campaignId, campaignId, campaignId, campaignId).first();
 
+  const score = await calculateCampaignScore(db, campaignId, metrics);
+
   await db.prepare(`
     INSERT INTO campaign_metrics_cache (campaign_id, metrics_json, last_updated, score)
     VALUES (?, ?, CURRENT_TIMESTAMP, ?)
-    ON CONFLICT(campaign_id) DO UPDATE SET 
+    ON CONFLICT(campaign_id) DO UPDATE SET
       metrics_json = EXCLUDED.metrics_json,
       last_updated = CURRENT_TIMESTAMP,
       score = EXCLUDED.score
-  `).bind(campaignId, JSON.stringify(metrics), await calculateCampaignScore(db, campaignId)).run();
+  `).bind(campaignId, JSON.stringify(metrics), score).run();
 }
 
 /**
@@ -215,15 +218,20 @@ export async function getTimeline(request, env, auth, campaignId) {
   const limit = parseInt(url.searchParams.get("limit")) || 20;
   const offset = parseInt(url.searchParams.get("offset")) || 0;
 
-  // Timeline pulls from delivery_jobs related to any asset in this campaign
+  // Timeline pulls from delivery_jobs for both social and blog content in this campaign
   const { results } = await db.prepare(`
-    SELECT dj.id, dj.platform, dj.status, dj.scheduled_at, sa.title as content_title
+    SELECT dj.id, dj.platform, dj.status, dj.scheduled_at, sa.title as content_title, 'social' as content_type
     FROM delivery_jobs dj
     JOIN social_assets sa ON dj.content_id = sa.id
     WHERE sa.campaign_id = ?
-    ORDER BY dj.scheduled_at DESC
+    UNION ALL
+    SELECT dj.id, dj.platform, dj.status, dj.scheduled_at, bp.title as content_title, 'blog' as content_type
+    FROM delivery_jobs dj
+    JOIN blog_posts bp ON dj.content_id = bp.id
+    WHERE bp.campaign_id = ?
+    ORDER BY scheduled_at DESC
     LIMIT ? OFFSET ?
-  `).bind(campaignId, limit, offset).all();
+  `).bind(campaignId, campaignId, limit, offset).all();
 
   return json({ data: results || [] });
 }
@@ -344,6 +352,67 @@ export async function getCampaignComparison(request, env, auth) {
 }
 
 /**
+ * updateCampaignStatus
+ * PATCH /api/customer/campaigns/:id
+ * Allowed transitions: active ↔ paused, any → completed, any → archived
+ */
+export async function updateCampaignStatus(request, env, auth, campaignId) {
+  if (!auth?.brand_id) return error("Unauthorized", 401);
+
+  const access = await checkFeatureAccess(request, env, auth, 'campaigns');
+  if (!access.allowed) return access.response;
+
+  const db = getDB(env);
+  const { status, name, description } = await request.json().catch(() => ({}));
+
+  const campaign = await db.prepare(
+    `SELECT id, status FROM campaigns WHERE id = ? AND brand_id = ?`
+  ).bind(campaignId, auth.brand_id).first();
+
+  if (!campaign) return error("Campaign not found", 404);
+
+  const VALID_STATUSES = ['planned', 'active', 'paused', 'completed', 'archived'];
+  const updates = [];
+  const params = [];
+
+  if (status !== undefined) {
+    if (!VALID_STATUSES.includes(status)) {
+      return error(`Invalid status '${status}'. Must be one of: ${VALID_STATUSES.join(', ')}`, 400);
+    }
+    updates.push(`status = ?`);
+    params.push(status);
+  }
+  if (name !== undefined) {
+    if (!name.trim()) return error("Name cannot be empty", 400);
+    updates.push(`name = ?`);
+    params.push(name.trim());
+  }
+  if (description !== undefined) {
+    updates.push(`description = ?`);
+    params.push(description);
+  }
+
+  if (updates.length === 0) return error("No fields to update", 400);
+
+  updates.push(`updated_at = CURRENT_TIMESTAMP`);
+  params.push(campaignId, auth.brand_id);
+
+  await db.prepare(
+    `UPDATE campaigns SET ${updates.join(', ')} WHERE id = ? AND brand_id = ?`
+  ).bind(...params).run();
+
+  if (status) {
+    await writeBrandMemoryEvent(db, auth.brand_id, 'campaign_status_changed', {
+      campaign_id: campaignId,
+      old_status: campaign.status,
+      new_status: status,
+    });
+  }
+
+  return json({ success: true, id: campaignId, status: status || campaign.status });
+}
+
+/**
  * detectCampaignPatterns
  * PASSIVE: Suggest groupings based on proximity and commonality
  */
@@ -410,12 +479,13 @@ export async function detectCampaignPatterns(request, env, auth) {
    SCORING ENGINE
    ====================================================== */
 
-async function calculateCampaignScore(db, campaignId) {
-  // Aggregate metrics
-  const performanceRow = await db.prepare(`SELECT metrics_json FROM campaign_metrics_cache WHERE campaign_id = ?`).bind(campaignId).first();
-  if (!performanceRow) return 0;
-  
-  const metrics = JSON.parse(performanceRow.metrics_json);
+async function calculateCampaignScore(db, campaignId, metrics = null) {
+  // Accept pre-computed metrics to avoid reading a stale/empty cache on first run
+  if (!metrics) {
+    const row = await db.prepare(`SELECT metrics_json FROM campaign_metrics_cache WHERE campaign_id = ?`).bind(campaignId).first();
+    if (!row) return 0;
+    metrics = JSON.parse(row.metrics_json);
+  }
   const { total_social, published_count, failed_count } = metrics;
 
   // 1. Success Rate (Target: 100%)
@@ -470,10 +540,10 @@ async function calculateCampaignScore(db, campaignId) {
 async function writeBrandMemoryEvent(db, brandId, eventType, metadata) {
   try {
     await db.prepare(`
-      INSERT INTO brand_memory_events (id, brand_id, event_type, source_engine, entity_type, entity_id, snapshot)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO memory_events (id, brand_id, user_id, tool, event, value, metadata, created_at)
+      VALUES (?, ?, NULL, 'campaigns', ?, NULL, ?, datetime('now'))
     `).bind(
-      crypto.randomUUID(), brandId, eventType, 'campaign', 'campaign', metadata.campaign_id || brandId, JSON.stringify(metadata)
+      crypto.randomUUID(), brandId, eventType, JSON.stringify(metadata)
     ).run();
   } catch (e) {
     console.error("Campaign Memory Logging Failed", e);

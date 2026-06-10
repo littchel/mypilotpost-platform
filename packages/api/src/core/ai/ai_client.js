@@ -5,12 +5,20 @@
 
 import { healJSON, sanitizeActions } from "./ai_utils.js";
 
+const SYSTEM_PROMPTS = {
+  social:   "You are an expert social media copywriter. Write compelling, brand-specific content that earns attention and drives action. Respond in strict JSON only.",
+  blog:     "You are an expert content strategist and SEO writer. Write thorough, brand-aligned articles that inform and convert. Respond in strict JSON only.",
+  campaign: "You are a senior digital marketing strategist. Build evidence-based campaign plans grounded in the brand's actual situation. Respond in strict JSON only.",
+  utility:  "You are a professional writing assistant. Be concise and accurate. Respond in strict JSON only.",
+};
+
 /**
  * hardenedRunLLM(env, brand, prompt, options)
  * Implements the 2.7s/1.2s time-split cascade with 24h success memory.
  */
 export async function hardenedRunLLM(env, brand, prompt, options = {}) {
-  const { mode = 'deep' } = options;
+  const { mode = 'deep', systemPromptType = 'social' } = options;
+  const systemPrompt = SYSTEM_PROMPTS[systemPromptType] || SYSTEM_PROMPTS.social;
   const now = new Date();
   
   // 1. First-Run Priority: Force 70B for the first user impression
@@ -35,12 +43,12 @@ export async function hardenedRunLLM(env, brand, prompt, options = {}) {
 
   // TIER 1: Primary Model (70B OR Success Memory)
   path.push(primaryModel);
-  result = await triggerModelWithTimeout(env, primaryModel, prompt, 2700);
+  result = await triggerModelWithTimeout(env, primaryModel, prompt, 15000, systemPrompt);
 
   // TIER 2: Fast fallback
   if (!result && primaryModel === "llama-3.3-70b-versatile") {
     path.push("llama-3.1-8b-instant (retry)");
-    result = await triggerModelWithTimeout(env, "llama-3.1-8b-instant", prompt, 1200);
+    result = await triggerModelWithTimeout(env, "llama-3.1-8b-instant", prompt, 8000, systemPrompt);
   }
 
   // 4. Recovery & Normalization
@@ -53,7 +61,7 @@ export async function hardenedRunLLM(env, brand, prompt, options = {}) {
         ...healed,
         source: "ai",
         confidence: usedModel.includes('70b') || usedModel.includes('3.3') ? "high" : "medium",
-        _performance: { model: usedModel, path, latency: result.latency }
+        _performance: { model: usedModel, path, latency: result.latency, tokens_used: result.tokens || 0 }
       };
     }
   }
@@ -62,9 +70,8 @@ export async function hardenedRunLLM(env, brand, prompt, options = {}) {
   return null;
 }
 
-async function triggerModelWithTimeout(env, model, prompt, ms) {
+async function triggerModelWithTimeout(env, model, prompt, timeoutMs, systemPrompt) {
   const controller = new AbortController();
-  const timeoutMs = ms === 2700 ? 15000 : 8000; // Increase significantly for local dev
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   const start = Date.now();
 
@@ -84,7 +91,7 @@ async function triggerModelWithTimeout(env, model, prompt, ms) {
       body: JSON.stringify({
         model,
         messages: [
-          { role: "system", content: "You are a senior social media strategist. Always justify recommendations with real metrics. Respond in strict JSON." },
+          { role: "system", content: systemPrompt },
           { role: "user", content: prompt }
         ],
         temperature: 0.6,
@@ -98,15 +105,17 @@ async function triggerModelWithTimeout(env, model, prompt, ms) {
       return null;
     }
     const data = await res.json();
-    console.log(`Groq AI Success (${model}) in ${Date.now() - start}ms`);
+    console.log(`Groq AI Success (${model}) in ${Date.now() - start}ms tokens=${data.usage?.total_tokens || 0}`);
     return {
       output: data.choices[0].message.content,
       model: data.model,
-      latency: Date.now() - start
+      latency: Date.now() - start,
+      tokens: data.usage?.total_tokens ||
+              ((data.usage?.prompt_tokens || 0) + (data.usage?.completion_tokens || 0)),
     };
   } catch (err) {
     console.error(`Groq AI Exception (${model}): ${err.message}`);
-    return null; // Timeout or Network Failure
+    return null;
   } finally {
     clearTimeout(timeoutId);
   }

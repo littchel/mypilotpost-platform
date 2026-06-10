@@ -108,21 +108,23 @@ export async function storeIntelligenceBatch(db, brandId, batchId, groqResult) {
     });
   }
 
-  // Batch insert
-  for (const row of rows) {
-    await db.prepare(`
-      INSERT INTO brand_intelligence_queue (
-        id, brand_id, batch_id, module_id, category, is_notification,
-        title, finding, why_it_matters, evidence_json, confidence,
-        recommended_action, expected_impact, priority, priority_rank,
-        notification_type, notification_body, notification_action, generated_at
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-    `).bind(
-      row.id, row.brand_id, row.batch_id, row.module_id, row.category, row.is_notification,
-      row.title, row.finding, row.why_it_matters, row.evidence_json, row.confidence,
-      row.recommended_action, row.expected_impact, row.priority, row.priority_rank,
-      row.notification_type, row.notification_body, row.notification_action, row.generated_at
-    ).run();
+  if (rows.length > 0) {
+    const stmts = rows.map(row =>
+      db.prepare(`
+        INSERT INTO brand_intelligence_queue (
+          id, brand_id, batch_id, module_id, category, is_notification,
+          title, finding, why_it_matters, evidence_json, confidence,
+          recommended_action, expected_impact, priority, priority_rank,
+          notification_type, notification_body, notification_action, generated_at
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      `).bind(
+        row.id, row.brand_id, row.batch_id, row.module_id, row.category, row.is_notification,
+        row.title, row.finding, row.why_it_matters, row.evidence_json, row.confidence,
+        row.recommended_action, row.expected_impact, row.priority, row.priority_rank,
+        row.notification_type, row.notification_body, row.notification_action, row.generated_at
+      )
+    );
+    await db.batch(stmts);
   }
 
   console.log(`[INTEL_STORE] Stored ${rows.length} items for brand=${brandId} batch=${batchId}`);

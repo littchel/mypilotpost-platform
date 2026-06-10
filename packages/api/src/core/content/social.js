@@ -5,6 +5,7 @@ import { getDB } from "../../lib/db.js";
 import { insertExperienceNotification } from "../notifications/utils.js";
 import { error, json } from "../../lib/json.js";
 import { isValidUUID, isValidISO8601 } from "../../lib/validation.js";
+import { writeVersion } from "./versions.js";
 
 /**
  * MANDATORY VALIDATION LAYER
@@ -13,7 +14,7 @@ function validatePayload(body) {
   if (!body.text || typeof body.text !== 'string') {
     throw new Error('INVALID_TEXT');
   }
-  if (!Array.isArray(body.platforms)) {
+  if (!Array.isArray(body.platforms) && (!body.variants || typeof body.variants !== 'object')) {
     throw new Error('INVALID_PLATFORMS');
   }
 }
@@ -33,10 +34,16 @@ export async function createSocialAsset(request, env, auth) {
     const { 
       content_id, 
       text, 
-      platforms, 
+      platforms: requestedPlatforms, 
+      variants: requestedVariants = {},
       campaign_id = null,
-      lifecycle_status = "draft" 
+      lifecycle_status: requestedLifecycleStatus,
+      status = "draft"
     } = body;
+    const lifecycle_status = requestedLifecycleStatus || status || "draft";
+    const platforms = Array.isArray(requestedPlatforms)
+      ? requestedPlatforms
+      : Object.keys(requestedVariants || {}).filter(p => p !== 'base');
 
     const assetId = content_id && isValidUUID(content_id) ? content_id : crypto.randomUUID();
     
@@ -47,7 +54,7 @@ export async function createSocialAsset(request, env, auth) {
       WHERE id = ? AND brand_id = ? AND user_id = ?
     `).bind(assetId, brand_id, user_id).first();
     
-    if (existing && (existing.lifecycle_status === 'pending_approval' || existing.lifecycle_status === 'approved' || existing.lifecycle_status === 'scheduled')) {
+    if (existing && ['pending_approval', 'approval_requested', 'approved', 'scheduled', 'queued', 'publishing', 'published'].includes(existing.lifecycle_status)) {
       return error("Content is locked. Revert to draft to edit.", "CONTENT_LOCKED", null, 409);
     }
 
@@ -82,7 +89,7 @@ export async function createSocialAsset(request, env, auth) {
     batchStmts.push(db.prepare(`DELETE FROM social_variants WHERE social_asset_id = ?`).bind(assetId));
     
     const variants = { base: text };
-    platforms.forEach(p => { variants[p] = text; });
+    platforms.forEach(p => { variants[p] = requestedVariants?.[p] || text; });
 
     for (const [platform, caption] of Object.entries(variants)) {
        batchStmts.push(db.prepare(`
@@ -91,7 +98,46 @@ export async function createSocialAsset(request, env, auth) {
        `).bind(crypto.randomUUID(), assetId, platform, caption));
     }
 
+    batchStmts.push(db.prepare(`
+      INSERT INTO content_vault
+        (id, brand_id, user_id, content_type, title, body, platforms, platform_variants,
+         lifecycle_status, campaign_id, version, source)
+      VALUES (?, ?, ?, 'social', ?, ?, ?, ?, ?, ?, 1, 'legacy_social')
+      ON CONFLICT(id) DO UPDATE SET
+        title = excluded.title,
+        body = excluded.body,
+        platforms = excluded.platforms,
+        platform_variants = excluded.platform_variants,
+        lifecycle_status = excluded.lifecycle_status,
+        campaign_id = excluded.campaign_id,
+        version = COALESCE(content_vault.version, 1) + 1,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE content_vault.brand_id = ?
+    `).bind(
+      assetId, brand_id, user_id, title, text,
+      JSON.stringify(platforms),
+      JSON.stringify(Object.fromEntries(platforms.map(p => [p, variants[p]]))),
+      lifecycle_status,
+      campaign_id,
+      brand_id
+    ));
+
     await db.batch(batchStmts);
+
+    const versionRow = await db.prepare(`SELECT version FROM content_vault WHERE id = ? AND brand_id = ?`).bind(assetId, brand_id).first();
+    await writeVersion(env, {
+      contentId: assetId,
+      contentType: 'social',
+      version: versionRow?.version || 1,
+      payload: {
+        title,
+        body: text,
+        platforms,
+        platform_variants: Object.fromEntries(platforms.map(p => [p, variants[p]])),
+        lifecycle_status,
+        campaign_id,
+      },
+    }).catch(() => {});
 
     return json({ success: true, content_id: assetId, lifecycle_status });
 
@@ -121,7 +167,8 @@ export async function submitForApproval(request, env, auth) {
   if (!asset) return error("Asset not found", "NOT_FOUND", null, 404);
 
   const batch = [
-    db.prepare(`UPDATE social_assets SET lifecycle_status = 'pending_approval', updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(id),
+    db.prepare(`UPDATE social_assets SET lifecycle_status = 'pending_approval', status = 'approval', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
+    db.prepare(`UPDATE content_vault SET lifecycle_status = 'approval_requested', share_for_approval = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
     db.prepare(`
       INSERT INTO approval_requests (id, content_id, content_type, brand_id, requested_by)
       VALUES (?, ?, 'social', ?, ?)
@@ -153,8 +200,9 @@ export async function approveContent(request, env, auth) {
   const platforms = (variants || []).map(v => v.platform);
 
   const batch = [
-    db.prepare(`UPDATE social_assets SET lifecycle_status = 'approved', updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(id),
-    db.prepare(`UPDATE approval_requests SET approved_by = ?, approved_at = CURRENT_TIMESTAMP WHERE content_id = ?`).bind(user_id, id)
+    db.prepare(`UPDATE social_assets SET lifecycle_status = 'approved', status = 'approved', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
+    db.prepare(`UPDATE content_vault SET lifecycle_status = 'approved', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
+    db.prepare(`UPDATE approval_requests SET approved_by = ?, approved_at = CURRENT_TIMESTAMP WHERE content_id = ? AND brand_id = ?`).bind(user_id, id, brand_id)
   ];
 
   // Logic for scheduling would go here (simplified)
@@ -173,8 +221,9 @@ export async function rejectContent(request, env, auth) {
   const { reason } = await request.json();
 
   await db.batch([
-    db.prepare(`UPDATE social_assets SET lifecycle_status = 'rejected', updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(id),
-    db.prepare(`UPDATE approval_requests SET rejected_by = ?, rejection_reason = ? WHERE content_id = ?`).bind(user_id, reason, id)
+    db.prepare(`UPDATE social_assets SET lifecycle_status = 'draft', status = 'draft', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
+    db.prepare(`UPDATE content_vault SET lifecycle_status = 'draft', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
+    db.prepare(`UPDATE approval_requests SET rejected_by = ?, rejection_reason = ? WHERE content_id = ? AND brand_id = ?`).bind(user_id, reason, id, brand_id)
   ]);
 
   return json({ success: true, status: "REJECTED" });
@@ -199,20 +248,16 @@ export async function postSocialNow(request, env, auth) {
   
   if (platforms.length === 0) return error("No platforms configured", "BAD_REQUEST", null, 400);
 
-  // Create immediate delivery jobs
-  for (const platform of platforms) {
-    const job = { id: crypto.randomUUID(), content_type: 'social', content_id: id, brand_id, platform, status: 'processing', scheduled_at: new Date().toISOString() };
-    await db.prepare(`INSERT INTO content_delivery_jobs (id, content_id, brand_id, user_id, platform, scheduled_at, state) VALUES (?, ?, ?, ?, ?, ?, 'delivered')`)
-      .bind(job.id, id, brand_id, user_id, platform, job.scheduled_at).run();
-  }
-
-  await db.prepare(`UPDATE social_assets SET lifecycle_status = 'published', updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(id).run();
-
-  // Award points
-  await db.prepare(`
-    INSERT INTO growth_activity_log (id, action_type, content_id, brand_id, user_id, points)
-    VALUES (?, 'publish_success', ?, ?, ?, 10)
-  `).bind(crypto.randomUUID(), id, brand_id, user_id).run();
+  const nowUtc = new Date().toISOString();
+  const deliveryBatch = platforms.map(platform =>
+    db.prepare(`INSERT INTO delivery_jobs (id, brand_id, user_id, content_type, content_id, platform, scheduled_at, status) VALUES (?, ?, ?, 'social', ?, ?, ?, 'scheduled')`)
+      .bind(crypto.randomUUID(), brand_id, user_id, id, platform, nowUtc)
+  );
+  deliveryBatch.push(
+    db.prepare(`UPDATE social_assets SET lifecycle_status = 'queued', status = 'scheduled', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
+    db.prepare(`UPDATE content_vault SET lifecycle_status = 'queued', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
+  );
+  await db.batch(deliveryBatch);
 
   return json({ success: true, status: "PUBLISHED" });
 }
@@ -246,9 +291,18 @@ export async function deleteSocialAsset(request, env, auth) {
 
   const asset = await db.prepare(`SELECT lifecycle_status FROM social_assets WHERE id = ? AND brand_id = ? AND user_id = ?`).bind(id, brand_id, user_id).first();
   if (!asset) return error("Asset not found", "NOT_FOUND", null, 404);
-  if (asset.lifecycle_status === 'published') return error("Cannot delete published content.", "FORBIDDEN", null, 403);
+  const LOCKED = new Set(['scheduled', 'queued', 'publishing', 'published']);
+  if (LOCKED.has(asset.lifecycle_status)) return error("Cannot delete scheduled or published content.", "CONTENT_LOCKED", null, 409);
 
-  await db.prepare(`DELETE FROM social_assets WHERE id = ? AND brand_id = ? AND user_id = ?`).bind(id, brand_id, user_id).run();
+  await db.batch([
+    db.prepare(`DELETE FROM social_assets WHERE id = ? AND brand_id = ? AND user_id = ?`).bind(id, brand_id, user_id),
+    db.prepare(`DELETE FROM social_variants WHERE social_asset_id = ?`).bind(id),
+    db.prepare(`DELETE FROM content_vault WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
+    db.prepare(`DELETE FROM delivery_jobs WHERE content_id = ? AND brand_id = ?`).bind(id, brand_id),
+    db.prepare(`DELETE FROM content_media_links WHERE content_id = ? AND brand_id = ?`).bind(id, brand_id),
+    db.prepare(`DELETE FROM approval_requests WHERE content_id = ? AND brand_id = ?`).bind(id, brand_id),
+    db.prepare(`DELETE FROM content_shares WHERE content_id = ? AND brand_id = ?`).bind(id, brand_id),
+  ]);
   return json({ success: true });
 }
 
@@ -265,11 +319,10 @@ export async function approveSocialAssetsBulk(request, env, auth) {
   const db = getDB(env);
   const placeholders = ids.map(() => "?").join(",");
 
-  await db.prepare(`
-    UPDATE social_assets 
-    SET lifecycle_status = 'approved', updated_at = CURRENT_TIMESTAMP
-    WHERE brand_id = ? AND id IN (${placeholders})
-  `).bind(brand_id, ...ids).run();
+  await db.batch([
+    db.prepare(`UPDATE social_assets SET lifecycle_status = 'approved', updated_at = CURRENT_TIMESTAMP WHERE brand_id = ? AND id IN (${placeholders})`).bind(brand_id, ...ids),
+    db.prepare(`UPDATE content_vault SET lifecycle_status = 'approved', updated_at = CURRENT_TIMESTAMP WHERE brand_id = ? AND id IN (${placeholders})`).bind(brand_id, ...ids),
+  ]);
 
   return json({ success: true, count: ids.length });
 }

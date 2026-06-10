@@ -107,7 +107,7 @@ export async function listMediaLibrary(req, env, auth) {
     params.push(`%${searchQuery}%`, `%${searchQuery}%`);
   }
 
-  query += ` ORDER BY created_at DESC`;
+  query += ` ORDER BY created_at DESC LIMIT 200`;
 
   const { results } = await db.prepare(query).bind(...params).all();
 
