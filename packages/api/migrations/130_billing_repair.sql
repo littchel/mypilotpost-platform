@@ -67,6 +67,13 @@
 --      and subscription_status='refunded' so enforcement blocks them correctly.
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- 0. Ensure trial_extended_until exists on subscriptions (may never have been
+--    added on the remote — if so, the backfill below is a no-op).
+-- ─────────────────────────────────────────────────────────────────────────────
+
+ALTER TABLE subscriptions ADD COLUMN trial_extended_until TEXT;
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- 1. Backfill referral trial extensions into users.trial_ends_at
 -- ─────────────────────────────────────────────────────────────────────────────
 
