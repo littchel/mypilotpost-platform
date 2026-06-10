@@ -79,8 +79,8 @@ export async function checkAndIncrement(db, userId, action) {
     return throwLimitError(data, action, "Trial Expired", "expired");
   }
 
-  // 4. Logic: Block if Expired, Cancelled, or Past Due
-  if (['expired', 'cancelled', 'past_due'].includes(data.subscription_status)) {
+  // 4. Logic: Block if Expired, Cancelled, Past Due, or Refunded
+  if (['expired', 'cancelled', 'past_due', 'refunded'].includes(data.subscription_status)) {
     return throwLimitError(data, action, "Subscription inactive", data.subscription_status);
   }
 

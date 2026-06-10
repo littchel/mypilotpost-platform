@@ -135,15 +135,25 @@ export async function disconnectPlatform(request, env, auth, platform) {
 
   const db = getDB(env);
 
-  await db
+  const result = await db
     .prepare(
       `UPDATE brand_platforms
        SET status = 'selected',
            connected_at = NULL
-       WHERE brand_id = ? AND platform = ?`
+       WHERE brand_id = ? AND platform = ? AND status = 'connected'`
     )
     .bind(auth.brand_id, platform)
     .run();
+
+  // Decrement social accounts quota only if a connected platform was actually removed
+  if (result.meta.changes > 0) {
+    await db.prepare(`
+      UPDATE usage_tracking SET
+        social_accounts_used = MAX(social_accounts_used - 1, 0),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE user_id = ?
+    `).bind(auth.user_id).run();
+  }
 
   return json({ success: true, platform });
 }

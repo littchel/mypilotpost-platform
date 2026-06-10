@@ -142,20 +142,22 @@ export async function handleDataExport(request, env, auth) {
   `).bind(userId).all();
 
   const brandIds = (brands || []).map(b => b.id);
-  let posts = [], integrations = [], billingHistory = [], supportThreads = [];
+  let posts = [], integrations = [], billingHistory = [], supportThreads = [], consentHistory = [];
 
   if (brandIds.length > 0) {
     const placeholders = brandIds.map(() => "?").join(",");
 
+    // Content created by this user (delivery_jobs = canonical post/schedule records)
     const postsResult = await db.prepare(`
-      SELECT id, brand_id, content, platform, status, scheduled_time, published_at, created_at
-      FROM scheduled_posts WHERE brand_id IN (${placeholders}) ORDER BY created_at DESC LIMIT 500
+      SELECT id, brand_id, content_id, platform, status, scheduled_at, published_at, created_at
+      FROM delivery_jobs WHERE brand_id IN (${placeholders}) ORDER BY created_at DESC LIMIT 500
     `).bind(...brandIds).all();
     posts = postsResult.results || [];
 
+    // Platform connections (social_connections = canonical OAuth records)
     const intResult = await db.prepare(`
-      SELECT id, brand_id, provider, created_at
-      FROM oauth_connections WHERE brand_id IN (${placeholders})
+      SELECT id, brand_id, platform, platform_username, status, created_at
+      FROM social_connections WHERE brand_id IN (${placeholders})
     `).bind(...brandIds).all();
     integrations = intResult.results || [];
   }
@@ -174,29 +176,47 @@ export async function handleDataExport(request, env, auth) {
   `).bind(userId).all().catch(() => ({ results: [] }));
   supportThreads = supportResult.results || [];
 
+  // Consent history (most recent first)
+  const consentResult = await db.prepare(`
+    SELECT analytics_consent, functional_consent, marketing_consent, recorded_at
+    FROM consent_records WHERE user_id = ? ORDER BY recorded_at DESC LIMIT 50
+  `).bind(userId).all().catch(() => ({ results: [] }));
+  consentHistory = consentResult.results || [];
+
   // Record the export
   const exportId = crypto.randomUUID();
   await db.prepare(`
     INSERT INTO export_requests (id, user_id, ip_address) VALUES (?, ?, ?)
   `).bind(exportId, userId, ip).run();
 
+  const recordCounts = {
+    brands: brands?.length || 0,
+    delivery_jobs: posts.length,
+    connections: integrations.length,
+    billing_events: billingHistory.length,
+    support_messages: supportThreads.length,
+    consent_records: consentHistory.length,
+  };
+
   await logComplianceEvent(db, {
     userId,
     eventType: "data_exported",
     resourceType: "user",
     resourceId: userId,
-    details: { export_id: exportId, record_counts: { brands: brands?.length, posts: posts.length, integrations: integrations.length } },
+    details: { export_id: exportId, record_counts: recordCounts },
     ipAddress: ip,
   });
 
   const exportData = {
     export_id: exportId,
     exported_at: new Date().toISOString(),
+    completeness: recordCounts,
     account: user,
     brands: brands || [],
-    posts,
-    integrations,
+    delivery_jobs: posts,
+    connections: integrations,
     billing_history: billingHistory,
+    consent_history: consentHistory,
     support_messages: supportThreads,
   };
 
@@ -272,46 +292,57 @@ export async function adminListDeletions(request, env) {
   const db = getDB(env);
   const url = new URL(request.url);
   const status = url.searchParams.get("status") || "pending";
+  const limit  = Math.min(parseInt(url.searchParams.get("limit")  || "50"), 200);
+  const offset = Math.max(parseInt(url.searchParams.get("offset") || "0"), 0);
 
   const { results } = await db.prepare(`
     SELECT dr.id, dr.user_id, dr.status, dr.requested_at, dr.scheduled_for,
-           dr.cancelled_at, dr.completed_at, u.email, u.first_name, u.last_name
+           dr.cancelled_at, dr.completed_at, u.email, u.first_name, u.last_name,
+           substr(dr.ip_address, 1, instr(dr.ip_address || '.', '.') - 1) || '.x.x.x' AS ip_masked
     FROM deletion_requests dr
     LEFT JOIN users u ON u.id = dr.user_id
     WHERE dr.status = ?
-    ORDER BY dr.requested_at DESC LIMIT 100
-  `).bind(status).all();
+    ORDER BY dr.requested_at DESC LIMIT ? OFFSET ?
+  `).bind(status, limit, offset).all();
 
-  return json({ deletions: results || [] });
+  return json({ deletions: results || [], limit, offset });
 }
 
 // GET /api/v1/admin/compliance/audit-log
 export async function adminComplianceAuditLog(request, env) {
   const db = getDB(env);
   const url = new URL(request.url);
-  const limit = Math.min(parseInt(url.searchParams.get("limit") || "100"), 500);
+  const limit  = Math.min(parseInt(url.searchParams.get("limit")  || "100"), 500);
+  const offset = Math.max(parseInt(url.searchParams.get("offset") || "0"), 0);
 
   const { results } = await db.prepare(`
-    SELECT cal.*, u.email FROM compliance_audit_log cal
+    SELECT cal.id, cal.user_id, cal.event_type, cal.resource_type, cal.resource_id,
+           cal.details, cal.created_at,
+           substr(cal.ip_address, 1, instr(cal.ip_address || '.', '.') - 1) || '.x.x.x' AS ip_masked,
+           u.email
+    FROM compliance_audit_log cal
     LEFT JOIN users u ON u.id = cal.user_id
-    ORDER BY cal.created_at DESC LIMIT ?
-  `).bind(limit).all();
+    ORDER BY cal.created_at DESC LIMIT ? OFFSET ?
+  `).bind(limit, offset).all();
 
-  return json({ events: results || [] });
+  return json({ events: results || [], limit, offset });
 }
 
 // GET /api/v1/admin/compliance/exports
 export async function adminListExports(request, env) {
   const db = getDB(env);
+  const url = new URL(request.url);
+  const limit  = Math.min(parseInt(url.searchParams.get("limit")  || "50"), 200);
+  const offset = Math.max(parseInt(url.searchParams.get("offset") || "0"), 0);
 
   const { results } = await db.prepare(`
     SELECT er.id, er.user_id, er.requested_at, er.status, er.format, u.email
     FROM export_requests er
     LEFT JOIN users u ON u.id = er.user_id
-    ORDER BY er.requested_at DESC LIMIT 100
-  `).bind().all();
+    ORDER BY er.requested_at DESC LIMIT ? OFFSET ?
+  `).bind(limit, offset).all();
 
-  return json({ exports: results || [] });
+  return json({ exports: results || [], limit, offset });
 }
 
 // ─── Cron: process scheduled deletions ───────────────────────────────────────
@@ -340,53 +371,60 @@ async function performAccountDeletion(db, userId, requestId, env) {
   // Mark as processing
   await db.prepare(`UPDATE deletion_requests SET status = 'processing' WHERE id = ?`).bind(requestId).run();
 
-  // Send deletion confirmation email before anonymizing the address
   try {
-    const user = await db.prepare(`SELECT email, first_name FROM users WHERE id = ?`).bind(userId).first();
-    if (user?.email && !user.email.includes('@deleted.')) {
-      const emailContent = accountDeletedEmail({ first_name: user.first_name });
-      await sendEmail({
-        to: user.email,
-        subject: emailContent.subject,
-        html: emailContent.html,
-        text: emailContent.text,
-        env,
-      });
+    // Send deletion confirmation email before anonymizing the address
+    try {
+      const user = await db.prepare(`SELECT email, first_name FROM users WHERE id = ?`).bind(userId).first();
+      if (user?.email && !user.email.includes('@deleted.')) {
+        const emailContent = accountDeletedEmail({ first_name: user.first_name });
+        await sendEmail({
+          to: user.email,
+          subject: emailContent.subject,
+          html: emailContent.html,
+          text: emailContent.text,
+          env,
+        });
+      }
+    } catch (e) {
+      console.warn("[DELETION-CRON] account_deleted email failed:", e.message);
     }
+
+    // Revoke all OAuth tokens
+    await db.prepare(`DELETE FROM social_connections WHERE brand_id IN (SELECT brand_id FROM brand_users WHERE user_id = ?)`).bind(userId).run().catch(() => {});
+
+    // Anonymize content (preserve structure, remove identifying content)
+    await db.prepare(`UPDATE content_vault SET body = '[deleted]', title = '[deleted]', hook = NULL, cta = NULL WHERE brand_id IN (SELECT brand_id FROM brand_users WHERE user_id = ?)`).bind(userId).run().catch(() => {});
+
+    // Remove brand associations
+    await db.prepare(`DELETE FROM brand_users WHERE user_id = ?`).bind(userId).run().catch(() => {});
+
+    // Anonymize user account (preserve billing records with anonymous reference)
+    // SQLite uses || for string concatenation — CONCAT() is not supported
+    await db.prepare(`
+      UPDATE users SET
+        first_name = '[deleted]',
+        last_name = '[deleted]',
+        email = 'deleted-' || id || '@deleted.mypilotpost.com',
+        password_hash = NULL,
+        subscription_status = 'deleted'
+      WHERE id = ?
+    `).bind(userId).run();
+
+    // Mark deletion as completed
+    await db.prepare(`
+      UPDATE deletion_requests SET status = 'completed', completed_at = datetime('now') WHERE id = ?
+    `).bind(requestId).run();
+
+    await db.prepare(`
+      INSERT INTO compliance_audit_log (id, user_id, event_type, resource_type, resource_id, details)
+      VALUES (?, ?, 'deletion_completed', 'user', ?, '{"automated":true}')
+    `).bind(crypto.randomUUID(), userId, userId).run();
+
+    console.log(`[DELETION-CRON] Completed deletion for user ${userId}`);
   } catch (e) {
-    console.warn("[DELETION-CRON] account_deleted email failed:", e.message);
+    // Mark as failed so the record doesn't remain stuck in 'processing' forever
+    await db.prepare(`UPDATE deletion_requests SET status = 'failed' WHERE id = ?`).bind(requestId).run().catch(() => {});
+    console.error(`[DELETION-CRON] performAccountDeletion failed for user ${userId}:`, e.message);
+    throw e;
   }
-
-  // Revoke all OAuth tokens
-  await db.prepare(`DELETE FROM oauth_connections WHERE brand_id IN (SELECT id FROM brands WHERE id IN (SELECT brand_id FROM brand_users WHERE user_id = ?))`).bind(userId).run().catch(() => {});
-  await db.prepare(`DELETE FROM social_connections WHERE brand_id IN (SELECT brand_id FROM brand_users WHERE user_id = ?)`).bind(userId).run().catch(() => {});
-
-  // Anonymize posts (preserve structure, remove identifying content)
-  await db.prepare(`UPDATE scheduled_posts SET content = '[deleted]' WHERE brand_id IN (SELECT brand_id FROM brand_users WHERE user_id = ?)`).bind(userId).run().catch(() => {});
-
-  // Remove brand associations
-  await db.prepare(`DELETE FROM brand_users WHERE user_id = ?`).bind(userId).run().catch(() => {});
-
-  // Anonymize user account (preserve billing records with anonymous reference)
-  await db.prepare(`
-    UPDATE users SET
-      first_name = '[deleted]',
-      last_name = '[deleted]',
-      email = CONCAT('deleted-', id, '@deleted.mypilotpost.com'),
-      password_hash = NULL,
-      subscription_status = 'deleted'
-    WHERE id = ?
-  `).bind(userId).run();
-
-  // Mark deletion as completed
-  await db.prepare(`
-    UPDATE deletion_requests SET status = 'completed', completed_at = datetime('now') WHERE id = ?
-  `).bind(requestId).run();
-
-  await db.prepare(`
-    INSERT INTO compliance_audit_log (id, user_id, event_type, resource_type, resource_id, details)
-    VALUES (?, ?, 'deletion_completed', 'user', ?, '{"automated":true}')
-  `).bind(crypto.randomUUID(), userId, userId).run();
-
-  console.log(`[DELETION-CRON] Completed deletion for user ${userId}`);
 }

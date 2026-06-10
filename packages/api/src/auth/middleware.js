@@ -47,10 +47,13 @@ export async function requireAuth(request, env) {
 
   if (!is_email_exempt_route) {
     const verified = await db.prepare(
-      `SELECT verified_at FROM users WHERE id = ? LIMIT 1`
+      `SELECT verified_at, is_active FROM users WHERE id = ? LIMIT 1`
     ).bind(user_id).first();
     if (!verified?.verified_at) {
       throw error("Email verification required", "EMAIL_NOT_VERIFIED", null, 403);
+    }
+    if (verified?.is_active === 0) {
+      throw error("Account is disabled", "ACCOUNT_DISABLED", null, 403);
     }
   }
 

@@ -121,7 +121,26 @@ export async function applyBillingEvent(env, { customerId, eventType, amount, pl
   }
 
   /* =========================================================
-     5. CHURN SIGNALS
+     5. REFUND → REVOKE ACCESS
+     ========================================================= */
+  if (eventType === "refund_received" && subscription) {
+    const updates = [
+      env.DB.prepare(`UPDATE subscriptions SET status = 'refunded', updated_at = ? WHERE customer_id = ?`)
+        .bind(now, customerId),
+    ];
+    if (subscription.user_id) {
+      updates.push(
+        env.DB.prepare(`UPDATE users SET subscription_status = 'refunded', plan_id = 'starter' WHERE id = ?`)
+          .bind(subscription.user_id)
+      );
+    }
+    await env.DB.batch(updates);
+    await detectChurnSignals(env, customerId, eventType);
+    return;
+  }
+
+  /* =========================================================
+     6. CHURN SIGNALS
      ========================================================= */
   await detectChurnSignals(env, customerId, eventType);
 }

@@ -1,5 +1,5 @@
 // packages/api/src/core/ai/social_generate.js
-// myPilotPost — AI Social Generation v2.0
+// myPilotPost — AI Social Generation v3.0
 
 import { json, error } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
@@ -7,6 +7,7 @@ import { checkAndIncrement } from "../billing/enforcement.js";
 import { trackedRunLLM } from "./ai_client.js";
 import { scoreSocialPost } from "./quality.js";
 import { postProcessSocial } from "./postprocess.js";
+import { fetchBrandContext, loadRecentHooks, contextHash } from "./brand_context.js";
 
 const ALLOWED_PLATFORMS = [
   "facebook", "instagram", "x", "linkedin",
@@ -22,85 +23,13 @@ const TONE_INSTRUCTIONS = {
   performance:   "Direct, urgent, numbers-driven. Specific results, not generalities. Proof-first, then claim. Optimised for clicks and conversions.",
 };
 
-const GENERIC_BANNED = [
-  "Most people don't know",
-  "Game changer",
-  "Unlock your potential",
-  "Revolutionize your",
-  "Take your business to the next level",
-  "In today's fast-paced world",
-  "Excited to share",
-  "Proud to announce",
-  "We're thrilled",
-  "The secret is",
-  "You won't believe",
-  "Mind-blowing",
-  "Crushing it",
-  "Level up",
-  "Hustle harder",
-];
-
-/* ======================================================
-   Fetch Brand DNA from all DNA tables
-====================================================== */
-async function fetchBrandDNA(db, brand_id) {
-  const [brand, profile, voice, audience, pillars] = await Promise.all([
-    db.prepare("SELECT id, name, industry FROM brands WHERE id = ?").bind(brand_id).first(),
-    db.prepare("SELECT mission, vision, positioning, value_proposition, brand_personality, differentiators FROM brand_dna_profiles WHERE brand_id = ?").bind(brand_id).first(),
-    db.prepare("SELECT voice_traits, forbidden_language, cta_style, messaging_style FROM brand_dna_voice WHERE brand_id = ?").bind(brand_id).first(),
-    db.prepare("SELECT icp_name, pain_points, desires FROM brand_dna_audience WHERE brand_id = ?").bind(brand_id).first(),
-    db.prepare("SELECT title, description FROM brand_dna_content_pillars WHERE brand_id = ? LIMIT 5").bind(brand_id).all(),
-  ]);
-
-  return { brand, profile, voice, audience, pillars: pillars?.results || [] };
-}
-
-function buildBrandContext(dna) {
-  const { brand, profile, voice, audience, pillars } = dna;
-  const parts = [];
-
-  if (brand?.name)                 parts.push(`Brand: ${brand.name}`);
-  if (brand?.industry)             parts.push(`Industry: ${brand.industry}`);
-  if (profile?.positioning)        parts.push(`Positioning: ${profile.positioning}`);
-  if (profile?.value_proposition)  parts.push(`Value Proposition: ${profile.value_proposition}`);
-  if (profile?.mission)            parts.push(`Mission: ${profile.mission}`);
-
-  if (voice?.voice_traits) {
-    const traits = parseJsonSafe(voice.voice_traits, []);
-    if (traits.length) parts.push(`Voice Traits: ${traits.join(", ")}`);
-  }
-  if (voice?.messaging_style)      parts.push(`Messaging Style: ${voice.messaging_style}`);
-
-  const forbidden = [];
-  if (voice?.forbidden_language) {
-    const fl = parseJsonSafe(voice.forbidden_language, []);
-    if (fl.length) forbidden.push(...fl);
-  }
-  forbidden.push(...GENERIC_BANNED);
-
-  if (audience?.icp_name)          parts.push(`Target Audience: ${audience.icp_name}`);
-  if (audience?.pain_points) {
-    const pains = parseJsonSafe(audience.pain_points, []);
-    if (pains.length) parts.push(`Audience Pain Points: ${pains.slice(0, 3).join("; ")}`);
-  }
-
-  if (pillars.length) {
-    parts.push(`Content Pillars: ${pillars.map(p => p.title).join(", ")}`);
-  }
-
-  return { context: parts.join("\n"), forbidden };
-}
-
-function parseJsonSafe(val, fallback) {
-  if (!val) return fallback;
-  if (Array.isArray(val)) return val;
-  try { return JSON.parse(val); } catch { return fallback; }
-}
-
-function buildPrompt({ brandContext, forbidden, intention, tone, ctaLabel, platforms, count }) {
+function buildPrompt({ brandContext, forbidden, intention, tone, ctaLabel, platforms, count, recentHooks = [] }) {
   const platformList = platforms.join(", ");
   const toneInstruction = TONE_INSTRUCTIONS[tone] || TONE_INSTRUCTIONS.professional;
   const forbiddenList = forbidden.slice(0, 15).map(f => `"${f}"`).join(", ");
+  const memoryBlock = recentHooks.length
+    ? `\nAVOID REPEATING THESE RECENTLY USED HOOKS (use a completely different angle):\n${recentHooks.map(h => `- "${h}"`).join("\n")}\n`
+    : "";
 
   return `You are an expert social media copywriter for a specific brand. Generate ${count} high-quality social media post variant(s) for: ${platformList}.
 
@@ -112,7 +41,7 @@ CONTENT BRIEF:
 - Tone/Voice: ${tone} — ${toneInstruction}
 - Call to Action type: ${ctaLabel}
 - Target Platforms: ${platformList}
-
+${memoryBlock}
 CONTENT STRUCTURE (use all 4 elements in order):
 1. HOOK — First 1-2 lines. Must stop the scroll. Specific, concrete, provocative or surprising. Never generic.
 2. VALUE — The substance. Teach, reveal, or prove something real. Use specifics: numbers, steps, insights, outcomes.
@@ -159,62 +88,8 @@ Respond with ONLY valid JSON in this exact format:
 }`;
 }
 
-/* ======================================================
-   POST /api/customer/ai/social/generate
-====================================================== */
-
-export async function generateSocialContent(request, env, auth) {
-  if (!auth?.brand_id) return error("Unauthorized", "UNAUTHORIZED", null, 401);
-
-  const db = getDB(env);
-  await checkAndIncrement(db, auth.user_id, "ai");
-
-  let payload;
-  try { payload = await request.json(); }
-  catch { return error("Invalid JSON body", "INVALID_JSON", null, 400); }
-
-  const {
-    intention  = "awareness",
-    platforms  = ["linkedin"],
-    tone       = "professional",
-    cta        = "Learn More",
-    count      = 1,
-  } = payload || {};
-
-  if (!intention) return error("intention is required", "BAD_REQUEST", null, 400);
-
-  // Fetch Brand DNA
-  const dna = await fetchBrandDNA(db, auth.brand_id);
-  const { context: brandContext, forbidden } = buildBrandContext(dna);
-
-  const prompt = buildPrompt({
-    brandContext: brandContext || `Brand: ${dna.brand?.name || "Unknown Brand"}`,
-    forbidden,
-    intention,
-    tone,
-    ctaLabel: cta,
-    platforms: platforms.filter(p => ALLOWED_PLATFORMS.includes(p)),
-    count: Math.min(count, 3),
-  });
-
-  const result = await trackedRunLLM(env, {
-    brand: dna.brand || {},
-    prompt,
-    brand_id: auth.brand_id,
-    user_id: auth.user_id,
-    content_type: "social",
-    platform: platforms[0] || null,
-    options: { systemPromptType: 'social' },
-  });
-
-  const generatedPosts = result?.posts || [];
-
-  if (generatedPosts.length === 0) {
-    return json({ error: "AI service temporarily unavailable. Please try again." }, 503);
-  }
-
-  // Apply platform rules enforcement and quality scoring to each post
-  const scoredPosts = generatedPosts.map(post => {
+function scoreAndProcessPosts(posts, platforms) {
+  return posts.map(post => {
     const platform = post.platform || platforms[0] || 'instagram';
     const hashtags = Array.isArray(post.hashtags) ? post.hashtags : [];
 
@@ -248,9 +123,102 @@ export async function generateSocialContent(request, env, auth) {
       quality_breakdown: quality.breakdown,
     };
   });
+}
+
+/* ======================================================
+   POST /api/customer/ai/social/generate
+====================================================== */
+
+export async function generateSocialContent(request, env, auth) {
+  if (!auth?.brand_id) return error("Unauthorized", "UNAUTHORIZED", null, 401);
+
+  const db = getDB(env);
+  await checkAndIncrement(db, auth.user_id, "ai");
+
+  let payload;
+  try { payload = await request.json(); }
+  catch { return error("Invalid JSON body", "INVALID_JSON", null, 400); }
+
+  const {
+    intention  = "awareness",
+    platforms  = ["linkedin"],
+    tone       = "professional",
+    cta        = "Learn More",
+    count      = 1,
+  } = payload || {};
+
+  if (!intention) return error("intention is required", "BAD_REQUEST", null, 400);
+
+  const validPlatforms = platforms.filter(p => ALLOWED_PLATFORMS.includes(p));
+
+  // Fetch unified brand context (standard depth: voice + audience + pillars)
+  const dnaCtx = await fetchBrandContext(db, auth.brand_id, 'standard');
+
+  // Phase 6 — Generation Memory: load recent hooks to avoid repetition
+  const recentHooks = await loadRecentHooks(db, auth.brand_id, 5);
+
+  // Phase 6 — Context hash for deduplication tracking
+  const ctxHash = await contextHash(auth.brand_id, 'social', intention);
+
+  const promptParams = {
+    brandContext: dnaCtx.context || `Brand: ${dnaCtx.brand?.name || "Unknown Brand"}`,
+    forbidden: dnaCtx.forbidden,
+    intention,
+    tone,
+    ctaLabel: cta,
+    platforms: validPlatforms.length ? validPlatforms : ["linkedin"],
+    count: Math.min(count, 3),
+    recentHooks,
+  };
+
+  const prompt = buildPrompt(promptParams);
+
+  // First generation attempt
+  const result = await trackedRunLLM(env, {
+    brand: dnaCtx.brand || {},
+    prompt,
+    brand_id: auth.brand_id,
+    user_id: auth.user_id,
+    content_type: "social",
+    platform: validPlatforms[0] || null,
+    options: { systemPromptType: 'social' },
+    context_hash: ctxHash,
+  });
+
+  let scoredPosts = scoreAndProcessPosts(result?.posts || [], validPlatforms);
+
+  // Phase 1 — Quality Loop: retry once if best score < 70
+  const bestScore = scoredPosts.length ? Math.max(...scoredPosts.map(p => p.quality_score)) : 0;
+
+  if (bestScore < 70) {
+    await checkAndIncrement(db, auth.user_id, "ai");
+    const retryResult = await trackedRunLLM(env, {
+      brand: dnaCtx.brand || {},
+      prompt,
+      brand_id: auth.brand_id,
+      user_id: auth.user_id,
+      content_type: "social",
+      platform: validPlatforms[0] || null,
+      options: { systemPromptType: 'social' },
+      context_hash: ctxHash,
+    });
+
+    if (retryResult?.posts?.length) {
+      const retryScored = scoreAndProcessPosts(retryResult.posts, validPlatforms);
+      const retryBest = Math.max(...retryScored.map(p => p.quality_score));
+      if (retryBest > bestScore) {
+        scoredPosts = retryScored;
+      }
+    }
+  }
+
+  if (scoredPosts.length === 0) {
+    return json({ error: "AI service temporarily unavailable. Please try again." }, 503);
+  }
 
   return json({
     posts: scoredPosts,
-    brand_name: dna.brand?.name || null,
+    brand_name: dnaCtx.brand?.name || null,
+    quality_loop_active: true,
   });
 }

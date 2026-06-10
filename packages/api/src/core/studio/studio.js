@@ -5,34 +5,19 @@ import { json, error } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
 import { trackedRunLLM } from "../ai/ai_client.js";
 import { checkAndIncrement } from "../billing/enforcement.js";
+import { fetchBrandContext } from "../ai/brand_context.js";
 
-// ── Brand context ─────────────────────────────────────────────────────────────
+// ── Brand context (wrapper for studio: adds active platforms) ─────────────────
 async function fetchBrandCtx(db, brand_id) {
-  const [brand, profile, voice, audience, pillars, connections] = await Promise.all([
-    db.prepare("SELECT id, name, industry, tone FROM brands WHERE id = ?").bind(brand_id).first(),
-    db.prepare("SELECT mission, value_proposition, brand_personality, positioning FROM brand_dna_profiles WHERE brand_id = ?").bind(brand_id).first(),
-    db.prepare("SELECT voice_traits, messaging_style FROM brand_dna_voice WHERE brand_id = ?").bind(brand_id).first(),
-    db.prepare("SELECT icp_name, pain_points FROM brand_dna_audience WHERE brand_id = ?").bind(brand_id).first(),
-    db.prepare("SELECT title FROM brand_dna_content_pillars WHERE brand_id = ? LIMIT 5").bind(brand_id).all(),
+  const [dnaCtx, connections] = await Promise.all([
+    fetchBrandContext(db, brand_id, 'standard'),
     db.prepare("SELECT platform FROM social_connections WHERE brand_id = ? AND status = 'active'").bind(brand_id).all(),
   ]);
-
-  const parts = [];
-  if (brand?.name)                parts.push(`Brand: ${brand.name}`);
-  if (brand?.industry)            parts.push(`Industry: ${brand.industry}`);
-  if (profile?.positioning)       parts.push(`Positioning: ${profile.positioning}`);
-  if (profile?.value_proposition) parts.push(`Value Proposition: ${profile.value_proposition}`);
-  if (profile?.mission)           parts.push(`Mission: ${profile.mission}`);
-  if (voice?.messaging_style)     parts.push(`Messaging Style: ${voice.messaging_style}`);
-  if (audience?.icp_name)         parts.push(`Audience: ${audience.icp_name}`);
-  const pillarList = (pillars?.results || []).map(p => p.title).filter(Boolean);
-  if (pillarList.length) parts.push(`Content Pillars: ${pillarList.join(", ")}`);
-
   return {
-    brand,
-    context: parts.join("\n"),
-    brandName: brand?.name || "this brand",
-    industry: profile?.industry || brand?.industry || "General",
+    brand: dnaCtx.brand,
+    context: dnaCtx.context,
+    brandName: dnaCtx.brand?.name || "this brand",
+    industry: dnaCtx.brand?.industry || "General",
     activePlatforms: (connections?.results || []).map(c => c.platform),
   };
 }
@@ -158,7 +143,7 @@ Rules:
     brand_id: auth.brand_id,
     user_id: auth.user_id || null,
     content_type: "studio_post",
-    options: { mode: "deep", systemPromptType: "social" },
+    options: { mode: "deep", systemPromptType: "studio" },
   });
 
   if (!result?.body) return error("Generation failed. Try again.", 500);

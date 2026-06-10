@@ -45,7 +45,7 @@ Respond in strict JSON:
       brand_id: auth.brand_id,
       user_id: auth.user_id || null,
       content_type: "grammar",
-      options: { mode: 'fast', systemPromptType: 'utility' },
+      options: { mode: 'fast', systemPromptType: 'grammar' },
     });
     if (result?.corrected) {
       correctedText = result.corrected;

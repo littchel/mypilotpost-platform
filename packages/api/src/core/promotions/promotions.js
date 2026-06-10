@@ -163,18 +163,18 @@ export async function grantReferralReward(db, referralId, env = {}) {
             VALUES (?, ?, ?, 'trial_extension', ?, 'referral')
         `).bind(crypto.randomUUID(), ref.referred_user_id, referralId, totalReward),
         
-        // Subscription Update (Inviter)
+        // Trial Extension (Inviter) — writes to users.trial_ends_at, which getCurrentPlan() reads
         db.prepare(`
-            UPDATE subscriptions SET 
-            trial_extended_until = datetime(MAX(COALESCE(trial_extended_until, trial_ends_at, datetime('now')), datetime('now')), '+${totalReward} days')
-            WHERE user_id = ?
+            UPDATE users SET
+            trial_ends_at = datetime(MAX(COALESCE(trial_ends_at, datetime('now')), datetime('now')), '+${totalReward} days')
+            WHERE id = ?
         `).bind(ref.referrer_user_id),
 
-        // Subscription Update (Invitee)
+        // Trial Extension (Invitee)
         db.prepare(`
-            UPDATE subscriptions SET 
-            trial_extended_until = datetime(MAX(COALESCE(trial_extended_until, trial_ends_at, datetime('now')), datetime('now')), '+${totalReward} days')
-            WHERE user_id = ?
+            UPDATE users SET
+            trial_ends_at = datetime(MAX(COALESCE(trial_ends_at, datetime('now')), datetime('now')), '+${totalReward} days')
+            WHERE id = ?
         `).bind(ref.referred_user_id)
     ]);
     return { success: true, reward: totalReward };

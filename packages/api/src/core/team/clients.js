@@ -13,7 +13,8 @@ import { emit, TOOLS, EVENTS } from '../events/emit.js';
 const APP_URL = 'https://app.mypilotpost.com';
 
 async function memberRole(db, brandId, userId) {
-  const m = await db.prepare('SELECT role FROM team_members WHERE brand_id = ? AND user_id = ?').bind(brandId, userId).first();
+  // Read from brand_users — the auth-authoritative table (same source as requireAuth middleware).
+  const m = await db.prepare('SELECT role FROM brand_users WHERE brand_id = ? AND user_id = ?').bind(brandId, userId).first();
   return m?.role || null;
 }
 
@@ -118,12 +119,27 @@ export async function sendToClient(req, env, auth) {
   const brand_name = brand?.name || 'Your Brand';
 
   let linkUrl;
-  if (type === 'approval' && entity_id) {
-    linkUrl = `${APP_URL}/public/approval/${entity_id}?token=${token}`;
+  if (type === 'approval') {
+    // Token is the path segment — resolves to content_id via content_shares lookup
+    linkUrl = `${APP_URL}/public/approval/${token}`;
   } else if (type === 'report' && entity_id) {
     linkUrl = `${APP_URL}/public/report/${entity_id}?token=${token}`;
   } else {
     linkUrl = `${APP_URL}/public/review?token=${token}`;
+  }
+
+  // Store the token hash so the server can validate the link
+  const tokenHash = await (async () => {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  })();
+
+  if (type === 'approval' && entity_id) {
+    await db.prepare(`
+      INSERT INTO content_shares (id, brand_id, content_id, share_type, access_token_hash, expires_at)
+      VALUES (?, ?, ?, 'client_review', ?, ?)
+      ON CONFLICT(access_token_hash) DO NOTHING
+    `).bind(crypto.randomUUID(), auth.brand_id, entity_id, tokenHash, expiresAt).run();
   }
 
   // Deliver via requested channels

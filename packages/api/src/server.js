@@ -178,6 +178,8 @@ import { grammarCheck } from "./core/ai/grammar.js";
 import { generateSocialContent } from "./core/ai/social_generate.js";
 import { generateBlogArticle } from "./core/ai/blog_generate.js";
 import { getAIUsage } from "./core/ai/ai_client.js";
+import { rewriteContent } from "./core/ai/rewrite.js";
+import { regenerateContent } from "./core/ai/regenerate.js";
 
 /* ======================================================
    MEDIA
@@ -365,6 +367,9 @@ import {
 import { getAuditReport, getAuditReportPDF, getPublicAuditReport } from "./core/reports/audit_report.js";
 import { handleAdminPricing, handleAdminPricingById, togglePlanStatus, createAdminPricing, getPublicPricing } from "./api/admin/pricing.js";
 import { getSystemEvents } from "./api/admin/observability-api.js";
+import { writeSystemEvent, getAdminDashboardOverview, getAdminAuditLog } from "./api/admin/observability.js";
+import { aggregateDeliveryMetrics } from "./api/admin/delivery-metrics.js";
+import { isControlActive } from "./lib/controls.js";
 import { getIntegrationsDiagnostics } from "./api/admin/integrations-diagnostics.js";
 import { runBackfill, getBackfillStatus } from "./core/delivery/performance/backfill/engine.js";
 import { getAttributionDiagnostics } from "./api/admin/attribution-diagnostics.js";
@@ -394,7 +399,6 @@ import { getDeliveryStats } from "./core/delivery/execute.js";
 import { runEmailWorker } from "./core/workers/email-worker.js";
 import { runLifecycleCron } from "./core/lifecycle/cron.js";
 import { supportRoutes } from "./routes/support.js";
-import { handleDataDeletionRequest } from "./core/compliance/compliance.js";
 import { sendOTP, verifyOTP, getVerificationStatus } from "./core/trust/verification.js";
 import {
   handleUnsubscribe,
@@ -709,7 +713,25 @@ export default {
 
     try {
       /* ================= HEALTH ================= */
-      if (path === "/api/health") return withCors(request, Promise.resolve(json({ status: "ok", version: "1.1.1" })));
+      if (path === "/api/health") {
+        // Live health check: verify DB is reachable
+        try {
+          const _db = getDB(env);
+          await _db.prepare("SELECT 1").first();
+          return withCors(request, Promise.resolve(json({ status: "ok", version: "1.1.1" })));
+        } catch (_e) {
+          return withCors(request, Promise.resolve(json({ status: "degraded", version: "1.1.1", detail: "DB unreachable" }, 503)));
+        }
+      }
+
+      /* ================= MAINTENANCE MODE GATE ================= */
+      if (path.startsWith("/api/customer/") || (path.startsWith("/api/v1/") && !path.startsWith("/api/v1/admin") && !path.startsWith("/api/v1/support") && !path.startsWith("/api/v1/auth") && !path.startsWith("/api/v1/pricing") && !path.startsWith("/api/v1/audit"))) {
+        try {
+          const _db = getDB(env);
+          const maint = await isControlActive(_db, 'maintenance_mode');
+          if (maint) return withCors(request, Promise.resolve(json({ error: "Platform is temporarily unavailable for maintenance", code: "MAINTENANCE" }, 503)));
+        } catch (_e) { /* fail-open */ }
+      }
 
       /* ================= PUBLIC MEDIA (no auth — UUID-keyed R2 assets for platform adapters) ================= */
       if ((method === "GET" || method === "HEAD") && path.startsWith("/api/media/file/"))
@@ -813,20 +835,20 @@ export default {
         return withCors(request, captureAuditLead(request, env));
       }
 
-      /* ================= PUBLIC APPROVAL (NO AUTH) ================= */
+      /* ================= PUBLIC APPROVAL (token-gated, no auth) ================= */
       if (method === "GET" && path.startsWith("/api/public/approval/") && !path.endsWith("/comment")) {
-        const contentId = path.split("/")[4];
-        return withCors(request, getPublicContent(request, env, contentId));
+        const shareToken = path.split("/")[4];
+        return withCors(request, getPublicContent(request, env, shareToken));
       }
 
       if (method === "POST" && path.startsWith("/api/public/approval/") && path.endsWith("/comment")) {
-        const contentId = path.split("/")[4];
-        return withCors(request, addPublicComment(request, env, contentId));
+        const shareToken = path.split("/")[4];
+        return withCors(request, addPublicComment(request, env, shareToken));
       }
 
       if (method === "POST" && path.startsWith("/api/public/approval/") && !path.endsWith("/comment")) {
-        const contentId = path.split("/")[4];
-        return withCors(request, submitPublicDecision(request, env, contentId));
+        const shareToken = path.split("/")[4];
+        return withCors(request, submitPublicDecision(request, env, shareToken));
       }
 
       /* ================= PUBLIC AUTH ================= */
@@ -839,12 +861,16 @@ export default {
       if (path === "/api/customer/register" && method === "POST") {
         const limited = await rateLimit(request, env, "auth");
         if (limited) return withCors(request, Promise.resolve(limited));
+        const _regPaused = await isControlActive(getDB(env), 'pause_registration').catch(() => false);
+        if (_regPaused) return withCors(request, Promise.resolve(json({ error: "Registrations are temporarily paused", code: "REGISTRATION_PAUSED" }, 503)));
         return withCors(request, register(request, env));
       }
 
       if (path === "/api/v1/auth/register" && method === "POST") {
         const limited = await rateLimit(request, env, "auth");
         if (limited) return limited;
+        const _regPaused = await isControlActive(getDB(env), 'pause_registration').catch(() => false);
+        if (_regPaused) return json({ error: "Registrations are temporarily paused", code: "REGISTRATION_PAUSED" }, 503);
         return withCors(request, register(request, env));
       }
 
@@ -976,7 +1002,7 @@ export default {
         return withCors(request, (async () => {
         if (path === "/api/v1/admin/overview") {
           await requireAdminAuth(request, env);
-          return billingOverview(env);
+          return getAdminDashboardOverview(env);
         }
 
         if (path === "/api/v1/admin/billing/overview") {
@@ -1001,32 +1027,52 @@ export default {
 
         if (path.startsWith("/api/v1/admin/users/") && path.endsWith("/toggle")) {
           const auth = await requireAdminAuth(request, env);
+          if (!hasPermission(auth.role, "users:write")) throw error("Insufficient permissions: users:write required", "FORBIDDEN", null, 403);
           return toggleAdminUserStatus(request, env, path.split("/")[5], auth);
         }
 
         if (path === "/api/v1/admin/campaigns") {
-          await requireAdminAuth(request, env);
-          return handleCampaigns(request, env);
+          const auth = await requireAdminAuth(request, env);
+          const res = await handleCampaigns(request, env);
+          if (method === 'POST') logAdminAction(env, auth, 'create_campaign', 'campaign', 'new', {}).catch(() => {});
+          return res;
         }
 
         if (path.startsWith("/api/v1/admin/campaigns/") && path.endsWith("/content")) {
-          await requireAdminAuth(request, env);
-          return handleCampaignContent(request, env, path.split("/")[5]);
+          const auth = await requireAdminAuth(request, env);
+          const res = await handleCampaignContent(request, env, path.split("/")[5]);
+          if (method === 'POST') logAdminAction(env, auth, 'add_campaign_content', 'campaign', path.split("/")[5], {}).catch(() => {});
+          return res;
         }
 
         if (path === "/api/v1/admin/emails/campaigns") {
-          await requireAdminAuth(request, env);
-          return handleEmailCampaigns(request, env);
+          const auth = await requireAdminAuth(request, env);
+          if (method === 'POST') {
+            if (!hasPermission(auth.role, "messaging:write")) throw error("Insufficient permissions: messaging:write required", "FORBIDDEN", null, 403);
+          }
+          const res = await handleEmailCampaigns(request, env);
+          if (method === 'POST') logAdminAction(env, auth, 'create_email_campaign', 'email_campaign', 'new', {}).catch(() => {});
+          return res;
         }
 
         if (path === "/api/v1/admin/emails/messages") {
-          await requireAdminAuth(request, env);
-          return handleEmailMessages(request, env);
+          const auth = await requireAdminAuth(request, env);
+          if (method === 'POST') {
+            if (!hasPermission(auth.role, "messaging:write")) throw error("Insufficient permissions: messaging:write required", "FORBIDDEN", null, 403);
+          }
+          const res = await handleEmailMessages(request, env);
+          if (method === 'POST') logAdminAction(env, auth, 'send_email_message', 'email_message', 'new', {}).catch(() => {});
+          return res;
         }
 
         if (path === "/api/v1/admin/emails/templates") {
-          await requireAdminAuth(request, env);
-          return handleEmailTemplates(request, env);
+          const auth = await requireAdminAuth(request, env);
+          if (method === 'POST') {
+            if (!hasPermission(auth.role, "messaging:write")) throw error("Insufficient permissions: messaging:write required", "FORBIDDEN", null, 403);
+          }
+          const res = await handleEmailTemplates(request, env);
+          if (method === 'POST') logAdminAction(env, auth, 'create_email_template', 'email_template', 'new', {}).catch(() => {});
+          return res;
         }
 
         /* ---------- PRICING MANAGEMENT ---------- */
@@ -1070,11 +1116,13 @@ export default {
 
         if (path.startsWith("/api/v1/admin/customers/") && path.endsWith("/toggle")) {
           const auth = await requireAdminAuth(request, env);
+          if (!hasPermission(auth.role, "users:write")) throw error("Insufficient permissions: users:write required", "FORBIDDEN", null, 403);
           return toggleAdminUserStatus(request, env, path.split("/")[5], auth);
         }
 
         if (path.startsWith("/api/v1/admin/customers/") && path.endsWith("/verify") && method === "POST") {
           const auth = await requireAdminAuth(request, env);
+          if (!hasPermission(auth.role, "users:write")) throw error("Insufficient permissions: users:write required", "FORBIDDEN", null, 403);
           return forceVerifyUser(request, env, path.split("/")[5], auth);
         }
 
@@ -1166,6 +1214,47 @@ export default {
           return withCors(request, adminComplianceAuditLog(request, env));
         }
 
+        /* ---------- ADMIN ACTION AUDIT LOG (admin_audit_logs) ---------- */
+        if (path === "/api/v1/admin/audit-log" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return withCors(request, getAdminAuditLog(request, env));
+        }
+
+        /* ---------- PLATFORM CONTROLS (kill switches) ---------- */
+        if (path === "/api/v1/admin/controls" && method === "GET") {
+          await requireAdminAuth(request, env);
+          const db = getDB(env);
+          const { results } = await db.prepare("SELECT key, enabled, reason, updated_by, updated_at FROM platform_controls ORDER BY key ASC").all();
+          return withCors(request, json({ controls: results || [] }));
+        }
+
+        if (path.startsWith("/api/v1/admin/controls/") && method === "PATCH") {
+          const auth = await requireAdminAuth(request, env);
+          if (!hasPermission(auth.role, "*") && auth.role !== 'super_admin' && auth.role !== 'admin') {
+            throw error("Platform controls require super_admin or admin role", "FORBIDDEN", null, 403);
+          }
+          const controlKey = path.split("/")[5];
+          if (!controlKey) throw error("Control key required", "BAD_REQUEST", null, 400);
+          const body = await request.json().catch(() => ({}));
+          const enabled = body.enabled === true || body.enabled === 1 ? 1 : 0;
+          const reason = body.reason || null;
+          const db = getDB(env);
+          const existing = await db.prepare("SELECT key FROM platform_controls WHERE key = ?").bind(controlKey).first();
+          if (!existing) throw error(`Unknown control: ${controlKey}`, "NOT_FOUND", null, 404);
+          await db.prepare(`
+            UPDATE platform_controls SET enabled = ?, reason = ?, updated_by = ?, updated_at = datetime('now')
+            WHERE key = ?
+          `).bind(enabled, reason, auth.user_id, controlKey).run();
+          await logAdminAction(env, auth, enabled ? "enable_control" : "disable_control", "platform_controls", controlKey, { reason });
+          writeSystemEvent(env, {
+            severity: enabled ? 'warning' : 'info',
+            source: 'operations',
+            message: `Platform control ${enabled ? 'enabled' : 'disabled'}: ${controlKey}${reason ? ` — ${reason}` : ''}`,
+            metadata: JSON.stringify({ key: controlKey, enabled, actor: auth.user_id })
+          }).catch(() => {});
+          return withCors(request, json({ success: true, key: controlKey, enabled: enabled === 1 }));
+        }
+
         /* ---------- SYSTEM STATUS & EVENTS ---------- */
         if (path === "/api/v1/admin/system/status") {
           await requireAdminAuth(request, env);
@@ -1191,13 +1280,15 @@ export default {
 
         /* ---------- HISTORICAL ANALYTICS BACKFILL ---------- */
         if (path === "/api/v1/admin/integrations/backfill" && method === "POST") {
-          await requireAdminAuth(request, env);
+          const auth = await requireAdminAuth(request, env);
+          if (!hasPermission(auth.role, "operations:read")) throw error("Insufficient permissions: operations:read required", "FORBIDDEN", null, 403);
           const body = await request.json().catch(() => ({}));
           const result = await runBackfill(env, {
             brandId:  body.brand_id  || undefined,
             platform: body.platform  || undefined,
             daysBack: body.days_back || 90,
           });
+          logAdminAction(env, auth, "trigger_analytics_backfill", "integrations", body.brand_id || "all", { platform: body.platform, days_back: body.days_back }).catch(() => {});
           return json(result);
         }
 
@@ -1237,11 +1328,16 @@ export default {
 
         /* ---------- PLATFORM SANDBOX ---------- */
         if (path === "/api/v1/admin/platform-test" && method === "POST") {
-          await requireAdminAuth(request, env);
-          return withCors(request, runPlatformTest(request, env));
+          const auth = await requireAdminAuth(request, env);
+          if (!hasPermission(auth.role, "operations:read")) throw error("Insufficient permissions: operations:read required", "FORBIDDEN", null, 403);
+          const testBody = await request.clone().json().catch(() => ({}));
+          const testRes = await runPlatformTest(request, env);
+          logAdminAction(env, auth, "run_platform_test", "platform_sandbox", testBody.brand_id || "unknown", { platform: testBody.platform }).catch(() => {});
+          return withCors(request, testRes);
         }
         if (path === "/api/v1/admin/platform-test/connections" && method === "GET") {
-          await requireAdminAuth(request, env);
+          const auth = await requireAdminAuth(request, env);
+          if (!hasPermission(auth.role, "operations:read")) throw error("Insufficient permissions: operations:read required", "FORBIDDEN", null, 403);
           return withCors(request, listTestableConnections(request, env));
         }
 
@@ -1275,26 +1371,21 @@ export default {
           return createAdminPromotion(request, env, auth);
         }
 
-        /* ---------- STUBS for future sections (return empty, no error) ---------- */
-        if (path === "/api/v1/admin/memory") {
-          await requireAdminAuth(request, env);
-          return withCors(request, Promise.resolve(json({ brands: [], total: 0 })));
-        }
-        if (path === "/api/v1/admin/seo/overview") {
-          await requireAdminAuth(request, env);
-          return withCors(request, Promise.resolve(json({ pages: [], coverage: 0 })));
-        }
-        if (path === "/api/v1/admin/automation/rules") {
-          await requireAdminAuth(request, env);
-          return withCors(request, Promise.resolve(json({ rules: [] })));
-        }
-        if (path === "/api/v1/admin/ml/health") {
-          await requireAdminAuth(request, env);
-          return withCors(request, Promise.resolve(json({ status: "ok", models: [] })));
-        }
-        if (path === "/api/v1/admin/experiments") {
-          await requireAdminAuth(request, env);
-          return withCors(request, Promise.resolve(json({ experiments: [] })));
+        /* ---------- STUBS (authenticated, not yet implemented) ---------- */
+        for (const stubPath of [
+          "/api/v1/admin/memory",
+          "/api/v1/admin/seo/overview",
+          "/api/v1/admin/automation/rules",
+          "/api/v1/admin/ml/health",
+          "/api/v1/admin/experiments",
+        ]) {
+          if (path === stubPath) {
+            await requireAdminAuth(request, env);
+            return withCors(request, Promise.resolve(new Response(
+              JSON.stringify({ error: "Not implemented", stub: true }),
+              { status: 503, headers: { "Content-Type": "application/json" } }
+            )));
+          }
         }
       })());
       }
@@ -1413,28 +1504,34 @@ export default {
            const { plan_id } = body;
            if (!plan_id) return json({ error: "plan_id required" }, 400, getCorsHeaders(request));
            const db = env.mypilotpost;
+           // Verify plan exists before proceeding
            const validPlan = await db.prepare("SELECT id, name FROM plans WHERE id = ? AND is_active = 1").bind(plan_id).first();
            if (!validPlan) return json({ error: "Invalid plan" }, 400, getCorsHeaders(request));
-           const now = new Date().toISOString();
-           const periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-           await db.batch([
-             db.prepare("UPDATE users SET plan_id = ?, subscription_status = 'active', current_period_start = ?, current_period_end = ? WHERE id = ?")
-               .bind(plan_id, now, periodEnd, auth.user_id),
-             db.prepare("UPDATE subscriptions SET plan_id = ?, plan = ?, status = 'active', current_period_start = ?, current_period_end = ?, updated_at = ? WHERE user_id = ?")
-               .bind(plan_id, validPlan.name, now, periodEnd, now, auth.user_id),
-           ]);
-           const updatedPlan = await getCurrentPlan(db, auth.user_id);
-           return json({ success: true, plan: updatedPlan }, 200, getCorsHeaders(request));
+           // Verify a confirmed payment exists for this brand.
+           // The Yoco webhook activates the subscription; this endpoint confirms it completed.
+           const confirmedPayment = await db.prepare(`
+             SELECT 1 FROM payments WHERE brand_id = ? AND status = 'succeeded' LIMIT 1
+           `).bind(auth.brand_id).first();
+           if (!confirmedPayment) {
+             return json({
+               error: "No confirmed payment found. Complete your payment first.",
+               code: "PAYMENT_REQUIRED"
+             }, 402, getCorsHeaders(request));
+           }
+           // Webhook already activated the plan. Return current plan state — no entitlement writes.
+           const currentPlan = await getCurrentPlan(db, auth.user_id);
+           return json({ success: true, plan: currentPlan }, 200, getCorsHeaders(request));
         }
 
         if (method === "GET" && path === "/api/customer/billing/history") {
            const db = env.mypilotpost;
+           // Restrict to brands the user OWNS (not just member of) to prevent
+           // payment data leakage to invited team members.
            const { results } = await db.prepare(`
              SELECT p.provider, p.amount, p.currency, p.status, p.occurred_at
              FROM payments p
              JOIN brands b ON b.id = p.brand_id
-             JOIN brand_users bu ON bu.brand_id = b.id
-             WHERE bu.user_id = ?
+             WHERE b.owner_user_id = ?
              ORDER BY p.occurred_at DESC LIMIT 50
            `).bind(auth.user_id).all();
            return json({ history: results || [] }, 200, getCorsHeaders(request));
@@ -2108,9 +2205,6 @@ export default {
         if (method === "POST" && path === "/api/customer/intelligence/run")
           return withCors(request, generateInsights(request, env, auth));
 
-        if (method === "DELETE" && path === "/api/customer/compliance/delete-account")
-          return withCors(request, handleDataDeletionRequest(request, env, auth));
-
         /* ---------- COMPLIANCE (PHASE 13) ---------- */
         if (method === "POST" && path === "/api/customer/account/delete-request")
           return withCors(request, handleDeleteRequest(request, env, auth));
@@ -2237,6 +2331,12 @@ export default {
         if (method === "POST" && path === "/api/customer/ai/hashtags")
           return withCors(request, generateHashtags(request, env, auth));
 
+        if (method === "POST" && path === "/api/customer/ai/rewrite")
+          return withCors(request, rewriteContent(request, env, auth));
+
+        if (method === "POST" && path === "/api/customer/ai/regenerate")
+          return withCors(request, regenerateContent(request, env, auth));
+
         /* ─── CERTIFICATION ─── */
         if (method === "GET"  && path === "/api/customer/certification/matrix")
           return withCors(request, getCertificationMatrix(request, env, auth));
@@ -2256,6 +2356,7 @@ export default {
   async scheduled(event, env, ctx) {
     const cron = event.cron;
     console.log(`[CRON] Triggered: ${cron}`);
+    writeSystemEvent(env, { severity: 'info', source: 'cron', message: `Cron triggered: ${cron}` }).catch(() => {});
 
     ctx.waitUntil(
       (async () => {
@@ -2268,11 +2369,13 @@ export default {
             await runDeliveryScheduler(env, ctx);
           } catch (err) {
             console.error("[CRON] Delivery scheduler failed:", err?.message || err);
+            writeSystemEvent(env, { severity: 'critical', source: 'cron', message: `Delivery scheduler crashed: ${err?.message}` }).catch(() => {});
           }
           try {
             await runEmailWorker(env);
           } catch (err) {
             console.error("[CRON] Email worker failed:", err?.message || err);
+            writeSystemEvent(env, { severity: 'warning', source: 'cron', message: `Email worker failed: ${err?.message}` }).catch(() => {});
           }
         }
 
@@ -2282,6 +2385,7 @@ export default {
             await runLifecycleCron(env);
           } catch (err) {
             console.error("[CRON] Lifecycle cron failed:", err?.message || err);
+            writeSystemEvent(env, { severity: 'warning', source: 'cron', message: `Lifecycle cron failed: ${err?.message}` }).catch(() => {});
           }
 
           // Pre-generate intelligence for active brands so users see fresh intelligence on first login
@@ -2310,6 +2414,17 @@ export default {
             }
           } catch (err) {
             console.error("[CRON_INTEL] Daily intelligence cron failed:", err?.message || err);
+            writeSystemEvent(env, { severity: 'warning', source: 'cron', message: `Intelligence pre-generation failed: ${err?.message}` }).catch(() => {});
+          }
+        }
+
+        // Daily 3am: process pending account deletions (7-day grace window)
+        if (cron === "0 3 * * *") {
+          try {
+            await processPendingDeletions(env);
+          } catch (err) {
+            console.error("[CRON] processPendingDeletions failed:", err?.message || err);
+            writeSystemEvent(env, { severity: 'warning', source: 'cron', message: `Account deletion cron failed: ${err?.message}` }).catch(() => {});
           }
         }
 
@@ -2341,12 +2456,36 @@ export default {
           }
         }
 
+        // Phase 5: Daily 3am — aggregate delivery metrics + update platform_health
+        if (cron === "0 3 * * *") {
+          try {
+            await aggregateDeliveryMetrics(env);
+          } catch (err) {
+            console.error("[CRON] aggregateDeliveryMetrics failed:", err?.message || err);
+          }
+        }
+
+        // Phase 9: Daily 3am — retention for system/audit tables
+        if (cron === "0 3 * * *") {
+          try {
+            const db = getDB(env);
+            await db.batch([
+              db.prepare("DELETE FROM admin_system_events WHERE created_at < datetime('now', '-90 days')"),
+              db.prepare("DELETE FROM admin_audit_logs WHERE created_at < datetime('now', '-180 days')"),
+              db.prepare("DELETE FROM compliance_audit_log WHERE created_at < datetime('now', '-365 days')"),
+            ]);
+          } catch (err) {
+            console.error("[CRON] Ops retention failed:", err?.message || err);
+          }
+        }
+
         // Every 4 hours: refresh expiring OAuth tokens
         if (cron === "0 */4 * * *") {
           try {
             await runBackgroundRefresh(env);
           } catch (err) {
             console.error("[CRON] Token refresh failed:", err?.message || err);
+            writeSystemEvent(env, { severity: 'warning', source: 'cron', message: `OAuth token refresh failed: ${err?.message}` }).catch(() => {});
           }
         }
       })()

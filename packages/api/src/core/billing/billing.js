@@ -16,23 +16,17 @@ export async function getCurrentPlan(db, userId) {
 
   if (!row) {
     const starter = await db.prepare("SELECT * FROM plans WHERE id = 'starter'").first();
-    return { ...starter, status: 'trial', trial_ends_at: null, trial_extended_until: null };
+    return { ...starter, status: 'trial', trial_ends_at: null };
   }
 
   const now = new Date();
-  
+
   // 1. Paid Subscription (Active & Not Starter)
   if (row.status === 'active' && row.id !== 'starter') {
     return row;
   }
 
-  // 2. Trial Extension Priority
-  if (row.trial_extended_until && new Date(row.trial_extended_until) > now) {
-    // Treat as the plan they are in (usually starter but could be one they trialed)
-    return { ...row, status: 'trial' };
-  }
-
-  // 3. Standard Trial
+  // 2. Standard Trial (includes referral-extended trial — stored in users.trial_ends_at)
   if (row.status === 'trial' && row.trial_ends_at && new Date(row.trial_ends_at) > now) {
     return row;
   }

@@ -10,6 +10,8 @@ import { insertExperienceNotification } from "../notifications/utils.js";
 import { refreshPerformanceCache } from "../campaigns/campaigns.js";
 import { resolveDeliveryData } from "./resolver.js";
 import { emitEvent } from "../../lib/bus.js";
+import { writeSystemEvent } from "../../api/admin/observability.js";
+import { isControlActive } from "../../lib/controls.js";
 
 /* =====================================================
    PLATFORM ADAPTER REGISTRY
@@ -52,7 +54,13 @@ export async function executeDeliveryJob(env, job) {
   globalThis.__ENV__ = env; 
   const db = getDB(env);
 
-  // 2️⃣ Double Execution Protection
+  // 2️⃣ Platform pause control check
+  if (await isControlActive(db, `pause_platform_${job.platform}`)) {
+    console.log(`POSTER: ${job.platform} is paused via platform_controls — skipping job ${job.id}`);
+    return;
+  }
+
+  // 3️⃣ Double Execution Protection (original step 2)
   const lock = await db
     .prepare(`
       UPDATE delivery_jobs
@@ -122,6 +130,13 @@ export async function executeDeliveryJob(env, job) {
       platform: job.platform
     });
 
+    writeSystemEvent(env, {
+      severity: 'info',
+      source: 'delivery',
+      message: `Published to ${job.platform} (brand ${job.brand_id})`,
+      metadata: JSON.stringify({ job_id: job.id, platform: job.platform, brand_id: job.brand_id, duration_ms })
+    }).catch(() => {});
+
   } catch (err) {
     const errorCode = err.message?.includes("TOKEN") ? "AUTH_ERROR" : 
                      err.message === "TIMEOUT" ? "TIMEOUT" : "EXECUTION_ERROR";
@@ -136,9 +151,20 @@ export async function executeDeliveryJob(env, job) {
 
     await recordAttempt(db, job, job.delivery_attempts + 1, "failed", errorCode, err.message);
     await syncContentStatusWithJobs(db, job, 'failed', errorCode);
-    
+
+    const attemptNumber = job.delivery_attempts + 1;
+    const isExhausted = attemptNumber >= MAX_ATTEMPTS;
+    writeSystemEvent(env, {
+      severity: isExhausted ? 'critical' : 'warning',
+      source: 'delivery',
+      message: isExhausted
+        ? `Delivery exhausted all retries: ${job.platform} (${errorCode})`
+        : `Delivery failed attempt ${attemptNumber}: ${job.platform} — ${errorCode}`,
+      metadata: JSON.stringify({ job_id: job.id, platform: job.platform, brand_id: job.brand_id, error: err.message, attempt: attemptNumber })
+    }).catch(() => {});
+
     // Automatic Retry Logic
-    await scheduleRetry(db, job, job.delivery_attempts + 1, errorCode);
+    await scheduleRetry(db, job, attemptNumber, errorCode);
   }
 }
 

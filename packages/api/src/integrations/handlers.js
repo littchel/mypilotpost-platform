@@ -4,6 +4,7 @@ import { generateState, verifyAndConsumeState, exchangeCode, saveConnection } fr
 import { PROVIDERS } from "./registry.js";
 import { isValidUUID } from "../lib/validation.js";
 import { refreshSocialConnection } from "./refresh_manager.js";
+import { checkAndIncrement } from "../core/billing/enforcement.js";
 
 /**
  * GET /api/customer/oauth/:provider/start
@@ -51,11 +52,24 @@ export async function handleCallback(request, env) {
   try {
     // 1. Verify and consume state (Enforces brand isolation and one-time use)
     const statePayload = await verifyAndConsumeState(stateId, env);
-    
-    // 2. Exchange code for tokens
+
+    const db = getDB(env);
+
+    // 2. Quota check — only for new connections (not reconnections of the same provider)
+    const existingConnection = await db.prepare(`
+      SELECT 1 FROM connected_accounts
+      WHERE brand_id = ? AND provider = ? AND status != 'disconnected'
+      LIMIT 1
+    `).bind(statePayload.brand_id, providerKey).first();
+
+    if (!existingConnection) {
+      await checkAndIncrement(db, statePayload.user_id, 'accounts');
+    }
+
+    // 3. Exchange code for tokens
     const tokenData = await exchangeCode(providerKey, code, env);
-    
-    // 3. Persist connection
+
+    // 4. Persist connection
     await saveConnection(statePayload.brand_id, statePayload.user_id, providerKey, tokenData, env);
 
     // 4. Redirect to frontend with success
@@ -112,16 +126,24 @@ export async function disconnectIntegration(request, env, auth) {
 
   // Soft disconnect with brand isolation
   const result = await db.prepare(`
-    UPDATE connected_accounts 
-    SET 
-      status = 'disconnected', 
-      access_token_encrypted = NULL, 
-      refresh_token_encrypted = NULL, 
-      disconnected_at = CURRENT_TIMESTAMP 
+    UPDATE connected_accounts
+    SET
+      status = 'disconnected',
+      access_token_encrypted = NULL,
+      refresh_token_encrypted = NULL,
+      disconnected_at = CURRENT_TIMESTAMP
     WHERE id = ? AND brand_id = ?
   `).bind(id, auth.brand_id).run();
 
   if (!result.meta.changes) return error("Integration not found or unauthorized", "NOT_FOUND", null, 404);
+
+  // Decrement social accounts quota (floor at 0)
+  await db.prepare(`
+    UPDATE usage_tracking SET
+      social_accounts_used = MAX(social_accounts_used - 1, 0),
+      updated_at = CURRENT_TIMESTAMP
+    WHERE user_id = ?
+  `).bind(auth.user_id).run();
 
   return json({ success: true, message: "Integration disconnected" });
 }
@@ -224,6 +246,14 @@ export async function disconnectSocialConnection(request, env, auth) {
   `).bind(id, auth.brand_id).run();
 
   if (!result.meta.changes) return error("Connection not found or unauthorized", "NOT_FOUND", null, 404);
+
+  // Decrement social accounts quota (floor at 0)
+  await db.prepare(`
+    UPDATE usage_tracking SET
+      social_accounts_used = MAX(social_accounts_used - 1, 0),
+      updated_at = CURRENT_TIMESTAMP
+    WHERE user_id = ?
+  `).bind(auth.user_id).run();
 
   return json({ success: true });
 }

@@ -8,6 +8,7 @@ import { checkAndIncrement } from "../billing/enforcement.js";
 import { trackedRunLLM } from "./ai_client.js";
 import { scoreBlogArticle } from "./quality.js";
 import { postProcessBlog } from "./postprocess.js";
+import { fetchBrandContext, contextHash } from "./brand_context.js";
 
 export async function generateBlogArticle(request, env, auth) {
   if (!auth?.brand_id) {
@@ -55,43 +56,16 @@ export async function generateBlogArticle(request, env, auth) {
     if (!contentId) return error("Failed to create blog draft", "SERVER_ERROR", null, 500);
   }
 
-  /* ---------------- BRAND DNA FETCH ---------------- */
-  const [brand, dnaProfile, dnaVoice, dnaAudience, dnaPillars] = await Promise.all([
-    db.prepare("SELECT id, name, industry FROM brands WHERE id = ?").bind(auth.brand_id).first(),
-    db.prepare("SELECT mission, positioning, value_proposition, brand_personality FROM brand_dna_profiles WHERE brand_id = ?").bind(auth.brand_id).first(),
-    db.prepare("SELECT voice_traits, forbidden_language, messaging_style FROM brand_dna_voice WHERE brand_id = ?").bind(auth.brand_id).first(),
-    db.prepare("SELECT icp_name, pain_points FROM brand_dna_audience WHERE brand_id = ?").bind(auth.brand_id).first(),
-    db.prepare("SELECT title FROM brand_dna_content_pillars WHERE brand_id = ? LIMIT 5").bind(auth.brand_id).all(),
-  ]);
-
-  function parseJsonSafe(val, fallback) {
-    if (!val) return fallback;
-    if (Array.isArray(val)) return val;
-    try { return JSON.parse(val); } catch { return fallback; }
-  }
-
-  // Build brand context string — gracefully empty if DNA not yet configured
-  const brandParts = [];
-  if (brand?.name)                   brandParts.push(`Brand: ${brand.name}`);
-  if (brand?.industry)               brandParts.push(`Industry: ${brand.industry}`);
-  if (dnaProfile?.positioning)       brandParts.push(`Positioning: ${dnaProfile.positioning}`);
-  if (dnaProfile?.value_proposition) brandParts.push(`Value Proposition: ${dnaProfile.value_proposition}`);
-  if (dnaProfile?.mission)           brandParts.push(`Mission: ${dnaProfile.mission}`);
-  if (dnaVoice?.voice_traits) {
-    const traits = parseJsonSafe(dnaVoice.voice_traits, []);
-    if (traits.length) brandParts.push(`Voice Traits: ${traits.join(", ")}`);
-  }
-  if (dnaVoice?.messaging_style)     brandParts.push(`Messaging Style: ${dnaVoice.messaging_style}`);
-  if (dnaAudience?.icp_name)         brandParts.push(`Target Reader: ${dnaAudience.icp_name}`);
-  const pillarTitles = (dnaPillars?.results || []).map(p => p.title).filter(Boolean);
-  if (pillarTitles.length)           brandParts.push(`Content Pillars: ${pillarTitles.join(", ")}`);
-
-  const brandContext = brandParts.join("\n");
-
-  const forbiddenPhrases = parseJsonSafe(dnaVoice?.forbidden_language, []);
-  const forbiddenLine = forbiddenPhrases.length
-    ? `\nFORBIDDEN PHRASES (never use): ${forbiddenPhrases.slice(0, 10).map(f => `"${f}"`).join(", ")}`
+  /* ---------------- BRAND CONTEXT (unified) ---------------- */
+  const dnaCtx = await fetchBrandContext(db, auth.brand_id, 'full');
+  const brand = dnaCtx.brand;
+  const brandContext = dnaCtx.context;
+  const forbiddenLine = dnaCtx.forbidden.length
+    ? `\nFORBIDDEN PHRASES (never use): ${dnaCtx.forbidden.slice(0, 10).map(f => `"${f}"`).join(", ")}`
     : "";
+
+  // Phase 6 — context hash
+  const ctxHash = await contextHash(auth.brand_id, 'blog', `${primary_keyword}|${goal}`);
 
   /* ---------------- AI GENERATION ---------------- */
   const prompt = `Write a structured, brand-aligned blog article.
@@ -118,14 +92,17 @@ Respond in strict JSON:
   }
 }`;
 
-  const result = await trackedRunLLM(env, {
+  const llmParams = {
     brand,
     prompt,
     brand_id: auth.brand_id,
     user_id: auth.user_id,
     content_type: "blog",
     options: { systemPromptType: 'blog' },
-  });
+    context_hash: ctxHash,
+  };
+
+  const result = await trackedRunLLM(env, llmParams);
 
   const rawTitle   = result?.title    || `${primary_keyword}: A Guide to ${goal}`;
   const rawSummary = result?.summary  || "";
@@ -136,15 +113,32 @@ Respond in strict JSON:
   const rawQuality = scoreBlogArticle({ title: rawTitle, body: rawBody, primary_keyword });
 
   // Apply post-processing: title length guard, H2 safety, keyword density cap
-  const { title, body: bodyText } = postProcessBlog({
-    title: rawTitle,
-    body: rawBody,
-    primary_keyword,
-  });
-  const summary = rawSummary;
+  let { title, body: bodyText } = postProcessBlog({ title: rawTitle, body: rawBody, primary_keyword });
+  let summary = rawSummary;
 
   // Quality score after post-processing
-  const quality = scoreBlogArticle({ title, body: bodyText, primary_keyword });
+  let quality = scoreBlogArticle({ title, body: bodyText, primary_keyword });
+
+  // Phase 1 — Quality Loop: retry once if score < 70, keep higher score
+  if (quality.score < 70) {
+    await checkAndIncrement(db, auth.user_id, "ai");
+    const retryResult = await trackedRunLLM(env, llmParams);
+
+    if (retryResult?.body) {
+      const { title: rt, body: rb } = postProcessBlog({
+        title: retryResult.title || rawTitle,
+        body: retryResult.body,
+        primary_keyword,
+      });
+      const retryQuality = scoreBlogArticle({ title: rt, body: rb, primary_keyword });
+      if (retryQuality.score > quality.score) {
+        title = rt;
+        bodyText = rb;
+        summary = retryResult.summary || summary;
+        quality = retryQuality;
+      }
+    }
+  }
 
   /* ---------------- PERSIST ---------------- */
   if (bodyText) {
@@ -178,5 +172,6 @@ Respond in strict JSON:
     quality_score: quality.score,
     quality_grade: quality.grade,
     quality_breakdown: quality.breakdown,
+    quality_loop_active: true,
   });
 }

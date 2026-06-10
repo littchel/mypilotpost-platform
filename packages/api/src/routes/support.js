@@ -182,21 +182,22 @@ supportRoutes.get("/history/:other_id", async (c) => {
 supportRoutes.get("/conversations", async (c) => {
   await requirePermission(c.req.raw, c.env, "support:read");
   const db = getDB(c.env);
+  const limit  = Math.min(parseInt(c.req.query("limit")  || "50"), 200);
+  const offset = Math.max(parseInt(c.req.query("offset") || "0"),  0);
 
-  // Simple query: get unique users who have messaged support
-  // In a real system, we might have a dedicated support_threads table.
   const { results } = await db.prepare(`
-    SELECT DISTINCT 
-      CASE WHEN sender_id < receiver_id THEN sender_id || '--' || receiver_id 
+    SELECT DISTINCT
+      CASE WHEN sender_id < receiver_id THEN sender_id || '--' || receiver_id
            ELSE receiver_id || '--' || sender_id END as room_id,
       MAX(created_at) as last_message_at,
       sender_id, receiver_id
     FROM support_messages
     GROUP BY room_id
     ORDER BY last_message_at DESC
-  `).all();
+    LIMIT ? OFFSET ?
+  `).bind(limit, offset).all();
 
-  return json({ success: true, data: results });
+  return json({ success: true, data: results, limit, offset });
 });
 
 /**
@@ -216,10 +217,3 @@ supportRoutes.get("/unread-count", async (c) => {
   return json({ unread: row?.unread || 0 });
 });
 
-/**
- * GET /api/v1/support/test-broadcast
- * FOR TESTING ONLY (Legacy hub test removed)
- */
-supportRoutes.get("/test-broadcast", async (c) => {
-  return json({ success: true, mode: 'durable_objects' });
-});

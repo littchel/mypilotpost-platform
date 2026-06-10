@@ -339,8 +339,8 @@ export async function vaultApproval(request, env, auth) {
     reviewer_name, reviewer_phone, delivery_channels, expiry,
   } = body;
 
-  if (!["submit", "approve", "reject", "request_changes"].includes(action)) {
-    return error("action must be: submit | approve | reject | request_changes", "BAD_REQUEST", null, 400);
+  if (!["submit", "approve", "reject", "request_changes", "revoke_share"].includes(action)) {
+    return error("action must be: submit | approve | reject | request_changes | revoke_share", "BAD_REQUEST", null, 400);
   }
 
   const db = getDB(env);
@@ -363,7 +363,7 @@ export async function vaultApproval(request, env, auth) {
     const hashBuf  = await crypto.subtle.digest("SHA-256", msgUint8);
     const tokenHash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
 
-    share_url = `${env.FRONTEND_URL || 'https://app.mypilotpost.com'}/public/approval/${id}`;
+    share_url = `${env.FRONTEND_URL || 'https://app.mypilotpost.com'}/public/approval/${token}`;
 
     const nowStr = new Date().toISOString();
 
@@ -454,8 +454,8 @@ export async function vaultApproval(request, env, auth) {
 
   if (action === "reject") {
     await db.batch([
-      db.prepare(`UPDATE content_vault SET lifecycle_status = 'archived', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
-      db.prepare(`UPDATE social_assets SET lifecycle_status = 'archived', status = 'failed', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
+      db.prepare(`UPDATE content_vault SET lifecycle_status = 'changes_requested', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
+      db.prepare(`UPDATE social_assets SET lifecycle_status = 'changes_requested', status = 'draft', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
       db.prepare(`UPDATE approval_requests SET rejected_by = ?, rejection_reason = ? WHERE content_id = ? AND brand_id = ? AND approved_at IS NULL`).bind(user_id, notes || null, id, brand_id),
     ]);
 
@@ -464,7 +464,15 @@ export async function vaultApproval(request, env, auth) {
       notify(env, { event: 'approval_rejected', brandId: brand_id, recipientId: item.user_id, recipientEmail: creator.email, title: 'Content rejected', message: `"${item.title || 'Your content'}" was rejected.${notes ? ` Reason: ${notes}` : ''}`, data: { content_title: item.title, notes }, link: `https://app.mypilotpost.com/dashboard` }).catch(() => {});
     }
 
-    return json({ success: true, status: "archived" });
+    return json({ success: true, status: "changes_requested" });
+  }
+
+  if (action === "revoke_share") {
+    await db.prepare(`
+      UPDATE content_shares SET revoked = 1
+      WHERE  content_id = ? AND brand_id = ?
+    `).bind(id, brand_id).run();
+    return json({ success: true, status: "share_revoked" });
   }
 
   if (action === "request_changes") {

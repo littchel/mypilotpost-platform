@@ -1,6 +1,7 @@
 // packages/api/src/core/billing/yoco-webhook.js
 
 import { applyBillingEvent } from "./subscription-engine.js";
+import { writeSystemEvent } from "../../api/admin/observability.js";
 
 /**
  * Yoco Webhook Handler (Svix spec)
@@ -125,7 +126,7 @@ export async function handleYocoWebhook(request, env) {
     billingEventType = "payment_failed";
   } else if (eventType === "refund.succeeded") {
     paymentStatus = "refunded";
-    billingEventType = null;
+    billingEventType = "refund_received";
   } else {
     return new Response("OK", { status: 200 });
   }
@@ -180,6 +181,13 @@ export async function handleYocoWebhook(request, env) {
       amount: data.amount,
       planId,
     });
+
+    writeSystemEvent(env, {
+      severity: billingEventType === 'payment_failed' ? 'warning' : 'info',
+      source: 'billing',
+      message: `${billingEventType.replace('_', ' ')} for brand ${brandId} — ${data.currency} ${(data.amount / 100).toFixed(2)}`,
+      metadata: JSON.stringify({ brand_id: brandId, plan_id: planId, amount: data.amount, event_type: billingEventType })
+    }).catch(() => {});
   }
 
   return new Response("OK", { status: 200 });

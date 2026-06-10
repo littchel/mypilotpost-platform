@@ -147,6 +147,8 @@ export async function handleUnsubscribe(request, env) {
   return json({ ok: true, message: "You have been unsubscribed from all myPilotPost emails." });
 }
 
+const VALID_UNSUBSCRIBE_CATEGORIES = ["marketing", "system", "product", "notifications"];
+
 /**
  * POST /api/unsubscribe/category — unsubscribe from a specific category only
  * Body: { token, category }
@@ -160,6 +162,13 @@ export async function handleCategoryUnsubscribe(request, env) {
 
   const { token, category } = body || {};
   if (!token || !category) return error("token and category required", "BAD_REQUEST", null, 400);
+
+  if (!VALID_UNSUBSCRIBE_CATEGORIES.includes(category)) {
+    return error(
+      `Invalid category. Must be one of: ${VALID_UNSUBSCRIBE_CATEGORIES.join(", ")}`,
+      "INVALID_CATEGORY", null, 400
+    );
+  }
 
   const db = getDB(env);
   const row = await db.prepare(
@@ -182,19 +191,20 @@ export async function handleCategoryUnsubscribe(request, env) {
 
 /**
  * GET /api/customer/lifecycle/unsubscribe-status — check current status
+ * NOTE: token is intentionally NOT returned — it is a security credential
+ * used only to authenticate unsubscribe link actions.
  */
 export async function getUnsubscribeStatus(request, env, auth) {
   const { json, error } = await import("../../lib/json.js");
   const db = getDB(env);
   const row = await db.prepare(
-    `SELECT token, categories, unsubscribed_at FROM email_unsubscribes WHERE user_id = ?`
+    `SELECT categories, unsubscribed_at FROM email_unsubscribes WHERE user_id = ?`
   ).bind(auth.user_id).first();
 
   return json({
     subscribed: !row,
     categories: row?.categories || null,
     unsubscribed_at: row?.unsubscribed_at || null,
-    token: row?.token || null,
   });
 }
 
@@ -230,9 +240,32 @@ export async function trackEmailOpen(request, env) {
   });
 }
 
+// Domains that email click-tracking is allowed to redirect to.
+const REDIRECT_ALLOWLIST = [
+  "app.mypilotpost.com",
+  "mypilotpost.com",
+  "www.mypilotpost.com",
+];
+
+function isSafeRedirectTarget(raw) {
+  if (!raw || typeof raw !== "string") return false;
+  let parsed;
+  try {
+    parsed = new URL(decodeURIComponent(raw));
+  } catch {
+    return false;
+  }
+  // Only https:// links to known domains are allowed.
+  if (parsed.protocol !== "https:") return false;
+  return REDIRECT_ALLOWLIST.some(
+    (allowed) => parsed.hostname === allowed || parsed.hostname.endsWith("." + allowed)
+  );
+}
+
 /**
  * GET /api/track/click?id=<outbox_id>&url=<encoded_url>
  * Records clicked_at and redirects to the original URL.
+ * Only redirects to allow-listed domains to prevent open redirect.
  */
 export async function trackEmailClick(request, env) {
   const url = new URL(request.url);
@@ -247,7 +280,7 @@ export async function trackEmailClick(request, env) {
     ).bind(id).run().catch(() => null);
   }
 
-  const target = dest ? decodeURIComponent(dest) : "https://app.mypilotpost.com";
+  const target = isSafeRedirectTarget(dest) ? decodeURIComponent(dest) : APP_URL;
   return Response.redirect(target, 302);
 }
 

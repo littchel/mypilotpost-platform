@@ -10,7 +10,8 @@ import { can, ASSIGNABLE_ROLES } from './permissions.js';
 import { logActivity } from './activity.js';
 
 async function callerRole(db, brandId, userId) {
-  const m = await db.prepare('SELECT role FROM team_members WHERE brand_id = ? AND user_id = ?').bind(brandId, userId).first();
+  // Read from brand_users — the auth-authoritative table (same source as requireAuth middleware).
+  const m = await db.prepare('SELECT role FROM brand_users WHERE brand_id = ? AND user_id = ?').bind(brandId, userId).first();
   return m?.role || null;
 }
 

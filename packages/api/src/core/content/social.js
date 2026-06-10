@@ -154,7 +154,8 @@ export async function submitForApproval(request, env, auth) {
   const db = getDB(env);
   const { brand_id, user_id } = auth;
   const id = new URL(request.url).pathname.split("/").slice(-2)[0];
-  const { schedule_at } = await request.json();
+  const body = await request.json();
+  const { schedule_at } = body;
 
   if (!schedule_at || !isValidISO8601(schedule_at)) {
     return error("Scheduling is mandatory for approval submission.", "BAD_REQUEST", null, 400);
@@ -166,28 +167,49 @@ export async function submitForApproval(request, env, auth) {
 
   if (!asset) return error("Asset not found", "NOT_FOUND", null, 404);
 
+  // Generate a secure share token so public reviewers can access via token URL
+  const rawToken  = crypto.randomUUID().replace(/-/g, '');
+  const msgUint8  = new TextEncoder().encode(rawToken);
+  const hashBuf   = await crypto.subtle.digest("SHA-256", msgUint8);
+  const tokenHash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+  const shareUrl  = `https://app.mypilotpost.com/public/approval/${rawToken}`;
+
   const batch = [
     db.prepare(`UPDATE social_assets SET lifecycle_status = 'pending_approval', status = 'approval', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
     db.prepare(`UPDATE content_vault SET lifecycle_status = 'approval_requested', share_for_approval = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
     db.prepare(`
       INSERT INTO approval_requests (id, content_id, content_type, brand_id, requested_by)
       VALUES (?, ?, 'social', ?, ?)
-    `).bind(crypto.randomUUID(), id, brand_id, user_id)
+    `).bind(crypto.randomUUID(), id, brand_id, user_id),
+    db.prepare(`
+      INSERT INTO content_shares (id, brand_id, content_id, share_type, access_token_hash, expires_at)
+      VALUES (?, ?, ?, 'client_review', ?, ?)
+    `).bind(crypto.randomUUID(), brand_id, id, tokenHash, expiresAt),
   ];
 
   await db.batch(batch);
   await insertExperienceNotification(db, brand_id, "approval", "Approval Requested", "Content locked pending review.");
 
-  return json({ success: true, status: "PENDING_APPROVAL" });
+  return json({ success: true, status: "PENDING_APPROVAL", share_url: shareUrl });
 }
 
 /**
- * APPROVE CONTENT
+ * APPROVE CONTENT — Phase 4: role guard added
  */
 export async function approveContent(request, env, auth) {
   const db = getDB(env);
-  const { brand_id, user_id } = auth; // Approver context
+  const { brand_id, user_id } = auth;
   const id = new URL(request.url).pathname.split("/").slice(-2)[0];
+
+  // Role check: only owner / admin / approver / brand_manager / client may approve
+  const approverRow = await db.prepare(`SELECT role FROM brand_users WHERE user_id = ? AND brand_id = ?`).bind(user_id, brand_id).first();
+  const brandMeta   = await db.prepare(`SELECT owner_user_id FROM brands WHERE id = ?`).bind(brand_id).first();
+  const isOwner     = brandMeta?.owner_user_id === user_id;
+  const approvingRoles = ['owner', 'admin', 'approver', 'brand_manager', 'client'];
+  if (!isOwner && !approvingRoles.includes(approverRow?.role)) {
+    return error("Only owners, admins or approvers can approve content", "FORBIDDEN", null, 403);
+  }
 
   const asset = await db.prepare(`
     SELECT text FROM social_assets WHERE id = ? AND brand_id = ?
@@ -195,38 +217,42 @@ export async function approveContent(request, env, auth) {
 
   if (!asset) return error("Asset not found", "NOT_FOUND", null, 404);
 
-  // 1. Create delivery jobs (move to scheduled)
-  const { results: variants } = await db.prepare(`SELECT platform FROM social_variants WHERE social_asset_id = ? AND platform != 'base'`).bind(id).all();
-  const platforms = (variants || []).map(v => v.platform);
-
-  const batch = [
+  await db.batch([
     db.prepare(`UPDATE social_assets SET lifecycle_status = 'approved', status = 'approved', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
     db.prepare(`UPDATE content_vault SET lifecycle_status = 'approved', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
     db.prepare(`UPDATE approval_requests SET approved_by = ?, approved_at = CURRENT_TIMESTAMP WHERE content_id = ? AND brand_id = ?`).bind(user_id, id, brand_id)
-  ];
+  ]);
 
-  // Logic for scheduling would go here (simplified)
-  
-  await db.batch(batch);
   return json({ success: true, status: "APPROVED" });
 }
 
 /**
- * REJECT CONTENT
+ * REJECT CONTENT — Phase 4: role guard; Phase 5: changes_requested (recoverable)
  */
 export async function rejectContent(request, env, auth) {
   const db = getDB(env);
   const { brand_id, user_id } = auth;
   const id = new URL(request.url).pathname.split("/").slice(-2)[0];
-  const { reason } = await request.json();
+
+  // Role check: only owner / admin / approver / brand_manager / client may reject
+  const approverRow = await db.prepare(`SELECT role FROM brand_users WHERE user_id = ? AND brand_id = ?`).bind(user_id, brand_id).first();
+  const brandMeta   = await db.prepare(`SELECT owner_user_id FROM brands WHERE id = ?`).bind(brand_id).first();
+  const isOwner     = brandMeta?.owner_user_id === user_id;
+  const approvingRoles = ['owner', 'admin', 'approver', 'brand_manager', 'client'];
+  if (!isOwner && !approvingRoles.includes(approverRow?.role)) {
+    return error("Only owners, admins or approvers can reject content", "FORBIDDEN", null, 403);
+  }
+
+  const body = await request.json().catch(() => ({}));
+  const { reason } = body;
 
   await db.batch([
-    db.prepare(`UPDATE social_assets SET lifecycle_status = 'draft', status = 'draft', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
-    db.prepare(`UPDATE content_vault SET lifecycle_status = 'draft', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
-    db.prepare(`UPDATE approval_requests SET rejected_by = ?, rejection_reason = ? WHERE content_id = ? AND brand_id = ?`).bind(user_id, reason, id, brand_id)
+    db.prepare(`UPDATE social_assets SET lifecycle_status = 'changes_requested', status = 'draft', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
+    db.prepare(`UPDATE content_vault SET lifecycle_status = 'changes_requested', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
+    db.prepare(`UPDATE approval_requests SET rejected_by = ?, rejection_reason = ? WHERE content_id = ? AND brand_id = ?`).bind(user_id, reason || null, id, brand_id)
   ]);
 
-  return json({ success: true, status: "REJECTED" });
+  return json({ success: true, status: "CHANGES_REQUESTED" });
 }
 
 /**

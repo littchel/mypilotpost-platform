@@ -10,6 +10,10 @@ const SYSTEM_PROMPTS = {
   blog:     "You are an expert content strategist and SEO writer. Write thorough, brand-aligned articles that inform and convert. Respond in strict JSON only.",
   campaign: "You are a senior digital marketing strategist. Build evidence-based campaign plans grounded in the brand's actual situation. Respond in strict JSON only.",
   utility:  "You are a professional writing assistant. Be concise and accurate. Respond in strict JSON only.",
+  rewrite:  "You are an expert brand editor. Rewrite content to match the brand voice exactly while preserving the core message and intent. Never change facts or specific claims. Respond in strict JSON only.",
+  studio:   "You are a strategic content director building brand-aligned content pipelines. Generate content that is specific to the brand, not generic. Respond in strict JSON only.",
+  grammar:  "You are a professional copy editor. Fix grammar, spelling, and punctuation while preserving the author's voice and intent. Respond in strict JSON only.",
+  hashtags: "You are a social media specialist. Generate relevant, real-world hashtags for the given content and platform. Respond in strict JSON only.",
 };
 
 /**
@@ -139,6 +143,11 @@ export async function runLLM(env, prompt, options = {}) {
 /**
  * trackedRunLLM — wraps hardenedRunLLM with ai_generations + ai_usage_quota tracking.
  * Call this from route handlers where brand_id and user_id are known.
+ *
+ * Optional extended params:
+ *   quality_score         — integer 0-100 scored after post-processing
+ *   parent_generation_id  — for rewrite/regenerate lineage
+ *   context_hash          — SHA-256 prefix for repeat-prompt detection
  */
 export async function trackedRunLLM(env, {
   brand,
@@ -148,10 +157,27 @@ export async function trackedRunLLM(env, {
   content_type = "general",
   platform = null,
   options = {},
+  quality_score = null,
+  parent_generation_id = null,
+  context_hash = null,
 }) {
+  // Phase 4: pause_generation kill-switch
+  try {
+    const { getDB } = await import("../../lib/db.js");
+    const { isControlActive } = await import("../../lib/controls.js");
+    const _db = getDB(env);
+    if (await isControlActive(_db, 'pause_generation')) {
+      throw new Error('AI generation is temporarily paused');
+    }
+  } catch (controlErr) {
+    if (controlErr.message === 'AI generation is temporarily paused') throw controlErr;
+    // Fail-open if controls table unavailable
+  }
+
   const start = Date.now();
   let result = null;
   let status = "ok";
+  let generationId = crypto.randomUUID();
 
   try {
     result = await hardenedRunLLM(env, brand, prompt, options);
@@ -172,15 +198,19 @@ export async function trackedRunLLM(env, {
       await db.prepare(`
         INSERT INTO ai_generations
           (id, brand_id, user_id, content_type, platform, input_prompt, output,
-           model, provider, tokens_used, latency_ms, success, status, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'groq', ?, ?, ?, ?, datetime('now'))
+           model, provider, tokens_used, latency_ms, success, status,
+           quality_score, parent_generation_id, generation_context_hash, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'groq', ?, ?, ?, ?, ?, ?, ?, datetime('now'))
       `).bind(
-        crypto.randomUUID(), brand_id, user_id, content_type, platform,
+        generationId, brand_id, user_id, content_type, platform,
         prompt.slice(0, 2000),
         result ? JSON.stringify(result) : null,
         model, tokens, latency_ms,
         status === "ok" ? 1 : 0,
-        status
+        status,
+        quality_score,
+        parent_generation_id,
+        context_hash
       ).run();
 
       if (user_id) {
@@ -197,8 +227,23 @@ export async function trackedRunLLM(env, {
     } catch (_e) {
       // fail-soft — tracking must not block generation
     }
+
+    // Phase 1: emit system event on generation failure
+    if (status === "failed") {
+      try {
+        const { writeSystemEvent } = await import("../../api/admin/observability.js");
+        await writeSystemEvent(env, {
+          severity: 'warning',
+          source: 'ai',
+          message: `AI generation failed for brand ${brand_id} (${content_type})`,
+          metadata: JSON.stringify({ brand_id, user_id, content_type, platform, latency_ms: Date.now() - start })
+        });
+      } catch (_e) {}
+    }
   }
 
+  // Attach the generation ID so callers can reference it for lineage
+  if (result) result._generation_id = generationId;
   return result;
 }
 

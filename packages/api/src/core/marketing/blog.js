@@ -1,5 +1,6 @@
 import { json, error } from "../../lib/json.js";
 import { hasPermission } from "../../auth/permissions.js";
+import { logAdminAction } from "../../lib/admin_logger.js";
 
 /* ================= ADMIN (AUTH REQUIRED) ================= */
 
@@ -58,6 +59,7 @@ export async function createMarketingPost(request, env, auth) {
       author
     ).run();
 
+    logAdminAction(env, auth, 'create_blog_post', 'marketing_blog', id, { slug, title, status }).catch(() => {});
     return json({ success: true, id });
 
   } catch (err) {
@@ -113,6 +115,7 @@ export async function updateMarketingPost(request, env, auth, id) {
     id
   ).run();
 
+  logAdminAction(env, auth, 'update_blog_post', 'marketing_blog', id, { slug: body.slug, status: body.status }).catch(() => {});
   return json({ success: true });
 }
 
@@ -126,6 +129,7 @@ export async function deleteMarketingPost(request, env, auth, id) {
     WHERE id = ?
   `).bind(id).run();
 
+  logAdminAction(env, auth, 'delete_blog_post', 'marketing_blog', id, {}).catch(() => {});
   return json({ success: true });
 }
 

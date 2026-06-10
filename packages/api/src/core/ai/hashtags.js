@@ -50,7 +50,7 @@ Use only real, commonly-used hashtags. No invented or random tags.`;
     user_id: auth.user_id || null,
     content_type: "hashtags",
     platform,
-    options: { systemPromptType: 'utility' },
+    options: { systemPromptType: 'hashtags' },
   });
 
   let groups = FALLBACK_HASHTAGS;

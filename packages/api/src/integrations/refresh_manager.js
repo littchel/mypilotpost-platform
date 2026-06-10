@@ -6,6 +6,7 @@
 import { getDB } from "../lib/db.js";
 import { encrypt, decrypt } from "../lib/crypto.js";
 import { getProvider } from "./registry.js";
+import { writeSystemEvent } from "../api/admin/observability.js";
 
 /**
  * Refresh a single social connection
@@ -54,6 +55,12 @@ export async function refreshSocialConnection(db, connection, env) {
       const status = (data.error === "invalid_grant") ? "revoked" : "error";
       await db.prepare("UPDATE social_connections SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
         .bind(status, connection.id).run();
+      writeSystemEvent(env, {
+        severity: status === 'revoked' ? 'critical' : 'warning',
+        source: 'oauth',
+        message: `Token ${status} for ${connection.platform} (connection ${connection.id})`,
+        metadata: JSON.stringify({ platform: connection.platform, connection_id: connection.id, error: data.error })
+      }).catch(() => {});
       return { success: false, status };
     }
 
@@ -87,6 +94,12 @@ export async function refreshSocialConnection(db, connection, env) {
     console.error(`[REFRESH_FAILED] ${connection.platform}:${connection.account_id}`, err);
     await db.prepare("UPDATE social_connections SET status = 'error', updated_at = CURRENT_TIMESTAMP WHERE id = ?")
       .bind(connection.id).run();
+    writeSystemEvent(env, {
+      severity: 'warning',
+      source: 'oauth',
+      message: `Token refresh exception: ${connection.platform} — ${err.message}`,
+      metadata: JSON.stringify({ platform: connection.platform, connection_id: connection.id, error: err.message })
+    }).catch(() => {});
     return { success: false, error: err.message };
   }
 }

@@ -9,6 +9,7 @@ import { toLocalTime } from "../../lib/dates.js";
 import { logEvent } from "../../lib/events.js";
 import { emitEvent } from "../../lib/bus.js";
 import { isValidUUID, isValidISO8601 } from "../../lib/validation.js";
+import { checkAndIncrement } from "../billing/enforcement.js";
 
 /* =====================================================
    HELPERS
@@ -188,6 +189,9 @@ export async function createSchedule(request, env, auth) {
     const db = getDB(env);
     const brandId = auth.brand_id;
 
+    // Quota enforcement — same limit as POST /api/customer/content/schedule
+    await checkAndIncrement(db, auth.user_id, 'posts');
+
     if (await hasConflict(db, brandId, platform, scheduled_at)) {
       return json(
         { error: "Another post is already scheduled near this time on this platform" },
@@ -263,6 +267,7 @@ export async function createSchedule(request, env, auth) {
     );
 
   } catch (err) {
+    if (err instanceof Response) return err;
     return error("Internal error", "SERVER_ERROR", String(err), 500);
   }
 }
