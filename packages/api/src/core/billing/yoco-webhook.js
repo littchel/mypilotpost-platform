@@ -27,68 +27,83 @@ export async function handleYocoWebhook(request, env) {
   const timestamp = headers.get("webhook-timestamp");
   const signatureHeader = headers.get("webhook-signature");
 
+  const isDev = env.ENVIRONMENT !== "production";
+
   if (!webhookId || !timestamp || !signatureHeader) {
-    return new Response("Missing webhook headers", { status: 401 });
+    // In dev, accept unsigned local test payloads via X-Dev-Webhook: 1
+    if (isDev && headers.get("x-dev-webhook") === "1") {
+      console.warn("[YOCO-DEV] Accepting unsigned webhook — dev mode only");
+    } else {
+      return new Response("Missing webhook headers", { status: 401 });
+    }
   }
 
   /* =====================================================
-     2. REPLAY PROTECTION (±3 minutes)
+     2. REPLAY PROTECTION (±3 minutes) — skipped in dev
      ===================================================== */
-  const now = Math.floor(Date.now() / 1000);
-  if (Math.abs(now - Number(timestamp)) > 180) {
-    return new Response("Webhook timestamp expired", { status: 401 });
+  if (!isDev) {
+    const now = Math.floor(Date.now() / 1000);
+    if (Math.abs(now - Number(timestamp)) > 180) {
+      return new Response("Webhook timestamp expired", { status: 401 });
+    }
   }
 
   /* =====================================================
-     3. SIGNATURE VERIFICATION (constant-time via subtle.verify)
+     3. SIGNATURE VERIFICATION — production only
+     Dev mode: bypassed when YOCO_WEBHOOK_SECRET absent or X-Dev-Webhook: 1 present
      ===================================================== */
   const fullSecret = env.YOCO_WEBHOOK_SECRET;
-  if (!fullSecret || !fullSecret.startsWith("whsec_")) {
-    console.error("[YOCO] YOCO_WEBHOOK_SECRET missing or malformed");
-    return new Response("Webhook secret misconfigured", { status: 500 });
-  }
+  const devBypass  = isDev && (!fullSecret || headers.get("x-dev-webhook") === "1");
 
-  const secretBytes = Uint8Array.from(
-    atob(fullSecret.slice("whsec_".length)),
-    (c) => c.charCodeAt(0)
-  );
+  if (!devBypass) {
+    if (!fullSecret || !fullSecret.startsWith("whsec_")) {
+      console.error("[YOCO] YOCO_WEBHOOK_SECRET missing or malformed");
+      return new Response("Webhook secret misconfigured", { status: 500 });
+    }
 
-  const key = await crypto.subtle.importKey(
-    "raw",
-    secretBytes,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["verify"]
-  );
+    const secretBytes = Uint8Array.from(
+      atob(fullSecret.slice("whsec_".length)),
+      (c) => c.charCodeAt(0)
+    );
 
-  const signedContent = `${webhookId}.${timestamp}.${rawBody}`;
+    const key = await crypto.subtle.importKey(
+      "raw",
+      secretBytes,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["verify"]
+    );
 
-  // Signature header format: "v1,<base64>" — Svix may send multiple, take first v1
-  const providedSig = signatureHeader.split(" ")
-    .map(s => s.trim())
-    .find(s => s.startsWith("v1,"))
-    ?.slice(3);
+    const signedContent = `${webhookId}.${timestamp}.${rawBody}`;
 
-  if (!providedSig) {
-    return new Response("Invalid signature format", { status: 401 });
-  }
+    // Signature header format: "v1,<base64>" — Svix may send multiple, take first v1
+    const providedSig = signatureHeader
+      ? signatureHeader.split(" ").map(s => s.trim()).find(s => s.startsWith("v1,"))?.slice(3)
+      : null;
 
-  let sigBytes;
-  try {
-    sigBytes = Uint8Array.from(atob(providedSig), (c) => c.charCodeAt(0));
-  } catch {
-    return new Response("Malformed signature", { status: 401 });
-  }
+    if (!providedSig) {
+      return new Response("Invalid signature format", { status: 401 });
+    }
 
-  const valid = await crypto.subtle.verify(
-    "HMAC",
-    key,
-    sigBytes,
-    new TextEncoder().encode(signedContent)
-  );
+    let sigBytes;
+    try {
+      sigBytes = Uint8Array.from(atob(providedSig), (c) => c.charCodeAt(0));
+    } catch {
+      return new Response("Malformed signature", { status: 401 });
+    }
 
-  if (!valid) {
-    return new Response("Invalid webhook signature", { status: 401 });
+    const valid = await crypto.subtle.verify(
+      "HMAC",
+      key,
+      sigBytes,
+      new TextEncoder().encode(signedContent)
+    );
+
+    if (!valid) {
+      return new Response("Invalid webhook signature", { status: 401 });
+    }
+  } else {
+    console.warn("[YOCO-DEV] Signature verification bypassed — dev mode");
   }
 
   /* =====================================================
@@ -112,8 +127,9 @@ export async function handleYocoWebhook(request, env) {
     return new Response("OK", { status: 200 });
   }
 
-  const brandId = data.metadata.brand_id;
-  const planId = data.metadata.plan_id || null;
+  const brandId    = data.metadata.brand_id;
+  const planId     = data.metadata.plan_id || null;
+  const checkoutId = data.metadata.checkout_id || null;
 
   let paymentStatus;
   let billingEventType;
@@ -137,18 +153,22 @@ export async function handleYocoWebhook(request, env) {
   let isNewPayment = true;
   try {
     await env.DB.prepare(`
-      INSERT INTO payments (id, brand_id, provider, provider_event_id, amount, currency, status, occurred_at, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO payments
+        (id, brand_id, provider, provider_event_id, provider_payment_id, amount, currency, status,
+         occurred_at, created_at, checkout_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       crypto.randomUUID(),
       brandId,
       "yoco",
       event.id,
+      data.id || null,
       data.amount,
       data.currency || "ZAR",
       paymentStatus,
       new Date((event.created || 0) * 1000).toISOString(),
-      new Date().toISOString()
+      new Date().toISOString(),
+      checkoutId
     ).run();
   } catch {
     // UNIQUE violation = duplicate event; skip state machine to ensure full idempotency
@@ -181,6 +201,18 @@ export async function handleYocoWebhook(request, env) {
       amount: data.amount,
       planId,
     });
+
+    // Advance checkout status to match payment outcome
+    if (checkoutId) {
+      const checkoutStatus = billingEventType === "payment_received" ? "paid"
+                           : billingEventType === "payment_failed"   ? "failed"
+                           : null;
+      if (checkoutStatus) {
+        env.DB.prepare(
+          "UPDATE checkouts SET status=?, completed_at=datetime('now') WHERE id=? AND status NOT IN ('paid','cancelled','expired')"
+        ).bind(checkoutStatus, checkoutId).run().catch(() => {});
+      }
+    }
 
     writeSystemEvent(env, {
       severity: billingEventType === 'payment_failed' ? 'warning' : 'info',

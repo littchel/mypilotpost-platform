@@ -250,13 +250,27 @@ import {
 
 import { handleAdminUsers, handleAdminUserDetail, toggleAdminUserStatus, forceVerifyUser } from "./api/admin/users.js";
 
-import { 
+import {
   billingOverview,
-  mrrHistory 
+  mrrHistory,
+  listAdminPayments,
+  listAdminCheckouts,
 } from "./api/admin/billing.js";
+import {
+  requestRefund,
+  getRefundRequest,
+  listRefundRequests,
+  approveRefund,
+  rejectRefund,
+  getCustomerRefunds,
+} from "./api/admin/refund.js";
 import { deliveryAnalytics } from "./api/admin/analytics.js";
 import { handleYocoWebhook } from "./core/billing/yoco-webhook.js";
 import { getCurrentPlan } from "./core/billing/billing.js";
+import {
+  createCheckout, getCheckout, cancelCheckout,
+  checkoutSuccess, checkoutCancel,
+} from "./core/billing/checkout.js";
 // Using global error import
 
 /* ======================================================
@@ -365,7 +379,7 @@ import {
   publicGetMarketingPost
 } from "./core/marketing/blog.js";
 import { getAuditReport, getAuditReportPDF, getPublicAuditReport } from "./core/reports/audit_report.js";
-import { handleAdminPricing, handleAdminPricingById, togglePlanStatus, createAdminPricing, getPublicPricing } from "./api/admin/pricing.js";
+import { getPublicPricing } from "./api/admin/pricing.js";
 import { getSystemEvents } from "./api/admin/observability-api.js";
 import { writeSystemEvent, getAdminDashboardOverview, getAdminAuditLog } from "./api/admin/observability.js";
 import { aggregateDeliveryMetrics } from "./api/admin/delivery-metrics.js";
@@ -821,6 +835,14 @@ export default {
         return withCors(request, getPublicPricing(request, env));
       }
 
+      /* ================= CHECKOUT REDIRECT TARGETS (public — no auth) ================= */
+      // Yoco redirects the browser here after payment. The frontend polls /success until paid.
+      if (method === "GET" && path === "/api/checkout/success")
+        return withCors(request, checkoutSuccess(request, env));
+
+      if (method === "GET" && path === "/api/checkout/cancel")
+        return withCors(request, checkoutCancel(request, env));
+
       /* ================= PUBLIC BRAND AUDIT (CONVERSION) ================= */
       if (method === "POST" && path === "/api/public/brand-audit") {
         return withCors(request, runPublicAudit(request, env));
@@ -1022,6 +1044,57 @@ export default {
           return mrrHistory(env);
         }
 
+        if (path === "/api/v1/admin/billing/payments" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return withCors(request, listAdminPayments(env));
+        }
+
+        if (path === "/api/v1/admin/billing/checkouts" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return withCors(request, listAdminCheckouts(env));
+        }
+
+        /* ---------- REFUND DOMAIN ---------- */
+        if (path === "/api/v1/admin/billing/refund/request" && method === "POST") {
+          const auth = await requireAdminAuth(request, env);
+          if (!["super_admin","admin"].includes(auth.role))
+            throw error("Admin role required for refund requests", "FORBIDDEN", null, 403);
+          const res = await requestRefund(request, env, auth);
+          await logAdminAction(env, auth, "refund_request", "billing", "payment", {}).catch(() => {});
+          return withCors(request, res);
+        }
+
+        if (path === "/api/v1/admin/billing/refunds" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return withCors(request, listRefundRequests(env));
+        }
+
+        if (path.startsWith("/api/v1/admin/billing/refund/") && method === "GET") {
+          await requireAdminAuth(request, env);
+          const refundId = path.split("/")[6];
+          return withCors(request, getRefundRequest(request, env, refundId));
+        }
+
+        if (path.startsWith("/api/v1/admin/billing/refund/") && path.endsWith("/approve") && method === "POST") {
+          const auth = await requireAdminAuth(request, env);
+          if (!["super_admin","admin"].includes(auth.role))
+            throw error("Admin role required to approve refunds", "FORBIDDEN", null, 403);
+          const refundId = path.split("/")[6];
+          const res = await approveRefund(request, env, auth, refundId);
+          await logAdminAction(env, auth, "refund_approve", "billing", refundId, {}).catch(() => {});
+          return withCors(request, res);
+        }
+
+        if (path.startsWith("/api/v1/admin/billing/refund/") && path.endsWith("/reject") && method === "POST") {
+          const auth = await requireAdminAuth(request, env);
+          if (!["super_admin","admin"].includes(auth.role))
+            throw error("Admin role required to reject refunds", "FORBIDDEN", null, 403);
+          const refundId = path.split("/")[6];
+          const res = await rejectRefund(request, env, refundId);
+          await logAdminAction(env, auth, "refund_reject", "billing", refundId, {}).catch(() => {});
+          return withCors(request, res);
+        }
+
         if (path === "/api/v1/admin/analytics/delivery") {
           await requireAdminAuth(request, env);
           return deliveryAnalytics(env);
@@ -1095,39 +1168,6 @@ export default {
           }
           const res = await handleEmailTemplates(request, env);
           if (method === 'POST') logAdminAction(env, auth, 'create_email_template', 'email_template', 'new', {}).catch(() => {});
-          return res;
-        }
-
-        /* ---------- PRICING MANAGEMENT ---------- */
-        if (path === "/api/v1/admin/pricing" && method === "GET") {
-          await requireAdminAuth(request, env);
-          return handleAdminPricing(env);
-        }
-
-        if (path === "/api/v1/admin/pricing" && method === "POST") {
-          const auth = await requireAdminAuth(request, env);
-          if (!hasPermission(auth.role, "pricing:write")) throw error("Pricing write requires admin role", "FORBIDDEN", null, 403);
-          const res = await createAdminPricing(request, env);
-          await logAdminAction(env, auth, "create_plan", "pricing", "new_plan", { method });
-          return res;
-        }
-
-        if (path.startsWith("/api/v1/admin/pricing/") && path.endsWith("/toggle")) {
-          const auth = await requireAdminAuth(request, env);
-          if (!hasPermission(auth.role, "pricing:write")) throw error("Pricing write requires admin role", "FORBIDDEN", null, 403);
-          const planId = path.split("/")[5];
-          const res = await togglePlanStatus(request, env);
-          await logAdminAction(env, auth, "toggle_plan", "pricing", planId);
-          return res;
-        }
-
-        if (path.startsWith("/api/v1/admin/pricing/")) {
-          const auth = await requireAdminAuth(request, env);
-          const res = await handleAdminPricingById(request, env);
-          if (method === "PUT") {
-            const planId = path.split("/")[5];
-            await logAdminAction(env, auth, "update_plan", "pricing", planId, { method });
-          }
           return res;
         }
 
@@ -1632,11 +1672,36 @@ export default {
             return withCors(request, disconnectPlatform(request, env, auth, platformName));
         }
 
+        /* ---------- CHECKOUT ---------- */
+        if (method === "POST" && path === "/api/customer/checkout/create")
+          return withCors(request, createCheckout(request, env, auth));
+
+        if (method === "GET" && path.startsWith("/api/customer/checkouts/") && !path.endsWith("/cancel")) {
+          const checkoutId = path.split("/")[4];
+          return withCors(request, getCheckout(request, env, auth, checkoutId));
+        }
+
+        if (method === "POST" && path.startsWith("/api/customer/checkouts/") && path.endsWith("/cancel")) {
+          const checkoutId = path.split("/")[4];
+          return withCors(request, cancelCheckout(request, env, auth, checkoutId));
+        }
+
         /* ---------- BILLING ---------- */
         if (method === "GET" && path === "/api/customer/billing/plan") {
            const db = env.mypilotpost;
            const plan = await getCurrentPlan(db, auth.user_id);
-           return json({ plan }, 200, getCorsHeaders(request));
+           // Include brand_id and period info so frontend can initiate checkout without a separate call
+           const sub = await db.prepare(
+             "SELECT customer_id AS brand_id, current_period_start, current_period_end FROM subscriptions WHERE user_id = ? LIMIT 1"
+           ).bind(auth.user_id).first().catch(() => null);
+           return json({
+             plan: {
+               ...plan,
+               brand_id:             sub?.brand_id             || auth.brand_id || null,
+               current_period_start: sub?.current_period_start || null,
+               current_period_end:   sub?.current_period_end   || null,
+             }
+           }, 200, getCorsHeaders(request));
         }
 
         if (method === "GET" && path === "/api/customer/entitlements") {
@@ -1682,6 +1747,9 @@ export default {
            `).bind(auth.user_id).all();
            return json({ history: results || [] }, 200, getCorsHeaders(request));
         }
+
+        if (method === "GET" && path === "/api/customer/billing/refunds")
+          return withCors(request, getCustomerRefunds(request, env, auth));
 
         if (method === "GET" && path === "/api/customer/billing/usage") {
            const db = env.mypilotpost;

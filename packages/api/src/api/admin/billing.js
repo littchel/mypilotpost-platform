@@ -1,6 +1,6 @@
 // packages/api/src/api/admin/billing.js
 
-import { json } from "../../lib/json.js";
+import { json, error } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
 
 /**
@@ -75,3 +75,51 @@ export async function mrrHistory(env) {
 
   return json({ history });
 }
+
+/**
+ * GET /api/v1/admin/billing/payments
+ * Admin read-only view of all payments with checkout linkage.
+ */
+export async function listAdminPayments(env) {
+  const db = getDB(env);
+  const { results } = await db.prepare(`
+    SELECT
+      p.id, p.brand_id, p.provider, p.provider_event_id,
+      p.amount, p.currency, p.status, p.occurred_at, p.created_at,
+      p.checkout_id,
+      b.name AS brand_name,
+      u.email AS owner_email,
+      c.plan_id AS checkout_plan_id
+    FROM payments p
+    JOIN brands b ON b.id = p.brand_id
+    JOIN users u  ON u.id = b.owner_user_id
+    LEFT JOIN checkouts c ON c.id = p.checkout_id
+    ORDER BY p.occurred_at DESC
+    LIMIT 200
+  `).all();
+  return json({ payments: results || [] });
+}
+
+/**
+ * GET /api/v1/admin/billing/checkouts
+ * Admin read-only view of checkout sessions.
+ */
+export async function listAdminCheckouts(env) {
+  const db = getDB(env);
+  const { results } = await db.prepare(`
+    SELECT
+      co.id, co.brand_id, co.plan_id, co.billing_interval,
+      co.currency, co.localized_price, co.status,
+      co.country AS pricing_region,
+      co.created_at, co.expires_at, co.completed_at,
+      b.name AS brand_name,
+      u.email AS owner_email
+    FROM checkouts co
+    JOIN brands b ON b.id = co.brand_id
+    JOIN users u  ON u.id = b.owner_user_id
+    ORDER BY co.created_at DESC
+    LIMIT 200
+  `).all();
+  return json({ checkouts: results || [] });
+}
+
