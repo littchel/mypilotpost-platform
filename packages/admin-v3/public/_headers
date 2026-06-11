@@ -1,0 +1,20 @@
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Robots-Tag: noindex, nofollow
+
+/*.html
+  Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
+
+/
+  Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
+
+/login/
+  Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
+
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable

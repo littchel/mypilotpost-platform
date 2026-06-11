@@ -1,9 +1,0 @@
-name = "mypilotpost-admin-portal"
-account_id = "2e36b917221c87af13a139c07842b5b2"
-main = "worker.js"
-compatibility_date = "2026-05-28"
-compatibility_flags = ["nodejs_compat"]
-
-[assets]
-directory = "."
-binding = "ASSETS"
