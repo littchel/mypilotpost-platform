@@ -2,17 +2,111 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @layer base {
   * { box-sizing: border-box; }
-  html { font-family: Inter, system-ui, sans-serif; }
-  body { @apply bg-slate-50 text-slate-900 antialiased; }
+  html { font-family: Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  body { background: #0A0D14; color: #ECF0FF; }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #252D42; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #3A4460; }
+
+  ::selection { background: rgba(96,104,232,0.3); }
 }
 
 @layer components {
-  .scrollbar-thin {
-    scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 transparent;
+  .os-card {
+    @apply bg-os-surface border border-os-border rounded-lg;
+  }
+  .os-card-raised {
+    @apply bg-os-raised border border-os-border rounded-lg;
+  }
+  .os-input {
+    @apply w-full bg-os-raised border border-os-border rounded text-ink-1 text-sm px-3 py-2
+           placeholder:text-ink-3
+           focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/30
+           disabled:opacity-50 disabled:cursor-not-allowed
+           transition-colors;
+  }
+  .os-label {
+    @apply block text-xs font-medium text-ink-2 mb-1;
+  }
+  .os-divider {
+    @apply border-t border-os-border;
+  }
+  .os-btn-primary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded font-medium text-sm
+           bg-brand-500 text-white hover:bg-brand-600
+           disabled:opacity-50 disabled:cursor-not-allowed
+           transition-colors px-3 py-1.5;
+  }
+  .os-btn-secondary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded font-medium text-sm
+           bg-os-raised border border-os-border text-ink-1 hover:bg-os-strong/30 hover:border-os-strong
+           disabled:opacity-50 disabled:cursor-not-allowed
+           transition-colors px-3 py-1.5;
+  }
+  .os-btn-ghost {
+    @apply inline-flex items-center justify-center gap-1.5 rounded font-medium text-sm
+           text-ink-2 hover:bg-os-raised hover:text-ink-1
+           disabled:opacity-50 disabled:cursor-not-allowed
+           transition-colors px-2.5 py-1.5;
+  }
+  .os-btn-danger {
+    @apply inline-flex items-center justify-center gap-1.5 rounded font-medium text-sm
+           bg-red-600/90 text-white hover:bg-red-600
+           disabled:opacity-50 disabled:cursor-not-allowed
+           transition-colors px-3 py-1.5;
+  }
+
+  .os-table-row {
+    @apply border-b border-os-border/50 hover:bg-os-raised/50 transition-colors cursor-pointer;
+  }
+  .os-table-th {
+    @apply px-3 py-2.5 text-left text-2xs font-semibold text-ink-3 uppercase tracking-wider select-none;
+  }
+  .os-table-td {
+    @apply px-3 py-2.5 text-sm text-ink-1;
+  }
+
+  .os-badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-semibold uppercase tracking-wide;
+  }
+  .os-badge-success {
+    @apply os-badge bg-green-500/10 text-green-400 border border-green-500/20;
+  }
+  .os-badge-warning {
+    @apply os-badge bg-yellow-500/10 text-yellow-400 border border-yellow-500/20;
+  }
+  .os-badge-danger {
+    @apply os-badge bg-red-500/10 text-red-400 border border-red-500/20;
+  }
+  .os-badge-info {
+    @apply os-badge bg-blue-500/10 text-blue-400 border border-blue-500/20;
+  }
+  .os-badge-neutral {
+    @apply os-badge bg-os-raised text-ink-2 border border-os-border;
+  }
+  .os-badge-brand {
+    @apply os-badge bg-brand-500/10 text-brand-400 border border-brand-500/20;
+  }
+
+  .os-stat {
+    @apply os-card p-4;
+  }
+  .os-stat-value {
+    @apply text-2xl font-bold text-ink-1 tabular-nums;
+  }
+  .os-stat-label {
+    @apply text-xs text-ink-3 font-medium uppercase tracking-wide mt-0.5;
+  }
+  .os-stat-delta-up {
+    @apply text-xs text-green-400 font-medium;
+  }
+  .os-stat-delta-down {
+    @apply text-xs text-red-400 font-medium;
   }
 }

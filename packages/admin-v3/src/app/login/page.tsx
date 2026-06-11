@@ -1,14 +1,15 @@
 "use client";
-
-import { useState, FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { apiLogin } from "@/lib/api";
 import { setToken, getSession } from "@/lib/auth";
 import { useSession } from "@/context/SessionContext";
+import { Zap, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const { refresh } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -27,72 +28,81 @@ export default function LoginPage() {
       refresh();
       window.location.href = "/";
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Login failed";
-      setError(msg);
+      setError(err instanceof Error ? err.message : "Login failed");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <span className="text-2xl font-bold text-white tracking-tight">myPilotPost</span>
-          <p className="mt-1 text-sm text-slate-400">Admin Workspace</p>
+    <div className="flex min-h-screen items-center justify-center bg-os-bg px-4">
+      <div className="w-full max-w-[340px]">
+        <div className="flex flex-col items-center mb-8">
+          <div className="h-12 w-12 rounded-2xl bg-brand-500 flex items-center justify-center mb-4 shadow-os-lg">
+            <Zap className="h-6 w-6 text-white" />
+          </div>
+          <h1 className="text-xl font-bold text-ink-1">myPilotPost</h1>
+          <p className="text-sm text-ink-3 mt-1">Admin Operating System</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="rounded-xl bg-slate-900 p-8 shadow-2xl border border-slate-800">
-          <h1 className="mb-6 text-lg font-semibold text-white">Sign in</h1>
+        <div className="os-card p-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2.5 text-sm text-red-400">
+                {error}
+              </div>
+            )}
 
-          {error && (
-            <div className="mb-4 rounded-lg bg-red-900/40 border border-red-700 px-4 py-3 text-sm text-red-300">
-              {error}
-            </div>
-          )}
-
-          <div className="space-y-4">
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-slate-400 uppercase tracking-wider">
-                Email
-              </label>
+            <div className="space-y-1">
+              <label className="os-label">Email address</label>
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                onChange={e => setEmail(e.target.value)}
+                className="os-input"
                 placeholder="admin@mypilotpost.com"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-slate-400 uppercase tracking-wider">
-                Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
                 required
-                autoComplete="current-password"
-                className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                autoFocus
+                autoComplete="email"
               />
             </div>
-          </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-6 w-full rounded-lg bg-brand-600 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? "Signing in…" : "Sign in"}
-          </button>
-        </form>
+            <div className="space-y-1">
+              <label className="os-label">Password</label>
+              <div className="relative">
+                <input
+                  type={showPw ? "text" : "password"}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  className="os-input pr-9"
+                  placeholder="••••••••"
+                  required
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw(v => !v)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink-2 transition-colors"
+                >
+                  {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
 
-        <p className="mt-4 text-center text-xs text-slate-600">
-          Admin access only. Unauthorized access is prohibited.
+            <button
+              type="submit"
+              disabled={loading || !email || !password}
+              className="os-btn-primary w-full justify-center h-9"
+            >
+              {loading
+                ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                : "Sign in"}
+            </button>
+          </form>
+        </div>
+
+        <p className="text-center text-xs text-ink-4 mt-4">
+          Admin access only. Unauthorized use is prohibited.
         </p>
       </div>
     </div>

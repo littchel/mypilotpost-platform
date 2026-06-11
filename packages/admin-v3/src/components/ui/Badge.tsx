@@ -1,48 +1,52 @@
 import { cn } from "@/lib/utils";
+import type { ReactNode } from "react";
 
-type BadgeVariant = "default" | "success" | "warning" | "danger" | "info" | "neutral";
+export type BadgeVariant = "success" | "warning" | "danger" | "info" | "neutral" | "brand";
 
-const VARIANTS: Record<BadgeVariant, string> = {
-  default:  "bg-slate-100 text-slate-700",
-  success:  "bg-green-100 text-green-700",
-  warning:  "bg-amber-100 text-amber-700",
-  danger:   "bg-red-100 text-red-700",
-  info:     "bg-blue-100 text-blue-700",
-  neutral:  "bg-slate-100 text-slate-500",
+const V: Record<BadgeVariant, string> = {
+  success: "os-badge-success",
+  warning: "os-badge-warning",
+  danger:  "os-badge-danger",
+  info:    "os-badge-info",
+  neutral: "os-badge-neutral",
+  brand:   "os-badge-brand",
+};
+
+const DOTS: Record<BadgeVariant, string> = {
+  success: "bg-green-400",
+  warning: "bg-yellow-400",
+  danger:  "bg-red-400",
+  info:    "bg-blue-400",
+  neutral: "bg-ink-3",
+  brand:   "bg-brand-400",
 };
 
 interface BadgeProps {
-  children: React.ReactNode;
   variant?: BadgeVariant;
+  children: ReactNode;
   className?: string;
+  dot?: boolean;
 }
 
-export function Badge({ children, variant = "default", className }: BadgeProps) {
+export function Badge({ variant = "neutral", children, className, dot }: BadgeProps) {
   return (
-    <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", VARIANTS[variant], className)}>
+    <span className={cn(V[variant], className)}>
+      {dot && <span className={cn("h-1.5 w-1.5 rounded-full", DOTS[variant])} />}
       {children}
     </span>
   );
 }
 
+export function statusBadge(status: string): BadgeVariant {
+  const s = (status ?? "").toLowerCase();
+  if (["active","published","success","connected","healthy","approved","verified","open","resolved"].includes(s)) return "success";
+  if (["trial","pending","review","degraded","warning","in_progress","changes_requested"].includes(s)) return "warning";
+  if (["inactive","failed","error","down","rejected","disabled","closed","past_due","at_risk","critical"].includes(s)) return "danger";
+  if (["info","running"].includes(s)) return "info";
+  if (["draft","archived","expired","cancelled","queued"].includes(s)) return "neutral";
+  return "neutral";
+}
+
 export function statusVariant(status: string): BadgeVariant {
-  switch (status) {
-    case "active":
-    case "approved":
-    case "resolved":
-    case "healthy":     return "success";
-    case "trial":
-    case "pending":
-    case "in_progress":
-    case "warning":     return "warning";
-    case "past_due":
-    case "rejected":
-    case "critical":
-    case "error":
-    case "at_risk":     return "danger";
-    case "cancelled":
-    case "archived":
-    case "closed":      return "neutral";
-    default:            return "default";
-  }
+  return statusBadge(status);
 }

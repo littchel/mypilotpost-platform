@@ -1,144 +1,205 @@
 "use client";
-
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
-import { Card } from "@/components/ui/Card";
-import { Badge, statusVariant } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { Drawer } from "@/components/ui/Drawer";
-import { EmptyState } from "@/components/ui/EmptyState";
 import {
-  apiListSupportThreads, apiGetSupportThread, apiReplySupportThread, apiUpdateSupportThread,
+  apiListSupportRequests, apiUpdateSupportRequest, apiSendSupportMessage,
 } from "@/lib/api";
-import { fmtRelative, fmtDate } from "@/lib/utils";
-import type { SupportThread, SupportMessage } from "@/types";
-import { MessageSquare, Search, Send } from "lucide-react";
+import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
+import { Tabs } from "@/components/ui/Tabs";
+import { Badge, statusBadge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Select } from "@/components/ui/Input";
+import { useToast } from "@/context/ToastContext";
+import {
+  Headphones, Send, CheckCircle, AlertCircle,
+  ArrowUpRight, MessageSquare, User, Clock, RefreshCw,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { SupportRequest } from "@/types";
 
-const STATUS_FILTERS = ["all", "open", "in_progress", "resolved", "closed"];
+function timeAgo(d: string) {
+  const diff = Date.now() - new Date(d).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
 
-function ThreadRow({ t, selected, onClick }: { t: SupportThread; selected: boolean; onClick: () => void }) {
+function RequestRow({ req, active, onClick }: { req: SupportRequest; active: boolean; onClick: () => void }) {
   return (
-    <div
+    <button
       onClick={onClick}
-      className={`cursor-pointer rounded-lg px-4 py-3 transition-colors hover:bg-slate-50 ${selected ? "bg-blue-50 border border-blue-200" : "border border-transparent"}`}
+      className={cn(
+        "w-full text-left px-4 py-3 border-b border-os-border/50 transition-colors",
+        active ? "bg-brand-500/10 border-l-2 border-l-brand-500" : "hover:bg-os-raised/50"
+      )}
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-slate-900 truncate">{t.subject ?? "(No subject)"}</p>
-          <p className="text-xs text-slate-500 truncate">{t.email ?? t.user_id}</p>
-        </div>
-        <div className="shrink-0 flex flex-col items-end gap-1">
-          <Badge variant={statusVariant(t.status)} className="capitalize">{t.status.replace("_", " ")}</Badge>
-          <span className="text-[10px] text-slate-400">{t.last_message_at ? fmtRelative(t.last_message_at) : fmtDate(t.created_at)}</span>
-        </div>
+        <p className="text-sm font-medium text-ink-1 truncate">{req.subject ?? req.category}</p>
+        <Badge variant={req.priority === "urgent" ? "danger" : req.priority === "high" ? "warning" : "neutral"}>
+          {req.priority ?? "normal"}
+        </Badge>
       </div>
-    </div>
+      <p className="text-xs text-ink-3 mt-1 truncate">{req.user_email ?? req.user_id}</p>
+      <div className="flex items-center gap-2 mt-1.5">
+        <Badge variant={statusBadge(req.status)}>{req.status}</Badge>
+        <span className="text-2xs text-ink-4">{timeAgo(req.created_at)}</span>
+      </div>
+    </button>
   );
 }
 
-function MessageBubble({ msg }: { msg: SupportMessage }) {
-  const isAdmin = msg.is_admin;
-  return (
-    <div className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}>
-      <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm ${
-        isAdmin
-          ? "bg-brand-600 text-white rounded-br-sm"
-          : "bg-slate-100 text-slate-800 rounded-bl-sm"
-      }`}>
-        <p className="whitespace-pre-wrap">{msg.message}</p>
-        <p className={`mt-1 text-[10px] ${isAdmin ? "text-brand-200" : "text-slate-400"}`}>
-          {fmtRelative(msg.created_at)}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function ThreadDetail({ thread }: { thread: SupportThread }) {
+function ThreadView({ req, onUpdate }: { req: SupportRequest; onUpdate: () => void }) {
   const qc = useQueryClient();
-  const [reply, setReply] = useState("");
-  const [newStatus, setNewStatus] = useState(thread.status);
+  const toast = useToast();
+  const [message, setMessage] = useState("");
+  const [resolution, setResolution] = useState(req.resolution ?? "");
+  const endRef = useRef<HTMLDivElement>(null);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["support-thread", thread.id],
-    queryFn: () => apiGetSupportThread(thread.id),
-  });
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [req.id]);
 
-  const sendReply = useMutation({
-    mutationFn: () => apiReplySupportThread(thread.id, reply),
+  const sendMut = useMutation({
+    mutationFn: () => apiSendSupportMessage(req.user_id, message),
     onSuccess: () => {
-      setReply("");
-      qc.invalidateQueries({ queryKey: ["support-thread", thread.id] });
-      qc.invalidateQueries({ queryKey: ["support-threads"] });
+      toast.success("Message sent");
+      setMessage("");
+      onUpdate();
     },
+    onError: () => toast.error("Failed to send message"),
   });
 
-  const updateStatus = useMutation({
-    mutationFn: (status: string) => apiUpdateSupportThread(thread.id, { status }),
+  const updateMut = useMutation({
+    mutationFn: (body: Record<string, unknown>) => apiUpdateSupportRequest(req.id, body),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["support-threads"] });
-      qc.invalidateQueries({ queryKey: ["support-thread", thread.id] });
+      toast.success("Request updated");
+      onUpdate();
     },
+    onError: () => toast.error("Failed to update request"),
   });
-
-  const messages = data?.messages ?? [];
 
   return (
-    <div className="flex flex-col h-full -m-6">
+    <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="border-b border-slate-200 px-6 py-4">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <p className="font-semibold text-slate-900">{data?.subject ?? thread.subject ?? "(No subject)"}</p>
-            <p className="text-xs text-slate-500">{data?.email ?? thread.email}</p>
+      <div className="px-5 py-4 border-b border-os-border shrink-0">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold text-ink-1 truncate">{req.subject ?? req.category}</h2>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <Badge variant={statusBadge(req.status)}>{req.status}</Badge>
+              {req.priority && <Badge variant={req.priority === "urgent" ? "danger" : req.priority === "high" ? "warning" : "neutral"}>{req.priority}</Badge>}
+              <span className="text-xs text-ink-3">{req.user_email ?? req.user_id}</span>
+              <span className="text-xs text-ink-3">{timeAgo(req.created_at)}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <select
-              value={newStatus}
-              onChange={(e) => {
-                setNewStatus(e.target.value as SupportThread["status"]);
-                updateStatus.mutate(e.target.value);
-              }}
-              className="rounded-lg border border-slate-300 px-2 py-1 text-xs"
+          <div className="flex gap-1.5 shrink-0">
+            <Button variant="secondary" size="sm" onClick={() => updateMut.mutate({ status: "in_progress" })} disabled={req.status === "in_progress" || req.status === "resolved"}>
+              In progress
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              icon={<CheckCircle className="h-3.5 w-3.5" />}
+              onClick={() => updateMut.mutate({ status: "resolved" })}
+              disabled={req.status === "resolved"}
+              loading={updateMut.isPending}
             >
-              {STATUS_FILTERS.filter((s) => s !== "all").map((s) => (
-                <option key={s} value={s}>{s.replace("_", " ")}</option>
-              ))}
-            </select>
+              Resolve
+            </Button>
           </div>
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto space-y-3 px-6 py-4">
-        {isLoading ? (
-          <div className="flex justify-center py-8">
-            <span className="h-6 w-6 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+      {/* Original message */}
+      <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="h-7 w-7 rounded-full bg-os-raised border border-os-border flex items-center justify-center shrink-0">
+            <User className="h-3.5 w-3.5 text-ink-3" />
           </div>
-        ) : messages.length === 0 ? (
-          <p className="text-center text-sm text-slate-400 py-8">No messages yet.</p>
-        ) : (
-          messages.map((msg) => <MessageBubble key={msg.id} msg={msg} />)
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-medium text-ink-1">{req.user_email ?? req.user_id}</span>
+              <span className="text-2xs text-ink-4">{timeAgo(req.created_at)}</span>
+            </div>
+            <div className="bg-os-raised border border-os-border rounded-lg px-4 py-3">
+              <p className="text-sm text-ink-1 whitespace-pre-wrap">{req.message}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Resolution (if resolved) */}
+        {req.resolution && (
+          <div className="flex items-start gap-3 justify-end">
+            <div className="flex-1 max-w-[80%]">
+              <div className="flex items-center gap-2 mb-1 justify-end">
+                <span className="text-2xs text-ink-4">{req.updated_at ? timeAgo(req.updated_at) : ""}</span>
+                <span className="text-xs font-medium text-brand-300">Admin</span>
+              </div>
+              <div className="bg-brand-500/10 border border-brand-500/20 rounded-lg px-4 py-3">
+                <p className="text-sm text-ink-1 whitespace-pre-wrap">{req.resolution}</p>
+              </div>
+            </div>
+            <div className="h-7 w-7 rounded-full bg-brand-500/20 border border-brand-500/30 flex items-center justify-center shrink-0">
+              <span className="text-xs font-bold text-brand-300">A</span>
+            </div>
+          </div>
         )}
+
+        <div ref={endRef} />
       </div>
 
-      {/* Reply box */}
-      <div className="border-t border-slate-200 px-6 py-4">
+      {/* Status + category update */}
+      <div className="px-5 py-3 border-t border-os-border bg-os-raised/30 shrink-0">
+        <div className="flex gap-2 mb-3">
+          <Select
+            options={[
+              { value: "open", label: "Open" },
+              { value: "in_progress", label: "In progress" },
+              { value: "resolved", label: "Resolved" },
+              { value: "closed", label: "Closed" },
+            ]}
+            value={req.status}
+            onChange={v => updateMut.mutate({ status: v })}
+            className="h-8 text-xs flex-1"
+          />
+          <Select
+            options={[
+              { value: "low", label: "Low" },
+              { value: "normal", label: "Normal" },
+              { value: "high", label: "High" },
+              { value: "urgent", label: "Urgent" },
+            ]}
+            value={req.priority ?? "normal"}
+            onChange={v => updateMut.mutate({ priority: v })}
+            className="h-8 text-xs flex-1"
+          />
+        </div>
+
+        {/* Reply */}
         <div className="flex gap-2">
           <textarea
-            value={reply}
-            onChange={(e) => setReply(e.target.value)}
-            placeholder="Type your reply…"
-            rows={3}
-            className="flex-1 resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+            value={message}
+            onChange={e => setMessage(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && message.trim()) {
+                e.preventDefault();
+                sendMut.mutate();
+              }
+            }}
+            placeholder="Reply to customer... (⌘+Enter to send)"
+            rows={2}
+            className="os-input flex-1 resize-none"
           />
           <Button
-            size="sm"
-            icon={<Send className="h-3.5 w-3.5" />}
-            loading={sendReply.isPending}
-            disabled={!reply.trim()}
-            onClick={() => sendReply.mutate()}
+            variant="primary"
+            icon={<Send className="h-4 w-4" />}
+            onClick={() => sendMut.mutate()}
+            disabled={!message.trim()}
+            loading={sendMut.isPending}
             className="self-end"
           >
             Send
@@ -150,97 +211,90 @@ function ThreadDetail({ thread }: { thread: SupportThread }) {
 }
 
 export default function SupportPage() {
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("open");
-  const [selectedThread, setSelectedThread] = useState<SupportThread | null>(null);
+  const qc = useQueryClient();
+  const [tab, setTab] = useState("open");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const params: Record<string, string | number> = { per_page: 100 };
-  if (search) params.search = search;
-  if (filter !== "all") params.status = filter;
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["support-threads", params],
-    queryFn: () => apiListSupportThreads(params),
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["support-requests", tab],
+    queryFn: () => apiListSupportRequests({ status: tab }),
+    staleTime: 30_000,
   });
 
-  const threads = data?.data ?? [];
-  const openCount = threads.filter((t) => t.status === "open").length;
+  const requests = data?.data ?? [];
+  const selected = requests.find(r => r.id === selectedId) ?? null;
+
+  const counts = {
+    open: requests.filter(r => r.status === "open").length,
+    in_progress: requests.filter(r => r.status === "in_progress").length,
+    resolved: 0,
+    closed: 0,
+  };
 
   return (
-    <WorkspaceLayout workspace="support" title="Support Center" subtitle="Unified inbox and ticket timeline">
-      <div className="flex h-[calc(100vh-8rem)] gap-4">
-        {/* Thread list */}
-        <div className="flex w-80 shrink-0 flex-col">
-          <Card padding="none" className="flex flex-col h-full">
-            {/* Search + filter */}
-            <div className="border-b border-slate-200 p-3 space-y-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                <input
-                  type="search"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search…"
-                  className="w-full rounded-lg border border-slate-300 bg-white pl-8 pr-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none"
-                />
-              </div>
-              <div className="flex gap-1 flex-wrap">
-                {STATUS_FILTERS.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setFilter(s)}
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors capitalize ${
-                      filter === s
-                        ? "bg-brand-600 text-white"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                    }`}
-                  >
-                    {s === "open" ? `open (${openCount})` : s.replace("_", " ")}
-                  </button>
+    <WorkspaceLayout
+      workspace="support"
+      title="Support Center"
+      subtitle="Customer tickets and requests"
+      onRefresh={() => qc.invalidateQueries({ queryKey: ["support-requests"] })}
+      noPadding
+    >
+      <div className="flex h-full overflow-hidden">
+        {/* Left panel — thread list */}
+        <div className="w-[320px] shrink-0 border-r border-os-border flex flex-col h-full">
+          <div className="px-4 py-3 border-b border-os-border shrink-0">
+            <Tabs
+              tabs={[
+                { id: "open", label: "Open", count: counts.open },
+                { id: "in_progress", label: "Active", count: counts.in_progress },
+                { id: "resolved", label: "Resolved" },
+                { id: "closed", label: "Closed" },
+              ]}
+              active={tab}
+              onChange={id => { setTab(id); setSelectedId(null); }}
+              size="sm"
+              variant="pills"
+            />
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {isLoading ? (
+              <div className="space-y-1 p-2 animate-pulse">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="h-20 bg-os-raised rounded" />
                 ))}
               </div>
-            </div>
-
-            {/* List */}
-            <div className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-thin">
-              {isLoading ? (
-                <div className="flex justify-center py-8">
-                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
-                </div>
-              ) : threads.length === 0 ? (
-                <EmptyState
-                  icon={<MessageSquare className="h-8 w-8" />}
-                  title="No tickets"
-                  description="No tickets match this filter."
+            ) : error ? (
+              <EmptyState icon={<AlertCircle className="h-8 w-8" />} title="Failed to load" description="Check API connectivity." />
+            ) : requests.length === 0 ? (
+              <EmptyState icon={<Headphones className="h-8 w-8" />} title={`No ${tab} tickets`} />
+            ) : (
+              requests.map(r => (
+                <RequestRow
+                  key={r.id}
+                  req={r}
+                  active={r.id === selectedId}
+                  onClick={() => setSelectedId(r.id)}
                 />
-              ) : (
-                threads.map((t) => (
-                  <ThreadRow
-                    key={t.id}
-                    t={t}
-                    selected={selectedThread?.id === t.id}
-                    onClick={() => setSelectedThread(t)}
-                  />
-                ))
-              )}
-            </div>
-          </Card>
+              ))
+            )}
+          </div>
         </div>
 
-        {/* Thread detail */}
-        <div className="flex-1">
-          {selectedThread ? (
-            <Card padding="md" className="h-full overflow-hidden">
-              <ThreadDetail thread={selectedThread} />
-            </Card>
+        {/* Right panel — thread view */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {selected ? (
+            <ThreadView
+              req={selected}
+              onUpdate={() => qc.invalidateQueries({ queryKey: ["support-requests", tab] })}
+            />
           ) : (
-            <Card className="flex h-full items-center justify-center">
+            <div className="flex flex-col items-center justify-center h-full">
               <EmptyState
-                icon={<MessageSquare className="h-12 w-12" />}
+                icon={<MessageSquare className="h-10 w-10" />}
                 title="Select a ticket"
-                description="Choose a thread from the left to view the conversation."
+                description="Click a request on the left to view the conversation."
               />
-            </Card>
+            </div>
           )}
         </div>
       </div>

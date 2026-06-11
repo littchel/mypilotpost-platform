@@ -1,251 +1,227 @@
 "use client";
-
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
-import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { StatCard } from "@/components/ui/StatCard";
 import {
-  apiListKillSwitches, apiUpdateKillSwitch, apiListAuditLog, apiGetTokenOps,
+  apiGetSystemEvents,
+  apiListKillSwitches, apiUpdateKillSwitch,
+  apiListAuditLog,
 } from "@/lib/api";
-import { fmtDate, fmtRelative, fmtNum } from "@/lib/utils";
-import { Settings, Activity, DollarSign, AlertTriangle } from "lucide-react";
-import type { KillSwitch, AuditLogEntry } from "@/types";
+import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
+import { Tabs } from "@/components/ui/Tabs";
+import { DataTable, type Column } from "@/components/ui/DataTable";
+import { Badge, statusBadge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/Dialog";
+import { useToast } from "@/context/ToastContext";
+import {
+  Radio, Zap, FileText,
+  CheckCircle, XCircle, AlertTriangle, Power, PowerOff,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { SystemEvent, KillSwitch, AuditLogEntry } from "@/types";
 
-type ConfigTab = "kill-switches" | "audit-log" | "token-ops";
-
-export default function ConfigPage() {
-  const [tab, setTab] = useState<ConfigTab>("kill-switches");
-
-  return (
-    <WorkspaceLayout workspace="config" title="Platform Config" subtitle="Kill switches, audit log, and token operations">
-      <div className="mb-6 flex gap-1 rounded-xl bg-slate-100 p-1 w-fit">
-        {([
-          ["kill-switches", "Kill Switches"],
-          ["audit-log",    "Audit Log"],
-          ["token-ops",    "Token Ops"],
-        ] as [ConfigTab, string][]).map(([t, label]) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
-              tab === t ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      {tab === "kill-switches" && <KillSwitchesTab />}
-      {tab === "audit-log"     && <AuditLogTab />}
-      {tab === "token-ops"     && <TokenOpsTab />}
-    </WorkspaceLayout>
-  );
+function fmt(d?: string | null) {
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-// ── Kill Switches ─────────────────────────────────────────────────────────────
+function fmtRel(d: string) {
+  const diff = Date.now() - new Date(d).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
 
-function KillSwitchRow({ sw }: { sw: KillSwitch }) {
-  const qc = useQueryClient();
-  const toggle = useMutation({
-    mutationFn: (enabled: boolean) => apiUpdateKillSwitch(sw.key, enabled),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["kill-switches"] }),
+const SEV_COLOR: Record<string, string> = {
+  info: "text-blue-400", warning: "text-yellow-400", error: "text-red-400", critical: "text-red-500",
+};
+const SEV_ICON: Record<string, React.ElementType> = {
+  info: CheckCircle, warning: AlertTriangle, error: XCircle, critical: XCircle,
+};
+
+function EventsTab() {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["system-events-config"],
+    queryFn: () => apiGetSystemEvents({ limit: 200 }),
+    refetchInterval: 30_000,
   });
 
+  const events: SystemEvent[] = (data as { events?: SystemEvent[] } | undefined)?.events
+    ?? (data as { data?: SystemEvent[] } | undefined)?.data ?? [];
+
+  const COLS: Column<SystemEvent>[] = [
+    { key: "severity", header: "Severity", render: r => <Badge variant={statusBadge(r.severity)}>{r.severity}</Badge> },
+    { key: "source", header: "Source", render: r => <span className="font-mono text-xs text-ink-2">{r.source}</span> },
+    { key: "message", header: "Message", render: r => <span className="text-sm text-ink-1">{r.message}</span> },
+    { key: "created_at", header: "When", sortable: true, render: r => <span className="text-sm text-ink-2">{fmtRel(r.created_at)}</span> },
+  ];
+
   return (
-    <div className="flex items-center justify-between px-5 py-3.5">
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="text-sm font-medium text-slate-900">{sw.label ?? sw.key}</p>
-          {!sw.enabled && <Badge variant="danger">DISABLED</Badge>}
-        </div>
-        {sw.description && <p className="text-xs text-slate-500">{sw.description}</p>}
-        <p className="text-[10px] font-mono text-slate-400">{sw.key}</p>
-      </div>
-      <div className="flex items-center gap-3 shrink-0">
-        {sw.updated_at && <span className="text-xs text-slate-400">{fmtRelative(sw.updated_at)}</span>}
-        <button
-          disabled={toggle.isPending}
-          onClick={() => {
-            if (!sw.enabled || confirm(`Disable "${sw.label ?? sw.key}"? This may affect live users.`)) {
-              toggle.mutate(!sw.enabled);
-            }
-          }}
-          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:opacity-50 ${
-            sw.enabled ? "bg-brand-600" : "bg-slate-300"
-          }`}
-        >
-          <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${sw.enabled ? "translate-x-4" : "translate-x-0.5"}`} />
-        </button>
-      </div>
-    </div>
+    <DataTable
+      data={events}
+      columns={COLS}
+      keyField="id"
+      searchable
+      searchPlaceholder="Search events..."
+      searchFields={["message", "source", "severity"]}
+      loading={isLoading}
+      error={error ? "Failed to load events" : undefined}
+      emptyTitle="No events"
+      emptyMessage="All systems operating normally."
+      exportFilename="system-events"
+    />
   );
 }
 
 function KillSwitchesTab() {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const [confirm, setConfirm] = useState<KillSwitch | null>(null);
+
   const { data, isLoading } = useQuery({ queryKey: ["kill-switches"], queryFn: apiListKillSwitches });
-  const switches = data?.switches ?? [];
-  const disabled = switches.filter((s) => !s.enabled);
+  const switches: KillSwitch[] = (data as { switches?: KillSwitch[]; controls?: KillSwitch[]; data?: KillSwitch[] } | undefined)?.switches
+    ?? (data as { controls?: KillSwitch[] } | undefined)?.controls
+    ?? (data as { data?: KillSwitch[] } | undefined)?.data ?? [];
+  const enabledCount = switches.filter(s => !!s.enabled).length;
 
-  return (
-    <div>
-      {disabled.length > 0 && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3">
-          <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
-          <p className="text-sm text-amber-800 font-medium">{disabled.length} feature{disabled.length > 1 ? "s" : ""} currently disabled</p>
-        </div>
-      )}
-      <Card padding="none">
-        <CardHeader className="border-b border-slate-100 px-5 py-4">
-          <CardTitle>Feature Kill Switches ({switches.length})</CardTitle>
-        </CardHeader>
-        {isLoading ? (
-          <div className="flex justify-center py-8"><span className="h-5 w-5 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" /></div>
-        ) : switches.length === 0 ? (
-          <EmptyState title="No kill switches" description="No kill switches configured." />
-        ) : (
-          <div className="divide-y divide-slate-50">
-            {switches.map((sw) => <KillSwitchRow key={sw.key} sw={sw} />)}
-          </div>
-        )}
-      </Card>
-    </div>
-  );
-}
-
-// ── Audit Log ─────────────────────────────────────────────────────────────────
-
-function AuditLogTab() {
-  const [page, setPage] = useState(1);
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["audit-log", page],
-    queryFn: () => apiListAuditLog({ page, per_page: 50 }),
+  const toggleMut = useMutation({
+    mutationFn: (s: KillSwitch) => apiUpdateKillSwitch(s.key, !s.enabled, s.reason),
+    onSuccess: (_, s) => {
+      toast.success(`Kill switch ${s.enabled ? "disabled" : "enabled"}`, s.key);
+      qc.invalidateQueries({ queryKey: ["kill-switches"] });
+      setConfirm(null);
+    },
+    onError: () => toast.error("Failed to toggle kill switch"),
   });
 
-  const entries: AuditLogEntry[] = data?.data ?? [];
-  const total = data?.total ?? 0;
-
   return (
-    <Card padding="none">
-      <CardHeader className="border-b border-slate-100 px-5 py-4">
-        <CardTitle>Audit Log ({fmtNum(total)})</CardTitle>
-      </CardHeader>
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-os-raised border border-os-border rounded text-sm text-ink-2">
+          <Zap className="h-3.5 w-3.5 text-brand-500" />
+          <span>{enabledCount} active</span>
+          <span className="text-ink-4">·</span>
+          <span>{switches.length - enabledCount} inactive</span>
+        </div>
+        {enabledCount > 0 && <Badge variant="warning">{enabledCount} enabled</Badge>}
+      </div>
+
       {isLoading ? (
-        <div className="flex justify-center py-8"><span className="h-5 w-5 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" /></div>
-      ) : entries.length === 0 ? (
-        <EmptyState title="No audit entries" description="No log entries recorded yet." />
+        <div className="space-y-2 animate-pulse">{Array.from({length:8}).map((_,i) => <div key={i} className="h-14 bg-os-raised rounded-lg" />)}</div>
+      ) : switches.length === 0 ? (
+        <div className="py-16 text-center text-sm text-ink-3">No kill switches configured</div>
       ) : (
-        <>
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-slate-100 bg-slate-50">
-                {["Time", "Admin", "Action", "Resource", "ID"].map((h) => (
-                  <th key={h} className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-500">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {entries.map((e) => (
-                <tr key={e.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-2.5 text-xs text-slate-500 whitespace-nowrap">{fmtRelative(e.created_at)}</td>
-                  <td className="px-4 py-2.5 text-xs text-slate-700 truncate max-w-[140px]">{e.admin_email ?? e.admin_id ?? "system"}</td>
-                  <td className="px-4 py-2.5"><code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-mono text-slate-700">{e.action}</code></td>
-                  <td className="px-4 py-2.5 text-xs text-slate-600 capitalize">{e.resource_type ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-xs font-mono text-slate-400 truncate max-w-[80px]">{e.resource_id ?? "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {total > 50 && (
-            <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3 text-sm">
-              <Button variant="secondary" size="sm" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>Previous</Button>
-              <span className="text-slate-500">Page {page} of {Math.ceil(total / 50)}</span>
-              <Button variant="secondary" size="sm" disabled={page * 50 >= total} onClick={() => setPage((p) => p + 1)}>Next</Button>
-            </div>
-          )}
-        </>
+        <div className="space-y-2">
+          {switches.map(s => {
+            const isEnabled = !!s.enabled;
+            return (
+              <div key={s.key} className={cn(
+                "flex items-center justify-between gap-3 px-4 py-3.5 rounded-lg border transition-colors",
+                isEnabled ? "bg-red-500/5 border-red-500/20" : "bg-os-surface border-os-border"
+              )}>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm text-ink-1">{s.key}</span>
+                    {isEnabled && <Badge variant="danger" dot>ENABLED</Badge>}
+                  </div>
+                  {s.reason && <p className="text-xs text-ink-3 mt-0.5">{s.reason}</p>}
+                  {s.updated_at && <p className="text-2xs text-ink-4 mt-0.5">Updated {fmtRel(s.updated_at)}{s.updated_by ? ` by ${s.updated_by}` : ""}</p>}
+                </div>
+                <Button
+                  variant={isEnabled ? "danger" : "secondary"}
+                  size="sm"
+                  icon={isEnabled ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
+                  onClick={() => setConfirm(s)}
+                >
+                  {isEnabled ? "Disable" : "Enable"}
+                </Button>
+              </div>
+            );
+          })}
+        </div>
       )}
-    </Card>
+
+      {confirm && (
+        <ConfirmDialog
+          open onClose={() => setConfirm(null)}
+          onConfirm={() => toggleMut.mutate(confirm)}
+          loading={toggleMut.isPending}
+          title={confirm.enabled ? `Disable kill switch` : `Enable kill switch`}
+          description={`${confirm.enabled ? "Restore" : "Halt"} the "${confirm.key}" feature gate?`}
+          type={confirm.enabled ? "info" : "danger"}
+          confirmLabel={confirm.enabled ? "Disable" : "Enable"}
+          confirmVariant={confirm.enabled ? "primary" : "danger"}
+        />
+      )}
+    </div>
   );
 }
 
-// ── Token Ops ─────────────────────────────────────────────────────────────────
+const AUDIT_COLS: Column<AuditLogEntry>[] = [
+  { key: "action", header: "Action", sortable: true, render: r => <span className="font-mono text-xs text-ink-1">{r.action}</span> },
+  { key: "admin_email", header: "Admin", render: r => <span className="text-sm text-ink-2">{r.admin_email ?? r.admin_id ?? "—"}</span> },
+  { key: "resource_type", header: "Resource", render: r => <span className="text-sm text-ink-2">{r.resource_type ?? "—"}{r.resource_id ? ` #${r.resource_id}` : ""}</span> },
+  { key: "ip", header: "IP", render: r => <span className="font-mono text-xs text-ink-3">{r.ip ?? "—"}</span> },
+  { key: "created_at", header: "When", sortable: true, render: r => <span className="text-sm text-ink-2">{fmt(r.created_at)}</span> },
+];
 
-function TokenOpsTab() {
-  const { data, isLoading } = useQuery({ queryKey: ["token-ops"], queryFn: apiGetTokenOps });
+function AuditTab() {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["audit-log"], queryFn: () => apiListAuditLog({}),
+  });
 
-  if (isLoading) return <div className="flex justify-center py-12"><span className="h-6 w-6 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" /></div>;
-  if (!data) return <EmptyState title="No token data" description="Token usage tracking data is not available." />;
+  const logs: AuditLogEntry[] = (data as { logs?: AuditLogEntry[]; data?: AuditLogEntry[] } | undefined)?.logs
+    ?? (data as { data?: AuditLogEntry[] } | undefined)?.data ?? [];
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-3 gap-4">
-        <StatCard label="Today" value={fmtNum(data.today.tokens)} sub={`$${data.today.cost_usd.toFixed(2)}`} icon={<Activity className="h-4 w-4" />} />
-        <StatCard label="This week" value={fmtNum(data.week.tokens)} sub={`$${data.week.cost_usd.toFixed(2)}`} />
-        <StatCard label="This month" value={fmtNum(data.month.tokens)} sub={`$${data.month.cost_usd.toFixed(2)} · forecast $${data.forecast_month_usd.toFixed(2)}`} icon={<DollarSign className="h-4 w-4" />} />
+    <DataTable
+      data={logs}
+      columns={AUDIT_COLS}
+      keyField="id"
+      searchable
+      searchPlaceholder="Search audit log..."
+      searchFields={["action", "admin_email"]}
+      loading={isLoading}
+      error={error ? "Failed to load audit log" : undefined}
+      emptyTitle="No audit log entries"
+      exportFilename="audit-log"
+    />
+  );
+}
+
+export default function ConfigPage() {
+  const qc = useQueryClient();
+  const [tab, setTab] = useState("events");
+
+  return (
+    <WorkspaceLayout
+      workspace="config"
+      title="Platform Config"
+      subtitle="Events, kill switches, audit log"
+      onRefresh={() => {
+        ["system-events-config","kill-switches","audit-log"].forEach(k =>
+          qc.invalidateQueries({ queryKey: [k] })
+        );
+      }}
+    >
+      <div className="mb-5">
+        <Tabs
+          tabs={[
+            { id: "events", label: "Events", icon: <Radio className="h-3.5 w-3.5" /> },
+            { id: "kill-switches", label: "Kill Switches", icon: <Zap className="h-3.5 w-3.5" /> },
+            { id: "audit", label: "Audit Log", icon: <FileText className="h-3.5 w-3.5" /> },
+          ]}
+          active={tab}
+          onChange={setTab}
+        />
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
-        {/* By feature */}
-        <Card padding="none">
-          <CardHeader className="border-b border-slate-100 px-5 py-4">
-            <CardTitle>By Feature</CardTitle>
-          </CardHeader>
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-slate-100 bg-slate-50">
-                {["Feature", "Tokens", "Cost"].map((h) => (
-                  <th key={h} className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-500">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {Object.entries(data.by_feature).map(([key, v]) => (
-                <tr key={key} className="hover:bg-slate-50">
-                  <td className="px-4 py-2.5 text-sm text-slate-800 capitalize">{key.replace("_", " ")}</td>
-                  <td className="px-4 py-2.5 text-sm text-slate-600">{fmtNum(v.tokens)}</td>
-                  <td className="px-4 py-2.5 text-sm font-medium text-slate-900">${v.cost_usd.toFixed(2)}</td>
-                </tr>
-              ))}
-              {Object.keys(data.by_feature).length === 0 && (
-                <tr><td colSpan={3} className="px-4 py-4 text-sm text-slate-400">No feature data.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </Card>
-
-        {/* Top brands */}
-        <Card padding="none">
-          <CardHeader className="border-b border-slate-100 px-5 py-4">
-            <CardTitle>Top Brands by Usage</CardTitle>
-          </CardHeader>
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-slate-100 bg-slate-50">
-                {["Brand", "Tokens", "Cost"].map((h) => (
-                  <th key={h} className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-500">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {data.top_brands.map((b) => (
-                <tr key={b.brand_id} className="hover:bg-slate-50">
-                  <td className="px-4 py-2.5 text-sm text-slate-800">{b.brand_name ?? b.brand_id}</td>
-                  <td className="px-4 py-2.5 text-sm text-slate-600">{fmtNum(b.tokens)}</td>
-                  <td className="px-4 py-2.5 text-sm font-medium text-slate-900">${b.cost_usd.toFixed(2)}</td>
-                </tr>
-              ))}
-              {data.top_brands.length === 0 && (
-                <tr><td colSpan={3} className="px-4 py-4 text-sm text-slate-400">No brand data.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </Card>
-      </div>
-    </div>
+      {tab === "events" && <EventsTab />}
+      {tab === "kill-switches" && <KillSwitchesTab />}
+      {tab === "audit" && <AuditTab />}
+    </WorkspaceLayout>
   );
 }

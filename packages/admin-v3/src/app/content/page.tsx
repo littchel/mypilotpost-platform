@@ -1,258 +1,297 @@
 "use client";
-
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  apiListApprovals, apiUpdateApproval,
+  apiListBlogPosts, apiListCampaigns,
+  apiListMemoryEvents, apiListMemoryFeatures,
+} from "@/lib/api";
 import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
-import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Badge, statusVariant } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { Tabs } from "@/components/ui/Tabs";
+import { DataTable, type Column } from "@/components/ui/DataTable";
 import { Drawer } from "@/components/ui/Drawer";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { apiListBlogPosts, apiGetBlogPost, apiSaveBlogPost, apiListApprovals } from "@/lib/api";
-import { fmtDate, slugify } from "@/lib/utils";
-import type { BlogPost } from "@/types";
-import { FileText, Plus, Edit } from "lucide-react";
+import { Badge, statusBadge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { ConfirmDialog } from "@/components/ui/Dialog";
+import { useToast } from "@/context/ToastContext";
+import {
+  FileCheck, BookOpen, Megaphone, Brain,
+  CheckCircle, XCircle,
+} from "lucide-react";
+import type { ContentApproval, BlogPost, Campaign, MemoryEvent, MemoryFeature } from "@/types";
 
-type ContentTab = "blog" | "approvals";
-
-export default function ContentPage() {
-  const [tab, setTab] = useState<ContentTab>("blog");
-
-  return (
-    <WorkspaceLayout workspace="content" title="Content Operations" subtitle="Blog, email campaigns, and content approvals">
-      <div className="mb-6 flex gap-1 rounded-xl bg-slate-100 p-1 w-fit">
-        {(["blog", "approvals"] as ContentTab[]).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`rounded-lg px-4 py-1.5 text-sm font-medium capitalize transition-colors ${
-              tab === t ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
-            }`}
-          >
-            {t === "blog" ? "Blog CMS" : "Approvals"}
-          </button>
-        ))}
-      </div>
-      {tab === "blog"      && <BlogCMS />}
-      {tab === "approvals" && <Approvals />}
-    </WorkspaceLayout>
-  );
+function fmt(d?: string | null) {
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" });
 }
 
-// ── Blog CMS ──────────────────────────────────────────────────────────────────
+const APPROVAL_COLS: Column<ContentApproval>[] = [
+  { key: "content_title", header: "Title", sortable: true, render: r => <span className="text-sm text-ink-1 font-medium">{r.content_title ?? "Untitled"}</span> },
+  { key: "brand_name", header: "Brand", render: r => <span className="text-sm text-ink-2">{r.brand_name ?? "—"}</span> },
+  { key: "content_type", header: "Type", render: r => <Badge variant="brand">{r.content_type ?? r.type ?? "post"}</Badge> },
+  { key: "status", header: "Status", render: r => <Badge variant={statusBadge(r.status)}>{r.status}</Badge> },
+  { key: "created_at", header: "Submitted", sortable: true, render: r => <span className="text-sm text-ink-2">{fmt(r.created_at)}</span> },
+];
 
-const EMPTY_POST: BlogPost = {
-  title: "", slug: "", content: "", excerpt: "", status: "draft",
-  seo_title: "", seo_description: "",
-};
-
-function BlogCMS() {
+function ApprovalDrawer({ approval, onClose }: { approval: ContentApproval; onClose: () => void }) {
   const qc = useQueryClient();
-  const [filter, setFilter] = useState("all");
-  const [editPost, setEditPost] = useState<BlogPost | null>(null);
-  const [form, setForm] = useState<BlogPost>(EMPTY_POST);
+  const toast = useToast();
+  const [confirmAction, setConfirmAction] = useState<"approve" | "reject" | null>(null);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["blog-posts", filter],
-    queryFn: () => apiListBlogPosts(filter !== "all" ? { status: filter } : {}),
+  const approveMut = useMutation({
+    mutationFn: () => apiUpdateApproval(approval.id, "approved"),
+    onSuccess: () => {
+      toast.success("Content approved");
+      qc.invalidateQueries({ queryKey: ["approvals"] });
+      onClose();
+    },
+    onError: () => toast.error("Failed to approve"),
   });
 
-  const save = useMutation({
-    mutationFn: () => apiSaveBlogPost(form),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["blog-posts"] }); setEditPost(null); },
+  const rejectMut = useMutation({
+    mutationFn: () => apiUpdateApproval(approval.id, "rejected"),
+    onSuccess: () => {
+      toast.success("Content rejected");
+      qc.invalidateQueries({ queryKey: ["approvals"] });
+      onClose();
+    },
+    onError: () => toast.error("Failed to reject"),
   });
 
-  const posts = data?.data ?? [];
-
-  function openCreate() {
-    setForm(EMPTY_POST);
-    setEditPost(EMPTY_POST);
-  }
-
-  async function openEdit(slug: string) {
-    const post = await apiGetBlogPost(slug);
-    setForm(post);
-    setEditPost(post);
-  }
+  const canAct = approval.status === "pending" || approval.status === "review";
 
   return (
-    <div>
-      <div className="mb-4 flex items-center gap-3">
-        <div className="flex gap-1">
-          {["all", "draft", "published", "archived"].map((s) => (
-            <button
-              key={s}
-              onClick={() => setFilter(s)}
-              className={`rounded-full px-3 py-1 text-xs font-medium capitalize transition-colors ${
-                filter === s ? "bg-brand-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-        <div className="ml-auto">
-          <Button size="sm" icon={<Plus className="h-3.5 w-3.5" />} onClick={openCreate}>New post</Button>
-        </div>
-      </div>
-
-      <Card padding="none">
-        {isLoading ? (
-          <div className="flex justify-center py-12"><span className="h-6 w-6 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" /></div>
-        ) : posts.length === 0 ? (
-          <EmptyState icon={<FileText className="h-10 w-10" />} title="No posts" description="Create your first blog post." action={<Button onClick={openCreate}>Create</Button>} />
-        ) : (
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
-                {["Title", "Status", "Published", ""].map((h, i) => (
-                  <th key={i} className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-500">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {posts.map((p, i) => (
-                <tr key={i} className="hover:bg-slate-50">
-                  <td className="px-4 py-3">
-                    <p className="text-sm font-medium text-slate-900">{p.title}</p>
-                    <p className="text-xs text-slate-400 font-mono">{p.slug}</p>
-                  </td>
-                  <td className="px-4 py-3"><Badge variant={statusVariant(p.status)} className="capitalize">{p.status}</Badge></td>
-                  <td className="px-4 py-3 text-sm text-slate-600">{p.published_at ? fmtDate(p.published_at) : "—"}</td>
-                  <td className="px-4 py-3">
-                    <Button size="sm" variant="ghost" icon={<Edit className="h-3.5 w-3.5" />} onClick={() => openEdit(p.slug)}>Edit</Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Card>
-
-      <Drawer open={!!editPost} onClose={() => setEditPost(null)} title={form.id ? "Edit Post" : "New Post"} width="lg">
-        {editPost && (
-          <div className="space-y-4">
-            <Input
-              label="Title"
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value, slug: form.id ? form.slug : slugify(e.target.value) })}
-            />
-            <Input
-              label="Slug"
-              value={form.slug}
-              onChange={(e) => setForm({ ...form, slug: e.target.value })}
-              className="font-mono"
-            />
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">Status</label>
-              <select
-                value={form.status}
-                onChange={(e) => setForm({ ...form, status: e.target.value as BlogPost["status"] })}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              >
-                <option value="draft">Draft</option>
-                <option value="published">Published</option>
-                <option value="archived">Archived</option>
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">Excerpt</label>
-              <textarea
-                value={form.excerpt ?? ""}
-                onChange={(e) => setForm({ ...form, excerpt: e.target.value })}
-                rows={2}
-                className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">Content (Markdown)</label>
-              <textarea
-                value={form.content}
-                onChange={(e) => setForm({ ...form, content: e.target.value })}
-                rows={12}
-                className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-              />
-            </div>
-            <Input label="SEO title" value={form.seo_title ?? ""} onChange={(e) => setForm({ ...form, seo_title: e.target.value })} />
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">SEO description</label>
-              <textarea
-                value={form.seo_description ?? ""}
-                onChange={(e) => setForm({ ...form, seo_description: e.target.value })}
-                rows={2}
-                className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
-              />
-            </div>
-            <div className="flex gap-2 pt-2">
-              <Button loading={save.isPending} disabled={!form.title || !form.slug} onClick={() => save.mutate()}>
-                {form.id ? "Save changes" : "Publish draft"}
-              </Button>
-              <Button variant="secondary" onClick={() => setEditPost(null)}>Cancel</Button>
+    <>
+      <Drawer open onClose={onClose} title="Content Review" width="lg"
+        footer={
+          <div className="flex gap-2">
+            <Button variant="primary" icon={<CheckCircle className="h-4 w-4" />}
+              disabled={!canAct} loading={approveMut.isPending}
+              onClick={() => setConfirmAction("approve")}>Approve</Button>
+            <Button variant="danger" icon={<XCircle className="h-4 w-4" />}
+              disabled={approval.status === "approved" || approval.status === "rejected"}
+              loading={rejectMut.isPending}
+              onClick={() => setConfirmAction("reject")}>Reject</Button>
+            <Button variant="secondary" onClick={onClose}>Close</Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-base font-semibold text-ink-1">{approval.content_title ?? "Untitled"}</h2>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <span className="text-sm text-ink-3">{approval.brand_name ?? approval.brand_id}</span>
+              <Badge variant={statusBadge(approval.status)}>{approval.status}</Badge>
+              {(approval.content_type ?? approval.type) && <Badge variant="brand">{approval.content_type ?? approval.type}</Badge>}
             </div>
           </div>
-        )}
+
+          <Card padding="none">
+            <div className="divide-y divide-os-border">
+              {[
+                { label: "Content ID", value: approval.content_id },
+                { label: "Submitted", value: fmt(approval.created_at) },
+                { label: "Expires", value: fmt(approval.expires_at) },
+                { label: "Last updated", value: fmt(approval.updated_at) },
+              ].map(row => (
+                <div key={row.label} className="flex items-center justify-between px-4 py-2.5">
+                  <span className="text-xs text-ink-3">{row.label}</span>
+                  <span className="text-xs text-ink-1 font-mono">{row.value}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
       </Drawer>
-    </div>
+
+      <ConfirmDialog open={confirmAction === "approve"} onClose={() => setConfirmAction(null)}
+        onConfirm={() => approveMut.mutate()} loading={approveMut.isPending}
+        title="Approve content" description="Approve and publish this content?" type="info" />
+      <ConfirmDialog open={confirmAction === "reject"} onClose={() => setConfirmAction(null)}
+        onConfirm={() => rejectMut.mutate()} loading={rejectMut.isPending}
+        title="Reject content" description="Reject and remove this content from the queue?" type="danger"
+        confirmLabel="Reject" confirmVariant="danger" />
+    </>
   );
 }
 
-// ── Content Approvals ──────────────────────────────────────────────────────────
+function ApprovalsTab() {
+  const [tab, setTab] = useState("pending");
+  const [selected, setSelected] = useState<ContentApproval | null>(null);
 
-function Approvals() {
-  const [filter, setFilter] = useState("pending");
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["approvals", filter],
-    queryFn: () => apiListApprovals(filter !== "all" ? { status: filter } : {}),
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["approvals", tab],
+    queryFn: () => apiListApprovals({ status: tab }),
   });
 
-  const approvals = data?.data ?? [];
+  const approvals: ContentApproval[] = (data as { approvals?: ContentApproval[]; data?: ContentApproval[] } | undefined)?.approvals
+    ?? (data as { data?: ContentApproval[] } | undefined)?.data ?? [];
 
   return (
-    <div>
-      <div className="mb-4 flex gap-1">
-        {["all", "pending", "approved", "rejected", "changes_requested"].map((s) => (
-          <button
-            key={s}
-            onClick={() => setFilter(s)}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-              filter === s ? "bg-brand-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-            }`}
-          >
-            {s.replace("_", " ")}
-          </button>
-        ))}
+    <>
+      <div className="mb-4">
+        <Tabs
+          tabs={[
+            { id: "pending", label: "Pending" },
+            { id: "approved", label: "Approved" },
+            { id: "rejected", label: "Rejected" },
+          ]}
+          active={tab}
+          onChange={id => { setTab(id); setSelected(null); }}
+          size="sm"
+          variant="pills"
+        />
       </div>
 
-      <Card padding="none">
-        {isLoading ? (
-          <div className="flex justify-center py-12"><span className="h-6 w-6 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" /></div>
-        ) : approvals.length === 0 ? (
-          <EmptyState title="No approvals" description="No content approvals in this state." />
-        ) : (
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
-                {["Title", "Brand", "Status", "Requested", "Reviewed"].map((h) => (
-                  <th key={h} className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-500">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {approvals.map((a) => (
-                <tr key={a.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 text-sm font-medium text-slate-900">{a.title ?? "(untitled)"}</td>
-                  <td className="px-4 py-3 text-xs font-mono text-slate-500 truncate max-w-[100px]">{a.brand_id}</td>
-                  <td className="px-4 py-3"><Badge variant={statusVariant(a.status)} className="capitalize">{a.status.replace("_", " ")}</Badge></td>
-                  <td className="px-4 py-3 text-sm text-slate-600">{fmtDate(a.created_at)}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600">{a.updated_at ? fmtDate(a.updated_at) : "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Card>
-    </div>
+      <DataTable
+        data={approvals}
+        columns={APPROVAL_COLS}
+        keyField="id"
+        searchable
+        searchPlaceholder="Search content..."
+        loading={isLoading}
+        error={error ? "Failed to load approvals" : undefined}
+        emptyTitle={`No ${tab} approvals`}
+        exportFilename="approvals"
+        onRowClick={r => setSelected(r)}
+        selectedId={selected?.id}
+      />
+
+      {selected && <ApprovalDrawer approval={selected} onClose={() => setSelected(null)} />}
+    </>
+  );
+}
+
+const BLOG_COLS: Column<BlogPost>[] = [
+  { key: "title", header: "Title", sortable: true, render: r => <span className="text-sm font-medium text-ink-1">{r.title}</span> },
+  { key: "slug", header: "Slug", render: r => <span className="font-mono text-xs text-ink-3">{r.slug ?? "—"}</span> },
+  { key: "status", header: "Status", render: r => <Badge variant={statusBadge(r.status)}>{r.status}</Badge> },
+  { key: "author", header: "Author", render: r => <span className="text-sm text-ink-2">{r.author ?? "—"}</span> },
+  { key: "published_at", header: "Published", sortable: true, render: r => <span className="text-sm text-ink-2">{fmt(r.published_at)}</span> },
+];
+
+function BlogTab() {
+  const { data, isLoading, error } = useQuery({ queryKey: ["blog-posts"], queryFn: () => apiListBlogPosts({}) });
+  const posts: BlogPost[] = (data as { posts?: BlogPost[]; data?: BlogPost[] } | undefined)?.posts
+    ?? (data as { data?: BlogPost[] } | undefined)?.data ?? [];
+
+  return (
+    <DataTable
+      data={posts}
+      columns={BLOG_COLS}
+      keyField="slug"
+      searchable
+      searchPlaceholder="Search posts..."
+      loading={isLoading}
+      error={error ? "Failed to load posts" : undefined}
+      emptyTitle="No blog posts"
+      exportFilename="blog-posts"
+    />
+  );
+}
+
+const CAMPAIGN_COLS: Column<Campaign>[] = [
+  { key: "name", header: "Name", sortable: true, render: r => <span className="text-sm font-medium text-ink-1">{r.name}</span> },
+  { key: "objective", header: "Objective", render: r => r.objective ? <Badge variant="brand">{r.objective}</Badge> : <span className="text-ink-3">—</span> },
+  { key: "channel", header: "Channel", render: r => <span className="text-sm text-ink-2">{r.channel ?? "—"}</span> },
+  { key: "status", header: "Status", render: r => <Badge variant={statusBadge(r.status)}>{r.status}</Badge> },
+  { key: "created_at", header: "Created", sortable: true, render: r => <span className="text-sm text-ink-2">{fmt(r.created_at)}</span> },
+];
+
+function CampaignsTab() {
+  const { data, isLoading, error } = useQuery({ queryKey: ["campaigns"], queryFn: () => apiListCampaigns({}) });
+  const campaigns: Campaign[] = (data as { campaigns?: Campaign[]; data?: Campaign[] } | undefined)?.campaigns
+    ?? (data as { data?: Campaign[] } | undefined)?.data ?? [];
+
+  return (
+    <DataTable
+      data={campaigns}
+      columns={CAMPAIGN_COLS}
+      keyField="id"
+      searchable
+      searchPlaceholder="Search campaigns..."
+      loading={isLoading}
+      error={error ? "Failed to load campaigns" : undefined}
+      emptyTitle="No campaigns"
+      exportFilename="campaigns"
+    />
+  );
+}
+
+const MEM_EVENT_COLS: Column<MemoryEvent>[] = [
+  { key: "event", header: "Event", render: r => <span className="font-mono text-xs text-ink-1">{r.event}</span> },
+  { key: "tool", header: "Tool", render: r => <span className="text-sm text-ink-2">{r.tool ?? "—"}</span> },
+  { key: "brand_id", header: "Brand", render: r => <span className="font-mono text-xs text-ink-3">{r.brand_id ?? "—"}</span> },
+  { key: "value", header: "Value", render: r => <span className="text-sm text-ink-2 truncate max-w-[180px]">{r.value ?? "—"}</span> },
+  { key: "created_at", header: "When", sortable: true, render: r => <span className="text-sm text-ink-2">{fmt(r.created_at)}</span> },
+];
+
+const MEM_FEAT_COLS: Column<MemoryFeature>[] = [
+  { key: "feature", header: "Feature", render: r => <span className="font-mono text-xs text-ink-1">{r.feature}</span> },
+  { key: "brand_id", header: "Brand", render: r => <span className="font-mono text-xs text-ink-3">{r.brand_id}</span> },
+  { key: "value", header: "Value", render: r => <span className="text-sm text-ink-1 truncate max-w-[200px]">{r.value ?? "—"}</span> },
+  { key: "window", header: "Window", render: r => <span className="text-sm text-ink-2">{r.window ?? "—"}</span> },
+  { key: "computed_at", header: "Computed", sortable: true, render: r => <span className="text-sm text-ink-2">{fmt(r.computed_at)}</span> },
+];
+
+function MemoryTab() {
+  const [subtab, setSubtab] = useState("events");
+  const { data: evData, isLoading: evLoading } = useQuery({ queryKey: ["memory-events"], queryFn: () => apiListMemoryEvents({}) });
+  const { data: ftData, isLoading: ftLoading } = useQuery({ queryKey: ["memory-features"], queryFn: () => apiListMemoryFeatures() });
+
+  const events: MemoryEvent[] = (evData as { events?: MemoryEvent[]; data?: MemoryEvent[] } | undefined)?.events
+    ?? (evData as { data?: MemoryEvent[] } | undefined)?.data ?? [];
+  const features: MemoryFeature[] = (ftData as { features?: MemoryFeature[]; data?: MemoryFeature[] } | undefined)?.features
+    ?? (ftData as { data?: MemoryFeature[] } | undefined)?.data ?? [];
+
+  return (
+    <>
+      <div className="mb-4">
+        <Tabs tabs={[{ id:"events", label:"Events" }, { id:"features", label:"Features" }]} active={subtab} onChange={setSubtab} size="sm" variant="pills" />
+      </div>
+      {subtab === "events" && (
+        <DataTable data={events} columns={MEM_EVENT_COLS} keyField="id" searchable loading={evLoading} emptyTitle="No memory events" exportFilename="memory-events" />
+      )}
+      {subtab === "features" && (
+        <DataTable data={features} columns={MEM_FEAT_COLS} keyField="feature" searchable loading={ftLoading} emptyTitle="No memory features" exportFilename="memory-features" />
+      )}
+    </>
+  );
+}
+
+export default function ContentPage() {
+  const qc = useQueryClient();
+  const [tab, setTab] = useState("approvals");
+
+  return (
+    <WorkspaceLayout
+      workspace="content"
+      title="Content Operations"
+      subtitle="Approvals, blog, campaigns, memory"
+      onRefresh={() => {
+        ["approvals","blog-posts","campaigns","memory-events","memory-features"].forEach(k =>
+          qc.invalidateQueries({ queryKey: [k] })
+        );
+      }}
+    >
+      <div className="mb-5">
+        <Tabs
+          tabs={[
+            { id: "approvals", label: "Approvals", icon: <FileCheck className="h-3.5 w-3.5" /> },
+            { id: "blog", label: "Blog", icon: <BookOpen className="h-3.5 w-3.5" /> },
+            { id: "campaigns", label: "Campaigns", icon: <Megaphone className="h-3.5 w-3.5" /> },
+            { id: "memory", label: "Memory", icon: <Brain className="h-3.5 w-3.5" /> },
+          ]}
+          active={tab}
+          onChange={setTab}
+        />
+      </div>
+
+      {tab === "approvals" && <ApprovalsTab />}
+      {tab === "blog" && <BlogTab />}
+      {tab === "campaigns" && <CampaignsTab />}
+      {tab === "memory" && <MemoryTab />}
+    </WorkspaceLayout>
   );
 }

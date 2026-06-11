@@ -1,8 +1,19 @@
 import { getToken, clearToken } from "./auth";
-import type { ApiError, PaginatedResponse } from "@/types";
+import type {
+  ApiError, PaginatedResponse,
+  OverviewStats, SystemStatus, SystemEvent, OperationsHealth,
+  Customer, CustomerDetail,
+  SupportThread, SupportRequest,
+  BillingOverview, MrrHistoryItem, Promotion, CommsDeliveryRow,
+  ComplianceDeletion, ComplianceExport,
+  Plan, PlanFeature, PlanEntitlement, PlanVersion, CommercialMetrics,
+  DeliveryStats, IntegrationDiagnostic, AttributionDiagnostic,
+  BackfillRun, PlatformTestResult, CertificationMatrix, RewardsOverview,
+  BlogPost, ContentApproval, Campaign, EmailCampaign,
+  KillSwitch, AuditLogEntry, MemoryEvent, MemoryFeature, BrandMemory,
+} from "@/types";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE ?? "https://api.mypilotpost.com/api";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "https://api.mypilotpost.com/api";
 
 export class ApiResponseError extends Error {
   status: number;
@@ -14,347 +25,250 @@ export class ApiResponseError extends Error {
   }
 }
 
-async function request<T>(
-  path: string,
-  init: RequestInit = {}
-): Promise<T> {
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(init.headers as Record<string, string>),
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
-
   const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
-
   if (res.status === 401) {
     clearToken();
     if (typeof window !== "undefined") window.location.href = "/login/";
     throw new ApiResponseError(401, { error: "Unauthorized" });
   }
-
-  let body: unknown;
   const ct = res.headers.get("content-type") ?? "";
-  if (ct.includes("application/json")) {
-    body = await res.json();
-  } else {
-    body = await res.text();
-  }
-
+  const body: unknown = ct.includes("application/json") ? await res.json() : await res.text();
   if (!res.ok) {
-    const errBody = (typeof body === "object" && body !== null)
-      ? (body as ApiError)
-      : { error: String(body) };
-    throw new ApiResponseError(res.status, errBody);
+    const err = (typeof body === "object" && body !== null) ? (body as ApiError) : { error: String(body) };
+    throw new ApiResponseError(res.status, err);
   }
-
   return body as T;
 }
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
+// ── Auth ───────────────────────────────────────────────────────────────────
+export const apiLogin = (email: string, password: string) =>
+  request<{ token: string }>("/admin/login", { method: "POST", body: JSON.stringify({ email, password }) });
 
-export async function apiLogin(email: string, password: string) {
-  return request<{ token: string; role?: string; email?: string }>("/admin/login", {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
-  });
-}
+export const apiGetSession = () =>
+  request<{ user: { id: string; email: string; role: string } }>("/admin/session");
 
-// ── Overview ──────────────────────────────────────────────────────────────────
+// ── Overview ───────────────────────────────────────────────────────────────
+export const apiGetOverview = () =>
+  request<OverviewStats>("/v1/admin/overview");
 
-export async function apiGetOverview() {
-  return request<Record<string, unknown>>("/v1/admin/overview");
-}
+export const apiGetSystemStatus = () =>
+  request<SystemStatus>("/v1/admin/system/status").catch(() => ({ db_ok: false, queue_ok: false, ai_ok: false, worker_ok: false, status: "down" as const }));
 
-// ── Customers ─────────────────────────────────────────────────────────────────
-
-export async function apiListCustomers(params: Record<string, string | number> = {}) {
+export const apiGetSystemEvents = (params: Record<string, string | number> = {}) => {
   const qs = new URLSearchParams(params as Record<string, string>).toString();
-  return request<PaginatedResponse<import("@/types").Customer>>(`/v1/admin/users?${qs}`);
-}
+  return request<{ events: SystemEvent[]; data?: SystemEvent[] }>(`/v1/admin/system/events?${qs}`).catch(() => ({ events: [] }));
+};
 
-export async function apiGetCustomer(userId: string) {
-  // Individual customer detail lives at /v1/admin/customers/:id
-  return request<import("@/types").CustomerDetail>(`/v1/admin/customers/${userId}`);
-}
+export const apiGetOperationsHealth = () =>
+  request<OperationsHealth>("/v1/admin/operations/health").catch(() => ({} as OperationsHealth));
 
-export async function apiUpdateCustomer(userId: string, body: Record<string, unknown>) {
-  return request<{ success: boolean }>(`/v1/admin/users/${userId}`, {
-    method: "PATCH",
-    body: JSON.stringify(body),
-  });
-}
-
-export async function apiToggleUser(userId: string, enabled: boolean) {
-  return request<{ success: boolean }>(`/v1/admin/users/${userId}/toggle`, {
-    method: "POST",
-    body: JSON.stringify({ enabled }),
-  });
-}
-
-export async function apiVerifyUser(userId: string) {
-  // Verify lives under /customers/ prefix
-  return request<{ success: boolean }>(`/v1/admin/customers/${userId}/verify`, {
-    method: "POST",
-  });
-}
-
-export async function apiImpersonateUser(userId: string) {
-  return request<{ token: string }>(`/v1/admin/users/${userId}/impersonate`, {
-    method: "POST",
-  });
-}
-
-// ── Support ───────────────────────────────────────────────────────────────────
-
-export async function apiListSupportThreads(params: Record<string, string | number> = {}) {
+// ── Customers ─────────────────────────────────────────────────────────────
+export const apiListCustomers = (params: Record<string, string | number> = {}) => {
   const qs = new URLSearchParams(params as Record<string, string>).toString();
-  return request<PaginatedResponse<import("@/types").SupportThread>>(`/v1/admin/support/threads?${qs}`);
-}
+  return request<{ data: Customer[]; total: number; page: number; limit: number }>(`/v1/admin/customers?${qs}`);
+};
 
-export async function apiGetSupportThread(threadId: string) {
-  // No per-thread GET in API — fetch thread list and filter, or stub from list data
-  return request<import("@/types").SupportThread>(`/v1/admin/support/threads?thread_id=${threadId}`)
-    .then((r) => {
-      const list = (r as unknown as { data?: import("@/types").SupportThread[] }).data;
-      return (list?.[0] ?? r) as import("@/types").SupportThread;
-    });
-}
+export const apiGetCustomer = (userId: string) =>
+  request<CustomerDetail>(`/v1/admin/customers/${userId}`);
 
-export async function apiReplySupportThread(threadId: string, message: string) {
-  // Server route: POST /v1/admin/support/message expects { receiver_id, message }
-  return request<{ success: boolean }>(`/v1/admin/support/message`, {
-    method: "POST",
-    body: JSON.stringify({ receiver_id: threadId, message }),
-  });
-}
+export const apiPatchCustomer = (userId: string, body: Record<string, unknown>) =>
+  request<{ success: boolean }>(`/v1/admin/customers/${userId}`, { method: "PATCH", body: JSON.stringify(body) })
+    .catch(() => ({ success: false }));
 
-export async function apiUpdateSupportThread(threadId: string, body: Record<string, unknown>) {
-  // No PATCH thread endpoint — update via support requests route if available
-  return request<{ success: boolean }>(`/v1/admin/support/requests/${threadId}`, {
-    method: "PUT",
-    body: JSON.stringify(body),
-  }).catch(() => ({ success: true }));
-}
+export const apiToggleUser = (userId: string) =>
+  request<{ success: boolean; data: { is_active: number } }>(`/v1/admin/customers/${userId}/toggle`, { method: "POST" });
 
-// ── Billing ───────────────────────────────────────────────────────────────────
+export const apiVerifyUser = (userId: string) =>
+  request<{ success: boolean }>(`/v1/admin/customers/${userId}/verify`, { method: "POST" });
 
-export async function apiGetBillingOverview() {
-  return request<import("@/types").BillingOverview>("/v1/admin/billing/overview");
-}
+export const apiExtendTrial = (userId: string, days: number) =>
+  request<{ success: boolean }>(`/v1/admin/customers/${userId}`, { method: "PATCH", body: JSON.stringify({ extend_trial_days: days }) })
+    .catch(() => ({ success: false }));
 
-export async function apiListSubscriptions(params: Record<string, string | number> = {}) {
+// ── Support ────────────────────────────────────────────────────────────────
+export const apiListSupportThreads = (params: Record<string, string | number> = {}) => {
   const qs = new URLSearchParams(params as Record<string, string>).toString();
-  // Subscriptions list not yet in server — return empty gracefully
-  return request<PaginatedResponse<import("@/types").Subscription>>(`/v1/admin/customers?${qs}`)
-    .catch(() => ({ data: [], total: 0 } as PaginatedResponse<import("@/types").Subscription>));
-}
+  return request<{ threads?: SupportThread[]; data?: SupportThread[] }>(`/v1/admin/support/threads?${qs}`);
+};
 
-export async function apiListPromotions() {
-  // Correct path: /v1/admin/promotions (not /billing/promotions)
-  return request<{ promotions: import("@/types").Promotion[] }>("/v1/admin/promotions");
-}
-
-export async function apiCreatePromotion(body: Record<string, unknown>) {
-  // Correct path: /v1/admin/promotions
-  return request<{ id: string }>("/v1/admin/promotions", {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
-}
-
-export async function apiExtendTrial(userId: string, days: number) {
-  // Extend trial via plan update endpoint
-  return request<{ success: boolean }>(`/v1/admin/customers/${userId}`, {
-    method: "PATCH",
-    body: JSON.stringify({ extend_trial_days: days }),
-  }).catch(() => ({ success: false }));
-}
-
-export async function apiIssueRefund(subscriptionId: string, amount: number, reason: string) {
-  return request<{ success: boolean }>("/v1/admin/billing/refund", {
-    method: "POST",
-    body: JSON.stringify({ subscription_id: subscriptionId, amount, reason }),
-  }).catch(() => ({ success: false }));
-}
-
-// ── Commercial ────────────────────────────────────────────────────────────────
-
-export async function apiListPlans() {
-  return request<{ plans: import("@/types").Plan[] }>("/v1/admin/commercial/plans");
-}
-
-export async function apiCreatePlan(body: Record<string, unknown>) {
-  return request<{ id: string }>("/v1/admin/commercial/plans", {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
-}
-
-export async function apiUpdatePlan(planId: string, body: Record<string, unknown>) {
-  return request<{ success: boolean }>(`/v1/admin/commercial/plans/${planId}`, {
-    method: "PATCH",
-    body: JSON.stringify(body),
-  });
-}
-
-export async function apiArchivePlan(planId: string) {
-  return request<{ success: boolean }>(`/v1/admin/commercial/plans/${planId}/archive`, {
-    method: "POST",
-  });
-}
-
-export async function apiClonePlan(planId: string) {
-  return request<{ id: string }>(`/v1/admin/commercial/plans/${planId}/clone`, {
-    method: "POST",
-  });
-}
-
-export async function apiGetPlanVersions(planId: string) {
-  return request<{ versions: unknown[] }>(`/v1/admin/commercial/plans/${planId}/versions`);
-}
-
-export async function apiListFeatures() {
-  return request<{ features: import("@/types").PlanFeature[] }>("/v1/admin/commercial/features");
-}
-
-export async function apiCreateFeature(body: Record<string, unknown>) {
-  return request<{ key: string }>("/v1/admin/commercial/features", {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
-}
-
-export async function apiUpdateFeature(featureKey: string, body: Record<string, unknown>) {
-  return request<{ success: boolean }>(`/v1/admin/commercial/features/${featureKey}`, {
-    method: "PATCH",
-    body: JSON.stringify(body),
-  });
-}
-
-export async function apiListEntitlements(planId: string) {
-  return request<{ entitlements: import("@/types").PlanEntitlement[] }>(
-    `/v1/admin/commercial/entitlements/${planId}`
-  );
-}
-
-export async function apiUpdateEntitlement(
-  planId: string,
-  featureKey: string,
-  body: Record<string, unknown>
-) {
-  return request<{ success: boolean }>(
-    `/v1/admin/commercial/entitlements/${planId}/${featureKey}`,
-    { method: "PATCH", body: JSON.stringify(body) }
-  );
-}
-
-export async function apiGetCommercialMetrics() {
-  return request<import("@/types").CommercialMetrics>("/v1/admin/commercial/metrics");
-}
-
-// ── Operations ────────────────────────────────────────────────────────────────
-
-export async function apiGetOperationsHealth() {
-  return request<import("@/types").OperationsHealth>("/v1/admin/operations/health")
-    .catch(() => ({} as import("@/types").OperationsHealth));
-}
-
-export async function apiGetDeliveryStats() {
-  // Correct path: /v1/admin/analytics/delivery
-  return request<{ stats: import("@/types").DeliveryStats[] }>("/v1/admin/analytics/delivery")
-    .catch(() => ({ stats: [] }));
-}
-
-export async function apiGetOauthHealth() {
-  // No dedicated OAuth health route — integrations diagnostics is closest
-  return request<{ platforms: import("@/types").SocialPlatformHealth[] }>("/v1/admin/integrations/diagnostics")
-    .catch(() => ({ platforms: [] }));
-}
-
-// ── Content ───────────────────────────────────────────────────────────────────
-
-export async function apiListBlogPosts(params: Record<string, string | number> = {}) {
+export const apiListSupportRequests = (params: Record<string, string | number> = {}) => {
   const qs = new URLSearchParams(params as Record<string, string>).toString();
-  return request<PaginatedResponse<import("@/types").BlogPost>>(`/v1/admin/blog?${qs}`);
-}
+  return request<{ data: SupportRequest[]; total?: number }>(`/v1/admin/support/requests?${qs}`);
+};
 
-export async function apiGetBlogPost(slug: string) {
-  return request<import("@/types").BlogPost>(`/v1/admin/blog/${slug}`);
-}
+export const apiUpdateSupportRequest = (id: string, body: Record<string, unknown>) =>
+  request<{ success: boolean }>(`/v1/admin/support/requests/${id}`, { method: "PUT", body: JSON.stringify(body) });
 
-export async function apiSaveBlogPost(body: import("@/types").BlogPost) {
-  const isNew = !body.id;
-  return request<{ id: string }>(
-    isNew ? "/v1/admin/blog" : `/v1/admin/blog/${body.id}`,
-    { method: isNew ? "POST" : "PATCH", body: JSON.stringify(body) }
-  );
-}
+export const apiSendSupportMessage = (receiver_id: string, message: string) =>
+  request<{ success: boolean }>("/v1/admin/support/message", { method: "POST", body: JSON.stringify({ receiver_id, message }) });
 
-export async function apiListApprovals(params: Record<string, string | number> = {}) {
+export const apiBroadcastMessage = (body: Record<string, unknown>) =>
+  request<{ success: boolean }>("/v1/admin/support/broadcast", { method: "POST", body: JSON.stringify(body) });
+
+// ── Billing ────────────────────────────────────────────────────────────────
+export const apiGetBillingOverview = () =>
+  request<BillingOverview>("/v1/admin/billing/overview");
+
+export const apiGetMrrHistory = () =>
+  request<{ history: MrrHistoryItem[] }>("/v1/admin/billing/mrr-history").catch(() => ({ history: [] }));
+
+export const apiListPromotions = () =>
+  request<{ promotions: Promotion[] }>("/v1/admin/promotions");
+
+export const apiCreatePromotion = (body: Record<string, unknown>) =>
+  request<{ id: string }>("/v1/admin/promotions", { method: "POST", body: JSON.stringify(body) });
+
+export const apiIssueRefund = (subscription_id: string, amount: number, reason: string) =>
+  request<{ success: boolean }>("/v1/admin/billing/refund", { method: "POST", body: JSON.stringify({ subscription_id, amount, reason }) })
+    .catch(() => ({ success: false }));
+
+export const apiGetCommsDelivery = () =>
+  request<{ data: CommsDeliveryRow[] }>("/v1/admin/comms/delivery").catch(() => ({ data: [] }));
+
+export const apiListDeletions = () =>
+  request<{ data: ComplianceDeletion[]; total?: number }>("/v1/admin/compliance/deletions").catch(() => ({ data: [] }));
+
+export const apiListExports = () =>
+  request<{ data: ComplianceExport[]; total?: number }>("/v1/admin/compliance/exports").catch(() => ({ data: [] }));
+
+export const apiGetComplianceAuditLog = (params: Record<string, string | number> = {}) => {
   const qs = new URLSearchParams(params as Record<string, string>).toString();
-  // Correct path: /v1/admin/approvals (not /content/approvals)
-  return request<PaginatedResponse<import("@/types").ContentApproval>>(`/v1/admin/approvals?${qs}`);
-}
+  return request<{ data: AuditLogEntry[] }>(`/v1/admin/compliance/audit-log?${qs}`).catch(() => ({ data: [] }));
+};
 
-// ── Config ────────────────────────────────────────────────────────────────────
+// ── Commercial ─────────────────────────────────────────────────────────────
+export const apiListPlans = () =>
+  request<{ plans: Plan[] }>("/v1/admin/commercial/plans");
 
-export async function apiListKillSwitches() {
-  // Correct path: /v1/admin/controls (not /ops/kill-switches)
-  return request<{ switches: import("@/types").KillSwitch[] }>("/v1/admin/controls");
-}
+export const apiCreatePlan = (body: Record<string, unknown>) =>
+  request<{ id: string; slug?: string }>("/v1/admin/commercial/plans", { method: "POST", body: JSON.stringify(body) });
 
-export async function apiUpdateKillSwitch(key: string, enabled: boolean) {
-  // Correct path: /v1/admin/controls/:key (not /ops/kill-switches/:key)
-  return request<{ success: boolean }>(`/v1/admin/controls/${key}`, {
-    method: "PATCH",
-    body: JSON.stringify({ enabled }),
-  });
-}
+export const apiUpdatePlan = (planId: string, body: Record<string, unknown>) =>
+  request<{ success: boolean }>(`/v1/admin/commercial/plans/${planId}`, { method: "PATCH", body: JSON.stringify(body) });
 
-export async function apiListAuditLog(params: Record<string, string | number> = {}) {
+export const apiArchivePlan = (planId: string) =>
+  request<{ success: boolean }>(`/v1/admin/commercial/plans/${planId}/archive`, { method: "POST" });
+
+export const apiClonePlan = (planId: string) =>
+  request<{ id: string }>(`/v1/admin/commercial/plans/${planId}/clone`, { method: "POST" });
+
+export const apiGetPlanVersions = (planId: string) =>
+  request<{ versions: PlanVersion[] }>(`/v1/admin/commercial/plans/${planId}/versions`);
+
+export const apiListFeatures = () =>
+  request<{ features: PlanFeature[] }>("/v1/admin/commercial/features");
+
+export const apiCreateFeature = (body: Record<string, unknown>) =>
+  request<{ key: string }>("/v1/admin/commercial/features", { method: "POST", body: JSON.stringify(body) });
+
+export const apiUpdateFeature = (key: string, body: Record<string, unknown>) =>
+  request<{ success: boolean }>(`/v1/admin/commercial/features/${key}`, { method: "PATCH", body: JSON.stringify(body) });
+
+export const apiListEntitlements = (planId: string) =>
+  request<{ entitlements: PlanEntitlement[] }>(`/v1/admin/commercial/entitlements/${planId}`);
+
+export const apiUpdateEntitlement = (planId: string, featureKey: string, body: Record<string, unknown>) =>
+  request<{ success: boolean }>(`/v1/admin/commercial/entitlements/${planId}/${featureKey}`, { method: "PATCH", body: JSON.stringify(body) });
+
+export const apiGetCommercialMetrics = () =>
+  request<CommercialMetrics>("/v1/admin/commercial/metrics");
+
+// ── Platform Ops ──────────────────────────────────────────────────────────
+export const apiGetDeliveryStats = () =>
+  request<{ stats?: DeliveryStats[]; data?: DeliveryStats[] }>("/v1/admin/analytics/delivery").catch(() => ({ stats: [] }));
+
+export const apiGetIntegrationsDiagnostics = () =>
+  request<{ platforms?: IntegrationDiagnostic[]; data?: IntegrationDiagnostic[] }>("/v1/admin/integrations/diagnostics").catch(() => ({ platforms: [] }));
+
+export const apiTriggerBackfill = (body: Record<string, unknown>) =>
+  request<{ success: boolean }>("/v1/admin/integrations/backfill", { method: "POST", body: JSON.stringify(body) });
+
+export const apiGetBackfillStatus = (brand_id?: string) => {
+  const qs = brand_id ? `?brand_id=${brand_id}` : "";
+  return request<{ runs: BackfillRun[] }>(`/v1/admin/integrations/backfill/status${qs}`).catch(() => ({ runs: [] }));
+};
+
+export const apiGetAttributionDiagnostics = () =>
+  request<{ brands?: AttributionDiagnostic[]; data?: AttributionDiagnostic[] }>("/v1/admin/attribution/diagnostics").catch(() => ({ brands: [] }));
+
+export const apiRunPlatformTest = (body: Record<string, unknown>) =>
+  request<PlatformTestResult>("/v1/admin/platform-test", { method: "POST", body: JSON.stringify(body) });
+
+export const apiListTestableConnections = (params: Record<string, string | number> = {}) => {
   const qs = new URLSearchParams(params as Record<string, string>).toString();
-  // Correct path: /v1/admin/audit-log (not /ops/audit-log)
-  return request<PaginatedResponse<import("@/types").AuditLogEntry>>(`/v1/admin/audit-log?${qs}`);
-}
+  return request<{ connections?: unknown[]; data?: unknown[] }>(`/v1/admin/platform-test/connections?${qs}`).catch(() => ({ connections: [] }));
+};
 
-export async function apiGetTokenOps() {
-  // No token-ops route — return empty summary gracefully
-  return request<import("@/types").TokenOpsSummary>("/v1/admin/jwt-revocations")
-    .catch(() => ({
-      today: { tokens: 0, cost_usd: 0 },
-      week: { tokens: 0, cost_usd: 0 },
-      month: { tokens: 0, cost_usd: 0 },
-      by_feature: {},
-      top_brands: [],
-      forecast_month_usd: 0,
-    } as import("@/types").TokenOpsSummary));
-}
+export const apiGetCertificationMatrix = (brand_id: string) =>
+  request<CertificationMatrix>(`/v1/admin/certification/matrix?brand_id=${brand_id}`).catch(() => ({} as CertificationMatrix));
 
-export async function apiRevokeToken(tokenId: string) {
-  return request<{ success: boolean }>(`/v1/admin/jwt-revocations`, {
-    method: "POST",
-    body: JSON.stringify({ token_id: tokenId }),
-  }).catch(() => ({ success: false }));
-}
+export const apiGetDeliveryHistory = (brand_id: string) =>
+  request<{ history?: unknown[] }>(`/v1/admin/certification/delivery-history?brand_id=${brand_id}`).catch(() => ({ history: [] }));
 
-// ── SAAS OS ───────────────────────────────────────────────────────────────────
+export const apiGetRewards = () =>
+  request<RewardsOverview>("/v1/admin/rewards").catch(() => ({} as RewardsOverview));
 
-export async function apiGetCustomerHealthScores(params: Record<string, string | number> = {}) {
+// ── Content ────────────────────────────────────────────────────────────────
+export const apiListBlogPosts = (params: Record<string, string | number> = {}) => {
   const qs = new URLSearchParams(params as Record<string, string>).toString();
-  // Health scores derived from customers list — no dedicated saas route
-  return request<PaginatedResponse<import("@/types").CustomerDetail>>(`/v1/admin/customers?${qs}`)
-    .catch(() => ({ data: [], total: 0 } as PaginatedResponse<import("@/types").CustomerDetail>));
-}
+  return request<{ posts?: BlogPost[]; data?: BlogPost[] }>(`/v1/admin/blog?${qs}`);
+};
 
-export async function apiGetFeatureAdoption() {
-  // No dedicated feature-adoption route — stub gracefully
-  return request<{ adoption: import("@/types").FeatureAdoptionRow[] }>("/v1/admin/analytics/features")
-    .catch(() => ({ adoption: [] }));
-}
+export const apiCreateBlogPost = (body: BlogPost) =>
+  request<{ id: string }>("/v1/admin/blog", { method: "POST", body: JSON.stringify(body) });
 
-export async function apiGetExecutionQueue() {
-  // No dedicated execution-queue route — stub gracefully
-  return request<{ items: import("@/types").ExecutionItem[] }>("/v1/admin/analytics/queue")
-    .catch(() => ({ items: [] }));
-}
+export const apiUpdateBlogPost = (id: string, body: Partial<BlogPost>) =>
+  request<{ success: boolean }>(`/v1/admin/blog/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+
+export const apiDeleteBlogPost = (id: string) =>
+  request<{ success: boolean }>(`/v1/admin/blog/${id}`, { method: "DELETE" });
+
+export const apiListApprovals = (params: Record<string, string | number> = {}) => {
+  const qs = new URLSearchParams(params as Record<string, string>).toString();
+  return request<{ approvals: ContentApproval[]; status?: string }>(`/v1/admin/approvals?${qs}`);
+};
+
+export const apiUpdateApproval = (id: string, status: string) =>
+  request<{ success: boolean }>(`/v1/admin/approvals/${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
+
+export const apiListCampaigns = (params: Record<string, string | number> = {}) => {
+  const qs = new URLSearchParams(params as Record<string, string>).toString();
+  return request<{ campaigns: Campaign[] }>(`/v1/admin/campaigns?${qs}`).catch(() => ({ campaigns: [] }));
+};
+
+export const apiListEmailCampaigns = () =>
+  request<{ campaigns?: EmailCampaign[]; data?: EmailCampaign[] }>("/v1/admin/emails/campaigns").catch(() => ({ campaigns: [] }));
+
+// ── Config ─────────────────────────────────────────────────────────────────
+export const apiListKillSwitches = () =>
+  request<{ controls?: KillSwitch[]; switches?: KillSwitch[] }>("/v1/admin/controls");
+
+export const apiUpdateKillSwitch = (key: string, enabled: boolean, reason?: string) =>
+  request<{ success: boolean }>(`/v1/admin/controls/${key}`, { method: "PATCH", body: JSON.stringify({ enabled, reason }) });
+
+export const apiListAuditLog = (params: Record<string, string | number> = {}) => {
+  const qs = new URLSearchParams(params as Record<string, string>).toString();
+  return request<{ data?: AuditLogEntry[]; entries?: AuditLogEntry[] }>(`/v1/admin/audit-log?${qs}`);
+};
+
+export const apiListMemoryEvents = (params: Record<string, string | number> = {}) => {
+  const qs = new URLSearchParams(params as Record<string, string>).toString();
+  return request<{ data: MemoryEvent[] }>(`/v1/admin/memory/events?${qs}`).catch(() => ({ data: [] }));
+};
+
+export const apiListMemoryFeatures = (brand_id?: string) => {
+  const qs = brand_id ? `?brand_id=${brand_id}` : "";
+  return request<{ data: MemoryFeature[] }>(`/v1/admin/memory/features${qs}`).catch(() => ({ data: [] }));
+};
+
+export const apiListBrandMemory = (brand_id?: string) => {
+  const qs = brand_id ? `?brand_id=${brand_id}` : "";
+  return request<{ data: import("@/types").BrandMemory[] }>(`/v1/admin/memory/brands${qs}`).catch(() => ({ data: [] }));
+};

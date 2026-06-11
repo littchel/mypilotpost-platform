@@ -29,15 +29,15 @@ const ALL_WORKSPACES: WorkspaceConfig[] = [
   { id: "config",     label: "Platform Config", icon: "Settings",        href: "/config/",      description: "Kill switches, audit log, tokens" },
 ];
 
-const ROLE_WORKSPACES: Record<AdminRole, WorkspaceId[]> = {
+const ROLE_WORKSPACES: Partial<Record<AdminRole, WorkspaceId[]>> = {
   super_admin:  ["today", "customers", "support", "billing", "commercial", "operations", "content", "config"],
   admin:        ["today", "customers", "support", "billing", "commercial", "operations", "content", "config"],
-  ops:          ["today", "customers", "support", "operations"],
-  operations:   ["today", "customers", "support", "operations"],
   support:      ["today", "customers", "support"],
-  finance:      ["today", "billing", "commercial"],
-  commercial:   ["today", "commercial"],
+  commercial:   ["today", "billing", "commercial"],
   content:      ["today", "content"],
+  developer:    ["today", "operations", "config"],
+  analyst:      ["today", "customers", "billing", "operations"],
+  viewer:       ["today"],
 };
 
 export function getWorkspacesForRole(role: AdminRole): WorkspaceConfig[] {
@@ -59,11 +59,11 @@ export function canWrite(role: AdminRole): boolean {
 }
 
 export function canManageCommercial(role: AdminRole): boolean {
-  return role === "super_admin" || role === "admin" || role === "commercial" || role === "finance";
+  return role === "super_admin" || role === "admin" || role === "commercial";
 }
 
 export function canManageBilling(role: AdminRole): boolean {
-  return role === "super_admin" || role === "admin" || role === "finance";
+  return role === "super_admin" || role === "admin" || role === "commercial";
 }
 
 export function canViewConfig(role: AdminRole): boolean {

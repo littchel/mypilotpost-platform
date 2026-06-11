@@ -1,14 +1,23 @@
-// ── Auth ─────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared primitives
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ApiError { error: string; code?: string; detail?: string }
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page?: number;
+  limit?: number;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Auth
+// ─────────────────────────────────────────────────────────────────────────────
 
 export type AdminRole =
-  | "super_admin"
-  | "admin"
-  | "ops"
-  | "operations"
-  | "support"
-  | "finance"
-  | "commercial"
-  | "content";
+  | "super_admin" | "admin" | "support" | "commercial"
+  | "content" | "developer" | "analyst" | "viewer";
 
 export interface AdminSession {
   user_id: string;
@@ -19,88 +28,137 @@ export interface AdminSession {
   exp: number;
 }
 
-// ── Customers ────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Overview / Today
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface OverviewStats {
+  total_users?: number;
+  active_subscriptions?: number;
+  trial_subscriptions?: number;
+  mrr?: number;
+  currency?: string;
+  posts_today?: number;
+  ai_calls_today?: number;
+  open_support?: number;
+  failed_jobs?: number;
+  [key: string]: unknown;
+}
+
+export interface SystemEvent {
+  id: string;
+  severity: "info" | "warning" | "error" | "critical";
+  source: string;
+  message: string;
+  metadata?: string;
+  created_at: string;
+}
+
+export interface SystemStatus {
+  db_ok: boolean;
+  queue_ok: boolean;
+  ai_ok: boolean;
+  worker_ok: boolean;
+  status: "healthy" | "degraded" | "down";
+  checks?: Record<string, boolean>;
+  [key: string]: unknown;
+}
+
+export interface OperationsHealth {
+  queue_depth?: number;
+  jobs_24h?: number;
+  success_rate?: number;
+  failed_24h?: number;
+  avg_latency_ms?: number;
+  platforms?: PlatformHealthItem[];
+  [key: string]: unknown;
+}
+
+export interface PlatformHealthItem {
+  platform: string;
+  status: "healthy" | "degraded" | "down" | "unknown";
+  success_rate?: number;
+  last_error?: string;
+  last_checked?: string;
+}
+
+export interface ExecutionItem {
+  id: string;
+  type: string;
+  status: "queued" | "running" | "completed" | "failed";
+  brand_id?: string;
+  brand_name?: string;
+  created_at: string;
+  scheduled_at?: string;
+  error?: string;
+  severity?: "low" | "medium" | "high" | "critical";
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Customers
+// ─────────────────────────────────────────────────────────────────────────────
 
 export interface Customer {
   id: string;
   email: string;
-  name?: string;
-  plan_id: string;
-  subscription_status: string;
-  trial_ends_at?: string;
-  created_at: string;
-  verified_at?: string;
+  role: string;
+  plan_id?: string;
+  plan_name?: string;
+  price_monthly?: number;
+  subscription_status?: string;
   is_active: number;
-  last_login_at?: string;
-  brands_count?: number;
-  posts_count?: number;
+  created_at: string;
+  brand_count?: number;
+  verified_at?: string | null;
+  trial_extended_until?: string | null;
+}
+
+export interface CustomerBrand {
+  id: string;
+  name: string;
+  industry?: string;
+  logo_url?: string;
 }
 
 export interface CustomerDetail extends Customer {
-  brands?: Brand[];
-  usage?: UsageStats;
-  subscription?: Subscription;
-  integrations?: Integration[];
-  support_history?: SupportThread[];
-  health_score?: HealthScore;
+  brands: CustomerBrand[];
+  ai_generations: number;
+  support_messages: number;
+  notes?: string;
 }
 
-export interface Brand {
-  id: string;
-  name: string;
-  owner_user_id: string;
-  created_at: string;
-  logo_url?: string;
-  industry?: string;
-}
-
-export interface UsageStats {
-  posts_used: number;
-  ai_generations_used: number;
-  social_accounts_used: number;
-  posts_per_month_limit: number;
-  ai_generations_limit: number;
-  social_accounts_limit: number;
-  period_start?: string;
-  period_end?: string;
-}
-
-export interface Subscription {
-  plan_id: string;
-  plan_name: string;
-  status: string;
-  current_period_start?: string;
-  current_period_end?: string;
-  trial_ends_at?: string;
-  price_monthly?: number;
-}
-
-export interface Integration {
-  platform: string;
-  connected: boolean;
-  account_name?: string;
-  expires_at?: string;
-  last_used_at?: string;
-}
-
-export interface HealthScore {
-  score: number;
-  tier: "healthy" | "warning" | "at_risk" | "critical";
-  signals: Record<string, number>;
-  computed_at: string;
-}
-
-// ── Support ──────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Support
+// ─────────────────────────────────────────────────────────────────────────────
 
 export interface SupportThread {
   id: string;
-  user_id: string;
-  email?: string;
   subject?: string;
-  status: "open" | "in_progress" | "resolved" | "closed";
-  last_message_at?: string;
+  status: "open" | "pending" | "resolved" | "closed";
+  priority?: "low" | "medium" | "high" | "urgent";
+  user_id?: string;
+  user_email?: string;
+  assigned_to?: string;
   created_at: string;
-  messages?: SupportMessage[];
+  updated_at?: string;
+  message_count?: number;
+  last_message?: string;
+  category?: string;
+}
+
+export interface SupportRequest {
+  id: string;
+  user_id: string;
+  user_email?: string;
+  category: string;
+  subject: string;
+  message: string;
+  status: "open" | "in_progress" | "resolved" | "closed";
+  priority?: "low" | "normal" | "high" | "urgent";
+  assigned_to?: string;
+  resolution?: string;
+  created_at: string;
+  updated_at?: string;
 }
 
 export interface SupportMessage {
@@ -108,51 +166,85 @@ export interface SupportMessage {
   thread_id?: string;
   sender_id: string;
   sender_email?: string;
-  message: string;
-  created_at: string;
+  content: string;
   is_admin?: boolean;
-}
-
-export interface SupportRequest {
-  id: string;
-  user_id: string;
-  category: string;
-  description: string;
-  status: string;
   created_at: string;
-  updated_at?: string;
 }
 
-// ── Billing ──────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Billing
+// ─────────────────────────────────────────────────────────────────────────────
 
 export interface BillingOverview {
+  total_customers: number;
+  active_subscriptions: number;
+  trial_subscriptions: number;
   mrr: number;
-  arr: number;
-  active_subscribers: number;
-  trial_users: number;
-  churned_this_month: number;
-  conversion_rate: number;
-  past_due: number;
+  currency: string;
+  distribution?: { name: string; count: number }[];
+  conversion_rate?: string;
 }
 
-export interface MrrHistoryPoint {
-  date: string;
+export interface MrrHistoryItem {
+  month: string;
   mrr: number;
-  subscribers: number;
+  customers: number;
+  currency: string;
+}
+
+export interface Subscription {
+  id: string;
+  user_id: string;
+  email?: string;
+  plan_id?: string;
+  plan_name?: string;
+  status: string;
+  trial_extended_until?: string;
+  created_at: string;
+  mrr?: number;
 }
 
 export interface Promotion {
-  id?: string;
+  id: string;
   code: string;
-  discount_type: "percent" | "fixed" | "trial_days";
-  discount_value: number;
+  type: "percent" | "fixed" | "trial_days";
+  value: number;
   max_uses?: number;
-  uses_count?: number;
+  used_count?: number;
   expires_at?: string;
   is_active: number;
+  created_at: string;
 }
 
-// ── Commercial ───────────────────────────────────────────────────────────────
+export interface CommsDeliveryRow {
+  channel: string;
+  status: string;
+  count: number;
+}
+
+export interface ComplianceDeletion {
+  id: string;
+  user_id: string;
+  email?: string;
+  requested_at: string;
+  scheduled_for?: string;
+  completed_at?: string;
+  status: string;
+}
+
+export interface ComplianceExport {
+  id: string;
+  user_id: string;
+  email?: string;
+  requested_at: string;
+  completed_at?: string;
+  status: string;
+  file_url?: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Commercial
+// ─────────────────────────────────────────────────────────────────────────────
 
 export interface Plan {
   id: string;
@@ -162,9 +254,9 @@ export interface Plan {
   price_monthly: number;
   price_cents: number;
   price_yearly?: number;
-  trial_days: number;
   billing_interval?: string;
   currency?: string;
+  trial_days: number;
   badge?: string;
   sort_order?: number;
   visible: number;
@@ -175,7 +267,10 @@ export interface Plan {
   posts_per_month_limit?: number;
   ai_generations_limit?: number;
   brand_limit?: number;
+  user_limit?: number;
   entitlements?: Record<string, PlanEntitlement>;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface PlanFeature {
@@ -184,106 +279,159 @@ export interface PlanFeature {
   description?: string;
   category: string;
   visible: number;
+  icon?: string;
+  created_at?: string;
 }
 
 export interface PlanEntitlement {
   key: string;
-  name: string;
-  category?: string;
+  feature_key?: string;
+  plan_id?: string;
   enabled: number;
   limit_value?: number | null;
-  limit_type: "boolean" | "monthly" | "unlimited" | "count";
+  limit_type?: string;
+  feature_name?: string;
+  feature_category?: string;
 }
 
-export interface CommercialMetrics {
-  revenue: {
-    mrr: number;
-    arr: number;
-    arpu: number;
-    ltv: number;
-    currency: string;
-  };
-  subscribers: {
-    active: number;
-    trial: number;
-    trial_expired: number;
-    past_due: number;
-    cancelled: number;
-    total: number;
-  };
-  growth: {
-    new_this_month: number;
-    churned_this_month: number;
-    conversion_rate: number;
-  };
-  plans: PlanBreakdown[];
-}
-
-export interface PlanBreakdown {
+export interface PlanVersion {
   id: string;
-  name: string;
-  users?: number;
-  active_subscribers?: number;
-  trial_subscribers?: number;
-  plan_mrr?: number;
-  mrr?: number;
-  conversion_rate?: number;
-  churn_rate?: number;
-}
-
-// ── Operations ───────────────────────────────────────────────────────────────
-
-export interface OperationsHealth {
-  jobs_queued?: number;
-  jobs_failed_24h?: number;
-  jobs_success_24h?: number;
-  delivery_rate?: number;
-  platforms?: Record<string, PlatformHealth>;
-  alerts?: OperationAlert[];
-}
-
-export interface PlatformHealth {
-  platform: string;
-  connected?: number;
-  failed?: number;
-  published_24h?: number;
-  retries?: number;
-  rate_limited?: boolean;
-  status: "ok" | "warn" | "error";
-}
-
-export interface OperationAlert {
-  id: string;
-  type: string;
-  message: string;
-  severity: "info" | "warn" | "error";
+  plan_id: string;
+  snapshot_json: string;
+  changed_by?: string;
+  note?: string;
   created_at: string;
 }
 
-export interface DeliveryStats {
-  date: string;
-  success: number;
-  failed: number;
-  pending: number;
-  rate: number;
+export interface CommercialMetrics {
+  total_plans?: number;
+  active_plans?: number;
+  total_features?: number;
+  plans?: { id: string; name: string; user_count: number; mrr: number }[];
+  [key: string]: unknown;
 }
 
-// ── Content ──────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Platform Ops
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface DeliveryStats {
+  date?: string;
+  platform?: string;
+  channel?: string;
+  status?: string;
+  scheduled?: number;
+  delivered?: number;
+  failed?: number;
+  count?: number;
+}
+
+export interface IntegrationDiagnostic {
+  platform: string;
+  brand_id?: string;
+  brand_name?: string;
+  status: "connected" | "expired" | "error" | "missing";
+  scopes?: string[];
+  last_used?: string;
+  error?: string;
+}
+
+export interface AttributionDiagnostic {
+  brand_id: string;
+  brand_name?: string;
+  post_count?: number;
+  attribution_count?: number;
+  coverage?: number;
+  issues?: string[];
+}
+
+export interface BackfillRun {
+  id?: string;
+  brand_id?: string;
+  platform?: string;
+  status: string;
+  created_at: string;
+  completed_at?: string;
+  records_processed?: number;
+  error?: string;
+}
+
+export interface PlatformTestResult {
+  success: boolean;
+  platform?: string;
+  brand_id?: string;
+  tests?: { name: string; passed: boolean; error?: string }[];
+  duration_ms?: number;
+}
+
+export interface CertificationMatrix {
+  [engine: string]: {
+    status: "pass" | "fail" | "skip";
+    checks: number;
+    passed: number;
+    issues?: string[];
+  };
+}
+
+export interface SocialPlatformHealth {
+  platform: string;
+  status: "healthy" | "degraded" | "down" | "unknown";
+  connected_accounts?: number;
+  success_rate?: number;
+  error?: string;
+}
+
+export interface RewardsOverview {
+  total_points_issued?: number;
+  active_users?: number;
+  top_earners?: { user_id: string; email?: string; points: number }[];
+  [key: string]: unknown;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Content
+// ─────────────────────────────────────────────────────────────────────────────
 
 export interface BlogPost {
   id?: string;
+  slug?: string;
   title: string;
-  slug: string;
-  content: string;
+  content?: string;
   excerpt?: string;
+  cover_image?: string;
+  author?: string;
   status: "draft" | "published" | "archived";
-  featured_image?: string;
+  published_at?: string;
   seo_title?: string;
   seo_description?: string;
-  author_id?: string;
-  published_at?: string;
+  tags?: string;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface ContentApproval {
+  id: string;
+  brand_id: string;
+  brand_name?: string;
+  content_id: string;
+  content_title?: string;
+  content_type?: string;
+  type?: string;
+  status: "pending" | "review" | "approved" | "rejected" | "changes_requested";
+  expires_at?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface Campaign {
+  id: string;
+  brand_id: string;
+  brand_name?: string;
+  name: string;
+  objective?: string;
+  channel?: string;
+  status: string;
+  created_at: string;
 }
 
 export interface EmailCampaign {
@@ -291,65 +439,72 @@ export interface EmailCampaign {
   name: string;
   subject?: string;
   status: string;
-  recipient_count?: number;
-  sent_at?: string;
+  sent_count?: number;
+  open_rate?: number;
+  click_rate?: number;
   created_at: string;
 }
 
-export interface ContentApproval {
-  id: string;
-  brand_id: string;
-  post_id?: string;
-  title?: string;
-  status: "pending" | "approved" | "rejected" | "changes_requested";
-  requester_id?: string;
-  reviewer_id?: string;
-  created_at: string;
-  updated_at?: string;
-  share_token?: string;
-}
-
-// ── Platform Config ───────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Config / Ops
+// ─────────────────────────────────────────────────────────────────────────────
 
 export interface KillSwitch {
   key: string;
-  label?: string;
-  description?: string;
   enabled: number;
+  reason?: string;
+  updated_by?: string;
   updated_at?: string;
 }
 
 export interface AuditLogEntry {
-  id: string;
+  id?: string;
   admin_id?: string;
   admin_email?: string;
   action: string;
   resource_type?: string;
   resource_id?: string;
-  details?: string;
+  meta?: string;
+  ip?: string | null;
   created_at: string;
-}
-
-// ── SAAS OS ──────────────────────────────────────────────────────────────────
-
-export interface TokenOpsDay {
-  date: string;
-  model: string;
-  tokens_in: number;
-  tokens_out: number;
-  total_tokens: number;
-  cost_usd: number;
-  brand_id?: string;
-  feature?: string;
 }
 
 export interface TokenOpsSummary {
   today: { tokens: number; cost_usd: number };
-  week:  { tokens: number; cost_usd: number };
+  week: { tokens: number; cost_usd: number };
   month: { tokens: number; cost_usd: number };
   by_feature: Record<string, { tokens: number; cost_usd: number }>;
   top_brands: { brand_id: string; brand_name?: string; tokens: number; cost_usd: number }[];
   forecast_month_usd: number;
+}
+
+export interface MemoryEvent {
+  id: string;
+  brand_id?: string;
+  user_id?: string;
+  tool?: string;
+  event: string;
+  value?: string;
+  metadata?: string;
+  created_at: string;
+}
+
+export interface MemoryFeature {
+  brand_id: string;
+  feature: string;
+  value?: string;
+  window?: string;
+  computed_at: string;
+}
+
+export interface BrandMemory {
+  brand_id: string;
+  namespace: string;
+  key: string;
+  value?: string;
+  confidence?: number;
+  source?: string;
+  updated_at: string;
 }
 
 export interface FeatureAdoptionRow {
@@ -363,59 +518,4 @@ export interface FeatureAdoptionRow {
   activation_rate: number;
   conversion_rate: number;
   retention_rate: number;
-}
-
-export interface SocialPlatformHealth {
-  platform: string;
-  display_name: string;
-  connected: number;
-  failed: number;
-  oauth_errors: number;
-  published_today: number;
-  retries_today: number;
-  rate_limited: boolean;
-  status: "ok" | "warn" | "error";
-}
-
-export interface ExecutionItem {
-  type: "customer_issue" | "revenue_event" | "platform_alert" | "approval";
-  severity: "high" | "medium" | "low";
-  title: string;
-  description?: string;
-  href: string;
-  created_at: string;
-  action_label?: string;
-}
-
-// ── Overview ──────────────────────────────────────────────────────────────────
-
-export interface AdminOverview {
-  users: number;
-  brands: number;
-  active_users?: number;
-  trial_users?: number;
-  new_7d?: number;
-  published_24h?: number;
-  failed_24h?: number;
-  integrations?: number;
-  alerts?: number;
-  delivery_rate?: number;
-  conversion_rate?: number;
-  mrr?: number;
-}
-
-// ── Pagination ────────────────────────────────────────────────────────────────
-
-export interface PaginatedResponse<T> {
-  data: T[];
-  total?: number;
-  page?: number;
-  per_page?: number;
-  has_more?: boolean;
-}
-
-export interface ApiError {
-  error: string;
-  code?: string;
-  details?: unknown;
 }
