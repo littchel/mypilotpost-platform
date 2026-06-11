@@ -100,7 +100,7 @@ export default function TodayPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
         <StatCard label="Active customers" value={(overview?.active_subscriptions as number | undefined)?.toLocaleString() ?? "—"} icon={<Users className="h-4 w-4" />} accent="info" loading={ovLoading} onClick={() => router.push("/customers/")} />
         <StatCard label="MRR" value={`R${mrr.toLocaleString()}`} icon={<DollarSign className="h-4 w-4" />} accent="success" loading={ovLoading} onClick={() => router.push("/billing/")} />
-        <StatCard label="Open support" value={supportRequests.length.toString()} icon={<Headphones className="h-4 w-4" />} accent={supportRequests.length > 10 ? "warning" : undefined} loading={ovLoading} onClick={() => router.push("/support/")} />
+        <StatCard label="Open support" value={supportRequests.length.toString()} icon={<Headphones className="h-4 w-4" />} accent={supportRequests.length > 10 ? "warning" : undefined} loading={ovLoading} onClick={() => router.push("/customers/")} />
         <StatCard label="Failed deliveries" value={failedDeliveries.toString()} icon={<Activity className="h-4 w-4" />} accent={failedDeliveries > 0 ? "danger" : "success"} loading={ovLoading} onClick={() => router.push("/operations/")} />
       </div>
 
@@ -224,14 +224,14 @@ export default function TodayPage() {
                 <h2 className="text-sm font-semibold text-ink-1">Open Support</h2>
                 {supportRequests.length > 0 && <Badge variant={supportRequests.length > 5 ? "warning" : undefined}>{supportRequests.length}</Badge>}
               </div>
-              <Button variant="ghost" size="sm" onClick={() => router.push("/support/")}>
+              <Button variant="ghost" size="sm" onClick={() => router.push("/customers/")}>
                 <ChevronRight className="h-3.5 w-3.5" />
               </Button>
             </div>
             {supportRequests.length === 0
               ? <EmptyState title="No open tickets" className="py-8" />
               : <div>{supportRequests.slice(0, 5).map(r => (
-                  <div key={r.id} className="px-4 py-3 border-b border-os-border/40 hover:bg-os-raised/30 cursor-pointer transition-colors" onClick={() => router.push("/support/")}>
+                  <div key={r.id} className="px-4 py-3 border-b border-os-border/40 hover:bg-os-raised/30 cursor-pointer transition-colors" onClick={() => router.push("/customers/")}>
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-sm text-ink-1 truncate">{r.subject ?? r.category}</p>
                       <Badge variant={r.priority === "urgent" ? "danger" : r.priority === "high" ? "warning" : undefined}>{r.priority ?? "normal"}</Badge>
@@ -247,7 +247,7 @@ export default function TodayPage() {
             <div className="space-y-1">
               {[
                 { label: "Customers", icon: Users, path: "/customers/" },
-                { label: "Billing overview", icon: DollarSign, path: "/billing/" },
+                { label: "Billing", icon: DollarSign, path: "/billing/" },
                 { label: "Platform diagnostics", icon: Activity, path: "/operations/" },
                 { label: "Kill switches", icon: Zap, path: "/config/" },
               ].map(a => (

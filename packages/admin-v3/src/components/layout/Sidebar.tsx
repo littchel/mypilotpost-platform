@@ -5,17 +5,16 @@ import { cn } from "@/lib/utils";
 import { useSession } from "@/context/SessionContext";
 import { getWorkspacesForRole } from "@/lib/roles";
 import {
-  LayoutDashboard, Users, MessageSquare, CreditCard,
-  ShoppingBag, Wrench, FileText, Settings, LogOut, Zap,
+  LayoutDashboard, Users, CreditCard,
+  ShoppingBag, Activity, FileText, Settings, LogOut, Zap,
 } from "lucide-react";
 
 const ICONS: Record<string, React.ElementType> = {
   today:      LayoutDashboard,
   customers:  Users,
-  support:    MessageSquare,
   billing:    CreditCard,
   commercial: ShoppingBag,
-  operations: Wrench,
+  operations: Activity,
   content:    FileText,
   config:     Settings,
 };
@@ -23,7 +22,6 @@ const ICONS: Record<string, React.ElementType> = {
 const LABELS: Record<string, string> = {
   today:      "Today",
   customers:  "Customers",
-  support:    "Support",
   billing:    "Billing",
   commercial: "Commercial",
   operations: "Platform Ops",

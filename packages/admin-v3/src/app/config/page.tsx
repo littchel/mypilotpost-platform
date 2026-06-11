@@ -6,15 +6,18 @@ import {
   apiListKillSwitches, apiUpdateKillSwitch,
   apiListAuditLog,
 } from "@/lib/api";
+import { getWorkspacesForRole } from "@/lib/roles";
+import type { AdminRole } from "@/types";
 import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
 import { Tabs } from "@/components/ui/Tabs";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { Badge, statusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import { useToast } from "@/context/ToastContext";
 import {
-  Radio, Zap, FileText,
+  Radio, Zap, FileText, Shield,
   CheckCircle, XCircle, AlertTriangle, Power, PowerOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -192,6 +195,60 @@ function AuditTab() {
   );
 }
 
+const ADMIN_ROLES: AdminRole[] = ["super_admin", "admin", "support", "commercial", "content", "developer", "analyst", "viewer"];
+
+const ROLE_LABELS: Record<AdminRole, string> = {
+  super_admin: "Super Admin",
+  admin: "Admin",
+  support: "Support",
+  commercial: "Commercial",
+  content: "Content",
+  developer: "Developer",
+  analyst: "Analyst",
+  viewer: "Viewer",
+};
+
+function RolesTab() {
+  return (
+    <div className="space-y-4">
+      <Card>
+        <p className="text-xs text-ink-3 mb-4">Role → workspace access matrix. This is the platform access model. Changes require a code deployment.</p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-os-border">
+                <th className="text-left py-2 px-3 text-xs font-semibold text-ink-3 uppercase tracking-wider w-36">Role</th>
+                {["today","customers","billing","commercial","content","operations","config"].map(ws => (
+                  <th key={ws} className="text-center py-2 px-2 text-xs font-semibold text-ink-3 uppercase tracking-wider capitalize">{ws}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {ADMIN_ROLES.map(role => {
+                const workspaces = getWorkspacesForRole(role).map(w => w.id);
+                return (
+                  <tr key={role} className="border-b border-os-border/40 hover:bg-os-raised/30">
+                    <td className="py-2.5 px-3">
+                      <Badge variant={role === "super_admin" || role === "admin" ? "brand" : "neutral"}>{ROLE_LABELS[role]}</Badge>
+                    </td>
+                    {["today","customers","billing","commercial","content","operations","config"].map(ws => (
+                      <td key={ws} className="py-2.5 px-2 text-center">
+                        {(workspaces as string[]).includes(ws)
+                          ? <CheckCircle className="h-4 w-4 text-green-400 mx-auto" />
+                          : <span className="text-ink-4 text-xs">—</span>}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 export default function ConfigPage() {
   const qc = useQueryClient();
   const [tab, setTab] = useState("events");
@@ -199,8 +256,8 @@ export default function ConfigPage() {
   return (
     <WorkspaceLayout
       workspace="config"
-      title="Platform Config"
-      subtitle="Events, kill switches, audit log"
+      title="Config"
+      subtitle="Governance — events, kill switches, audit, roles"
       onRefresh={() => {
         ["system-events-config","kill-switches","audit-log"].forEach(k =>
           qc.invalidateQueries({ queryKey: [k] })
@@ -213,6 +270,7 @@ export default function ConfigPage() {
             { id: "events", label: "Events", icon: <Radio className="h-3.5 w-3.5" /> },
             { id: "kill-switches", label: "Kill Switches", icon: <Zap className="h-3.5 w-3.5" /> },
             { id: "audit", label: "Audit Log", icon: <FileText className="h-3.5 w-3.5" /> },
+            { id: "roles", label: "Roles", icon: <Shield className="h-3.5 w-3.5" /> },
           ]}
           active={tab}
           onChange={setTab}
@@ -222,6 +280,7 @@ export default function ConfigPage() {
       {tab === "events" && <EventsTab />}
       {tab === "kill-switches" && <KillSwitchesTab />}
       {tab === "audit" && <AuditTab />}
+      {tab === "roles" && <RolesTab />}
     </WorkspaceLayout>
   );
 }

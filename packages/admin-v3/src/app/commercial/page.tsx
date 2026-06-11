@@ -1,9 +1,12 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  apiListPlans, apiCreatePlan, apiUpdatePlan, apiClonePlan,
-  apiGetCommercialMetrics, apiGetPlanVersions, apiGetRewards,
+  apiListPlans, apiCreatePlan, apiUpdatePlan, apiClonePlan, apiGetPlanVersions,
+  apiListFeatures, apiCreateFeature, apiUpdateFeature,
+  apiListEntitlements, apiUpdateEntitlement,
+  apiListPromotions, apiCreatePromotion,
+  apiGetCommercialMetrics,
 } from "@/lib/api";
 import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
 import { Tabs } from "@/components/ui/Tabs";
@@ -17,21 +20,22 @@ import { Input, Select, Toggle } from "@/components/ui/Input";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import { useToast } from "@/context/ToastContext";
 import {
-  Package, TrendingUp, Gift, History, Plus, Copy,
-  DollarSign, Users,
+  Package, TrendingUp, Tag, History, Plus, Copy,
+  DollarSign, Users, Zap, List,
 } from "lucide-react";
-import type { Plan, PlanVersion, RewardsOverview } from "@/types";
+import type { Plan, PlanFeature, PlanEntitlement, PlanVersion, Promotion } from "@/types";
 
 function fmt(d?: string | null) {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" });
 }
 
+// ─── Plans tab ────────────────────────────────────────────────────────────────
+
 const PLAN_COLS: Column<Plan>[] = [
   { key: "name", header: "Name", sortable: true, render: r => <span className="text-sm font-medium text-ink-1">{r.name}</span> },
   { key: "slug", header: "Slug", render: r => <span className="font-mono text-xs text-ink-3">{r.slug}</span> },
   { key: "price_monthly", header: "Monthly", sortable: true, render: r => <span className="text-sm text-ink-1">R{((r.price_monthly ?? 0) / 100).toFixed(2)}</span> },
-  { key: "price_yearly", header: "Yearly", render: r => r.price_yearly ? <span className="text-sm text-ink-1">R{(r.price_yearly / 100).toFixed(2)}</span> : <span className="text-ink-3">—</span> },
   { key: "billing_interval", header: "Interval", render: r => <Badge variant="brand">{r.billing_interval ?? "monthly"}</Badge> },
   { key: "is_active", header: "Status", render: r => <Badge variant={r.is_active ? "success" : "neutral"}>{r.is_active ? "Active" : "Inactive"}</Badge> },
   { key: "created_at", header: "Created", sortable: true, render: r => <span className="text-sm text-ink-2">{fmt(r.created_at)}</span> },
@@ -44,7 +48,7 @@ type PlanFormState = {
   is_active: boolean;
 };
 
-const EMPTY_FORM: PlanFormState = {
+const EMPTY_PLAN: PlanFormState = {
   name: "", slug: "", description: "",
   price_monthly: "", price_yearly: "", billing_interval: "monthly", currency: "ZAR",
   brand_limit: "", posts_per_month_limit: "", user_limit: "",
@@ -53,13 +57,10 @@ const EMPTY_FORM: PlanFormState = {
 
 function planToForm(p: Plan): PlanFormState {
   return {
-    name: p.name ?? "",
-    slug: p.slug ?? "",
-    description: p.description ?? "",
+    name: p.name ?? "", slug: p.slug ?? "", description: p.description ?? "",
     price_monthly: p.price_monthly != null ? String(p.price_monthly / 100) : "",
     price_yearly: p.price_yearly != null ? String(p.price_yearly / 100) : "",
-    billing_interval: p.billing_interval ?? "monthly",
-    currency: p.currency ?? "ZAR",
+    billing_interval: p.billing_interval ?? "monthly", currency: p.currency ?? "ZAR",
     brand_limit: p.brand_limit != null ? String(p.brand_limit) : "",
     posts_per_month_limit: p.posts_per_month_limit != null ? String(p.posts_per_month_limit) : "",
     user_limit: p.user_limit != null ? String(p.user_limit) : "",
@@ -73,7 +74,7 @@ function PlanDrawer({ plan, onClose }: { plan: Plan | "new"; onClose: () => void
   const isNew = plan === "new";
   const planId = isNew ? "" : (plan as Plan).id;
 
-  const [form, setForm] = useState<PlanFormState>(isNew ? EMPTY_FORM : planToForm(plan as Plan));
+  const [form, setForm] = useState<PlanFormState>(isNew ? EMPTY_PLAN : planToForm(plan as Plan));
   const [dirty, setDirty] = useState(false);
   const [confirmClone, setConfirmClone] = useState(false);
 
@@ -84,8 +85,7 @@ function PlanDrawer({ plan, onClose }: { plan: Plan | "new"; onClose: () => void
   });
 
   const f = (k: keyof PlanFormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setForm(p => ({ ...p, [k]: e.target.value }));
-    setDirty(true);
+    setForm(p => ({ ...p, [k]: e.target.value })); setDirty(true);
   };
 
   const saveMut = useMutation({
@@ -104,8 +104,7 @@ function PlanDrawer({ plan, onClose }: { plan: Plan | "new"; onClose: () => void
     },
     onSuccess: () => {
       toast.success(isNew ? "Plan created" : "Plan updated");
-      qc.invalidateQueries({ queryKey: ["plans"] });
-      setDirty(false);
+      qc.invalidateQueries({ queryKey: ["plans"] }); setDirty(false);
       if (isNew) onClose();
     },
     onError: () => toast.error("Failed to save plan"),
@@ -114,7 +113,7 @@ function PlanDrawer({ plan, onClose }: { plan: Plan | "new"; onClose: () => void
   const cloneMut = useMutation({
     mutationFn: () => apiClonePlan(planId),
     onSuccess: () => { toast.success("Plan cloned"); qc.invalidateQueries({ queryKey: ["plans"] }); setConfirmClone(false); onClose(); },
-    onError: () => toast.error("Failed to clone plan"),
+    onError: () => toast.error("Failed to clone"),
   });
 
   return (
@@ -142,7 +141,7 @@ function PlanDrawer({ plan, onClose }: { plan: Plan | "new"; onClose: () => void
               value={form.billing_interval}
               onChange={v => { setForm(p => ({...p, billing_interval: v})); setDirty(true); }} />
             <Select label="Currency"
-              options={[{value:"ZAR",label:"ZAR (R)"},{value:"USD",label:"USD ($)"}]}
+              options={[{value:"ZAR",label:"ZAR (R) — South Africa"},{value:"USD",label:"USD ($) — Worldwide"}]}
               value={form.currency}
               onChange={v => { setForm(p => ({...p, currency: v})); setDirty(true); }} />
           </div>
@@ -151,9 +150,8 @@ function PlanDrawer({ plan, onClose }: { plan: Plan | "new"; onClose: () => void
             <Input label="Posts/mo limit" type="number" value={form.posts_per_month_limit} onChange={f("posts_per_month_limit")} />
             <Input label="User limit" type="number" value={form.user_limit} onChange={f("user_limit")} />
           </div>
-          <Toggle label="Active" checked={form.is_active} onChange={v => { setForm(p => ({...p, is_active: v})); setDirty(true); }} />
+          <Toggle label="Active on website" checked={form.is_active} onChange={v => { setForm(p => ({...p, is_active: v})); setDirty(true); }} />
 
-          {/* Version history */}
           {((versions as { versions?: PlanVersion[] } | undefined)?.versions ?? []).length > 0 && (
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-2 flex items-center gap-1.5"><History className="h-3.5 w-3.5" /> Version History</p>
@@ -171,8 +169,7 @@ function PlanDrawer({ plan, onClose }: { plan: Plan | "new"; onClose: () => void
       </Drawer>
 
       {!isNew && (
-        <ConfirmDialog
-          open={confirmClone} onClose={() => setConfirmClone(false)}
+        <ConfirmDialog open={confirmClone} onClose={() => setConfirmClone(false)}
           onConfirm={() => cloneMut.mutate()} loading={cloneMut.isPending}
           title="Clone plan" description={`Create a copy of "${(plan as Plan).name}"?`} />
       )}
@@ -184,31 +181,19 @@ function PlansTab() {
   const [selected, setSelected] = useState<Plan | null>(null);
   const [showNew, setShowNew] = useState(false);
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["plans"], queryFn: apiListPlans,
-  });
-
-  const plans: Plan[] = (data as { plans?: Plan[]; data?: Plan[] } | undefined)?.plans
-    ?? (data as { plans?: Plan[]; data?: Plan[] } | undefined)?.data ?? [];
+  const { data, isLoading, error } = useQuery({ queryKey: ["plans"], queryFn: apiListPlans });
+  const plans: Plan[] = (data as { plans?: Plan[] } | undefined)?.plans ?? [];
 
   return (
     <>
       <DataTable
-        data={plans}
-        columns={PLAN_COLS}
-        keyField="id"
-        searchable
-        searchPlaceholder="Search plans..."
-        loading={isLoading}
+        data={plans} columns={PLAN_COLS} keyField="id" searchable
+        searchPlaceholder="Search plans..." loading={isLoading}
         error={error ? "Failed to load plans" : undefined}
-        emptyTitle="No plans"
-        exportFilename="plans"
-        onRowClick={r => setSelected(r)}
-        selectedId={selected?.id}
+        emptyTitle="No plans" exportFilename="plans"
+        onRowClick={r => setSelected(r)} selectedId={selected?.id}
         toolbar={
-          <Button variant="primary" size="sm" icon={<Plus className="h-3.5 w-3.5" />} onClick={() => setShowNew(true)}>
-            New plan
-          </Button>
+          <Button variant="primary" size="sm" icon={<Plus className="h-3.5 w-3.5" />} onClick={() => setShowNew(true)}>New plan</Button>
         }
       />
       {selected && <PlanDrawer plan={selected} onClose={() => setSelected(null)} />}
@@ -217,9 +202,256 @@ function PlansTab() {
   );
 }
 
+// ─── Features tab ─────────────────────────────────────────────────────────────
+
+const FEAT_COLS: Column<PlanFeature>[] = [
+  { key: "key", header: "Key", render: r => <span className="font-mono text-xs text-brand-300">{r.key}</span> },
+  { key: "name", header: "Name", sortable: true, render: r => <span className="text-sm font-medium text-ink-1">{r.name}</span> },
+  { key: "category", header: "Category", render: r => <Badge variant="brand">{r.category}</Badge> },
+  { key: "visible", header: "Visible", render: r => <Badge variant={r.visible ? "success" : "neutral"}>{r.visible ? "Yes" : "No"}</Badge> },
+  { key: "description", header: "Description", render: r => <span className="text-xs text-ink-3 truncate max-w-xs">{r.description ?? "—"}</span> },
+];
+
+function FeatureDrawer({ feature, onClose }: { feature: PlanFeature | "new"; onClose: () => void }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const isNew = feature === "new";
+  const [form, setForm] = useState(
+    isNew
+      ? { key: "", name: "", description: "", category: "core", visible: true }
+      : { key: (feature as PlanFeature).key, name: (feature as PlanFeature).name, description: (feature as PlanFeature).description ?? "", category: (feature as PlanFeature).category ?? "core", visible: !!(feature as PlanFeature).visible }
+  );
+
+  const saveMut = useMutation<{ key: string } | { success: boolean }, Error>({
+    mutationFn: () =>
+      isNew
+        ? apiCreateFeature({ ...form, visible: form.visible ? 1 : 0 })
+        : apiUpdateFeature((feature as PlanFeature).key, { name: form.name, description: form.description, category: form.category, visible: form.visible ? 1 : 0 }),
+    onSuccess: () => {
+      toast.success(isNew ? "Feature created" : "Feature updated");
+      qc.invalidateQueries({ queryKey: ["features"] });
+      onClose();
+    },
+    onError: () => toast.error("Failed to save feature"),
+  });
+
+  return (
+    <Drawer open onClose={onClose} title={isNew ? "New Feature" : "Edit Feature"} width="sm"
+      footer={
+        <div className="flex gap-2">
+          <Button loading={saveMut.isPending} disabled={!form.name || !form.key} onClick={() => saveMut.mutate()}>Save</Button>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+        </div>
+      }
+    >
+      <div className="space-y-4">
+        <Input label="Key" required value={form.key} onChange={e => setForm(f => ({...f, key: e.target.value}))} disabled={!isNew} hint="Immutable after creation" />
+        <Input label="Name" required value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} />
+        <Input label="Description" value={form.description} onChange={e => setForm(f => ({...f, description: e.target.value}))} />
+        <Select label="Category"
+          options={[{value:"core",label:"Core"},{value:"ai",label:"AI"},{value:"publishing",label:"Publishing"},{value:"analytics",label:"Analytics"},{value:"collaboration",label:"Collaboration"},{value:"advanced",label:"Advanced"}]}
+          value={form.category}
+          onChange={v => setForm(f => ({...f, category: v}))} />
+        <Toggle label="Visible on pricing page" checked={form.visible} onChange={v => setForm(f => ({...f, visible: v}))} />
+      </div>
+    </Drawer>
+  );
+}
+
+function FeaturesTab() {
+  const [selected, setSelected] = useState<PlanFeature | null>(null);
+  const [showNew, setShowNew] = useState(false);
+
+  const { data, isLoading, error } = useQuery({ queryKey: ["features"], queryFn: apiListFeatures });
+  const features: PlanFeature[] = (data as { features?: PlanFeature[] } | undefined)?.features ?? [];
+
+  return (
+    <>
+      <DataTable
+        data={features} columns={FEAT_COLS} keyField="key" searchable
+        searchPlaceholder="Search features..." loading={isLoading}
+        error={error ? "Failed to load features" : undefined}
+        emptyTitle="No features" exportFilename="features"
+        onRowClick={r => setSelected(r)} selectedId={selected?.key}
+        toolbar={
+          <Button variant="primary" size="sm" icon={<Plus className="h-3.5 w-3.5" />} onClick={() => setShowNew(true)}>New feature</Button>
+        }
+      />
+      {selected && <FeatureDrawer feature={selected} onClose={() => setSelected(null)} />}
+      {showNew && <FeatureDrawer feature="new" onClose={() => setShowNew(false)} />}
+    </>
+  );
+}
+
+// ─── Entitlements tab ─────────────────────────────────────────────────────────
+
+function EntitlementsTab() {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const [selectedPlanId, setSelectedPlanId] = useState<string>("");
+
+  const { data: plansData } = useQuery({ queryKey: ["plans"], queryFn: apiListPlans });
+  const plans: Plan[] = (plansData as { plans?: Plan[] } | undefined)?.plans ?? [];
+
+  const { data: entData, isLoading } = useQuery({
+    queryKey: ["entitlements", selectedPlanId],
+    queryFn: () => apiListEntitlements(selectedPlanId),
+    enabled: !!selectedPlanId,
+  });
+  const entitlements: PlanEntitlement[] = (entData as { entitlements?: PlanEntitlement[] } | undefined)?.entitlements ?? [];
+
+  const updateMut = useMutation({
+    mutationFn: ({ featureKey, body }: { featureKey: string; body: Record<string, unknown> }) =>
+      apiUpdateEntitlement(selectedPlanId, featureKey, body),
+    onSuccess: () => {
+      toast.success("Entitlement updated");
+      qc.invalidateQueries({ queryKey: ["entitlements", selectedPlanId] });
+    },
+    onError: () => toast.error("Failed to update"),
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <div className="flex-1 max-w-xs">
+          <select
+            className="os-input w-full h-9 text-sm"
+            value={selectedPlanId}
+            onChange={e => setSelectedPlanId(e.target.value)}
+          >
+            <option value="">Select a plan…</option>
+            {plans.filter(p => p.is_active).map(p => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </div>
+        {selectedPlanId && <Badge variant="brand">{plans.find(p => p.id === selectedPlanId)?.name}</Badge>}
+      </div>
+
+      {!selectedPlanId && (
+        <div className="py-16 text-center text-sm text-ink-3">Select a plan to view and edit entitlements</div>
+      )}
+
+      {selectedPlanId && isLoading && (
+        <div className="space-y-2 animate-pulse">{Array.from({length:8}).map((_,i) => <div key={i} className="h-12 bg-os-raised rounded" />)}</div>
+      )}
+
+      {selectedPlanId && !isLoading && entitlements.length === 0 && (
+        <div className="py-16 text-center text-sm text-ink-3">No entitlements found for this plan</div>
+      )}
+
+      {entitlements.length > 0 && (
+        <Card padding="none">
+          <div className="px-4 py-3 border-b border-os-border">
+            <h2 className="text-sm font-semibold text-ink-1">Feature Entitlements — {plans.find(p => p.id === selectedPlanId)?.name}</h2>
+          </div>
+          <div className="divide-y divide-os-border/50">
+            {entitlements.map(e => (
+              <div key={e.key ?? e.feature_key} className="flex items-center justify-between px-4 py-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-ink-1">{e.feature_name ?? e.feature_key ?? e.key}</p>
+                  {e.feature_category && <p className="text-xs text-ink-3">{e.feature_category}</p>}
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  {e.limit_value != null && (
+                    <span className="text-xs text-ink-3">Limit: {e.limit_value}</span>
+                  )}
+                  <button
+                    onClick={() => updateMut.mutate({
+                      featureKey: e.key ?? e.feature_key ?? "",
+                      body: { enabled: e.enabled ? 0 : 1 },
+                    })}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${e.enabled ? "bg-brand-500" : "bg-os-raised border border-os-border"}`}
+                  >
+                    <span className={`h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${e.enabled ? "translate-x-4" : "translate-x-0.5"}`} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── Promotions tab ───────────────────────────────────────────────────────────
+
+const PROMO_COLS: Column<Promotion>[] = [
+  { key: "code", header: "Code", sortable: true, render: r => <span className="font-mono text-sm text-ink-1">{r.code}</span> },
+  { key: "type", header: "Type", render: r => <Badge variant="brand">{r.type}</Badge> },
+  { key: "value", header: "Value", sortable: true, render: r => (
+    <span className="text-sm text-ink-1">{r.type === "percent" ? `${r.value}%` : r.type === "fixed" ? `R${r.value}` : `${r.value} days`}</span>
+  )},
+  { key: "used_count", header: "Used", sortable: true, render: r => (
+    <span className="text-sm text-ink-2">{r.used_count ?? 0}{r.max_uses ? ` / ${r.max_uses}` : ""}</span>
+  )},
+  { key: "is_active", header: "Status", render: r => <Badge variant={r.is_active ? "success" : "neutral"}>{r.is_active ? "Active" : "Inactive"}</Badge> },
+  { key: "expires_at", header: "Expires", render: r => <span className="text-sm text-ink-2">{fmt(r.expires_at)}</span> },
+];
+
+function PromotionsTab() {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState({ code: "", type: "percent", value: "", max_uses: "", expires_at: "" });
+
+  const { data, isLoading, error } = useQuery({ queryKey: ["promotions"], queryFn: apiListPromotions });
+
+  const createMut = useMutation({
+    mutationFn: () => apiCreatePromotion({
+      ...form, value: parseFloat(form.value),
+      max_uses: form.max_uses ? parseInt(form.max_uses, 10) : null,
+    }),
+    onSuccess: () => {
+      toast.success("Promotion created");
+      qc.invalidateQueries({ queryKey: ["promotions"] });
+      setShowCreate(false);
+      setForm({ code: "", type: "percent", value: "", max_uses: "", expires_at: "" });
+    },
+    onError: () => toast.error("Failed to create promotion"),
+  });
+
+  return (
+    <>
+      <DataTable
+        data={data?.promotions ?? []} columns={PROMO_COLS} keyField="id"
+        loading={isLoading} error={error ? "Failed to load promotions" : undefined}
+        emptyTitle="No promotions" emptyMessage="Create your first coupon or promotion code."
+        exportFilename="promotions" searchable searchPlaceholder="Search codes..."
+        toolbar={
+          <Button variant="primary" size="sm" icon={<Plus className="h-3.5 w-3.5" />} onClick={() => setShowCreate(true)}>
+            New promotion
+          </Button>
+        }
+      />
+
+      <Drawer open={showCreate} onClose={() => setShowCreate(false)} title="Create Promotion" width="sm"
+        footer={
+          <div className="flex gap-2">
+            <Button loading={createMut.isPending} disabled={!form.code || !form.value} onClick={() => createMut.mutate()}>Create</Button>
+            <Button variant="secondary" onClick={() => setShowCreate(false)}>Cancel</Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <Input label="Code" required value={form.code} onChange={e => setForm(f => ({...f, code: e.target.value.toUpperCase()}))} placeholder="SAVE20" />
+          <Select label="Type" required
+            options={[{value:"percent",label:"Percent discount"},{value:"fixed",label:"Fixed amount (R)"},{value:"trial_days",label:"Trial extension (days)"}]}
+            value={form.type} onChange={v => setForm(f => ({...f, type: v}))} />
+          <Input label={form.type === "percent" ? "Percent (%)" : form.type === "fixed" ? "Amount (R)" : "Days"} required type="number" value={form.value} onChange={e => setForm(f => ({...f, value: e.target.value}))} />
+          <Input label="Max uses" type="number" value={form.max_uses} onChange={e => setForm(f => ({...f, max_uses: e.target.value}))} hint="Leave blank for unlimited" />
+          <Input label="Expires at" type="date" value={form.expires_at} onChange={e => setForm(f => ({...f, expires_at: e.target.value}))} />
+        </div>
+      </Drawer>
+    </>
+  );
+}
+
+// ─── Metrics tab ──────────────────────────────────────────────────────────────
+
 function MetricsTab() {
   const { data, isLoading } = useQuery({ queryKey: ["commercial-metrics"], queryFn: apiGetCommercialMetrics });
-
   const plans = (data as { plans?: { id: string; name: string; user_count: number; mrr: number }[] } | undefined)?.plans ?? [];
   const total = plans.reduce((s, p) => s + (p.mrr ?? 0), 0);
 
@@ -228,8 +460,8 @@ function MetricsTab() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Total plans" value={String((data as { total_plans?: number } | undefined)?.total_plans ?? 0)} icon={<Package className="h-4 w-4" />} loading={isLoading} />
         <StatCard label="Active plans" value={String((data as { active_plans?: number } | undefined)?.active_plans ?? 0)} icon={<Package className="h-4 w-4" />} accent="success" loading={isLoading} />
-        <StatCard label="Total features" value={String((data as { total_features?: number } | undefined)?.total_features ?? 0)} icon={<DollarSign className="h-4 w-4" />} loading={isLoading} />
-        <StatCard label="Est. MRR" value={total ? `R${(total / 100).toLocaleString()}` : "—"} icon={<TrendingUp className="h-4 w-4" />} loading={isLoading} />
+        <StatCard label="Total features" value={String((data as { total_features?: number } | undefined)?.total_features ?? 0)} icon={<Zap className="h-4 w-4" />} loading={isLoading} />
+        <StatCard label="Revenue from plans" value={total ? `R${(total / 100).toLocaleString()}` : "—"} icon={<TrendingUp className="h-4 w-4" />} loading={isLoading} />
       </div>
 
       {plans.length > 0 && (
@@ -241,7 +473,7 @@ function MetricsTab() {
             <thead><tr className="border-b border-os-border">
               <th className="os-table-th">Plan</th>
               <th className="os-table-th text-right">Customers</th>
-              <th className="os-table-th text-right">MRR</th>
+              <th className="os-table-th text-right">MRR (ZAR)</th>
             </tr></thead>
             <tbody>
               {plans.map(p => (
@@ -259,35 +491,7 @@ function MetricsTab() {
   );
 }
 
-function RewardsTab() {
-  const { data, isLoading } = useQuery({ queryKey: ["rewards-overview"], queryFn: apiGetRewards });
-  const r = data as RewardsOverview | undefined;
-
-  return (
-    <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-4">
-        <StatCard label="Points issued" value={(r?.total_points_issued ?? 0).toLocaleString()} icon={<Gift className="h-4 w-4" />} loading={isLoading} />
-        <StatCard label="Active earners" value={(r?.active_users ?? 0).toLocaleString()} icon={<Users className="h-4 w-4" />} accent="success" loading={isLoading} />
-      </div>
-      {(r?.top_earners ?? []).length > 0 && (
-        <Card padding="none">
-          <div className="px-4 py-3 border-b border-os-border"><h2 className="text-sm font-semibold text-ink-1">Top Earners</h2></div>
-          <table className="w-full">
-            <thead><tr className="border-b border-os-border"><th className="os-table-th">User</th><th className="os-table-th text-right">Points</th></tr></thead>
-            <tbody>
-              {(r?.top_earners ?? []).map((e, i) => (
-                <tr key={i} className="border-b border-os-border/40">
-                  <td className="os-table-td text-ink-1">{e.email ?? e.user_id}</td>
-                  <td className="os-table-td text-right tabular-nums text-brand-300">{e.points.toLocaleString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
-      )}
-    </div>
-  );
-}
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CommercialPage() {
   const qc = useQueryClient();
@@ -296,10 +500,10 @@ export default function CommercialPage() {
   return (
     <WorkspaceLayout
       workspace="commercial"
-      title="Commercial Control"
-      subtitle="Plans, pricing, metrics, rewards"
+      title="Commercial"
+      subtitle="Plans, features, entitlements, promotions"
       onRefresh={() => {
-        ["plans","commercial-metrics","rewards-overview"].forEach(k =>
+        ["plans","features","promotions","commercial-metrics"].forEach(k =>
           qc.invalidateQueries({ queryKey: [k] })
         );
       }}
@@ -308,8 +512,10 @@ export default function CommercialPage() {
         <Tabs
           tabs={[
             { id: "plans", label: "Plans", icon: <Package className="h-3.5 w-3.5" /> },
+            { id: "features", label: "Features", icon: <Zap className="h-3.5 w-3.5" /> },
+            { id: "entitlements", label: "Entitlements", icon: <List className="h-3.5 w-3.5" /> },
+            { id: "promotions", label: "Promotions", icon: <Tag className="h-3.5 w-3.5" /> },
             { id: "metrics", label: "Metrics", icon: <TrendingUp className="h-3.5 w-3.5" /> },
-            { id: "rewards", label: "Rewards", icon: <Gift className="h-3.5 w-3.5" /> },
           ]}
           active={tab}
           onChange={setTab}
@@ -317,8 +523,10 @@ export default function CommercialPage() {
       </div>
 
       {tab === "plans" && <PlansTab />}
+      {tab === "features" && <FeaturesTab />}
+      {tab === "entitlements" && <EntitlementsTab />}
+      {tab === "promotions" && <PromotionsTab />}
       {tab === "metrics" && <MetricsTab />}
-      {tab === "rewards" && <RewardsTab />}
     </WorkspaceLayout>
   );
 }

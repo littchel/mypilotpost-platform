@@ -3,7 +3,6 @@ import type { AdminRole } from "@/types";
 export type WorkspaceId =
   | "today"
   | "customers"
-  | "support"
   | "billing"
   | "commercial"
   | "operations"
@@ -19,20 +18,19 @@ export interface WorkspaceConfig {
 }
 
 const ALL_WORKSPACES: WorkspaceConfig[] = [
-  { id: "today",      label: "Today",           icon: "LayoutDashboard", href: "/",             description: "Execution dashboard" },
-  { id: "customers",  label: "Customer 360",    icon: "Users",           href: "/customers/",   description: "Accounts, health, lifecycle" },
-  { id: "support",    label: "Support Center",  icon: "MessageSquare",   href: "/support/",     description: "Tickets, inbox, history" },
-  { id: "billing",    label: "Billing Ops",     icon: "CreditCard",      href: "/billing/",     description: "Revenue, subscriptions, refunds" },
-  { id: "commercial", label: "Commercial",      icon: "Package",         href: "/commercial/",  description: "Plans, features, entitlements" },
-  { id: "operations", label: "Platform Ops",    icon: "Activity",        href: "/operations/",  description: "Jobs, delivery, integrations" },
-  { id: "content",    label: "Content Ops",     icon: "FileText",        href: "/content/",     description: "Blog, emails, approvals" },
-  { id: "config",     label: "Platform Config", icon: "Settings",        href: "/config/",      description: "Kill switches, audit log, tokens" },
+  { id: "today",      label: "Today",         icon: "LayoutDashboard", href: "/",             description: "Company status" },
+  { id: "customers",  label: "Customers",     icon: "Users",           href: "/customers/",   description: "Accounts, support, lifecycle" },
+  { id: "billing",    label: "Billing",       icon: "CreditCard",      href: "/billing/",     description: "Revenue, subscriptions, refunds" },
+  { id: "commercial", label: "Commercial",    icon: "Package",         href: "/commercial/",  description: "Plans, features, entitlements" },
+  { id: "content",    label: "Content",       icon: "FileText",        href: "/content/",     description: "Blog, approvals" },
+  { id: "operations", label: "Platform Ops",  icon: "Activity",        href: "/operations/",  description: "Health, diagnostics, tests" },
+  { id: "config",     label: "Config",        icon: "Settings",        href: "/config/",      description: "Audit, events, roles, kill switches" },
 ];
 
 const ROLE_WORKSPACES: Partial<Record<AdminRole, WorkspaceId[]>> = {
-  super_admin:  ["today", "customers", "support", "billing", "commercial", "operations", "content", "config"],
-  admin:        ["today", "customers", "support", "billing", "commercial", "operations", "content", "config"],
-  support:      ["today", "customers", "support"],
+  super_admin:  ["today", "customers", "billing", "commercial", "content", "operations", "config"],
+  admin:        ["today", "customers", "billing", "commercial", "content", "operations", "config"],
+  support:      ["today", "customers"],
   commercial:   ["today", "billing", "commercial"],
   content:      ["today", "content"],
   developer:    ["today", "operations", "config"],
@@ -55,7 +53,7 @@ export function isAdminRole(role: AdminRole): boolean {
 }
 
 export function canWrite(role: AdminRole): boolean {
-  return role !== "support";
+  return role !== "viewer";
 }
 
 export function canManageCommercial(role: AdminRole): boolean {
