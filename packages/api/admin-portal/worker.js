@@ -1,5 +1,9 @@
 export default {
   async fetch(request, env) {
-    return env.ASSETS.fetch(request);
+    const response = await env.ASSETS.fetch(request);
+    const newResponse = new Response(response.body, response);
+    newResponse.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+    newResponse.headers.set("Pragma", "no-cache");
+    return newResponse;
   }
 };
