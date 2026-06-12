@@ -7,6 +7,7 @@
 import { json, error } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
 import { getEntitlements } from "../../lib/entitlements.js";
+import { logAdminAction } from "../../lib/admin_logger.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
@@ -123,7 +124,35 @@ export async function updatePlan(request, env, auth, planId) {
   binds.push(planId);
 
   await db.prepare(`UPDATE plans SET ${fields.join(", ")} WHERE id = ?`).bind(...binds).run();
-  return json({ success: true });
+
+  // PART 1 — price-change behavior. Default 'new': existing subscribers are
+  // grandfathered (their locked_price is untouched). 'migrate': re-snapshot the
+  // active subscribers on this plan to the new price.
+  const apply_to = body.apply_to === "migrate" ? "migrate" : "new";
+  let migrated = 0;
+
+  // Impact count = active subscriptions currently on this plan
+  const impact = await db.prepare(
+    "SELECT COUNT(*) AS n FROM subscriptions WHERE plan_id = ? AND status = 'active'"
+  ).bind(planId).first().catch(() => ({ n: 0 }));
+
+  if (apply_to === "migrate" && body.price_monthly !== undefined) {
+    const newCents = Math.round(body.price_monthly * 100);
+    const res = await db.prepare(`
+      UPDATE subscriptions
+      SET locked_price_cents = ?, locked_currency = COALESCE(?, locked_currency),
+          grandfathered = 0, effective_from = datetime('now'), updated_at = datetime('now')
+      WHERE plan_id = ? AND status = 'active'
+    `).bind(newCents, body.currency || null, planId).run();
+    migrated = res?.meta?.changes ?? 0;
+  }
+
+  await logAdminAction(env, auth, "update_plan", "plan", planId, {
+    fields: Object.keys(body).filter(k => k !== "apply_to"),
+    apply_to, impact_count: impact?.n || 0, migrated,
+  });
+
+  return json({ success: true, apply_to, impact_count: impact?.n || 0, migrated });
 }
 
 export async function archivePlan(request, env, auth, planId) {

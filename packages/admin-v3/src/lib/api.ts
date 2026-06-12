@@ -15,6 +15,9 @@ import type {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "https://api.mypilotpost.com/api";
 
+/** Base API origin (includes /api) — used for EventSource URLs that can't use the request() wrapper. */
+export function getApiBase() { return API_BASE; }
+
 export class ApiResponseError extends Error {
   status: number;
   body: ApiError;
@@ -89,8 +92,32 @@ export const apiVerifyUser = (userId: string) =>
   request<{ success: boolean }>(`/v1/admin/customers/${userId}/verify`, { method: "POST" });
 
 export const apiExtendTrial = (userId: string, days: number) =>
-  request<{ success: boolean }>(`/v1/admin/customers/${userId}`, { method: "PATCH", body: JSON.stringify({ extend_trial_days: days }) })
+  request<{ success: boolean; trial_ends_at?: string }>(`/v1/admin/customers/${userId}`, { method: "PATCH", body: JSON.stringify({ extend_trial_days: days }) })
     .catch(() => ({ success: false }));
+
+export const apiGetCustomerProfile = (userId: string) =>
+  request<CustomerDetail>(`/v1/admin/customers/${userId}/profile`);
+
+export const apiGetCustomerSubscriptions = (userId: string) =>
+  request<{ subscriptions: unknown[] }>(`/v1/admin/customers/${userId}/subscriptions`).catch(() => ({ subscriptions: [] }));
+
+export const apiGetCustomerSupport = (userId: string) =>
+  request<{ tickets: unknown[]; messages: unknown[]; notes: unknown[] }>(`/v1/admin/customers/${userId}/support`).catch(() => ({ tickets: [], messages: [], notes: [] }));
+
+export const apiGetCustomerActivity = (userId: string, limit = 100) =>
+  request<{ events: unknown[] }>(`/v1/admin/customers/${userId}/activity?limit=${limit}`).catch(() => ({ events: [] }));
+
+export const apiGetCustomerAccess = (userId: string) =>
+  request<{ roles: unknown[]; sessions: unknown[]; platforms: unknown[] }>(`/v1/admin/customers/${userId}/access`).catch(() => ({ roles: [], sessions: [], platforms: [] }));
+
+export const apiRevokeCustomerSession = (userId: string, sessionId: string) =>
+  request<{ success: boolean }>(`/v1/admin/customers/${userId}/session/${sessionId}`, { method: "DELETE" });
+
+export const apiGetCustomerLifecycle = (userId: string) =>
+  request<{ account: unknown; onboarding: unknown; subscription: unknown; events: unknown[] }>(`/v1/admin/customers/${userId}/lifecycle`).catch(() => ({ account: null, onboarding: null, subscription: null, events: [] }));
+
+export const apiGetCustomerAudit = (userId: string) =>
+  request<{ audit: unknown[] }>(`/v1/admin/customers/${userId}/audit`).catch(() => ({ audit: [] }));
 
 // ── Support ────────────────────────────────────────────────────────────────
 export const apiListSupportThreads = (params: Record<string, string | number> = {}) => {
@@ -107,7 +134,24 @@ export const apiUpdateSupportRequest = (id: string, body: Record<string, unknown
   request<{ success: boolean }>(`/v1/admin/support/requests/${id}`, { method: "PUT", body: JSON.stringify(body) });
 
 export const apiSendSupportMessage = (receiver_id: string, message: string) =>
-  request<{ success: boolean }>("/v1/admin/support/message", { method: "POST", body: JSON.stringify({ receiver_id, message }) });
+  request<{ success: boolean; id?: string; thread_id?: string }>("/v1/admin/support/message", { method: "POST", body: JSON.stringify({ receiver_id, message }) });
+
+// Customer-scoped support thread (tickets + message timeline)
+export const apiGetCustomerSupportThread = (customerId: string) =>
+  request<{ thread: unknown; messages: unknown[] }>(`/v1/admin/support/${customerId}`).catch(() => ({ thread: null, messages: [] }));
+
+export const apiUpdateSupportThread = (threadId: string, body: Record<string, unknown>) =>
+  request<{ success: boolean }>(`/v1/admin/support/requests/${threadId}`, { method: "PUT", body: JSON.stringify(body) });
+
+// Live chat (reuses ChatRoom Durable Object) — authorize → ticket → EventSource(stream)
+export const apiSupportAuthorize = (other_id: string) =>
+  request<{ success: boolean; ticket: string }>("/v1/support/authorize", { method: "POST", body: JSON.stringify({ other_id }) });
+
+export const apiSupportHistory = (other_id: string) =>
+  request<{ success: boolean; data: unknown[] }>(`/v1/support/history/${other_id}`).catch(() => ({ success: false, data: [] }));
+
+/** EventSource URL for a validated ticket (ticket auth in query — EventSource can't send headers). */
+export const supportStreamUrl = (ticket: string) => `${API_BASE}/v1/support/stream?ticket=${encodeURIComponent(ticket)}`;
 
 export const apiBroadcastMessage = (body: Record<string, unknown>) =>
   request<{ success: boolean }>("/v1/admin/support/broadcast", { method: "POST", body: JSON.stringify(body) });
@@ -125,9 +169,48 @@ export const apiListPromotions = () =>
 export const apiCreatePromotion = (body: Record<string, unknown>) =>
   request<{ id: string }>("/v1/admin/promotions", { method: "POST", body: JSON.stringify(body) });
 
-export const apiIssueRefund = (subscription_id: string, amount: number, reason: string) =>
-  request<{ success: boolean }>("/v1/admin/billing/refund", { method: "POST", body: JSON.stringify({ subscription_id, amount, reason }) })
-    .catch(() => ({ success: false }));
+// ── Billing (payment-derived; policy-gated refunds) ─────────────────────────
+export interface BillingOverviewV2 {
+  currency: string;
+  revenue_gross_cents: number; revenue_refunded_cents: number; revenue_net_cents: number;
+  mrr_cents: number; arr_cents: number; active_revenue_cents: number;
+  refund_rate: number; payment_success_rate: number | null;
+  payment_counts: { succeeded: number; failed: number };
+  arpu_cents: number;
+  revenue_trend: { month: string; gross_cents: number; refunded_cents: number; net_cents: number }[];
+  operational: { total_customers: number; active_subscriptions: number; trial_subscriptions: number };
+  generated_at: string;
+}
+export const apiGetBillingOverviewV2 = () =>
+  request<BillingOverviewV2>("/v1/admin/billing/overview");
+
+export const apiGetBillingSubscriptions = () =>
+  request<{ subscriptions: unknown[] }>("/v1/admin/billing/subscriptions").catch(() => ({ subscriptions: [] }));
+
+export const apiGetBillingPayments = () =>
+  request<{ payments: unknown[] }>("/v1/admin/billing/payments").catch(() => ({ payments: [] }));
+
+export const apiGetBillingCheckouts = () =>
+  request<{ checkouts: unknown[] }>("/v1/admin/billing/checkouts").catch(() => ({ checkouts: [] }));
+
+export const apiGetBillingCompliance = () =>
+  request<Record<string, unknown>>("/v1/admin/billing/compliance").catch(() => ({}));
+
+export const apiListRefunds = () =>
+  request<{ refund_requests: unknown[] }>("/v1/admin/billing/refunds").catch(() => ({ refund_requests: [] }));
+
+export interface RefundRequestResult {
+  refund_request_id: string; eligible: boolean; refund_percent: number;
+  refund_amount: number; currency: string; policy_reason: string; status: string;
+}
+export const apiRequestRefund = (body: { payment_id: string; reason: string; statutory_override?: boolean; statutory_reason?: string }) =>
+  request<RefundRequestResult>("/v1/admin/billing/refund/request", { method: "POST", body: JSON.stringify(body) });
+
+export const apiApproveRefund = (id: string) =>
+  request<{ success: boolean }>(`/v1/admin/billing/refund/${id}/approve`, { method: "POST" });
+
+export const apiRejectRefund = (id: string, rejection_reason: string) =>
+  request<{ success: boolean }>(`/v1/admin/billing/refund/${id}/reject`, { method: "POST", body: JSON.stringify({ rejection_reason }) });
 
 export const apiGetCommsDelivery = () =>
   request<{ data: CommsDeliveryRow[] }>("/v1/admin/comms/delivery").catch(() => ({ data: [] }));
@@ -151,7 +234,7 @@ export const apiCreatePlan = (body: Record<string, unknown>) =>
   request<{ id: string; slug?: string }>("/v1/admin/commercial/plans", { method: "POST", body: JSON.stringify(body) });
 
 export const apiUpdatePlan = (planId: string, body: Record<string, unknown>) =>
-  request<{ success: boolean }>(`/v1/admin/commercial/plans/${planId}`, { method: "PATCH", body: JSON.stringify(body) });
+  request<{ success: boolean; apply_to?: string; impact_count?: number; migrated?: number }>(`/v1/admin/commercial/plans/${planId}`, { method: "PATCH", body: JSON.stringify(body) });
 
 export const apiArchivePlan = (planId: string) =>
   request<{ success: boolean }>(`/v1/admin/commercial/plans/${planId}/archive`, { method: "POST" });
@@ -179,6 +262,41 @@ export const apiUpdateEntitlement = (planId: string, featureKey: string, body: R
 
 export const apiGetCommercialMetrics = () =>
   request<CommercialMetrics>("/v1/admin/commercial/metrics");
+
+// ── Build Wave 3: Jobs / Media / Usage / Roles / System / SEO ───────────────
+export const apiGetJobs = (params: Record<string, string> = {}) => {
+  const qs = new URLSearchParams(params).toString();
+  return request<{ jobs: unknown[]; summary: Record<string, number> }>(`/v1/admin/jobs?${qs}`).catch(() => ({ jobs: [], summary: {} }));
+};
+export const apiRetryJob = (id: string) =>
+  request<{ success: boolean; message?: string }>(`/v1/admin/jobs/${id}/retry`, { method: "POST" });
+
+export const apiGetAdminMedia = (params: Record<string, string> = {}) => {
+  const qs = new URLSearchParams(params).toString();
+  return request<{ assets: unknown[]; providers: unknown[]; storage: Record<string, unknown>; licensing: unknown[] }>(`/v1/admin/media?${qs}`).catch(() => ({ assets: [], providers: [], storage: {}, licensing: [] }));
+};
+export const apiTraceMedia = (id: string) =>
+  request<{ usage: unknown[] }>(`/v1/admin/media/${id}/usage`).catch(() => ({ usage: [] }));
+export const apiDeleteMedia = (id: string) =>
+  request<{ success: boolean }>(`/v1/admin/media/${id}`, { method: "DELETE" });
+
+export const apiGetAdminUsage = (days = 30) =>
+  request<Record<string, unknown>>(`/v1/admin/usage?days=${days}`).catch(() => ({}));
+
+export const apiGetRoles = () =>
+  request<{ roles: unknown[]; editable: boolean; source: string }>("/v1/admin/roles").catch(() => ({ roles: [], editable: false, source: "" }));
+
+export const apiGetSystemExtended = () =>
+  request<{ workers: unknown[]; domains: unknown[]; webhooks: Record<string, unknown>; providers: unknown[] }>("/v1/admin/system/extended").catch(() => ({ workers: [], domains: [], webhooks: {}, providers: [] }));
+
+export const apiGetAdminSEO = () =>
+  request<Record<string, unknown>>("/v1/admin/seo/overview").catch(() => ({}));
+
+export const apiGetEmailTemplates = () =>
+  request<{ templates?: unknown[]; legal?: unknown[] }>("/v1/admin/templates").catch(() => ({ templates: [] }));
+
+export const apiGetCustomerHealthSummary = () =>
+  request<{ counts: Record<string, number>; total: number }>("/v1/admin/customers/health-summary").catch(() => ({ counts: {}, total: 0 }));
 
 // ── Platform Ops ──────────────────────────────────────────────────────────
 export const apiGetDeliveryStats = () =>

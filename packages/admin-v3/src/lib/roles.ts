@@ -18,7 +18,7 @@ export interface WorkspaceConfig {
 }
 
 const ALL_WORKSPACES: WorkspaceConfig[] = [
-  { id: "today",      label: "Today",         icon: "LayoutDashboard", href: "/",             description: "Company status" },
+  { id: "today",      label: "Command Center", icon: "LayoutDashboard", href: "/",             description: "Operational attention" },
   { id: "customers",  label: "Customers",     icon: "Users",           href: "/customers/",   description: "Accounts, support, lifecycle" },
   { id: "billing",    label: "Billing",       icon: "CreditCard",      href: "/billing/",     description: "Revenue, subscriptions, refunds" },
   { id: "commercial", label: "Commercial",    icon: "Package",         href: "/commercial/",  description: "Plans, features, entitlements" },

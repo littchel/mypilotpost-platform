@@ -3,13 +3,7 @@ import { requireAuth, requirePermission } from "../auth/middleware.js";
 import { getDB } from "../lib/db.js";
 import { json, error } from "../lib/json.js";
 import { rateLimit } from "../lib/rate-limit.js";
-
-// Helper: Deterministic conversation routing
-function getChatRoom(env, u1, u2) {
-  const roomName = [u1, u2].sort().join("--");
-  const roomId = env.CHAT_ROOM.idFromName(roomName);
-  return env.CHAT_ROOM.get(roomId);
-}
+import { getChatRoom, findOrCreateThread, persistAndBroadcast } from "../core/support/threads.js";
 
 export const supportRoutes = new Hono().basePath("/api/v1/support");
 
@@ -111,32 +105,26 @@ supportRoutes.post("/message", async (c) => {
   }
 
   const db = getDB(c.env);
-  const msgId = crypto.randomUUID();
-  const timestamp = new Date().toISOString();
 
-  const isAdminMsg = ['super_admin', 'operations', 'support', 'admin'].includes(auth.role) ? 1 : 0;
+  // Find/create the customer's thread. When the sender is the customer, the
+  // thread belongs to them; when an admin sends, it belongs to the receiver.
+  const customerId = isAdmin ? receiver_id : auth.user_id;
+  let thread;
+  try {
+    thread = await findOrCreateThread(db, customerId);
+  } catch (err) {
+    return error(err.message || "Cannot open support thread", "BAD_REQUEST", null, 400);
+  }
 
-  // 1. Persist to DB
-  await db.prepare(`
-    INSERT INTO support_messages (id, sender_id, receiver_id, message, is_admin_msg, created_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).bind(msgId, auth.user_id, receiver_id, message, isAdminMsg, timestamp).run();
-
-  const payload = {
-    type: 'message',
-    id: msgId,
-    sender_id: auth.user_id,
-    receiver_id,
+  // Persist with all NOT NULL columns + live broadcast via ChatRoom DO
+  const payload = await persistAndBroadcast(db, c.env, {
+    threadId:   thread.id,
+    senderId:   auth.user_id,
+    receiverId: receiver_id,
     message,
-    timestamp
-  };
-
-  // 2. Broadcast via Durable Object Room
-  const room = getChatRoom(c.env, auth.user_id, receiver_id);
-  await room.fetch(new Request(`${new URL(c.req.url).origin}/message`, {
-    method: 'POST',
-    body: JSON.stringify(payload)
-  }));
+    isAdmin:    Boolean(isAdmin),
+    origin:     new URL(c.req.url).origin,
+  });
 
   return json({ success: true, message: payload });
 });

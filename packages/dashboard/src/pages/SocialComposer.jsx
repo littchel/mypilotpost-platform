@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { apiRequest } from "../lib/api/client";
+import OverlayEditor from "../components/editor/OverlayEditor";
+import AdobeExpress from "../components/editor/AdobeExpress";
 import { useAuth } from "../contexts/AuthContext";
 import SocialAssistantModal from "../components/shared/SocialAssistantModal";
 
@@ -188,6 +190,66 @@ export default function SocialComposer({
 
   const [assistantOpen, setAssistantOpen] = useState(false);
 
+  // ── Overlay designer state (ITEM 2) ──────────────────────────────────────────
+  const [showDesigner, setShowDesigner] = useState(false);
+  const [overlays, setOverlays] = useState(null);            // {background, overlay_text[], overlay_image[]}
+  const [assetId, setAssetId] = useState(selectedAsset?.id || null);
+  const [saveState, setSaveState] = useState("idle");        // idle | saving | saved | error
+  const autosaveTimer = useRef(null);
+  const skipFirstAutosave = useRef(true);
+
+  // Hydrate overlays from an existing asset (edit/reuse — preserves editable state)
+  useEffect(() => {
+    if (!selectedAsset) return;
+    setAssetId(selectedAsset.id || null);
+    if (selectedAsset.overlays) setOverlays(selectedAsset.overlays);
+    if (typeof selectedAsset.text === "string") setContent(selectedAsset.text);
+  }, [selectedAsset]);
+
+  // Persist (draft/scheduled/published) — overlays always travel with the asset, never flattened
+  const persist = useCallback(async (status) => {
+    if (!content && !overlays) return null;
+    setSaveState("saving");
+    try {
+      const res = await apiRequest("/api/customer/content/social", {
+        method: "POST",
+        body: JSON.stringify({
+          content_id: assetId || undefined,
+          text: content || " ",
+          platforms: selectedPlatforms,
+          campaign_id: selectedCampaignId || null,
+          status,
+          overlays: overlays || undefined,
+        }),
+      });
+      const newId = res?.data?.id || res?.id || res?.content_id;
+      if (newId && !assetId) setAssetId(newId);
+      setSaveState("saved");
+      return res;
+    } catch (e) {
+      console.error("save failed", e);
+      setSaveState("error");
+      return null;
+    }
+  }, [content, overlays, assetId, selectedPlatforms, selectedCampaignId]);
+
+  // Autosave (debounced) whenever content or overlays change
+  useEffect(() => {
+    if (skipFirstAutosave.current) { skipFirstAutosave.current = false; return; }
+    if (!content && !overlays) return;
+    clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(() => { persist("draft"); }, 1500);
+    return () => clearTimeout(autosaveTimer.current);
+  }, [content, overlays]); // eslint-disable-line
+
+  // Export the composed overlay as a PNG (objects → canvas, never the DOM)
+  const handleExport = async () => {
+    const dataUrl = await OverlayEditor.exportCurrentPNG();
+    if (!dataUrl) { alert("Open the Designer and add a background or overlays first."); return; }
+    const a = document.createElement("a");
+    a.href = dataUrl; a.download = `mypilotpost-${Date.now()}.png`; a.click();
+  };
+
   useEffect(() => {
     if (propCampaignId) {
       const timer = setTimeout(() => setLocalCampaignId(propCampaignId), 0);
@@ -245,14 +307,21 @@ export default function SocialComposer({
     navigator.clipboard.writeText(content).catch(() => {});
   };
 
-  const handlePostNow = () => {
-    if (!content) return alert("Please enter some content.");
-    alert("Posting now...");
+  const handlePostNow = async () => {
+    if (!content && !overlays) return alert("Please add content or a design.");
+    const res = await persist("published");
+    if (res) alert("Post saved & published. Overlays preserved.");
   };
 
-  const handleSchedule = () => {
-    if (!content) return alert("Please enter some content.");
-    alert("Post scheduled successfully!");
+  const handleSchedule = async () => {
+    if (!content && !overlays) return alert("Please add content or a design.");
+    const res = await persist("scheduled");
+    if (res) alert("Post scheduled. Overlays preserved.");
+  };
+
+  const handleSaveDraft = async () => {
+    const res = await persist("draft");
+    if (res) alert("Draft saved.");
   };
 
   // In multi-preview, clicking a preview card sets focused platform for single-preview
@@ -314,6 +383,13 @@ export default function SocialComposer({
               <button className="btn-grey btn-sm" onClick={() => switchTab && switchTab("blog")}>
                 <i className="fas fa-blog me-1"></i> Add Blog
               </button>
+              <button
+                className={`btn-grey btn-sm${showDesigner ? " active" : ""}`}
+                onClick={() => setShowDesigner(v => !v)}
+                title="Add text & image overlays"
+              >
+                <i className="fas fa-layer-group me-1"></i> Designer
+              </button>
               <button className="btn-grey btn-sm ms-auto">
                 <i className="fas fa-hashtag me-1"></i> Hashtag Generator
               </button>
@@ -341,18 +417,53 @@ export default function SocialComposer({
                 </div>
               </div>
             )}
+
+            {/* ── OVERLAY DESIGNER (ITEM 2) ── */}
+            {showDesigner && (
+              <div className="mt-3 p-3" style={{ background: "#0b0f1a", borderRadius: 12, border: "1px solid #252D42" }}>
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <span className="extra-small fw-bold text-uppercase" style={{ color: "#8892B0" }}>Overlay Designer</span>
+                  <div className="d-flex align-items-center gap-2">
+                    <AdobeExpress
+                      seedImage={overlays?.background?.url || null}
+                      onImport={(dataUrl) =>
+                        setOverlays(prev => ({
+                          ...(prev || { overlay_text: [], overlay_image: [] }),
+                          background: { ...((prev && prev.background) || { fit: "cover", color: "#111827" }), url: dataUrl },
+                        }))
+                      }
+                    />
+                    <span className="extra-small" style={{ color: saveState === "saved" ? "#22c55e" : saveState === "saving" ? "#f59e0b" : "#64748b" }}>
+                      {saveState === "saving" ? "Autosaving…" : saveState === "saved" ? "Saved" : saveState === "error" ? "Save failed" : "Editable"}
+                    </span>
+                  </div>
+                </div>
+                <OverlayEditor
+                  value={overlays ? { ...overlays, __assetId: assetId } : { __assetId: assetId }}
+                  onChange={setOverlays}
+                />
+              </div>
+            )}
           </div>
 
-          {/* ── ACTION BUTTONS: [Post Now (primary)] [Copy] [Schedule] ── */}
+          {/* ── ACTION BUTTONS ── */}
           <div className="d-flex gap-2 mt-2">
             <button className="btn-pilot btn-sm flex-fill" onClick={handlePostNow}>
               <i className="fas fa-bolt me-1"></i> Post Now
             </button>
-            <button className="btn-grey btn-sm flex-fill" onClick={handleCopy}>
-              <i className="fas fa-copy me-1"></i> Copy
+            <button className="btn-grey btn-sm flex-fill" onClick={handleSaveDraft}>
+              <i className="fas fa-save me-1"></i> Draft
             </button>
             <button className="btn-grey btn-sm flex-fill" onClick={handleSchedule}>
               <i className="fas fa-calendar me-1"></i> Schedule
+            </button>
+          </div>
+          <div className="d-flex gap-2 mt-2">
+            <button className="btn-grey btn-sm flex-fill" onClick={handleCopy}>
+              <i className="fas fa-copy me-1"></i> Copy text
+            </button>
+            <button className="btn-grey btn-sm flex-fill" onClick={handleExport} disabled={!showDesigner && !overlays}>
+              <i className="fas fa-download me-1"></i> Export PNG
             </button>
           </div>
         </div>

@@ -21,9 +21,9 @@ export async function getCurrentPlan(db, userId) {
 
   const now = new Date();
 
-  // 1. Paid Subscription (Active & Not Starter)
+  // 1. Paid Subscription (Active & Not Starter) — apply price-lock resolution.
   if (row.status === 'active' && row.id !== 'starter') {
-    return row;
+    return await applyPriceResolution(db, userId, row);
   }
 
   // 2. Standard Trial (includes referral-extended trial — stored in users.trial_ends_at)
@@ -38,6 +38,60 @@ export async function getCurrentPlan(db, userId) {
   }
 
   return row;
+}
+
+/**
+ * Price-lock resolution: a subscriber pays the price they agreed to, not the live
+ * catalog price. Resolution order:
+ *   1. subscriptions.locked_price_cents (grandfathered snapshot)
+ *   2. latest paid checkout snapshot (checkouts.localized_price)
+ *   3. live plan catalog (planRow as-is)
+ * Returns the plan row with price fields overridden + price_source for transparency.
+ */
+async function applyPriceResolution(db, userId, planRow) {
+  // 1. Subscription snapshot
+  const sub = await db.prepare(`
+    SELECT locked_price_cents, locked_currency, billing_interval, grandfathered, effective_from
+    FROM subscriptions
+    WHERE user_id = ? AND status = 'active' AND locked_price_cents IS NOT NULL
+    ORDER BY effective_from DESC LIMIT 1
+  `).bind(userId).first().catch(() => null);
+
+  if (sub?.locked_price_cents != null) {
+    return {
+      ...planRow,
+      price_cents:   sub.locked_price_cents,
+      price_monthly: Math.round(sub.locked_price_cents / 100),
+      currency:      sub.locked_currency || planRow.currency,
+      billing_interval: sub.billing_interval || 'monthly',
+      grandfathered: !!sub.grandfathered,
+      price_source:  'subscription_locked',
+      effective_from: sub.effective_from || null,
+    };
+  }
+
+  // 2. Latest paid checkout snapshot
+  const checkout = await db.prepare(`
+    SELECT c.localized_price, c.currency, c.billing_interval
+    FROM checkouts c
+    JOIN brands b ON b.id = c.brand_id
+    WHERE b.owner_user_id = ? AND c.status = 'paid' AND c.localized_price IS NOT NULL
+    ORDER BY c.completed_at DESC LIMIT 1
+  `).bind(userId).first().catch(() => null);
+
+  if (checkout?.localized_price != null) {
+    return {
+      ...planRow,
+      price_cents:   checkout.localized_price,
+      price_monthly: Math.round(checkout.localized_price / 100),
+      currency:      checkout.currency || planRow.currency,
+      billing_interval: checkout.billing_interval || 'monthly',
+      price_source:  'checkout_snapshot',
+    };
+  }
+
+  // 3. Live catalog fallback
+  return { ...planRow, price_source: 'catalog' };
 }
 
 /**

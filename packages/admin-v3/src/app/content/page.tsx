@@ -2,8 +2,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  apiListApprovals, apiUpdateApproval,
   apiListBlogPosts, apiCreateBlogPost, apiUpdateBlogPost, apiDeleteBlogPost,
+  apiGetAdminMedia, apiDeleteMedia, apiGetAdminSEO, apiGetJobs,
 } from "@/lib/api";
 import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
 import { Tabs } from "@/components/ui/Tabs";
@@ -12,139 +12,19 @@ import { Drawer } from "@/components/ui/Drawer";
 import { Badge, statusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { StatCard } from "@/components/ui/StatCard";
 import { Input, Select, Toggle } from "@/components/ui/Input";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import { useToast } from "@/context/ToastContext";
 import {
-  FileCheck, BookOpen, CheckCircle, XCircle,
-  Plus, Trash2, Eye, Globe,
+  BookOpen, CheckCircle, XCircle, Plus, Trash2, Eye, Globe,
+  Image as ImageIcon, Send, Activity,
 } from "lucide-react";
-import type { ContentApproval, BlogPost } from "@/types";
+import type { BlogPost } from "@/types";
 
 function fmt(d?: string | null) {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" });
-}
-
-// ─── Approvals tab ────────────────────────────────────────────────────────────
-
-const APPROVAL_COLS: Column<ContentApproval>[] = [
-  { key: "content_title", header: "Title", sortable: true, render: r => <span className="text-sm text-ink-1 font-medium">{r.content_title ?? "Untitled"}</span> },
-  { key: "brand_name", header: "Brand", render: r => <span className="text-sm text-ink-2">{r.brand_name ?? "—"}</span> },
-  { key: "content_type", header: "Type", render: r => <Badge variant="brand">{r.content_type ?? r.type ?? "post"}</Badge> },
-  { key: "status", header: "Status", render: r => <Badge variant={statusBadge(r.status)}>{r.status}</Badge> },
-  { key: "created_at", header: "Submitted", sortable: true, render: r => <span className="text-sm text-ink-2">{fmt(r.created_at)}</span> },
-];
-
-function ApprovalDrawer({ approval, onClose }: { approval: ContentApproval; onClose: () => void }) {
-  const qc = useQueryClient();
-  const toast = useToast();
-  const [confirmAction, setConfirmAction] = useState<"approve" | "reject" | null>(null);
-
-  const approveMut = useMutation({
-    mutationFn: () => apiUpdateApproval(approval.id, "approved"),
-    onSuccess: () => { toast.success("Content approved"); qc.invalidateQueries({ queryKey: ["approvals"] }); onClose(); },
-    onError: () => toast.error("Failed to approve"),
-  });
-
-  const rejectMut = useMutation({
-    mutationFn: () => apiUpdateApproval(approval.id, "rejected"),
-    onSuccess: () => { toast.success("Content rejected"); qc.invalidateQueries({ queryKey: ["approvals"] }); onClose(); },
-    onError: () => toast.error("Failed to reject"),
-  });
-
-  const canAct = approval.status === "pending" || approval.status === "review";
-
-  return (
-    <>
-      <Drawer open onClose={onClose} title="Content Review" width="lg"
-        footer={
-          <div className="flex gap-2">
-            <Button variant="primary" icon={<CheckCircle className="h-4 w-4" />}
-              disabled={!canAct} loading={approveMut.isPending}
-              onClick={() => setConfirmAction("approve")}>Approve</Button>
-            <Button variant="danger" icon={<XCircle className="h-4 w-4" />}
-              disabled={approval.status === "approved" || approval.status === "rejected"}
-              loading={rejectMut.isPending}
-              onClick={() => setConfirmAction("reject")}>Reject</Button>
-            <Button variant="secondary" onClick={onClose}>Close</Button>
-          </div>
-        }
-      >
-        <div className="space-y-4">
-          <div>
-            <h2 className="text-base font-semibold text-ink-1">{approval.content_title ?? "Untitled"}</h2>
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <span className="text-sm text-ink-3">{approval.brand_name ?? approval.brand_id}</span>
-              <Badge variant={statusBadge(approval.status)}>{approval.status}</Badge>
-              {(approval.content_type ?? approval.type) && <Badge variant="brand">{approval.content_type ?? approval.type}</Badge>}
-            </div>
-          </div>
-          <Card padding="none">
-            <div className="divide-y divide-os-border">
-              {[
-                { label: "Content ID", value: approval.content_id },
-                { label: "Submitted", value: fmt(approval.created_at) },
-                { label: "Expires", value: fmt(approval.expires_at) },
-                { label: "Last updated", value: fmt(approval.updated_at) },
-              ].map(row => (
-                <div key={row.label} className="flex items-center justify-between px-4 py-2.5">
-                  <span className="text-xs text-ink-3">{row.label}</span>
-                  <span className="text-xs text-ink-1 font-mono">{row.value}</span>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-      </Drawer>
-
-      <ConfirmDialog open={confirmAction === "approve"} onClose={() => setConfirmAction(null)}
-        onConfirm={() => approveMut.mutate()} loading={approveMut.isPending}
-        title="Approve content" description="Approve and publish this content?" type="info" />
-      <ConfirmDialog open={confirmAction === "reject"} onClose={() => setConfirmAction(null)}
-        onConfirm={() => rejectMut.mutate()} loading={rejectMut.isPending}
-        title="Reject content" description="Reject this content from the queue?" type="danger"
-        confirmLabel="Reject" confirmVariant="danger" />
-    </>
-  );
-}
-
-function ApprovalsTab() {
-  const [status, setStatus] = useState("pending");
-  const [selected, setSelected] = useState<ContentApproval | null>(null);
-
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["approvals", status],
-    queryFn: () => apiListApprovals({ status }),
-  });
-
-  const approvals: ContentApproval[] = (data as { approvals?: ContentApproval[] } | undefined)?.approvals
-    ?? (data as { data?: ContentApproval[] } | undefined)?.data ?? [];
-
-  return (
-    <>
-      <div className="mb-4">
-        <Tabs
-          tabs={[
-            { id: "pending", label: "Pending" },
-            { id: "approved", label: "Approved" },
-            { id: "rejected", label: "Rejected" },
-          ]}
-          active={status}
-          onChange={id => { setStatus(id); setSelected(null); }}
-          size="sm" variant="pills"
-        />
-      </div>
-      <DataTable
-        data={approvals} columns={APPROVAL_COLS} keyField="id" searchable
-        searchPlaceholder="Search content..." loading={isLoading}
-        error={error ? "Failed to load approvals" : undefined}
-        emptyTitle={`No ${status} approvals`} exportFilename="approvals"
-        onRowClick={r => setSelected(r)} selectedId={selected?.id}
-      />
-      {selected && <ApprovalDrawer approval={selected} onClose={() => setSelected(null)} />}
-    </>
-  );
 }
 
 // ─── Blog tab ─────────────────────────────────────────────────────────────────
@@ -366,32 +246,164 @@ function BlogTab() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+// ─── Media (platform-wide assets) ────────────────────────────────────────────────
+type MediaAsset = { id: string; source: string; provider_asset_id: string | null; preview_url: string; mime_type: string; license: string; usage_count: number; owner: string; brand_name?: string; created_at: string };
+function MediaTab() {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const [confirmDel, setConfirmDel] = useState<string | null>(null);
+  const { data, isLoading } = useQuery({ queryKey: ["admin-media"], queryFn: () => apiGetAdminMedia(), staleTime: 60_000 });
+  const assets = (data?.assets ?? []) as MediaAsset[];
+  const providers = (data?.providers ?? []) as { provider: string; imports: number; license: string; last_import: string }[];
+  const delMut = useMutation({
+    mutationFn: (id: string) => apiDeleteMedia(id),
+    onSuccess: () => { toast.success("Asset deleted"); setConfirmDel(null); qc.invalidateQueries({ queryKey: ["admin-media"] }); },
+    onError: (e: Error) => { toast.error("Delete blocked", e.message); setConfirmDel(null); },
+  });
+  const COLS: Column<MediaAsset>[] = [
+    { key: "preview_url", header: "Asset", render: r => <div className="flex items-center gap-2"><img src={r.preview_url} alt="" style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 6 }} onError={e => { (e.target as HTMLImageElement).style.visibility = "hidden"; }} /><span className="text-2xs font-mono text-ink-3">{r.provider_asset_id ?? "—"}</span></div> },
+    { key: "source", header: "Source", sortable: true, render: r => <Badge variant="brand">{r.source}</Badge> },
+    { key: "license", header: "License", render: r => <span className="text-xs text-ink-2">{r.license}</span> },
+    { key: "usage_count", header: "Usage", sortable: true, render: r => <span className="text-sm tabular-nums text-ink-2">{r.usage_count}</span> },
+    { key: "owner", header: "Owner", render: r => <span className="text-sm text-ink-2">{r.owner}</span> },
+    { key: "created_at", header: "Created", sortable: true, render: r => <span className="text-sm text-ink-2">{fmt(r.created_at)}</span> },
+    { key: "id", header: "", render: r => <Button variant="ghost" size="sm" icon={<Trash2 className="h-3 w-3" />} onClick={(e) => { e.stopPropagation(); setConfirmDel(r.id); }} disabled={r.usage_count > 0} title={r.usage_count > 0 ? "In use — detach first" : "Delete"} /> },
+  ];
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {providers.map(p => (
+          <div key={p.provider} className="os-card-raised p-3">
+            <p className="text-2xs text-ink-3 uppercase tracking-wider">{p.provider}</p>
+            <p className="text-xl font-bold text-ink-1 mt-0.5">{p.imports}</p>
+            <p className="text-2xs text-ink-4">{p.license}</p>
+          </div>
+        ))}
+      </div>
+      <DataTable data={assets} columns={COLS} keyField="id" searchable searchPlaceholder="Search source, owner..." searchFields={["source", "owner", "provider_asset_id"]} loading={isLoading} emptyTitle="No assets" exportFilename="media-assets" />
+      <ConfirmDialog open={!!confirmDel} onClose={() => setConfirmDel(null)} onConfirm={() => confirmDel && delMut.mutate(confirmDel)} title="Delete asset" description="Permanently remove this media asset. Blocked if still linked to content." confirmLabel="Delete" confirmVariant="danger" loading={delMut.isPending} type="danger" />
+    </div>
+  );
+}
+
+// ─── SEO ──────────────────────────────────────────────────────────────────────────
+function SEOTab() {
+  const { data, isLoading } = useQuery({ queryKey: ["admin-seo"], queryFn: apiGetAdminSEO });
+  const d = (data ?? {}) as Record<string, any>;
+  const mc = d.metadata_coverage ?? {};
+  const issues = (d.issues ?? []) as { id: string; slug: string; title: string; score: number; issues: string[] }[];
+  if (isLoading) return <div className="space-y-3 animate-pulse">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-20 bg-os-raised rounded-lg" />)}</div>;
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard label="Posts" value={String(d.total_posts ?? 0)} icon={<BookOpen className="h-4 w-4" />} />
+        <StatCard label="Avg SEO score" value={String(d.avg_seo_score ?? 0)} icon={<Globe className="h-4 w-4" />} accent={(d.avg_seo_score ?? 0) >= 70 ? "success" : "warning"} />
+        <StatCard label="Missing images" value={String(d.missing_images ?? 0)} icon={<XCircle className="h-4 w-4" />} accent={(d.missing_images ?? 0) > 0 ? "warning" : undefined} />
+        <StatCard label="Suspect links" value={String(d.suspect_links ?? 0)} icon={<XCircle className="h-4 w-4" />} accent={(d.suspect_links ?? 0) > 0 ? "warning" : undefined} />
+      </div>
+      <Card>
+        <h2 className="text-sm font-semibold text-ink-1 mb-3">Metadata coverage</h2>
+        <div className="space-y-2">
+          {[["Title", mc.title], ["Description", mc.description], ["Image", mc.image], ["Slug", mc.slug]].map(([label, v]: any) => (
+            <div key={label} className="flex items-center gap-3"><span className="text-sm text-ink-2 w-24 shrink-0">{label}</span><div className="flex-1 h-2 bg-os-raised rounded-full overflow-hidden"><div className="h-full bg-brand-500 rounded-full" style={{ width: `${v?.percent ?? 0}%` }} /></div><span className="text-xs text-ink-3 w-12 text-right">{v?.percent ?? 0}%</span></div>
+          ))}
+        </div>
+        <p className="text-2xs text-ink-4 mt-3">{d.note}</p>
+      </Card>
+      {issues.length > 0 && (
+        <Card padding="none">
+          <div className="px-4 py-3 border-b border-os-border"><h2 className="text-sm font-semibold text-ink-1">Issues ({issues.length})</h2></div>
+          <div className="divide-y divide-os-border/40">{issues.map(it => (<div key={it.id} className="flex items-center justify-between px-4 py-2.5"><div className="min-w-0"><p className="text-sm text-ink-1 truncate">{it.title || it.slug}</p><p className="text-2xs text-ink-3">{it.issues.join(" · ")}</p></div><Badge variant={it.score >= 70 ? "success" : it.score >= 40 ? "warning" : "danger"}>{it.score}</Badge></div>))}</div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── Publishing ────────────────────────────────────────────────────────────────────
+function PublishingTab() {
+  const { data, isLoading } = useQuery({ queryKey: ["admin-publishing-jobs"], queryFn: () => apiGetJobs() });
+  const jobs = (data?.jobs ?? []) as { id: string; job: string; owner: string; status: string; last_run: string; error: string | null }[];
+  const summary = (data?.summary ?? {}) as Record<string, number>;
+  const failed = jobs.filter(j => j.status === "failed");
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-4">
+        <StatCard label="Published" value={String(summary.published ?? 0)} icon={<CheckCircle className="h-4 w-4" />} accent="success" loading={isLoading} />
+        <StatCard label="Failed" value={String(summary.failed ?? 0)} icon={<XCircle className="h-4 w-4" />} accent={(summary.failed ?? 0) > 0 ? "warning" : undefined} loading={isLoading} />
+        <StatCard label="Dead" value={String(summary.dead ?? 0)} icon={<XCircle className="h-4 w-4" />} accent={(summary.dead ?? 0) > 0 ? "danger" : undefined} loading={isLoading} />
+      </div>
+      <Card padding="none">
+        <div className="px-4 py-3 border-b border-os-border"><h2 className="text-sm font-semibold text-ink-1">Recent delivery history</h2></div>
+        {jobs.length === 0 ? <p className="px-4 py-8 text-center text-sm text-ink-3">No publishing history</p> : (
+          <div className="max-h-[500px] overflow-y-auto divide-y divide-os-border/40">{jobs.slice(0, 50).map(j => (<div key={j.id} className="flex items-center gap-3 px-4 py-2.5"><Badge variant={statusBadge(j.status)} dot>{j.status}</Badge><div className="flex-1 min-w-0"><p className="text-sm text-ink-1">{j.job}</p><p className="text-2xs text-ink-3">{j.owner}{j.error ? ` · ${j.error}` : ""}</p></div><span className="text-2xs text-ink-4">{j.last_run ? fmt(j.last_run) : "—"}</span></div>))}</div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+// ─── Content Health (derived, no moderation) ────────────────────────────────────────
+function ContentHealthTab() {
+  const { data: blogData } = useQuery({ queryKey: ["blog-posts"], queryFn: () => apiListBlogPosts() });
+  const { data: seoData } = useQuery({ queryKey: ["admin-seo"], queryFn: apiGetAdminSEO });
+  const { data: jobsData } = useQuery({ queryKey: ["admin-publishing-jobs"], queryFn: () => apiGetJobs() });
+  const posts = ((blogData as { posts?: unknown[]; data?: unknown[] })?.posts ?? (blogData as { data?: unknown[] })?.data ?? []) as { status?: string; featured_image?: string }[];
+  const seo = (seoData ?? {}) as Record<string, any>;
+  const summary = ((jobsData?.summary ?? {}) as Record<string, number>);
+  const published = posts.filter(p => p.status === "published").length;
+  const lowSeo = (seo.issues ?? []).filter((i: { score: number }) => i.score < 40).length;
+  const cards = [
+    { label: "Published posts", value: published, accent: "success", show: true },
+    { label: "Failed deliveries", value: summary.failed ?? 0, accent: "warning", show: (summary.failed ?? 0) > 0 },
+    { label: "Dead jobs", value: summary.dead ?? 0, accent: "danger", show: (summary.dead ?? 0) > 0 },
+    { label: "Missing images", value: seo.missing_images ?? 0, accent: "warning", show: (seo.missing_images ?? 0) > 0 },
+    { label: "Low-SEO posts (<40)", value: lowSeo, accent: "warning", show: lowSeo > 0 },
+    { label: "Suspect links", value: seo.suspect_links ?? 0, accent: "warning", show: (seo.suspect_links ?? 0) > 0 },
+  ].filter(c => c.show);
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-ink-3">Derived health signals from published content, SEO, and delivery. No moderation system.</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {cards.map(c => <StatCard key={c.label} label={c.label} value={String(c.value)} accent={c.accent as "success" | "warning" | "danger"} />)}
+      </div>
+      {cards.length <= 1 && <Card><p className="text-sm text-ink-2">Content is healthy — no failed deliveries, missing images, or low-SEO posts.</p></Card>}
+    </div>
+  );
+}
+
 export default function ContentPage() {
   const qc = useQueryClient();
-  const [tab, setTab] = useState("approvals");
+  const [tab, setTab] = useState("blog");
 
   return (
     <WorkspaceLayout
       workspace="content"
       title="Content"
-      subtitle="Publishing approvals and blog management"
+      subtitle="Operate published content"
       onRefresh={() => {
-        ["approvals", "blog-posts"].forEach(k => qc.invalidateQueries({ queryKey: [k] }));
+        ["blog-posts", "admin-media", "admin-seo", "admin-publishing-jobs"].forEach(k => qc.invalidateQueries({ queryKey: [k] }));
       }}
     >
       <div className="mb-5">
         <Tabs
           tabs={[
-            { id: "approvals", label: "Approvals", icon: <FileCheck className="h-3.5 w-3.5" /> },
             { id: "blog", label: "Blog", icon: <BookOpen className="h-3.5 w-3.5" /> },
+            { id: "media", label: "Media", icon: <ImageIcon className="h-3.5 w-3.5" /> },
+            { id: "seo", label: "SEO", icon: <Globe className="h-3.5 w-3.5" /> },
+            { id: "publishing", label: "Publishing", icon: <Send className="h-3.5 w-3.5" /> },
+            { id: "health", label: "Content Health", icon: <Activity className="h-3.5 w-3.5" /> },
           ]}
           active={tab}
           onChange={setTab}
         />
       </div>
 
-      {tab === "approvals" && <ApprovalsTab />}
       {tab === "blog" && <BlogTab />}
+      {tab === "media" && <MediaTab />}
+      {tab === "seo" && <SEOTab />}
+      {tab === "publishing" && <PublishingTab />}
+      {tab === "health" && <ContentHealthTab />}
     </WorkspaceLayout>
   );
 }

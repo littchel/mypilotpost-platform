@@ -20,7 +20,7 @@ const ICONS: Record<string, React.ElementType> = {
 };
 
 const LABELS: Record<string, string> = {
-  today:      "Today",
+  today:      "Command Center",
   customers:  "Customers",
   billing:    "Billing",
   commercial: "Commercial",

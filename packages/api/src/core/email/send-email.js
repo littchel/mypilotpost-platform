@@ -5,7 +5,9 @@
  */
 
 const RESEND_API = "https://api.resend.com/emails";
-const FROM_ADDRESS = "MyPilotPost <notifications@mypilotpost.com>";
+// Verified Resend sending domain is the SUBDOMAIN notifications.mypilotpost.com
+// (root mypilotpost.com is NOT verified — sending from it returns Resend 403).
+const FROM_ADDRESS = "MyPilotPost <notifications@notifications.mypilotpost.com>";
 
 /**
  * @param {object} opts

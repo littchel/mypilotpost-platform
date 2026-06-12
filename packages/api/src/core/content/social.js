@@ -31,15 +31,17 @@ export async function createSocialAsset(request, env, auth) {
     const body = await request.json();
     validatePayload(body);
 
-    const { 
-      content_id, 
-      text, 
-      platforms: requestedPlatforms, 
+    const {
+      content_id,
+      text,
+      platforms: requestedPlatforms,
       variants: requestedVariants = {},
       campaign_id = null,
       lifecycle_status: requestedLifecycleStatus,
-      status = "draft"
+      status = "draft",
+      overlays = undefined   // ITEM 2 — editable overlay state {background, overlay_text[], overlay_image[]}
     } = body;
+    const overlaysJson = overlays !== undefined ? JSON.stringify(overlays) : null;
     const lifecycle_status = requestedLifecycleStatus || status || "draft";
     const platforms = Array.isArray(requestedPlatforms)
       ? requestedPlatforms
@@ -73,16 +75,18 @@ export async function createSocialAsset(request, env, auth) {
 
     // Upsert Social Asset — keep status in sync with lifecycle_status so scheduleContent can read it
     if (existing) {
+      // COALESCE keeps existing overlays when the caller omits the field (e.g. text-only autosave).
       batchStmts.push(db.prepare(`
         UPDATE social_assets
-        SET title = ?, text = ?, campaign_id = ?, lifecycle_status = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+        SET title = ?, text = ?, campaign_id = ?, lifecycle_status = ?, status = ?,
+            overlays = COALESCE(?, overlays), updated_at = CURRENT_TIMESTAMP
         WHERE id = ? AND brand_id = ? AND user_id = ?
-      `).bind(title, text, campaign_id, lifecycle_status, lifecycle_status, assetId, brand_id, user_id));
+      `).bind(title, text, campaign_id, lifecycle_status, lifecycle_status, overlaysJson, assetId, brand_id, user_id));
     } else {
       batchStmts.push(db.prepare(`
-        INSERT INTO social_assets (id, brand_id, user_id, context_id, title, text, campaign_id, lifecycle_status, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(assetId, brand_id, user_id, contextId, title, text, campaign_id, lifecycle_status, lifecycle_status));
+        INSERT INTO social_assets (id, brand_id, user_id, context_id, title, text, campaign_id, lifecycle_status, status, overlays)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(assetId, brand_id, user_id, contextId, title, text, campaign_id, lifecycle_status, lifecycle_status, overlaysJson));
     }
 
     // Map Variants (Single Source of Truth)
@@ -300,11 +304,16 @@ export async function getSocialAsset(request, env, auth) {
   if (!asset) return error("Asset not found", "NOT_FOUND", null, 404);
 
   const { results: variants } = await db.prepare(`SELECT platform FROM social_variants WHERE social_asset_id = ? AND platform != 'base'`).bind(id).all();
-  
+
+  // Parse overlay state back into an object (never flattened)
+  let overlays = null;
+  if (asset.overlays) { try { overlays = JSON.parse(asset.overlays); } catch { overlays = null; } }
+
   return json({
     success: true,
     data: {
       ...asset,
+      overlays,
       platforms: (variants || []).map(v => v.platform)
     }
   });

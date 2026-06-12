@@ -10,16 +10,14 @@ export async function snapshotMRR(env, brandId, amount) {
   const now = new Date();
   const month = now.toISOString().slice(0, 7); // YYYY-MM
 
-  await env.DB.prepare(`
-    INSERT OR REPLACE INTO mrr_snapshots (id, snapshot_month, brand_id, mrr, created_at)
-    VALUES (?, ?, ?, ?, ?)
-  `).bind(
-    crypto.randomUUID(),
-    month,
-    brandId,
-    amount,
-    now.toISOString()
-  ).run();
+  // Schema: mrr_snapshots(customer_id, snapshot_month, mrr, created_at) — no unique constraint,
+  // so emulate upsert with delete+insert to keep one row per (customer, month).
+  await env.DB.prepare(
+    "DELETE FROM mrr_snapshots WHERE customer_id = ? AND snapshot_month = ?"
+  ).bind(brandId, month).run();
+  await env.DB.prepare(
+    "INSERT INTO mrr_snapshots (customer_id, snapshot_month, mrr, created_at) VALUES (?, ?, ?, ?)"
+  ).bind(brandId, month, amount, now.toISOString()).run();
 }
 
 export async function detectChurnSignals(env, brandId, eventType) {

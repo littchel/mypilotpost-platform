@@ -6,6 +6,7 @@ import {
   apiGetDeliveryStats, apiGetIntegrationsDiagnostics,
   apiGetAttributionDiagnostics, apiGetBackfillStatus, apiTriggerBackfill,
   apiRunPlatformTest, apiGetCertificationMatrix,
+  apiGetJobs, apiRetryJob,
 } from "@/lib/api";
 import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
 import { Tabs } from "@/components/ui/Tabs";
@@ -447,6 +448,91 @@ function OAuthTab() {
   );
 }
 
+// ─── Jobs (delivery queue) ──────────────────────────────────────────────────────
+type JobRow = { id: string; job: string; platform: string; owner: string; status: string; duration_s: number | null; retry: number; retryable: boolean; last_run: string; error: string | null };
+function JobsTab() {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const [status, setStatus] = useState("");
+  const [confirmRetry, setConfirmRetry] = useState<string | null>(null);
+  const { data, isLoading } = useQuery({ queryKey: ["admin-jobs", status], queryFn: () => apiGetJobs(status ? { status } : {}), refetchInterval: 30_000 });
+  const jobs = (data?.jobs ?? []) as JobRow[];
+  const summary = (data?.summary ?? {}) as Record<string, number>;
+  const retryMut = useMutation({
+    mutationFn: (id: string) => apiRetryJob(id),
+    onSuccess: () => { toast.success("Retry triggered"); setConfirmRetry(null); qc.invalidateQueries({ queryKey: ["admin-jobs"] }); },
+    onError: (e: Error) => { toast.error("Retry failed", e.message); setConfirmRetry(null); },
+  });
+  const COLS: Column<JobRow>[] = [
+    { key: "job", header: "Job", render: r => <span className="text-sm text-ink-1">{r.job}</span> },
+    { key: "owner", header: "Owner", render: r => <span className="text-sm text-ink-2">{r.owner}</span> },
+    { key: "status", header: "Status", sortable: true, render: r => <Badge variant={statusBadge(r.status)} dot>{r.status}</Badge> },
+    { key: "duration_s", header: "Duration", render: r => <span className="text-sm text-ink-2">{r.duration_s != null ? `${r.duration_s}s` : "—"}</span> },
+    { key: "retry", header: "Attempts", render: r => <span className="text-sm text-ink-2 tabular-nums">{r.retry}/3</span> },
+    { key: "last_run", header: "Last run", render: r => <span className="text-sm text-ink-2">{r.last_run ? fmtRel(r.last_run) : "—"}</span> },
+    { key: "error", header: "Error", render: r => r.error ? <span className="text-xs text-red-400 truncate max-w-xs" title={r.error}>{r.error}</span> : <span className="text-ink-3">—</span> },
+    { key: "id", header: "", render: r => r.retryable ? <Button variant="secondary" size="sm" icon={<RefreshCw className="h-3 w-3" />} onClick={(e) => { e.stopPropagation(); setConfirmRetry(r.id); }} loading={retryMut.isPending && confirmRetry === r.id}>Retry</Button> : null },
+  ];
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard label="Queued" value={String(summary.queued ?? 0)} icon={<Activity className="h-4 w-4" />} loading={isLoading} />
+        <StatCard label="Published" value={String(summary.published ?? 0)} icon={<CheckCircle className="h-4 w-4" />} accent="success" loading={isLoading} />
+        <StatCard label="Failed" value={String(summary.failed ?? 0)} icon={<XCircle className="h-4 w-4" />} accent={(summary.failed ?? 0) > 0 ? "warning" : undefined} loading={isLoading} />
+        <StatCard label="Dead (≥3)" value={String(summary.dead ?? 0)} icon={<AlertTriangle className="h-4 w-4" />} accent={(summary.dead ?? 0) > 0 ? "danger" : undefined} loading={isLoading} />
+      </div>
+      <DataTable data={jobs} columns={COLS} keyField="id" searchable searchPlaceholder="Search job, owner, platform..." searchFields={["job", "owner", "platform", "status"]} loading={isLoading} emptyTitle="No jobs" exportFilename="delivery-jobs"
+        filters={<select className="os-input h-8 text-xs w-36" value={status} onChange={e => setStatus(e.target.value)}><option value="">All statuses</option><option value="failed">Failed</option><option value="published">Published</option><option value="scheduled">Scheduled</option></select>} />
+      <ConfirmDialog open={!!confirmRetry} onClose={() => setConfirmRetry(null)} onConfirm={() => confirmRetry && retryMut.mutate(confirmRetry)} title="Retry delivery job" description="Re-attempt delivery via the provider. This will post live content if the platform connection is valid." confirmLabel="Retry" loading={retryMut.isPending} type="info" />
+    </div>
+  );
+}
+
+// ─── Distribution ────────────────────────────────────────────────────────────────
+function DistributionTab() {
+  const { data, isLoading } = useQuery({ queryKey: ["delivery-stats-dist"], queryFn: apiGetDeliveryStats });
+  const rows = ((data as { stats?: unknown[]; data?: unknown[] })?.stats ?? (data as { data?: unknown[] })?.data ?? []) as { platform: string; total: number; published: number; failed: number; pending?: number; total_attempts?: number }[];
+  const totals = rows.reduce((a, r) => ({ pub: a.pub + (r.published || 0), fail: a.fail + (r.failed || 0), att: a.att + (r.total_attempts || 0) }), { pub: 0, fail: 0, att: 0 });
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-4">
+        <StatCard label="Published" value={String(totals.pub)} icon={<CheckCircle className="h-4 w-4" />} accent="success" loading={isLoading} />
+        <StatCard label="Failed" value={String(totals.fail)} icon={<XCircle className="h-4 w-4" />} accent={totals.fail > 0 ? "warning" : undefined} loading={isLoading} />
+        <StatCard label="Total attempts (retries)" value={String(totals.att)} icon={<RefreshCw className="h-4 w-4" />} loading={isLoading} />
+      </div>
+      <Card padding="none">
+        <div className="px-4 py-3 border-b border-os-border"><h2 className="text-sm font-semibold text-ink-1">By platform</h2></div>
+        {rows.length === 0 ? <p className="px-4 py-8 text-center text-sm text-ink-3">No distribution data</p> : (
+          <table className="w-full"><thead><tr className="border-b border-os-border"><th className="os-table-th">Platform</th><th className="os-table-th text-right">Published</th><th className="os-table-th text-right">Failed</th><th className="os-table-th text-right">Pending</th><th className="os-table-th text-right">Attempts</th></tr></thead>
+          <tbody>{rows.map((r, i) => (<tr key={i} className="border-b border-os-border/40"><td className="os-table-td font-medium text-ink-1 capitalize">{r.platform}</td><td className="os-table-td text-right tabular-nums text-green-400">{r.published || 0}</td><td className="os-table-td text-right tabular-nums text-red-400">{r.failed || 0}</td><td className="os-table-td text-right tabular-nums text-ink-2">{r.pending || 0}</td><td className="os-table-td text-right tabular-nums text-ink-2">{r.total_attempts || 0}</td></tr>))}</tbody></table>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+// ─── Events (audit + system stream) ──────────────────────────────────────────────
+function EventsTab() {
+  const { data, isLoading } = useQuery({ queryKey: ["ops-events-stream"], queryFn: () => apiGetSystemEvents({ limit: 100 }), refetchInterval: 20_000 });
+  type EvRow = { id: string; source?: string; severity: string; message: string; created_at: string };
+  const events = ((data as { events?: EvRow[] })?.events ?? (data as { data?: EvRow[] })?.data ?? []) as EvRow[];
+  return (
+    <Card padding="none">
+      <div className="px-4 py-3 border-b border-os-border flex items-center gap-2">
+        <Radio className="h-4 w-4 text-ink-3" /><h2 className="text-sm font-semibold text-ink-1">Audit & System Event Stream</h2>
+        <Badge variant="neutral">{events.length}</Badge>
+        <span className="ml-auto text-2xs text-green-400 flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-green-400" />live 20s</span>
+      </div>
+      {isLoading ? <div className="p-4 space-y-2 animate-pulse">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-10 bg-os-raised rounded" />)}</div>
+        : events.length === 0 ? <p className="px-4 py-8 text-center text-sm text-ink-3">No events</p>
+        : <div className="max-h-[600px] overflow-y-auto divide-y divide-os-border/40">{events.map(ev => {
+            const Icon = SEV_ICON[ev.severity] || CheckCircle;
+            return <div key={ev.id} className="flex items-start gap-3 px-4 py-2.5"><Icon className={cn("h-4 w-4 mt-0.5 shrink-0", SEV_COLOR[ev.severity] || "text-ink-3")} /><div className="flex-1 min-w-0"><p className="text-sm text-ink-1">{ev.message}</p><p className="text-2xs text-ink-3 mt-0.5">{ev.source ? `${ev.source} · ` : ""}{new Date(ev.created_at).toLocaleString()}</p></div></div>;
+          })}</div>}
+    </Card>
+  );
+}
+
 export default function OperationsPage() {
   const qc = useQueryClient();
   const [tab, setTab] = useState("status");
@@ -467,9 +553,12 @@ export default function OperationsPage() {
         <Tabs
           tabs={[
             { id: "status", label: "Health", icon: <Activity className="h-3.5 w-3.5" /> },
+            { id: "connections", label: "Connections", icon: <KeyRound className="h-3.5 w-3.5" /> },
+            { id: "distribution", label: "Distribution", icon: <Radio className="h-3.5 w-3.5" /> },
             { id: "diagnostics", label: "Diagnostics", icon: <Cpu className="h-3.5 w-3.5" /> },
-            { id: "tests", label: "Tests", icon: <ShieldCheck className="h-3.5 w-3.5" /> },
-            { id: "oauth", label: "OAuth", icon: <KeyRound className="h-3.5 w-3.5" /> },
+            { id: "certifications", label: "Certifications", icon: <ShieldCheck className="h-3.5 w-3.5" /> },
+            { id: "jobs", label: "Jobs", icon: <RefreshCw className="h-3.5 w-3.5" /> },
+            { id: "events", label: "Events", icon: <Link className="h-3.5 w-3.5" /> },
           ]}
           active={tab}
           onChange={setTab}
@@ -477,9 +566,12 @@ export default function OperationsPage() {
       </div>
 
       {tab === "status" && <StatusTab />}
+      {tab === "connections" && <OAuthTab />}
+      {tab === "distribution" && <DistributionTab />}
       {tab === "diagnostics" && <DiagnosticsTab />}
-      {tab === "tests" && <TestsTab />}
-      {tab === "oauth" && <OAuthTab />}
+      {tab === "certifications" && <TestsTab />}
+      {tab === "jobs" && <JobsTab />}
+      {tab === "events" && <EventsTab />}
     </WorkspaceLayout>
   );
 }

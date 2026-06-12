@@ -374,6 +374,37 @@ export function otpVerificationEmail({ first_name, otp, expires_minutes = 15, un
   };
 }
 
+export function supportReplyEmail({ first_name, message_preview, thread_url = BRAND.app_url, unsubscribe_url = DEFAULT_UNSUB }) {
+  return {
+    subject: `Reply from myPilotPost Support`,
+    html: baseLayout(
+      h1("You have a new reply") +
+      p(`Hi ${first_name || "there"}, our support team has replied to your request.`) +
+      highlight(message_preview ? message_preview.slice(0, 280) : "Open the portal to read the full reply.") +
+      p("Reply directly from your dashboard to continue the conversation.") +
+      primaryButton("View Conversation →", thread_url),
+      "Support has replied to your request.",
+      unsubscribe_url
+    ),
+    text: `Support replied: ${message_preview || ""}\nView: ${thread_url}`
+  };
+}
+
+export function ticketResolvedEmail({ first_name, subject_line, thread_url = BRAND.app_url, unsubscribe_url = DEFAULT_UNSUB }) {
+  return {
+    subject: `Your support request has been resolved`,
+    html: baseLayout(
+      h1("Your request is resolved ✓") +
+      p(`Hi ${first_name || "there"}, we've marked your support request${subject_line ? ` "<strong>${subject_line}</strong>"` : ""} as resolved.`) +
+      highlight("If you still need help, just reply and we'll reopen the conversation.") +
+      primaryButton("View Conversation →", thread_url),
+      "Your support request has been resolved.",
+      unsubscribe_url
+    ),
+    text: `Your support request${subject_line ? ` "${subject_line}"` : ""} has been resolved. View: ${thread_url}`
+  };
+}
+
 // Template registry — maps rule template keys → functions
 export const TEMPLATE_REGISTRY = {
   welcome:          welcomeEmail,
@@ -402,4 +433,6 @@ export const TEMPLATE_REGISTRY = {
   onboarding_reminder:        onboardingReminderEmail,
   account_deletion_requested: accountDeletionRequestedEmail,
   otp_verification:           otpVerificationEmail,
+  support_reply:              supportReplyEmail,
+  ticket_resolved:            ticketResolvedEmail,
 };

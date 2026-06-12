@@ -26,6 +26,15 @@ import {
   handleUnifiedCallback
 } from "./integrations/oauth_unified.js";
 
+import { getAdobeConfig, getAdobeStatus } from "./integrations/adobe.js";
+
+/* ── Build Wave 3 — Platform Ops + Content + Config ── */
+import { listAdminJobs, retryAdminJob } from "./api/admin/jobs.js";
+import { listAdminMedia, traceMediaUsage, deleteAdminMedia } from "./api/admin/media.js";
+import { getAdminUsage } from "./api/admin/usage.js";
+import { getAdminRoles, getSystemExtended, getAdminTemplates } from "./api/admin/governance.js";
+import { getAdminSEOOverview } from "./api/admin/seo.js";
+
 import {
   getAccountResources,
   selectResource,
@@ -92,7 +101,8 @@ import { generateWeeklyPlan, getWeeklyPlan } from "./core/intelligence/weekly_pl
 import { createInvite, getInvites, getTeam, acceptInvite } from "./core/teams/handlers.js";
 import { updateMemberRole, removeMember, revokeInvite } from "./core/team/members.js";
 import { listClients, createClient, updateClient, archiveClient, sendToClient, getClientLinks } from "./core/team/clients.js";
-import { createSupportRequest, listSupportRequests, adminListSupport, adminUpdateSupport } from "./core/support/requests.js";
+import { createSupportRequest, listSupportRequests } from "./core/support/requests.js";
+import { adminListThreads, adminGetThreadByUser, adminUpdateThread, adminSendMessage } from "./core/support/admin.js";
 import { getMemory, getFeatures, getSnapshot, getEvents } from "./core/memory/query.js";
 import { getActivity as getTeamActivity } from "./core/team/activity.js";
 import { getCommPreferences, updateCommPreferences } from "./core/communication/preferences.js";
@@ -249,12 +259,26 @@ import {
 } from "./api/admin/campaigns-emails.js";
 
 import { handleAdminUsers, handleAdminUserDetail, toggleAdminUserStatus, forceVerifyUser } from "./api/admin/users.js";
+import {
+  getCustomerProfile,
+  patchCustomer,
+  getCustomerSubscriptions,
+  getCustomerSupport,
+  getCustomerActivity,
+  getCustomerAccess,
+  revokeCustomerSession,
+  getCustomerLifecycle,
+  getCustomerAudit,
+  getCustomerHealthSummary,
+} from "./api/admin/customers.js";
 
 import {
   billingOverview,
   mrrHistory,
   listAdminPayments,
   listAdminCheckouts,
+  listAdminSubscriptions,
+  billingCompliance,
 } from "./api/admin/billing.js";
 import {
   requestRefund,
@@ -1054,6 +1078,16 @@ export default {
           return withCors(request, listAdminCheckouts(env));
         }
 
+        if (path === "/api/v1/admin/billing/subscriptions" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return withCors(request, listAdminSubscriptions(env));
+        }
+
+        if (path === "/api/v1/admin/billing/compliance" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return withCors(request, billingCompliance(env));
+        }
+
         /* ---------- REFUND DOMAIN ---------- */
         if (path === "/api/v1/admin/billing/refund/request" && method === "POST") {
           const auth = await requireAdminAuth(request, env);
@@ -1171,10 +1205,16 @@ export default {
           return res;
         }
 
-        /* ---------- CUSTOMERS (alias to /users for portal compat) ---------- */
+        /* ---------- CUSTOMERS -------------------------------------------- */
         if (path === "/api/v1/admin/customers") {
           await requireAdminAuth(request, env);
           return handleAdminCustomers(request, env);
+        }
+
+        // Health summary (Command Center) — must precede the /:id matcher
+        if (path === "/api/v1/admin/customers/health-summary" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return withCors(request, getCustomerHealthSummary(request, env));
         }
 
         if (path.startsWith("/api/v1/admin/customers/") && path.endsWith("/toggle")) {
@@ -1189,12 +1229,79 @@ export default {
           return forceVerifyUser(request, env, path.split("/")[5], auth);
         }
 
-        if (path.startsWith("/api/v1/admin/customers/") && method === "GET") {
-          await requireAdminAuth(request, env);
-          return handleAdminUserDetail(request, env, path.split("/")[5]);
+        // Sub-resource routes must be matched before the generic /:id GET
+        if (path.startsWith("/api/v1/admin/customers/")) {
+          const segments = path.split("/");
+          // /api/v1/admin/customers/:id  =>  segments[5] = id, segments[6] = sub
+          const customerId = segments[5];
+          const sub        = segments[6] || null;
+          const subsub     = segments[7] || null;
+
+          if (!customerId) { /* fall through */ } else {
+
+            /* PATCH /api/v1/admin/customers/:id — extend trial */
+            if (method === "PATCH" && !sub) {
+              const auth = await requireAdminAuth(request, env);
+              return withCors(request, patchCustomer(request, env, customerId, auth));
+            }
+
+            /* GET /api/v1/admin/customers/:id/profile */
+            if (method === "GET" && sub === "profile") {
+              await requireAdminAuth(request, env);
+              return withCors(request, getCustomerProfile(request, env, customerId));
+            }
+
+            /* GET /api/v1/admin/customers/:id/subscriptions */
+            if (method === "GET" && sub === "subscriptions") {
+              await requireAdminAuth(request, env);
+              return withCors(request, getCustomerSubscriptions(request, env, customerId));
+            }
+
+            /* GET /api/v1/admin/customers/:id/support */
+            if (method === "GET" && sub === "support") {
+              await requireAdminAuth(request, env);
+              return withCors(request, getCustomerSupport(request, env, customerId));
+            }
+
+            /* GET /api/v1/admin/customers/:id/activity */
+            if (method === "GET" && sub === "activity") {
+              await requireAdminAuth(request, env);
+              return withCors(request, getCustomerActivity(request, env, customerId));
+            }
+
+            /* GET /api/v1/admin/customers/:id/access */
+            if (method === "GET" && sub === "access") {
+              await requireAdminAuth(request, env);
+              return withCors(request, getCustomerAccess(request, env, customerId));
+            }
+
+            /* DELETE /api/v1/admin/customers/:id/session/:sid */
+            if (method === "DELETE" && sub === "session" && subsub) {
+              const auth = await requireAdminAuth(request, env);
+              return withCors(request, revokeCustomerSession(request, env, customerId, subsub, auth));
+            }
+
+            /* GET /api/v1/admin/customers/:id/lifecycle */
+            if (method === "GET" && sub === "lifecycle") {
+              await requireAdminAuth(request, env);
+              return withCors(request, getCustomerLifecycle(request, env, customerId));
+            }
+
+            /* GET /api/v1/admin/customers/:id/audit */
+            if (method === "GET" && sub === "audit") {
+              await requireAdminAuth(request, env);
+              return withCors(request, getCustomerAudit(request, env, customerId));
+            }
+
+            /* GET /api/v1/admin/customers/:id — full profile (legacy + new) */
+            if (method === "GET" && !sub) {
+              await requireAdminAuth(request, env);
+              return withCors(request, getCustomerProfile(request, env, customerId));
+            }
+          }
         }
 
-        /* ---------- SUPPORT THREADS ---------- */
+        /* ---------- SUPPORT (canonical: support_threads + support_messages) ---------- */
         if (path === "/api/v1/admin/support/threads") {
           await requireAdminAuth(request, env);
           return getAdminSupportThreads(request, env);
@@ -1202,12 +1309,22 @@ export default {
 
         if (path === "/api/v1/admin/support/requests" && method === "GET") {
           await requireAdminAuth(request, env);
-          return withCors(request, adminListSupport(request, env));
+          return withCors(request, adminListThreads(request, env));
         }
 
         if (path.startsWith("/api/v1/admin/support/requests/") && method === "PUT") {
           const auth = await requireAdminAuth(request, env);
-          return withCors(request, adminUpdateSupport(request, env, auth));
+          const threadId = path.split("/").pop();
+          return withCors(request, adminUpdateThread(request, env, auth, threadId));
+        }
+
+        // GET /api/v1/admin/support/:threadUserId — thread + messages for a customer
+        if (path.startsWith("/api/v1/admin/support/")
+            && method === "GET"
+            && !["threads", "requests"].includes(path.split("/")[5])
+            && path.split("/").length === 6) {
+          await requireAdminAuth(request, env);
+          return withCors(request, adminGetThreadByUser(request, env, path.split("/")[5]));
         }
 
         if (path === "/api/v1/admin/comms/delivery" && method === "GET") {
@@ -1255,7 +1372,7 @@ export default {
 
         if (path === "/api/v1/admin/support/message" && method === "POST") {
           const auth = await requireAdminAuth(request, env);
-          return sendAdminMessage(request, env, auth);
+          return withCors(request, adminSendMessage(request, env, auth));
         }
 
         if (path === "/api/v1/admin/support/broadcast" && method === "POST") {
@@ -1551,10 +1668,52 @@ export default {
           return withCors(request, getCommercialMetrics(env));
         }
 
+        /* ---------- BUILD WAVE 3 — Platform Ops + Content + Config ---------- */
+        if (path === "/api/v1/admin/jobs" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return withCors(request, listAdminJobs(request, env));
+        }
+        if (path.startsWith("/api/v1/admin/jobs/") && path.endsWith("/retry") && method === "POST") {
+          const auth = await requireAdminAuth(request, env);
+          if (!hasPermission(auth.role, "operations:read")) throw error("operations access required", "FORBIDDEN", null, 403);
+          return withCors(request, retryAdminJob(request, env, auth, path.split("/")[5]));
+        }
+        if (path === "/api/v1/admin/media" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return withCors(request, listAdminMedia(request, env));
+        }
+        if (path.startsWith("/api/v1/admin/media/") && path.endsWith("/usage") && method === "GET") {
+          await requireAdminAuth(request, env);
+          return withCors(request, traceMediaUsage(request, env, path.split("/")[5]));
+        }
+        if (path.startsWith("/api/v1/admin/media/") && method === "DELETE") {
+          const auth = await requireAdminAuth(request, env);
+          return withCors(request, deleteAdminMedia(request, env, auth, path.split("/")[5]));
+        }
+        if (path === "/api/v1/admin/usage" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return withCors(request, getAdminUsage(request, env));
+        }
+        if (path === "/api/v1/admin/roles" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return withCors(request, Promise.resolve(getAdminRoles()));
+        }
+        if (path === "/api/v1/admin/system/extended" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return withCors(request, getSystemExtended(env));
+        }
+        if (path === "/api/v1/admin/templates" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return withCors(request, Promise.resolve(getAdminTemplates()));
+        }
+        if (path === "/api/v1/admin/seo/overview" && method === "GET") {
+          await requireAdminAuth(request, env);
+          return withCors(request, getAdminSEOOverview(request, env));
+        }
+
         /* ---------- STUBS (authenticated, not yet implemented) ---------- */
         for (const stubPath of [
           "/api/v1/admin/memory",
-          "/api/v1/admin/seo/overview",
           "/api/v1/admin/automation/rules",
           "/api/v1/admin/ml/health",
           "/api/v1/admin/experiments",
@@ -1602,6 +1761,12 @@ export default {
 
         if (method === "GET" && path === "/api/customer/integrations")
           return withCors(request, listIntegrations(request, env, auth));
+
+        /* ── Adobe (Express Embed config + capability status) ── */
+        if (method === "GET" && path === "/api/customer/integrations/adobe/config")
+          return withCors(request, getAdobeConfig(env));
+        if (method === "GET" && path === "/api/customer/integrations/adobe/status")
+          return withCors(request, getAdobeStatus(env));
 
         if (method === "DELETE" && path.startsWith("/api/customer/integrations/")) {
           const id = path.split("/")[4];

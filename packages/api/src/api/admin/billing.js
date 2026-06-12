@@ -2,54 +2,52 @@
 
 import { json, error } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
+import { computeRevenueMetrics, computeRevenueTrend } from "../../core/billing/revenue.js";
 
 /**
- * GET /api/admin/billing/overview
+ * GET /api/v1/admin/billing/overview
+ * PART 3 — Rebuilt. ALL money is payment-derived (payments − refunds). No plan math.
+ * Subscription/trial counts are OPERATIONAL metrics only, never revenue.
  */
 export async function billingOverview(env) {
   const db = getDB(env);
 
-  // 1. Total Active Customers (Active or Trial)
-  const stats = await db.prepare(`
-    SELECT 
+  // Payment-derived revenue (canonical)
+  const revenue = await computeRevenueMetrics(env);
+  const trend   = await computeRevenueTrend(env, 12);
+
+  // Operational counts (NOT revenue) — kept separate by design
+  const ops = await db.prepare(`
+    SELECT
       COUNT(*) AS total_users,
-      SUM(CASE WHEN subscription_status = 'active' THEN 1 ELSE 0 END) as active_subs,
-      SUM(CASE WHEN subscription_status = 'trial' THEN 1 ELSE 0 END) as trial_subs
+      SUM(CASE WHEN subscription_status = 'active' THEN 1 ELSE 0 END) AS active_subs,
+      SUM(CASE WHEN subscription_status = 'trial'  THEN 1 ELSE 0 END) AS trial_subs
     FROM users
   `).first();
 
-  // 2. Calculate Correct MRR — use price_cents (canonical cents column)
-  // Fall back to price_monthly * 100 for plans created before price_cents was added
-  const mrrRow = await db.prepare(`
-    SELECT SUM(COALESCE(p.price_cents, p.price_monthly * 100, 0)) as total_mrr_cents
-    FROM users u
-    JOIN plans p ON u.plan_id = p.id
-    WHERE u.subscription_status = 'active'
-  `).first();
-
-  // 3. Plan Distribution
-  const { results: distribution } = await db.prepare(`
-    SELECT p.name, COUNT(u.id) as count
-    FROM users u
-    JOIN plans p ON u.plan_id = p.id
-    GROUP BY p.name
-  `).all();
-
-  // 4. Audit Conversion (Simplified)
-  const auditConversion = await db.prepare(`
-    SELECT 
-      (SELECT COUNT(DISTINCT brand_id) FROM brand_audit_results) as total_audits,
-      (SELECT COUNT(*) FROM users WHERE subscription_status = 'active') as active_users
-  `).first();
-
   return json({
-    total_customers: stats?.total_users || 0,
-    active_subscriptions: stats?.active_subs || 0,
-    trial_subscriptions: stats?.trial_subs || 0,
-    mrr: mrrRow?.total_mrr_cents || 0,
-    currency: "ZAR",
-    distribution,
-    conversion_rate: auditConversion.total_audits > 0 ? (auditConversion.active_users / auditConversion.total_audits * 100).toFixed(1) + "%" : "0%"
+    // ── Revenue (payment-derived) ─────────────────────────────
+    currency:               revenue.currency,
+    revenue_gross_cents:    revenue.revenue.gross_cents,
+    revenue_refunded_cents: revenue.revenue.refunded_cents,
+    revenue_net_cents:      revenue.revenue.net_cents,
+    mrr_cents:              revenue.mrr_cents,
+    arr_cents:              revenue.arr_cents,
+    active_revenue_cents:   revenue.active_revenue_cents,
+    refund_rate:            revenue.refund_rate,
+    payment_success_rate:   revenue.payment_success_rate,
+    payment_counts:         revenue.payment_counts,
+    arpu_cents:             revenue.arpu_cents,
+    revenue_trend:          trend,
+
+    // ── Operational (NOT revenue) ─────────────────────────────
+    operational: {
+      total_customers:      ops?.total_users || 0,
+      active_subscriptions: ops?.active_subs || 0,
+      trial_subscriptions:  ops?.trial_subs || 0,
+    },
+
+    generated_at: revenue.generated_at,
   });
 }
 
@@ -121,5 +119,95 @@ export async function listAdminCheckouts(env) {
     LIMIT 200
   `).all();
   return json({ checkouts: results || [] });
+}
+
+/**
+ * GET /api/v1/admin/billing/subscriptions
+ * Platform-wide subscription list (read-only). Shows the payment-locked price.
+ */
+export async function listAdminSubscriptions(env) {
+  const db = getDB(env);
+  const { results } = await db.prepare(`
+    SELECT
+      s.customer_id AS brand_id, s.user_id, s.status,
+      s.plan_id, s.plan AS plan_name,
+      s.locked_price_cents, s.locked_currency, s.billing_interval,
+      s.grandfathered, s.effective_from,
+      s.current_period_start, s.current_period_end,
+      b.name AS brand_name,
+      u.email AS owner_email,
+      p.price_cents AS catalog_price_cents, p.currency AS catalog_currency
+    FROM subscriptions s
+    LEFT JOIN brands b ON b.id = s.customer_id
+    LEFT JOIN users  u ON u.id = s.user_id
+    LEFT JOIN plans  p ON p.id = s.plan_id
+    ORDER BY s.updated_at DESC
+    LIMIT 300
+  `).all().catch(() => ({ results: [] }));
+  return json({ subscriptions: results || [] });
+}
+
+/**
+ * GET /api/v1/admin/billing/compliance
+ * Provider health, tax readiness, invoice readiness, regional pricing coverage.
+ * Read-only operational view.
+ */
+export async function billingCompliance(env) {
+  const db = getDB(env);
+
+  // Provider health — Yoco config presence (never echo secrets)
+  const provider = {
+    name: "yoco",
+    api_key_configured:     Boolean(env.YOCO_API_KEY),
+    webhook_secret_configured: Boolean(env.YOCO_WEBHOOK_SECRET),
+    environment:            env.ENVIRONMENT || "unknown",
+    status: Boolean(env.YOCO_API_KEY) ? "operational" : "not_configured",
+  };
+
+  // Recent webhook/payment activity as a liveness signal
+  const recent = await db.prepare(`
+    SELECT
+      SUM(CASE WHEN status='succeeded' THEN 1 ELSE 0 END) AS ok,
+      SUM(CASE WHEN status='failed'    THEN 1 ELSE 0 END) AS failed,
+      MAX(occurred_at) AS last_payment_at
+    FROM payments
+    WHERE occurred_at > datetime('now','-30 day')
+  `).first().catch(() => ({}));
+
+  // Regional pricing coverage
+  const { results: regional } = await db.prepare(`
+    SELECT region, currency, COUNT(*) AS plans
+    FROM regional_plans GROUP BY region, currency ORDER BY region
+  `).all().catch(() => ({ results: [] }));
+
+  // Tax + invoice readiness — derived from what exists (honest, not faked)
+  const taxConfigured = false; // no tax engine wired yet
+  const invoiceTable = await db.prepare(
+    "SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name IN ('invoices','invoice_lines')"
+  ).first().catch(() => ({ n: 0 }));
+
+  return json({
+    provider,
+    activity_30d: {
+      payments_succeeded: recent?.ok || 0,
+      payments_failed:    recent?.failed || 0,
+      last_payment_at:    recent?.last_payment_at || null,
+    },
+    tax: {
+      configured: taxConfigured,
+      status: taxConfigured ? "ready" : "not_configured",
+      note: "No tax engine wired. Prices are tax-exclusive.",
+    },
+    invoices: {
+      available: (invoiceTable?.n || 0) > 0,
+      status: (invoiceTable?.n || 0) > 0 ? "ready" : "not_available",
+      note: (invoiceTable?.n || 0) > 0 ? null : "Invoice generation not implemented.",
+    },
+    regional_pricing: {
+      regions: regional || [],
+      total_rows: (regional || []).reduce((a, r) => a + (r.plans || 0), 0),
+    },
+    generated_at: new Date().toISOString(),
+  });
 }
 

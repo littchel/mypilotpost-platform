@@ -18,8 +18,10 @@ import { snapshotMRR, detectChurnSignals } from "./revenue-engine.js";
  *   updated_at TEXT
  */
 
-export async function applyBillingEvent(env, { customerId, eventType, amount, planId }) {
+export async function applyBillingEvent(env, { customerId, eventType, amount, planId, currency, billingInterval, checkoutId, paymentId }) {
   const now = new Date().toISOString();
+  const interval = billingInterval || "monthly";
+  const periodEnd = interval === "annual" || interval === "yearly" ? addOneYear(now) : addOneMonth(now);
 
   /* =========================================================
      1. FETCH CURRENT SUBSCRIPTION
@@ -46,13 +48,17 @@ export async function applyBillingEvent(env, { customerId, eventType, amount, pl
     const resolvedPlanId = planId || "starter";
     const ownerId = brand?.owner_user_id || null;
 
+    // PART 1 — snapshot the agreed price ON the subscription (grandfather lock).
+    // locked_price_cents = the actual amount paid; never mutated by later catalog edits.
     await env.DB.prepare(`
       INSERT INTO subscriptions
-        (customer_id, status, plan, plan_id, user_id, current_period_start, current_period_end, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (customer_id, status, plan, plan_id, user_id, current_period_start, current_period_end, created_at, updated_at,
+         locked_price_cents, locked_currency, billing_interval, effective_from, grandfathered, checkout_id, payment_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
     `).bind(
       customerId, "active", resolvedPlanName, resolvedPlanId, ownerId,
-      now, addOneMonth(now), now, now
+      now, periodEnd, now, now,
+      amount ?? null, currency || "USD", interval, now, checkoutId || null, paymentId || null
     ).run();
 
     // Keep users table in sync — enforcement.js and getCurrentPlan() read from here
@@ -61,7 +67,7 @@ export async function applyBillingEvent(env, { customerId, eventType, amount, pl
         UPDATE users SET plan_id = ?, subscription_status = 'active',
           current_period_start = ?, current_period_end = ?
         WHERE id = ?
-      `).bind(resolvedPlanId, now, addOneMonth(now), ownerId).run();
+      `).bind(resolvedPlanId, now, periodEnd, ownerId).run();
     }
 
     await snapshotMRR(env, customerId, amount);
@@ -79,6 +85,9 @@ export async function applyBillingEvent(env, { customerId, eventType, amount, pl
       ? await env.DB.prepare(`SELECT name FROM plans WHERE id = ?`).bind(planId).first()
       : null;
 
+    // Renewal: refresh period + payment_id. Preserve the existing locked price
+    // (grandfathered subscribers keep their original price across renewals).
+    // Only set locked price if it was never captured (legacy rows).
     await env.DB.prepare(`
       UPDATE subscriptions
       SET status = 'active',
@@ -86,9 +95,18 @@ export async function applyBillingEvent(env, { customerId, eventType, amount, pl
           plan = COALESCE(?, plan),
           current_period_start = ?,
           current_period_end = ?,
-          updated_at = ?
+          updated_at = ?,
+          billing_interval = COALESCE(billing_interval, ?),
+          locked_price_cents = COALESCE(locked_price_cents, ?),
+          locked_currency = COALESCE(locked_currency, ?),
+          effective_from = COALESCE(effective_from, ?),
+          payment_id = COALESCE(?, payment_id)
       WHERE customer_id = ?
-    `).bind(planId, plan?.name || null, now, addOneMonth(now), now, customerId).run();
+    `).bind(
+      planId, plan?.name || null, now, periodEnd, now,
+      interval, amount ?? null, currency || "USD", now, paymentId || null,
+      customerId
+    ).run();
 
     // Sync to users table so enforcement.js and getCurrentPlan() see the new plan
     if (subscription.user_id) {
@@ -148,5 +166,11 @@ export async function applyBillingEvent(env, { customerId, eventType, amount, pl
 function addOneMonth(isoDate) {
   const d = new Date(isoDate);
   d.setMonth(d.getMonth() + 1);
+  return d.toISOString();
+}
+
+function addOneYear(isoDate) {
+  const d = new Date(isoDate);
+  d.setFullYear(d.getFullYear() + 1);
   return d.toISOString();
 }

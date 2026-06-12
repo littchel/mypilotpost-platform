@@ -29,14 +29,18 @@ function fmt(d?: string | null) {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" });
 }
+function money(cents?: number | null, currency = "USD") {
+  if (cents == null) return "—";
+  return new Intl.NumberFormat("en-US", { style: "currency", currency, minimumFractionDigits: 0 }).format(cents / 100);
+}
 
 // ─── Plans tab ────────────────────────────────────────────────────────────────
 
 const PLAN_COLS: Column<Plan>[] = [
   { key: "name", header: "Name", sortable: true, render: r => <span className="text-sm font-medium text-ink-1">{r.name}</span> },
   { key: "slug", header: "Slug", render: r => <span className="font-mono text-xs text-ink-3">{r.slug}</span> },
-  { key: "price_monthly", header: "Monthly", sortable: true, render: r => <span className="text-sm text-ink-1">R{((r.price_monthly ?? 0) / 100).toFixed(2)}</span> },
-  { key: "billing_interval", header: "Interval", render: r => <Badge variant="brand">{r.billing_interval ?? "monthly"}</Badge> },
+  { key: "price_monthly", header: "Monthly", sortable: true, render: r => <span className="text-sm text-ink-1">{money(r.price_cents ?? (r.price_monthly ?? 0) * 100, r.currency ?? "USD")}</span> },
+  { key: "currency", header: "Currency", render: r => <span className="text-xs text-ink-3">{r.currency ?? "USD"}</span> },
   { key: "is_active", header: "Status", render: r => <Badge variant={r.is_active ? "success" : "neutral"}>{r.is_active ? "Active" : "Inactive"}</Badge> },
   { key: "created_at", header: "Created", sortable: true, render: r => <span className="text-sm text-ink-2">{fmt(r.created_at)}</span> },
 ];
@@ -50,17 +54,18 @@ type PlanFormState = {
 
 const EMPTY_PLAN: PlanFormState = {
   name: "", slug: "", description: "",
-  price_monthly: "", price_yearly: "", billing_interval: "monthly", currency: "ZAR",
+  price_monthly: "", price_yearly: "", billing_interval: "monthly", currency: "USD",
   brand_limit: "", posts_per_month_limit: "", user_limit: "",
   is_active: true,
 };
 
 function planToForm(p: Plan): PlanFormState {
+  // Canonical price source is price_cents (cents). price_monthly/price_yearly are MAJOR units (dollars).
   return {
     name: p.name ?? "", slug: p.slug ?? "", description: p.description ?? "",
-    price_monthly: p.price_monthly != null ? String(p.price_monthly / 100) : "",
-    price_yearly: p.price_yearly != null ? String(p.price_yearly / 100) : "",
-    billing_interval: p.billing_interval ?? "monthly", currency: p.currency ?? "ZAR",
+    price_monthly: p.price_cents != null ? String(p.price_cents / 100) : (p.price_monthly != null ? String(p.price_monthly) : ""),
+    price_yearly: p.price_yearly != null ? String(p.price_yearly) : "",
+    billing_interval: p.billing_interval ?? "monthly", currency: p.currency ?? "USD",
     brand_limit: p.brand_limit != null ? String(p.brand_limit) : "",
     posts_per_month_limit: p.posts_per_month_limit != null ? String(p.posts_per_month_limit) : "",
     user_limit: p.user_limit != null ? String(p.user_limit) : "",
@@ -77,6 +82,11 @@ function PlanDrawer({ plan, onClose }: { plan: Plan | "new"; onClose: () => void
   const [form, setForm] = useState<PlanFormState>(isNew ? EMPTY_PLAN : planToForm(plan as Plan));
   const [dirty, setDirty] = useState(false);
   const [confirmClone, setConfirmClone] = useState(false);
+  const [applyTo, setApplyTo] = useState<"new" | "migrate">("new");
+
+  // Did the monthly price change vs the stored plan? (drives the grandfather/migrate choice)
+  const originalMonthly = isNew ? null : (((plan as Plan).price_cents ?? 0) / 100);
+  const priceChanged = !isNew && form.price_monthly !== "" && parseFloat(form.price_monthly) !== originalMonthly;
 
   const { data: versions } = useQuery({
     queryKey: ["plan-versions", planId],
@@ -88,22 +98,31 @@ function PlanDrawer({ plan, onClose }: { plan: Plan | "new"; onClose: () => void
     setForm(p => ({ ...p, [k]: e.target.value })); setDirty(true);
   };
 
-  const saveMut = useMutation({
+  const saveMut = useMutation<Record<string, unknown>, Error>({
     mutationFn: async () => {
-      const payload = {
+      // price_monthly/price_yearly are sent in MAJOR units (dollars); backend converts to cents.
+      const payload: Record<string, unknown> = {
         name: form.name, slug: form.slug, description: form.description,
-        price_monthly: form.price_monthly ? Math.round(parseFloat(form.price_monthly) * 100) : 0,
-        price_yearly: form.price_yearly ? Math.round(parseFloat(form.price_yearly) * 100) : null,
+        price_monthly: form.price_monthly ? parseFloat(form.price_monthly) : 0,
+        price_yearly: form.price_yearly ? parseFloat(form.price_yearly) : null,
         billing_interval: form.billing_interval, currency: form.currency,
         brand_limit: form.brand_limit ? parseInt(form.brand_limit, 10) : null,
         posts_per_month_limit: form.posts_per_month_limit ? parseInt(form.posts_per_month_limit, 10) : null,
         user_limit: form.user_limit ? parseInt(form.user_limit, 10) : null,
         is_active: form.is_active ? 1 : 0,
       };
+      if (!isNew) payload.apply_to = applyTo;
       return isNew ? apiCreatePlan(payload) : apiUpdatePlan(planId, payload);
     },
-    onSuccess: () => {
-      toast.success(isNew ? "Plan created" : "Plan updated");
+    onSuccess: (res) => {
+      const r = res as { impact_count?: number; migrated?: number };
+      if (!isNew && priceChanged && applyTo === "migrate") {
+        toast.success("Plan updated", `${r.migrated ?? 0} of ${r.impact_count ?? 0} subscribers migrated to the new price`);
+      } else if (!isNew && priceChanged) {
+        toast.success("Plan updated", `${r.impact_count ?? 0} existing subscribers grandfathered (kept old price)`);
+      } else {
+        toast.success(isNew ? "Plan created" : "Plan updated");
+      }
       qc.invalidateQueries({ queryKey: ["plans"] }); setDirty(false);
       if (isNew) onClose();
     },
@@ -132,8 +151,8 @@ function PlanDrawer({ plan, onClose }: { plan: Plan | "new"; onClose: () => void
           <Input label="Slug" value={form.slug} onChange={f("slug")} hint="Auto-generated if blank" />
           <Input label="Description" value={form.description} onChange={f("description")} />
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Monthly price (R)" type="number" step="0.01" value={form.price_monthly} onChange={f("price_monthly")} />
-            <Input label="Yearly price (R)" type="number" step="0.01" value={form.price_yearly} onChange={f("price_yearly")} />
+            <Input label={`Monthly price (${form.currency})`} type="number" step="0.01" value={form.price_monthly} onChange={f("price_monthly")} hint="In whole units (e.g. 79 = $79)" />
+            <Input label={`Yearly price (${form.currency})`} type="number" step="0.01" value={form.price_yearly} onChange={f("price_yearly")} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Select label="Billing interval"
@@ -141,10 +160,26 @@ function PlanDrawer({ plan, onClose }: { plan: Plan | "new"; onClose: () => void
               value={form.billing_interval}
               onChange={v => { setForm(p => ({...p, billing_interval: v})); setDirty(true); }} />
             <Select label="Currency"
-              options={[{value:"ZAR",label:"ZAR (R) — South Africa"},{value:"USD",label:"USD ($) — Worldwide"}]}
+              options={[{value:"USD",label:"USD ($) — Worldwide"},{value:"ZAR",label:"ZAR (R) — South Africa"}]}
               value={form.currency}
               onChange={v => { setForm(p => ({...p, currency: v})); setDirty(true); }} />
           </div>
+
+          {priceChanged && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+              <p className="text-xs font-semibold text-amber-300 mb-2">Price changed — apply to:</p>
+              <div className="space-y-2">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input type="radio" name="apply_to" checked={applyTo === "new"} onChange={() => setApplyTo("new")} className="mt-0.5" />
+                  <span className="text-xs text-ink-2"><strong className="text-ink-1">New customers only</strong> (default) — existing subscribers keep their locked price (grandfathered).</span>
+                </label>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input type="radio" name="apply_to" checked={applyTo === "migrate"} onChange={() => setApplyTo("migrate")} className="mt-0.5" />
+                  <span className="text-xs text-ink-2"><strong className="text-ink-1">Migrate existing subscribers</strong> — re-price all active subscribers on this plan to the new price.</span>
+                </label>
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-3 gap-3">
             <Input label="Brand limit" type="number" value={form.brand_limit} onChange={f("brand_limit")} />
             <Input label="Posts/mo limit" type="number" value={form.posts_per_month_limit} onChange={f("posts_per_month_limit")} />
@@ -461,7 +496,7 @@ function MetricsTab() {
         <StatCard label="Total plans" value={String((data as { total_plans?: number } | undefined)?.total_plans ?? 0)} icon={<Package className="h-4 w-4" />} loading={isLoading} />
         <StatCard label="Active plans" value={String((data as { active_plans?: number } | undefined)?.active_plans ?? 0)} icon={<Package className="h-4 w-4" />} accent="success" loading={isLoading} />
         <StatCard label="Total features" value={String((data as { total_features?: number } | undefined)?.total_features ?? 0)} icon={<Zap className="h-4 w-4" />} loading={isLoading} />
-        <StatCard label="Revenue from plans" value={total ? `R${(total / 100).toLocaleString()}` : "—"} icon={<TrendingUp className="h-4 w-4" />} loading={isLoading} />
+        <StatCard label="Catalog MRR (operational)" value={total ? money(total, "USD") : "—"} icon={<TrendingUp className="h-4 w-4" />} loading={isLoading} sub="catalog × subs — not revenue" />
       </div>
 
       {plans.length > 0 && (
@@ -473,14 +508,14 @@ function MetricsTab() {
             <thead><tr className="border-b border-os-border">
               <th className="os-table-th">Plan</th>
               <th className="os-table-th text-right">Customers</th>
-              <th className="os-table-th text-right">MRR (ZAR)</th>
+              <th className="os-table-th text-right">Catalog MRR</th>
             </tr></thead>
             <tbody>
               {plans.map(p => (
                 <tr key={p.id} className="border-b border-os-border/40">
                   <td className="os-table-td font-medium text-ink-1">{p.name}</td>
                   <td className="os-table-td text-right text-ink-2 tabular-nums">{p.user_count ?? 0}</td>
-                  <td className="os-table-td text-right text-ink-1 tabular-nums">R{((p.mrr ?? 0) / 100).toLocaleString()}</td>
+                  <td className="os-table-td text-right text-ink-1 tabular-nums">{money(p.mrr ?? 0, "USD")}</td>
                 </tr>
               ))}
             </tbody>

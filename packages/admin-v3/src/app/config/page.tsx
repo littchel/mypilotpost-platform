@@ -5,9 +5,9 @@ import {
   apiGetSystemEvents,
   apiListKillSwitches, apiUpdateKillSwitch,
   apiListAuditLog,
+  apiGetRoles, apiGetSystemExtended, apiGetEmailTemplates, apiGetAdminUsage,
 } from "@/lib/api";
-import { getWorkspacesForRole } from "@/lib/roles";
-import type { AdminRole } from "@/types";
+import { StatCard } from "@/components/ui/StatCard";
 import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
 import { Tabs } from "@/components/ui/Tabs";
 import { DataTable, type Column } from "@/components/ui/DataTable";
@@ -195,63 +195,126 @@ function AuditTab() {
   );
 }
 
-const ADMIN_ROLES: AdminRole[] = ["super_admin", "admin", "support", "commercial", "content", "developer", "analyst", "viewer"];
-
-const ROLE_LABELS: Record<AdminRole, string> = {
-  super_admin: "Super Admin",
-  admin: "Admin",
-  support: "Support",
-  commercial: "Commercial",
-  content: "Content",
-  developer: "Developer",
-  analyst: "Analyst",
-  viewer: "Viewer",
-};
-
+type RoleRow = { role: string; wildcard: boolean; permissions: string[]; permission_count: number | string; workspace_access: string[] };
 function RolesTab() {
+  const { data, isLoading } = useQuery({ queryKey: ["admin-roles"], queryFn: apiGetRoles });
+  const roles = (data?.roles ?? []) as RoleRow[];
+  const exportCsv = () => {
+    const rows = [["role", "permissions", "workspace_access"], ...roles.map(r => [r.role, r.permissions.join(" "), r.workspace_access.join(" ")])];
+    const csv = rows.map(r => r.map(c => `"${c}"`).join(",")).join("\n");
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = "roles.csv"; a.click();
+  };
+  if (isLoading) return <div className="space-y-2 animate-pulse">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-16 bg-os-raised rounded" />)}</div>;
   return (
     <div className="space-y-4">
-      <Card>
-        <p className="text-xs text-ink-3 mb-4">Role → workspace access matrix. This is the platform access model. Changes require a code deployment.</p>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-os-border">
-                <th className="text-left py-2 px-3 text-xs font-semibold text-ink-3 uppercase tracking-wider w-36">Role</th>
-                {["today","customers","billing","commercial","content","operations","config"].map(ws => (
-                  <th key={ws} className="text-center py-2 px-2 text-xs font-semibold text-ink-3 uppercase tracking-wider capitalize">{ws}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {ADMIN_ROLES.map(role => {
-                const workspaces = getWorkspacesForRole(role).map(w => w.id);
-                return (
-                  <tr key={role} className="border-b border-os-border/40 hover:bg-os-raised/30">
-                    <td className="py-2.5 px-3">
-                      <Badge variant={role === "super_admin" || role === "admin" ? "brand" : "neutral"}>{ROLE_LABELS[role]}</Badge>
-                    </td>
-                    {["today","customers","billing","commercial","content","operations","config"].map(ws => (
-                      <td key={ws} className="py-2.5 px-2 text-center">
-                        {(workspaces as string[]).includes(ws)
-                          ? <CheckCircle className="h-4 w-4 text-green-400 mx-auto" />
-                          : <span className="text-ink-4 text-xs">—</span>}
-                      </td>
-                    ))}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-ink-3">Read-only RBAC from <code className="font-mono">permissions.js</code>. Editing requires a code deployment.</p>
+        <Button variant="secondary" size="sm" icon={<FileText className="h-3.5 w-3.5" />} onClick={exportCsv}>Export CSV</Button>
+      </div>
+      {roles.map(r => (
+        <Card key={r.role} padding="none">
+          <div className="px-4 py-3 border-b border-os-border flex items-center gap-2">
+            <Badge variant={r.wildcard ? "brand" : "neutral"}>{r.role}</Badge>
+            <span className="text-2xs text-ink-3">{r.permission_count} permission{r.permission_count === 1 ? "" : "s"}</span>
+            <div className="ml-auto flex gap-1 flex-wrap">{r.workspace_access.map(w => <Badge key={w} variant="success">{w}</Badge>)}</div>
+          </div>
+          <div className="px-4 py-2.5 flex flex-wrap gap-1.5">
+            {r.permissions.map(p => <span key={p} className="text-2xs font-mono px-1.5 py-0.5 rounded bg-os-raised text-ink-2">{p}</span>)}
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ─── System (extended status) ──────────────────────────────────────────────────────
+function SystemTab() {
+  const { data, isLoading } = useQuery({ queryKey: ["admin-system-ext"], queryFn: apiGetSystemExtended, refetchInterval: 60_000 });
+  const d = (data ?? {}) as Record<string, any>;
+  const sBadge = (s?: string) => s === "operational" || s === "configured" ? "success" : s === "degraded" ? "warning" : "neutral";
+  if (isLoading) return <div className="space-y-3 animate-pulse">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-24 bg-os-raised rounded-lg" />)}</div>;
+  return (
+    <div className="grid lg:grid-cols-2 gap-4">
+      <Card padding="none">
+        <div className="px-4 py-3 border-b border-os-border"><h2 className="text-sm font-semibold text-ink-1">Workers</h2></div>
+        {(d.workers ?? []).map((w: any, i: number) => <div key={i} className="flex items-center justify-between px-4 py-2.5 border-b border-os-border/40 last:border-0"><span className="text-sm text-ink-1">{w.name}</span><Badge variant={sBadge(w.status)}>{w.status}</Badge></div>)}
       </Card>
+      <Card padding="none">
+        <div className="px-4 py-3 border-b border-os-border"><h2 className="text-sm font-semibold text-ink-1">Domains</h2></div>
+        {(d.domains ?? []).map((x: any, i: number) => <div key={i} className="flex items-center justify-between px-4 py-2.5 border-b border-os-border/40 last:border-0"><div><p className="text-sm text-ink-1">{x.name}</p><p className="text-2xs text-ink-3">{x.role}</p></div><Badge variant={x.configured ? "success" : "warning"}>{x.configured ? "configured" : "missing"}</Badge></div>)}
+      </Card>
+      <Card padding="none">
+        <div className="px-4 py-3 border-b border-os-border"><h2 className="text-sm font-semibold text-ink-1">Webhooks</h2></div>
+        <div className="flex items-center justify-between px-4 py-2.5"><div><p className="text-sm text-ink-1">Yoco</p><p className="text-2xs text-ink-3">last: {d.webhooks?.yoco?.last_event_at ? fmt(d.webhooks.yoco.last_event_at) : "—"}</p></div><Badge variant={sBadge(d.webhooks?.yoco?.status)}>{d.webhooks?.yoco?.status}</Badge></div>
+      </Card>
+      <Card padding="none">
+        <div className="px-4 py-3 border-b border-os-border"><h2 className="text-sm font-semibold text-ink-1">Provider status</h2></div>
+        <div className="max-h-64 overflow-y-auto">{(d.providers ?? []).map((p: any, i: number) => <div key={i} className="flex items-center justify-between px-4 py-2 border-b border-os-border/40 last:border-0"><span className="text-sm text-ink-1 capitalize">{p.platform}</span><div className="flex items-center gap-2">{p.active != null && <span className="text-2xs text-ink-3">{p.active}/{p.total} active{p.expiring ? ` · ${p.expiring} expiring` : ""}</span>}<Badge variant={sBadge(p.status)}>{p.status}</Badge></div></div>)}</div>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Templates ──────────────────────────────────────────────────────────────────────
+function TemplatesTab() {
+  const { data, isLoading } = useQuery({ queryKey: ["admin-email-templates"], queryFn: apiGetEmailTemplates });
+  const templates = ((data as { templates?: unknown[]; data?: unknown[] })?.templates ?? (data as { data?: unknown[] })?.data ?? []) as { key?: string; name?: string; subject?: string; category?: string }[];
+  const legal = [
+    { name: "Privacy Policy", url: "https://mypilotpost.com/privacy" },
+    { name: "Terms of Service", url: "https://mypilotpost.com/terms" },
+  ];
+  return (
+    <div className="space-y-4">
+      <Card padding="none">
+        <div className="px-4 py-3 border-b border-os-border flex items-center gap-2"><FileText className="h-4 w-4 text-ink-3" /><h2 className="text-sm font-semibold text-ink-1">Email & Notification Templates</h2><Badge variant="neutral">{templates.length}</Badge></div>
+        {isLoading ? <div className="p-4 space-y-2 animate-pulse">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-10 bg-os-raised rounded" />)}</div>
+          : templates.length === 0 ? <p className="px-4 py-8 text-center text-sm text-ink-3">No templates</p>
+          : <div className="divide-y divide-os-border/40">{templates.map((t, i) => <div key={i} className="flex items-center justify-between px-4 py-2.5"><div className="min-w-0"><p className="text-sm text-ink-1">{t.name ?? t.key}</p>{t.subject && <p className="text-2xs text-ink-3 truncate">{t.subject}</p>}</div>{t.category && <Badge variant="brand">{t.category}</Badge>}</div>)}</div>}
+      </Card>
+      <Card padding="none">
+        <div className="px-4 py-3 border-b border-os-border"><h2 className="text-sm font-semibold text-ink-1">Legal Documents</h2></div>
+        {legal.map(l => <div key={l.name} className="flex items-center justify-between px-4 py-2.5 border-b border-os-border/40 last:border-0"><span className="text-sm text-ink-1">{l.name}</span><a href={l.url} target="_blank" rel="noreferrer" className="text-xs text-brand-300 hover:underline">View →</a></div>)}
+      </Card>
+    </div>
+  );
+}
+
+// ─── Limits (usage + cost) ────────────────────────────────────────────────────────
+function LimitsTab() {
+  const { data, isLoading } = useQuery({ queryKey: ["admin-usage"], queryFn: () => apiGetAdminUsage(30) });
+  const d = (data ?? {}) as Record<string, any>;
+  const ai = d.ai ?? {};
+  if (isLoading) return <div className="space-y-3 animate-pulse">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-20 bg-os-raised rounded-lg" />)}</div>;
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-ink-3">Financial & operational usage — last {d.window_days ?? 30} days. Estimated cost where provider rate is known (no projections).</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard label="AI tokens" value={(ai.total_tokens ?? 0).toLocaleString()} icon={<Zap className="h-4 w-4" />} />
+        <StatCard label="Est. AI cost" value={`$${(ai.total_cost_usd ?? 0).toFixed(4)}`} icon={<Zap className="h-4 w-4" />} accent="brand" />
+        <StatCard label="X deliveries" value={`${d.x?.published ?? 0}/${d.x?.total ?? 0}`} icon={<Radio className="h-4 w-4" />} />
+        <StatCard label="Storage assets" value={String(d.storage?.total_assets ?? 0)} icon={<FileText className="h-4 w-4" />} />
+      </div>
+      <Card padding="none">
+        <div className="px-4 py-3 border-b border-os-border"><h2 className="text-sm font-semibold text-ink-1">AI usage by provider</h2></div>
+        <table className="w-full"><thead><tr className="border-b border-os-border"><th className="os-table-th">Provider</th><th className="os-table-th text-right">Generations</th><th className="os-table-th text-right">Tokens</th><th className="os-table-th text-right">Cost</th><th className="os-table-th text-right">Avg latency</th><th className="os-table-th text-right">Failures</th></tr></thead>
+        <tbody>{(ai.by_provider ?? []).map((p: any, i: number) => <tr key={i} className="border-b border-os-border/40"><td className="os-table-td font-medium text-ink-1">{p.provider}</td><td className="os-table-td text-right tabular-nums text-ink-2">{p.generations}</td><td className="os-table-td text-right tabular-nums text-ink-2">{(p.tokens ?? 0).toLocaleString()}</td><td className="os-table-td text-right tabular-nums text-ink-1">${(p.cost_usd ?? 0).toFixed(4)} <span className="text-2xs text-ink-4">({p.cost_source})</span></td><td className="os-table-td text-right tabular-nums text-ink-2">{p.avg_latency_ms ?? "—"}ms</td><td className="os-table-td text-right tabular-nums text-red-400">{p.failures}</td></tr>)}</tbody></table>
+      </Card>
+      <Card padding="none">
+        <div className="px-4 py-3 border-b border-os-border"><h2 className="text-sm font-semibold text-ink-1">Media provider usage</h2></div>
+        <div className="divide-y divide-os-border/40">{(d.media_providers ?? []).map((m: any, i: number) => <div key={i} className="flex items-center justify-between px-4 py-2.5"><span className="text-sm text-ink-1 capitalize">{m.provider}</span><span className="text-sm tabular-nums text-ink-2">{m.imports} imports</span></div>)}
+          {(d.media_providers ?? []).length === 0 && <p className="px-4 py-6 text-center text-sm text-ink-3">No media imports in window</p>}</div>
+      </Card>
+      <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-brand-500/5 border border-brand-500/20">
+        <span className="text-sm font-medium text-ink-1">Estimated monthly cost</span>
+        <span className="text-lg font-bold text-brand-300">${(d.estimated_monthly_cost_usd ?? 0).toFixed(4)}</span>
+      </div>
     </div>
   );
 }
 
 export default function ConfigPage() {
   const qc = useQueryClient();
-  const [tab, setTab] = useState("events");
+  const [tab, setTab] = useState("roles");
 
   return (
     <WorkspaceLayout
@@ -267,20 +330,24 @@ export default function ConfigPage() {
       <div className="mb-5">
         <Tabs
           tabs={[
-            { id: "events", label: "Events", icon: <Radio className="h-3.5 w-3.5" /> },
-            { id: "kill-switches", label: "Kill Switches", icon: <Zap className="h-3.5 w-3.5" /> },
-            { id: "audit", label: "Audit Log", icon: <FileText className="h-3.5 w-3.5" /> },
             { id: "roles", label: "Roles", icon: <Shield className="h-3.5 w-3.5" /> },
+            { id: "flags", label: "Feature Flags", icon: <Zap className="h-3.5 w-3.5" /> },
+            { id: "system", label: "System", icon: <Power className="h-3.5 w-3.5" /> },
+            { id: "templates", label: "Templates", icon: <FileText className="h-3.5 w-3.5" /> },
+            { id: "limits", label: "Limits", icon: <AlertTriangle className="h-3.5 w-3.5" /> },
+            { id: "audit", label: "Audit", icon: <Radio className="h-3.5 w-3.5" /> },
           ]}
           active={tab}
           onChange={setTab}
         />
       </div>
 
-      {tab === "events" && <EventsTab />}
-      {tab === "kill-switches" && <KillSwitchesTab />}
-      {tab === "audit" && <AuditTab />}
       {tab === "roles" && <RolesTab />}
+      {tab === "flags" && <KillSwitchesTab />}
+      {tab === "system" && <SystemTab />}
+      {tab === "templates" && <TemplatesTab />}
+      {tab === "limits" && <LimitsTab />}
+      {tab === "audit" && <AuditTab />}
     </WorkspaceLayout>
   );
 }

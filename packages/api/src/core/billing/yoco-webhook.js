@@ -200,6 +200,10 @@ export async function handleYocoWebhook(request, env) {
       eventType: billingEventType,
       amount: data.amount,
       planId,
+      currency: data.currency || "USD",
+      billingInterval: data.metadata?.billing_interval || "monthly",
+      checkoutId,
+      paymentId: data.id || null,
     });
 
     // Advance checkout status to match payment outcome
