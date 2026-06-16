@@ -216,7 +216,7 @@
 
         .pricing__grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 30px;
             margin-top: var(--space-three);
         }
@@ -567,31 +567,25 @@
                 const grid = document.getElementById('pricing-grid');
                 grid.innerHTML = plans.map(p => {
                     const isPopular = p.id === 'growth';
-                    const price = p.price_monthly === 0 ? "Free" : `${p.currency === 'ZAR' ? 'R' : '$'}${(p.price_monthly/100).toLocaleString()}`;
+                    const price = p.price_monthly === 0 ? "Free" : `${p.currency === 'ZAR' ? 'R' : '$'}${p.price_monthly.toLocaleString()}`;
                     
+                    const entitlementsHtml = p.entitlements ? Object.values(p.entitlements)
+                        .filter(e => e.enabled)
+                        .map(e => `
+                            <li>
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.6666 5L7.49992 14.1667L3.33325 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                ${e.limit_value ? e.limit_value + ' ' : ''}${e.feature_key.replace(/_/g, ' ')}
+                            </li>
+                        `).join('') : '';
+
                     return `
                         <div class="pricing-card ${isPopular ? 'pricing-card--popular' : ''}">
                             <h4 class="pricing-card__name">${p.name}</h4>
-                            <p class="pricing-card__desc">${p.name === 'Starter' ? 'For individuals getting started' : p.name === 'Growth' ? 'For growing brands and teams' : 'For agencies and high-volume publishing'}</p>
+                            <p class="pricing-card__desc">${p.description || 'For growing brands and teams'}</p>
                             <div class="pricing-card__price">${price}</div>
                             <div class="pricing-card__period">per month</div>
                             <ul class="pricing-card__features">
-                                <li>
-                                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.6666 5L7.49992 14.1667L3.33325 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                    ${p.social_accounts_limit} Social Accounts
-                                </li>
-                                <li>
-                                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.6666 5L7.49992 14.1667L3.33325 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                    ${p.ai_generations_limit} AI Generations / mo
-                                </li>
-                                <li>
-                                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.6666 5L7.49992 14.1667L3.33325 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                    ${p.posts_per_month_limit} Posts / mo
-                                </li>
-                                <li>
-                                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.6666 5L7.49992 14.1667L3.33325 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                    Standard Analytics
-                                </li>
+                                ${entitlementsHtml}
                             </ul>
                             <button class="btn ${isPopular ? 'btn--primary' : 'btn--secondary'} btn--full" onclick="redirectToApp('/register')">
                                 ${p.price_monthly === 0 ? 'Get Started' : 'Start Free Trial'}

@@ -321,7 +321,17 @@ function SupportSection({ userId }: { userId: string }) {
   });
   const resolveMut = useMutation({
     mutationFn: () => apiUpdateSupportThread(threadId as string, { status: "resolved" }),
-    onSuccess: () => { toast.success("Thread resolved", "Customer notified by email"); qc.invalidateQueries({ queryKey: ["customers"] }); },
+    onSuccess: () => { 
+      toast.success("Thread resolved", "Customer notified by email"); 
+      qc.invalidateQueries({ queryKey: ["customers"] }); 
+      
+      // Cleanup chat state
+      esRef.current?.close();
+      esRef.current = null;
+      setLive(false);
+      setThreadId(null);
+      setMessages([]);
+    },
     onError: () => toast.error("Failed to resolve"),
   });
 

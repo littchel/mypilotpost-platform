@@ -7,6 +7,7 @@
 import { json, error } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
 import { getRegion } from "../../lib/geo.js";
+import { getEntitlements } from "../../lib/entitlements.js";
 
 /**
  * GET /api/admin/pricing
@@ -113,14 +114,15 @@ export async function getPublicPricing(request, env) {
   const db = getDB(env);
   const country = request.cf?.country || "unknown";
   const region = getRegion(country);
-
-  const { results: plans } = await db.prepare("SELECT * FROM plans WHERE is_active = 1 ORDER BY COALESCE(price_monthly, price_cents, 0) ASC").all();
+  const { results: plans } = await db.prepare("SELECT * FROM plans WHERE is_active = 1 AND visible = 1 ORDER BY COALESCE(price_monthly, price_cents, 0) ASC").all();
   const { results: regional } = await db.prepare("SELECT * FROM regional_plans WHERE region = ?").bind(region).all();
 
-  const localizedPlans = plans.map(p => {
+  const localizedPlans = [];
+  for (const p of plans) {
+    let localizedPlan = { ...p, is_regional: false };
     const regionalMatch = regional.find(r => r.plan_id === p.id);
     if (regionalMatch) {
-      return {
+      localizedPlan = {
         ...p,
         price_monthly: regionalMatch.price_monthly,
         price_yearly: regionalMatch.price_yearly,
@@ -128,8 +130,10 @@ export async function getPublicPricing(request, env) {
         is_regional: true
       };
     }
-    return { ...p, is_regional: false };
-  });
+    const entitlements = await getEntitlements(db, p.id);
+    localizedPlan.entitlements = entitlements;
+    localizedPlans.push(localizedPlan);
+  }
 
   return json({ 
     region,

@@ -97,8 +97,8 @@ const FloatingChat = () => {
   const fetchHistory = async () => {
     try {
       const res = await apiRequest(`/api/v1/support/history/${SUPPORT_ID}`);
-      if (res.success && res.messages) {
-        setMessages(res.messages);
+      if (res.success && res.data) {
+        setMessages(res.data);
       }
     } catch (e) {
       console.error("Failed to fetch history", e);
@@ -139,9 +139,9 @@ const FloatingChat = () => {
     setMessages(prev => [...prev, tempMsg]);
 
     try {
-      await apiRequest('/api/v1/support/send', {
+      await apiRequest('/api/v1/support/message', {
         method: 'POST',
-        body: JSON.stringify({ receiver_id: SUPPORT_ID, content: messageText })
+        body: JSON.stringify({ receiver_id: SUPPORT_ID, message: messageText })
       });
     } catch (e) {
       console.error("Send failed", e);

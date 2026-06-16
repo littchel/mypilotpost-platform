@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  apiListPlans, apiCreatePlan, apiUpdatePlan, apiClonePlan, apiGetPlanVersions,
+  apiListPlans, apiCreatePlan, apiUpdatePlan, apiClonePlan, apiGetPlanVersions, apiArchivePlan,
   apiListFeatures, apiCreateFeature, apiUpdateFeature,
   apiListEntitlements, apiUpdateEntitlement,
   apiListPromotions, apiCreatePromotion,
@@ -20,7 +20,7 @@ import { Input, Select, Toggle } from "@/components/ui/Input";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import { useToast } from "@/context/ToastContext";
 import {
-  Package, TrendingUp, Tag, History, Plus, Copy,
+  Package, TrendingUp, Tag, History, Plus, Copy, Archive,
   DollarSign, Users, Zap, List,
 } from "lucide-react";
 import type { Plan, PlanFeature, PlanEntitlement, PlanVersion, Promotion } from "@/types";
@@ -50,6 +50,7 @@ type PlanFormState = {
   price_monthly: string; price_yearly: string; billing_interval: string; currency: string;
   brand_limit: string; posts_per_month_limit: string; user_limit: string;
   is_active: boolean;
+  visible: boolean;
 };
 
 const EMPTY_PLAN: PlanFormState = {
@@ -57,6 +58,7 @@ const EMPTY_PLAN: PlanFormState = {
   price_monthly: "", price_yearly: "", billing_interval: "monthly", currency: "USD",
   brand_limit: "", posts_per_month_limit: "", user_limit: "",
   is_active: true,
+  visible: true,
 };
 
 function planToForm(p: Plan): PlanFormState {
@@ -70,6 +72,7 @@ function planToForm(p: Plan): PlanFormState {
     posts_per_month_limit: p.posts_per_month_limit != null ? String(p.posts_per_month_limit) : "",
     user_limit: p.user_limit != null ? String(p.user_limit) : "",
     is_active: !!p.is_active,
+    visible: (p as any).visible ?? true,
   };
 }
 
@@ -82,6 +85,7 @@ function PlanDrawer({ plan, onClose }: { plan: Plan | "new"; onClose: () => void
   const [form, setForm] = useState<PlanFormState>(isNew ? EMPTY_PLAN : planToForm(plan as Plan));
   const [dirty, setDirty] = useState(false);
   const [confirmClone, setConfirmClone] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
   const [applyTo, setApplyTo] = useState<"new" | "migrate">("new");
 
   // Did the monthly price change vs the stored plan? (drives the grandfather/migrate choice)
@@ -110,6 +114,7 @@ function PlanDrawer({ plan, onClose }: { plan: Plan | "new"; onClose: () => void
         posts_per_month_limit: form.posts_per_month_limit ? parseInt(form.posts_per_month_limit, 10) : null,
         user_limit: form.user_limit ? parseInt(form.user_limit, 10) : null,
         is_active: form.is_active ? 1 : 0,
+        visible: form.visible ? 1 : 0,
       };
       if (!isNew) payload.apply_to = applyTo;
       return isNew ? apiCreatePlan(payload) : apiUpdatePlan(planId, payload);
@@ -135,6 +140,12 @@ function PlanDrawer({ plan, onClose }: { plan: Plan | "new"; onClose: () => void
     onError: () => toast.error("Failed to clone"),
   });
 
+  const archiveMut = useMutation({
+    mutationFn: () => apiArchivePlan(planId),
+    onSuccess: () => { toast.success("Plan archived successfully"); qc.invalidateQueries({ queryKey: ["plans"] }); setConfirmArchive(false); onClose(); },
+    onError: (err: any) => toast.error(err.message || "Failed to archive plan"),
+  });
+
   return (
     <>
       <Drawer open onClose={onClose} title={isNew ? "New Plan" : "Edit Plan"} dirty={dirty} width="md"
@@ -142,6 +153,7 @@ function PlanDrawer({ plan, onClose }: { plan: Plan | "new"; onClose: () => void
           <div className="flex gap-2 flex-wrap">
             <Button loading={saveMut.isPending} disabled={!form.name} onClick={() => saveMut.mutate()}>Save</Button>
             {!isNew && <Button variant="secondary" icon={<Copy className="h-3.5 w-3.5" />} onClick={() => setConfirmClone(true)}>Clone</Button>}
+            {!isNew && <Button variant="danger" icon={<Archive className="h-3.5 w-3.5" />} onClick={() => setConfirmArchive(true)}>Archive</Button>}
             <Button variant="secondary" onClick={onClose}>Cancel</Button>
           </div>
         }
@@ -185,7 +197,10 @@ function PlanDrawer({ plan, onClose }: { plan: Plan | "new"; onClose: () => void
             <Input label="Posts/mo limit" type="number" value={form.posts_per_month_limit} onChange={f("posts_per_month_limit")} />
             <Input label="User limit" type="number" value={form.user_limit} onChange={f("user_limit")} />
           </div>
-          <Toggle label="Active on website" checked={form.is_active} onChange={v => { setForm(p => ({...p, is_active: v})); setDirty(true); }} />
+          <div className="grid grid-cols-2 gap-3">
+            <Toggle label="Active on website" checked={form.is_active} onChange={v => { setForm(p => ({...p, is_active: v})); setDirty(true); }} />
+            <Toggle label="Show on Public Pricing Page" checked={form.visible} onChange={v => { setForm(p => ({...p, visible: v})); setDirty(true); }} />
+          </div>
 
           {((versions as { versions?: PlanVersion[] } | undefined)?.versions ?? []).length > 0 && (
             <div>
@@ -204,9 +219,16 @@ function PlanDrawer({ plan, onClose }: { plan: Plan | "new"; onClose: () => void
       </Drawer>
 
       {!isNew && (
-        <ConfirmDialog open={confirmClone} onClose={() => setConfirmClone(false)}
-          onConfirm={() => cloneMut.mutate()} loading={cloneMut.isPending}
-          title="Clone plan" description={`Create a copy of "${(plan as Plan).name}"?`} />
+        <>
+          <ConfirmDialog open={confirmClone} onClose={() => setConfirmClone(false)}
+            onConfirm={() => cloneMut.mutate()} loading={cloneMut.isPending}
+            title="Clone plan" description={`Create a copy of "${(plan as Plan).name}"?`}
+            confirmLabel="Clone" />
+          <ConfirmDialog open={confirmArchive} onClose={() => setConfirmArchive(false)}
+            onConfirm={() => archiveMut.mutate()} loading={archiveMut.isPending}
+            title="Archive plan" description={`Are you sure you want to archive "${(plan as Plan).name}"?`}
+            type="danger" confirmLabel="Archive" confirmVariant="danger" />
+        </>
       )}
     </>
   );

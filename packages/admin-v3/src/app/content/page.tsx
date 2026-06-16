@@ -220,8 +220,7 @@ function BlogTab() {
   const [showNew, setShowNew] = useState(false);
 
   const { data, isLoading, error } = useQuery({ queryKey: ["blog-posts"], queryFn: () => apiListBlogPosts({}) });
-  const posts: BlogPost[] = (data as { posts?: BlogPost[]; data?: BlogPost[] } | undefined)?.posts
-    ?? (data as { data?: BlogPost[] } | undefined)?.data ?? [];
+  const posts: BlogPost[] = Array.isArray(data) ? data : ((data as any)?.posts ?? (data as any)?.data ?? []);
 
   return (
     <>
