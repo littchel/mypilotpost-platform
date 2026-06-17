@@ -8,7 +8,7 @@
     "start": "next start --port 3001",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "deploy": "next build && CLOUDFLARE_ACCOUNT_ID=2e36b917221c87af13a139c07842b5b2 wrangler deploy --config wrangler.toml"
+    "deploy": "NEXT_PUBLIC_API_BASE=https://api.mypilotpost.com/api next build && CLOUDFLARE_ACCOUNT_ID=2e36b917221c87af13a139c07842b5b2 wrangler deploy --config wrangler.toml"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.80.6",

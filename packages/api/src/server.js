@@ -471,7 +471,8 @@ function getCorsHeaders(request) {
     "https://mypilotpost.com",
     "https://www.mypilotpost.com",
     "https://app.mypilotpost.com",
-    "https://admin.mypilotpost.com"
+    "https://admin.mypilotpost.com",
+    "https://mypilotpost-admin-v3.littchel.workers.dev"
   ];
 
   const headers = {
