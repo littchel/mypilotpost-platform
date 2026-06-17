@@ -715,7 +715,11 @@ async function getOperationsHealth(env) {
 async function getAdminPromotions(env) {
   const db = getDB(env);
   const { results } = await db.prepare(`
-    SELECT id, code, discount_type, discount_value, max_uses, uses_count,
+    SELECT id, code,
+           discount_type, discount_type AS type,
+           discount_value, discount_value AS value,
+           max_uses,
+           uses_count, uses_count AS used_count,
            is_active, expires_at, created_at
     FROM promotions ORDER BY created_at DESC LIMIT 50
   `).all().catch(() => ({ results: [] }));
@@ -724,9 +728,15 @@ async function getAdminPromotions(env) {
 
 async function createAdminPromotion(request, env, auth) {
   const db = getDB(env);
-  const { code, discount_type, discount_value, max_uses, expires_at } = await request.json();
-  if (!code || !discount_type || !discount_value) {
-    return error("code, discount_type, discount_value required", "BAD_REQUEST", null, 400);
+  const body = await request.json().catch(() => ({}));
+  const code = body.code;
+  const discount_type = body.discount_type || body.type;
+  const discount_value = body.discount_value !== undefined ? body.discount_value : body.value;
+  const max_uses = body.max_uses;
+  const expires_at = body.expires_at;
+
+  if (!code || !discount_type || discount_value === undefined || discount_value === null) {
+    return error("code, type/discount_type, and value/discount_value are required", "BAD_REQUEST", null, 400);
   }
   const id = crypto.randomUUID();
   await db.prepare(`
