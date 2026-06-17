@@ -254,17 +254,36 @@
         .pricing-card__price { font-size: 52px; font-weight: 800; color: var(--text-dark); line-height: 1; margin-bottom: 6px; }
         .pricing-card__period { font-size: 15px; color: var(--text-gray); margin-bottom: var(--space-onehalf); padding-bottom: var(--space-onehalf); border-bottom: 1px solid var(--light-gray); }
 
-        .pricing-card__features { list-style: none; margin-bottom: var(--space-two); flex: 1; }
-        .pricing-card__features li {
+        .pricing-card__features { display: flex; flex-direction: column; margin-bottom: var(--space-two); flex: 1; }
+        .pricing-card__feature-group {
+            margin-bottom: var(--space-one);
+        }
+        .pricing-card__group-header {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-dark);
+            margin-bottom: 10px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid var(--light-gray);
+        }
+        .pricing-card__group-list {
+            list-style: none;
+            padding-left: 0;
+            margin: 0;
+        }
+        .pricing-card__group-list li {
             display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 12px;
-            font-size: 15px;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 14px;
             color: var(--text-gray);
             font-weight: 400;
+            line-height: 1.4;
         }
-        .pricing-card__features li svg { color: var(--success-green); flex-shrink: 0; }
+        .pricing-card__group-list li svg { color: var(--success-green); flex-shrink: 0; margin-top: 2px; }
 
         /* ===== VALUE SECTION ===== */
         .value-section { padding: var(--space-five) 0; background: white; }
@@ -569,14 +588,68 @@
                     const isPopular = p.id === 'growth';
                     const price = p.price_monthly === 0 ? "Free" : `${p.currency === 'ZAR' ? 'R' : '$'}${p.price_monthly.toLocaleString()}`;
                     
-                    const entitlementsHtml = p.entitlements ? Object.values(p.entitlements)
-                        .filter(e => e.enabled)
-                        .map(e => `
-                            <li>
-                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.6666 5L7.49992 14.1667L3.33325 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                ${e.limit_value ? e.limit_value + ' ' : ''}${e.feature_key.replace(/_/g, ' ')}
-                            </li>
-                        `).join('') : '';
+                    const ents = p.entitlements ? Object.values(p.entitlements).filter(e => e.enabled) : [];
+                    
+                    // Group entitlements by category
+                    const groups = {};
+                    for (const e of ents) {
+                        const cat = e.category || 'OTHER';
+                        if (!groups[cat]) groups[cat] = [];
+                        groups[cat].push(e);
+                    }
+                    
+                    const categoryOrder = [
+                        'CREATE CONTENT',
+                        'DESIGN & MANAGE MEDIA',
+                        'SCHEDULE & PUBLISH',
+                        'COLLABORATE & APPROVE',
+                        'REPORTING & INSIGHTS',
+                        'STORAGE',
+                        'ADVANCED'
+                    ];
+                    
+                    const sortedCategories = Object.keys(groups).sort((a, b) => {
+                        const indexA = categoryOrder.indexOf(a);
+                        const indexB = categoryOrder.indexOf(b);
+                        if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+                        if (indexA === -1) return 1;
+                        if (indexB === -1) return -1;
+                        return indexA - indexB;
+                    });
+
+                    const entitlementsHtml = sortedCategories.map(cat => {
+                        const featuresHtml = groups[cat].map(e => {
+                            let limitText = "";
+                            if (e.limit_value !== null && e.limit_value !== undefined) {
+                                if (e.limit_type === 'storage') {
+                                    limitText = `${e.limit_value} GB `;
+                                } else if (e.limit_type === 'monthly') {
+                                    limitText = `${e.limit_value.toLocaleString()} `;
+                                } else if (e.limit_type === 'count') {
+                                    limitText = `${e.limit_value} `;
+                                } else {
+                                    limitText = `${e.limit_value} `;
+                                }
+                            } else if (e.limit_type === 'monthly' || e.limit_type === 'count') {
+                                limitText = "Unlimited ";
+                            }
+                            return `
+                                <li>
+                                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M16.6666 5L7.49992 14.1667L3.33325 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                    <span>${limitText}${e.name}</span>
+                                </li>
+                            `;
+                        }).join('');
+
+                        return `
+                            <div class="pricing-card__feature-group">
+                                <div class="pricing-card__group-header">${cat}</div>
+                                <ul class="pricing-card__group-list">
+                                    ${featuresHtml}
+                                </ul>
+                            </div>
+                        `;
+                    }).join('');
 
                     return `
                         <div class="pricing-card ${isPopular ? 'pricing-card--popular' : ''}">
@@ -584,9 +657,9 @@
                             <p class="pricing-card__desc">${p.description || 'For growing brands and teams'}</p>
                             <div class="pricing-card__price">${price}</div>
                             <div class="pricing-card__period">per month</div>
-                            <ul class="pricing-card__features">
+                            <div class="pricing-card__features">
                                 ${entitlementsHtml}
-                            </ul>
+                            </div>
                             <button class="btn ${isPopular ? 'btn--primary' : 'btn--secondary'} btn--full" onclick="redirectToApp('/register')">
                                 ${p.price_monthly === 0 ? 'Get Started' : 'Start Free Trial'}
                             </button>

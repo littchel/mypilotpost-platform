@@ -739,6 +739,30 @@ async function createAdminPromotion(request, env, auth) {
   return json({ success: true, id });
 }
 
+async function deleteAdminPromotion(request, env, auth) {
+  const db = getDB(env);
+  const url = new URL(request.url);
+  const id = url.pathname.split("/").pop();
+
+  const promotion = await db.prepare("SELECT code, uses_count, expires_at FROM promotions WHERE id = ?").bind(id).first();
+  if (!promotion) {
+    return error("Promotion not found", "NOT_FOUND", null, 404);
+  }
+
+  if ((promotion.uses_count ?? 0) > 0) {
+    return error("Cannot delete promotion with active usage history", "FORBIDDEN", null, 403);
+  }
+
+  const isExpired = promotion.expires_at && new Date(promotion.expires_at) < new Date();
+  if (!isExpired) {
+    return error("Cannot delete active or unexpired promotion", "FORBIDDEN", null, 403);
+  }
+
+  await db.prepare("DELETE FROM promotions WHERE id = ?").bind(id).run();
+  await logAdminAction(env, auth, "delete_promotion", "promotion", id, { code: promotion.code });
+  return json({ success: true });
+}
+
 /* ======================================================
    WORKER ENTRY
 ====================================================== */
@@ -1589,6 +1613,10 @@ export default {
         if (path === "/api/v1/admin/promotions" && method === "POST") {
           const auth = await requireAdminAuth(request, env);
           return createAdminPromotion(request, env, auth);
+        }
+        if (path.startsWith("/api/v1/admin/promotions/") && method === "DELETE") {
+          const auth = await requireAdminAuth(request, env);
+          return deleteAdminPromotion(request, env, auth);
         }
 
         /* ---------- COMMERCIAL CONTROL SYSTEM ---------- */

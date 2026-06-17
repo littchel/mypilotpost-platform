@@ -169,6 +169,9 @@ export const apiListPromotions = () =>
 export const apiCreatePromotion = (body: Record<string, unknown>) =>
   request<{ id: string }>("/v1/admin/promotions", { method: "POST", body: JSON.stringify(body) });
 
+export const apiDeletePromotion = (id: string) =>
+  request<{ success: boolean }>(`/v1/admin/promotions/${id}`, { method: "DELETE" });
+
 // ── Billing (payment-derived; policy-gated refunds) ─────────────────────────
 export interface BillingOverviewV2 {
   currency: string;

@@ -5,7 +5,7 @@ import {
   apiListPlans, apiCreatePlan, apiUpdatePlan, apiClonePlan, apiGetPlanVersions, apiArchivePlan,
   apiListFeatures, apiCreateFeature, apiUpdateFeature,
   apiListEntitlements, apiUpdateEntitlement,
-  apiListPromotions, apiCreatePromotion,
+  apiListPromotions, apiCreatePromotion, apiDeletePromotion,
   apiGetCommercialMetrics,
 } from "@/lib/api";
 import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
@@ -21,7 +21,7 @@ import { ConfirmDialog } from "@/components/ui/Dialog";
 import { useToast } from "@/context/ToastContext";
 import {
   Package, TrendingUp, Tag, History, Plus, Copy, Archive,
-  DollarSign, Users, Zap, List,
+  DollarSign, Users, Zap, List, Trash,
 } from "lucide-react";
 import type { Plan, PlanFeature, PlanEntitlement, PlanVersion, Promotion } from "@/types";
 
@@ -434,19 +434,6 @@ function EntitlementsTab() {
 
 // ─── Promotions tab ───────────────────────────────────────────────────────────
 
-const PROMO_COLS: Column<Promotion>[] = [
-  { key: "code", header: "Code", sortable: true, render: r => <span className="font-mono text-sm text-ink-1">{r.code}</span> },
-  { key: "type", header: "Type", render: r => <Badge variant="brand">{r.type}</Badge> },
-  { key: "value", header: "Value", sortable: true, render: r => (
-    <span className="text-sm text-ink-1">{r.type === "percent" ? `${r.value}%` : r.type === "fixed" ? `R${r.value}` : `${r.value} days`}</span>
-  )},
-  { key: "used_count", header: "Used", sortable: true, render: r => (
-    <span className="text-sm text-ink-2">{r.used_count ?? 0}{r.max_uses ? ` / ${r.max_uses}` : ""}</span>
-  )},
-  { key: "is_active", header: "Status", render: r => <Badge variant={r.is_active ? "success" : "neutral"}>{r.is_active ? "Active" : "Inactive"}</Badge> },
-  { key: "expires_at", header: "Expires", render: r => <span className="text-sm text-ink-2">{fmt(r.expires_at)}</span> },
-];
-
 function PromotionsTab() {
   const qc = useQueryClient();
   const toast = useToast();
@@ -469,10 +456,59 @@ function PromotionsTab() {
     onError: () => toast.error("Failed to create promotion"),
   });
 
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => apiDeletePromotion(id),
+    onSuccess: () => {
+      toast.success("Promotion deleted");
+      qc.invalidateQueries({ queryKey: ["promotions"] });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to delete promotion");
+    }
+  });
+
+  const columns: Column<Promotion>[] = [
+    { key: "code", header: "Code", sortable: true, render: r => <span className="font-mono text-sm text-ink-1">{r.code}</span> },
+    { key: "type", header: "Type", render: r => <Badge variant="brand">{r.type}</Badge> },
+    { key: "value", header: "Value", sortable: true, render: r => (
+      <span className="text-sm text-ink-1">{r.type === "percent" ? `${r.value}%` : r.type === "fixed" ? `R${r.value}` : `${r.value} days`}</span>
+    )},
+    { key: "used_count", header: "Used", sortable: true, render: r => (
+      <span className="text-sm text-ink-2">{r.used_count ?? 0}{r.max_uses ? ` / ${r.max_uses}` : ""}</span>
+    )},
+    { key: "is_active", header: "Status", render: r => <Badge variant={r.is_active ? "success" : "neutral"}>{r.is_active ? "Active" : "Inactive"}</Badge> },
+    { key: "expires_at", header: "Expires", render: r => <span className="text-sm text-ink-2">{fmt(r.expires_at)}</span> },
+    {
+      key: "actions",
+      header: "Actions",
+      render: r => {
+        const isExpired = r.expires_at && new Date(r.expires_at) < new Date();
+        const isEmpty = (r.used_count ?? 0) === 0;
+        const canDelete = isExpired && isEmpty;
+        
+        return (
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={() => {
+              if (confirm(`Are you sure you want to delete promo code ${r.code}?`)) {
+                deleteMut.mutate(r.id);
+              }
+            }}
+            disabled={!canDelete}
+            title={!canDelete ? "Can only delete expired promotions with 0 uses" : "Delete promotion"}
+          >
+            <Trash className="h-4 w-4 text-error-500" />
+          </Button>
+        );
+      }
+    }
+  ];
+
   return (
     <>
       <DataTable
-        data={data?.promotions ?? []} columns={PROMO_COLS} keyField="id"
+        data={data?.promotions ?? []} columns={columns} keyField="id"
         loading={isLoading} error={error ? "Failed to load promotions" : undefined}
         emptyTitle="No promotions" emptyMessage="Create your first coupon or promotion code."
         exportFilename="promotions" searchable searchPlaceholder="Search codes..."

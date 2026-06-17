@@ -130,8 +130,29 @@ export async function getPublicPricing(request, env) {
         is_regional: true
       };
     }
-    const entitlements = await getEntitlements(db, p.id);
-    localizedPlan.entitlements = entitlements;
+    
+    // Fetch entitlements joined with plan_features metadata
+    const { results: entitlements } = await db.prepare(`
+      SELECT pe.feature_key, pe.enabled, pe.limit_value, pe.limit_type, pf.name, pf.category
+      FROM plan_entitlements pe
+      LEFT JOIN plan_features pf ON pe.feature_key = pf.key
+      WHERE pe.plan_id = ? AND pf.visible = 1
+    `).bind(p.id).all();
+
+    const entitlementsMap = {};
+    for (const ent of entitlements || []) {
+      entitlementsMap[ent.feature_key] = {
+        feature_key: ent.feature_key,
+        key: ent.feature_key,
+        name: ent.name || ent.feature_key,
+        category: ent.category || "OTHER",
+        enabled: ent.enabled,
+        limit_value: ent.limit_value,
+        limit_type: ent.limit_type
+      };
+    }
+    
+    localizedPlan.entitlements = entitlementsMap;
     localizedPlans.push(localizedPlan);
   }
 
