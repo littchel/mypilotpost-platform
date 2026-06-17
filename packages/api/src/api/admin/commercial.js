@@ -125,6 +125,22 @@ export async function updatePlan(request, env, auth, planId) {
 
   await db.prepare(`UPDATE plans SET ${fields.join(", ")} WHERE id = ?`).bind(...binds).run();
 
+  // Keep plan_entitlements in sync with plan metadata limits
+  const entSync = [
+    { key: "brands", value: body.brand_limit, type: "count" },
+    { key: "users", value: body.user_limit, type: "count" },
+    { key: "social_posts", value: body.posts_per_month_limit, type: "monthly" }
+  ];
+  for (const sync of entSync) {
+    if (sync.value !== undefined) {
+      await db.prepare(`
+        INSERT INTO plan_entitlements (plan_id, feature_key, enabled, limit_value, limit_type)
+        VALUES (?, ?, 1, ?, ?)
+        ON CONFLICT(plan_id, feature_key) DO UPDATE SET limit_value = EXCLUDED.limit_value
+      `).bind(planId, sync.key, sync.value, sync.type).run();
+    }
+  }
+
   // PART 1 — price-change behavior. Default 'new': existing subscribers are
   // grandfathered (their locked_price is untouched). 'migrate': re-snapshot the
   // active subscribers on this plan to the new price.
