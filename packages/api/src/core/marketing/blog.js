@@ -17,14 +17,19 @@ export async function createMarketingPost(request, env, auth) {
       title,
       excerpt,
       content_html,
+      content,
       featured_image,
+      cover_image,
       category,
       status = "draft",
       published_at = null,
       author = "myPilotPost Team"
     } = body;
 
-    if (!slug || !title || !content_html) {
+    const finalContent = content_html || content || "";
+    const finalFeaturedImage = featured_image || cover_image || null;
+
+    if (!slug || !title || !finalContent) {
       return json({ error: "Missing required fields" }, 400);
     }
 
@@ -51,8 +56,8 @@ export async function createMarketingPost(request, env, auth) {
       slug,
       title,
       excerpt,
-      content_html,
-      featured_image,
+      finalContent,
+      finalFeaturedImage,
       category,
       status,
       published_at,
@@ -78,7 +83,13 @@ export async function listMarketingPosts(request, env, auth) {
     ORDER BY created_at DESC
   `).all();
 
-  return json(results || []);
+  const posts = (results || []).map(post => ({
+    ...post,
+    content: post.content_html,
+    cover_image: post.featured_image
+  }));
+
+  return json(posts);
 }
 
 export async function updateMarketingPost(request, env, auth, id) {
@@ -87,6 +98,8 @@ export async function updateMarketingPost(request, env, auth, id) {
   }
 
   const body = await request.json();
+  const content = body.content_html !== undefined ? body.content_html : (body.content !== undefined ? body.content : "");
+  const coverImage = body.featured_image !== undefined ? body.featured_image : (body.cover_image !== undefined ? body.cover_image : null);
 
   await env.mypilotpost.prepare(`
     UPDATE marketing_blog_posts
@@ -106,8 +119,8 @@ export async function updateMarketingPost(request, env, auth, id) {
     body.slug,
     body.title,
     body.excerpt,
-    body.content_html,
-    body.featured_image,
+    content,
+    coverImage,
     body.category,
     body.status,
     body.published_at,
@@ -143,7 +156,13 @@ export async function publicListMarketingPosts(request, env) {
     ORDER BY published_at DESC
   `).all();
 
-  return json({ posts: results || [] });
+  const posts = (results || []).map(post => ({
+    ...post,
+    content: post.content_html,
+    cover_image: post.featured_image
+  }));
+
+  return json({ posts });
 }
 
 export async function publicGetMarketingPost(request, env, slug) {
@@ -158,5 +177,37 @@ export async function publicGetMarketingPost(request, env, slug) {
     return json({ error: "Not found" }, 404);
   }
 
-  return json({ post });
+  const decorated = {
+    ...post,
+    content: post.content_html,
+    cover_image: post.featured_image
+  };
+
+  return json({ post: decorated });
+}
+
+export async function uploadBlogMedia(req, env, auth) {
+  if (!hasPermission(auth.role, "blog:write")) {
+    return error("Insufficient permissions", "FORBIDDEN", null, 403);
+  }
+
+  const formData = await req.formData().catch(() => null);
+  const file = formData?.get("file");
+  if (!file || typeof file === "string") return error("No file provided", 400);
+
+  const assetId = crypto.randomUUID();
+  const filename = file.name || `blog-${assetId}`;
+  const mimeType = file.type || "application/octet-stream";
+  const r2Key = `marketing-blog/${assetId}/${filename}`;
+
+  const buffer = await file.arrayBuffer();
+  await env.MEDIA_BUCKET.put(r2Key, buffer, {
+    httpMetadata: { contentType: mimeType }
+  });
+
+  const publicUrl = `${env.BASE_URL || "https://api.mypilotpost.com"}/api/media/file/${encodeURIComponent(r2Key)}`;
+
+  logAdminAction(env, auth, 'upload_blog_media', 'marketing_blog', assetId, { filename, mimeType }).catch(() => {});
+
+  return json({ success: true, url: publicUrl, filename, mime_type: mimeType });
 }

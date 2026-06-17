@@ -31,10 +31,12 @@ export class ApiResponseError extends Error {
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
     ...(init.headers as Record<string, string>),
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (!(init.body instanceof FormData)) {
+    headers["Content-Type"] = "application/json";
+  }
   const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
   if (res.status === 401) {
     clearToken();
@@ -350,6 +352,12 @@ export const apiUpdateBlogPost = (id: string, body: Partial<BlogPost>) =>
 
 export const apiDeleteBlogPost = (id: string) =>
   request<{ success: boolean }>(`/v1/admin/blog/${id}`, { method: "DELETE" });
+
+export const apiUploadBlogImage = (file: File) => {
+  const body = new FormData();
+  body.append("file", file);
+  return request<{ success: boolean; url: string; filename: string }>("/v1/admin/blog/upload", { method: "POST", body });
+};
 
 export const apiListApprovals = (params: Record<string, string | number> = {}) => {
   const qs = new URLSearchParams(params as Record<string, string>).toString();

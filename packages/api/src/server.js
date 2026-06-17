@@ -400,7 +400,8 @@ import {
   updateMarketingPost,
   deleteMarketingPost,
   publicListMarketingPosts,
-  publicGetMarketingPost
+  publicGetMarketingPost,
+  uploadBlogMedia
 } from "./core/marketing/blog.js";
 import { getAuditReport, getAuditReportPDF, getPublicAuditReport } from "./core/reports/audit_report.js";
 import { getPublicPricing } from "./api/admin/pricing.js";
@@ -1604,6 +1605,10 @@ export default {
         if (path === "/api/v1/admin/blog" && method === "POST") {
           const auth = await requireAdminAuth(request, env);
           return createMarketingPost(request, env, auth);
+        }
+        if (path === "/api/v1/admin/blog/upload" && method === "POST") {
+          const auth = await requireAdminAuth(request, env);
+          return uploadBlogMedia(request, env, auth);
         }
         if (path.startsWith("/api/v1/admin/blog/") && method === "PATCH") {
           const auth = await requireAdminAuth(request, env);

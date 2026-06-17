@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   apiListBlogPosts, apiCreateBlogPost, apiUpdateBlogPost, apiDeleteBlogPost,
   apiGetAdminMedia, apiDeleteMedia, apiGetAdminSEO, apiGetJobs,
+  apiUploadBlogImage,
 } from "@/lib/api";
 import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
 import { Tabs } from "@/components/ui/Tabs";
@@ -68,6 +69,81 @@ function BlogEditor({ post, onClose }: { post: BlogPost | "new"; onClose: () => 
   const [dirty, setDirty] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editorTab, setEditorTab] = useState("content");
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [uploadingBody, setUploadingBody] = useState(false);
+  const [dragOverCover, setDragOverCover] = useState(false);
+
+  const handleCoverUpload = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file");
+      return;
+    }
+    setUploadingCover(true);
+    try {
+      const res = await apiUploadBlogImage(file);
+      setForm(p => ({ ...p, cover_image: res.url }));
+      setDirty(true);
+      toast.success("Cover image uploaded");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to upload image");
+    } finally {
+      setUploadingCover(false);
+    }
+  };
+
+  const handleBodyUpload = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file");
+      return;
+    }
+    setUploadingBody(true);
+    try {
+      const res = await apiUploadBlogImage(file);
+      const insertText = `![${res.filename}](${res.url})`;
+      insertAtCursor(insertText);
+      toast.success("Image uploaded and inserted");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to upload image");
+    } finally {
+      setUploadingBody(false);
+    }
+  };
+
+  const insertAtCursor = (textToInsert: string) => {
+    const textarea = document.getElementById("blog-content-textarea") as HTMLTextAreaElement | null;
+    if (!textarea) {
+      setForm(p => ({ ...p, content: p.content + (p.content ? "\n" : "") + textToInsert }));
+      return;
+    }
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    const before = text.substring(0, start);
+    const after = text.substring(end, text.length);
+    const newContent = before + textToInsert + after;
+    setForm(p => ({ ...p, content: newContent }));
+    setDirty(true);
+    setTimeout(() => {
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = start + textToInsert.length;
+    }, 0);
+  };
+
+  const handleCoverDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOverCover(true);
+  };
+
+  const handleCoverDragLeave = () => {
+    setDragOverCover(false);
+  };
+
+  const handleCoverDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOverCover(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleCoverUpload(file);
+  };
 
   const f = (k: keyof BlogFormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm(p => ({ ...p, [k]: e.target.value })); setDirty(true);
@@ -141,8 +217,33 @@ function BlogEditor({ post, onClose }: { post: BlogPost | "new"; onClose: () => 
           <div className="space-y-4">
             <Input label="Title" required value={form.title} onChange={f("title")} placeholder="Post title…" />
             <div>
-              <label className="block text-xs font-medium text-ink-3 mb-1.5">Content</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-medium text-ink-3">Content</label>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="file"
+                    id="blog-body-image-upload"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) handleBodyUpload(file);
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    icon={<ImageIcon className="h-3.5 w-3.5" />}
+                    loading={uploadingBody}
+                    onClick={() => document.getElementById("blog-body-image-upload")?.click()}
+                  >
+                    Insert Image
+                  </Button>
+                </div>
+              </div>
               <textarea
+                id="blog-content-textarea"
                 value={form.content}
                 onChange={f("content")}
                 placeholder="Write your post content in markdown…"
@@ -177,12 +278,62 @@ function BlogEditor({ post, onClose }: { post: BlogPost | "new"; onClose: () => 
               />
               <p className="text-2xs text-ink-4 mt-1">{form.seo_description.length} characters</p>
             </div>
-            <Input label="Cover Image URL" value={form.cover_image} onChange={f("cover_image")} placeholder="https://…" hint="Used as og:image and post header" />
-            {form.cover_image && (
-              <div className="rounded-lg overflow-hidden border border-os-border h-32 bg-os-raised flex items-center justify-center">
-                <img src={form.cover_image} alt="Cover preview" className="h-full w-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            <div>
+              <label className="block text-xs font-medium text-ink-3 mb-1.5">Cover Image</label>
+              <div
+                className={`border border-dashed rounded-lg p-4 transition-all text-center cursor-pointer flex flex-col items-center justify-center min-h-[140px] bg-os-raised ${
+                  dragOverCover ? "border-brand-500 bg-brand-500/5" : "border-os-border hover:border-ink-4"
+                }`}
+                onDragOver={handleCoverDragOver}
+                onDragLeave={handleCoverDragLeave}
+                onDrop={handleCoverDrop}
+                onClick={() => document.getElementById("blog-cover-image-upload")?.click()}
+              >
+                <input
+                  type="file"
+                  id="blog-cover-image-upload"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (file) handleCoverUpload(file);
+                  }}
+                />
+                
+                {uploadingCover ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="animate-spin rounded-full h-5 w-5 border border-brand-500 border-t-transparent" />
+                    <p className="text-xs text-ink-3">Uploading cover image...</p>
+                  </div>
+                ) : form.cover_image ? (
+                  <div className="relative w-full group rounded overflow-hidden">
+                    <img src={form.cover_image} alt="Cover preview" className="h-32 w-full object-cover rounded" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <Button type="button" size="xs" variant="secondary">Change Image</Button>
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="danger"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setForm(p => ({ ...p, cover_image: "" }));
+                          setDirty(true);
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center">
+                    <ImageIcon className="h-6 w-6 text-ink-3 mb-2" />
+                    <p className="text-xs font-medium text-ink-2">Drag & drop cover image, or click to upload</p>
+                    <p className="text-2xs text-ink-4 mt-1">Supports PNG, JPG, WEBP, GIF up to 5MB</p>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
+            <Input label="Cover Image URL" value={form.cover_image} onChange={f("cover_image")} placeholder="https://…" hint="Or paste an external image URL directly" />
           </div>
         )}
 
