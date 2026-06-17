@@ -17,6 +17,7 @@ import { StatCard } from "@/components/ui/StatCard";
 import { Input, Select, Toggle } from "@/components/ui/Input";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import { useToast } from "@/context/ToastContext";
+import { useSession } from "@/context/SessionContext";
 import {
   BookOpen, CheckCircle, XCircle, Plus, Trash2, Eye, Globe,
   Image as ImageIcon, Send, Activity,
@@ -62,6 +63,8 @@ function postToForm(p: BlogPost): BlogFormState {
 
 function BlogEditor({ post, onClose }: { post: BlogPost | "new"; onClose: () => void }) {
   const qc = useQueryClient();
+  const { session } = useSession();
+  const canEdit = !!(session && ["super_admin", "admin", "ops", "operations"].includes(session.role));
   const toast = useToast();
   const isNew = post === "new";
   const postId = isNew ? "" : ((post as BlogPost).id ?? (post as BlogPost).slug ?? "");
@@ -149,16 +152,17 @@ function BlogEditor({ post, onClose }: { post: BlogPost | "new"; onClose: () => 
     setForm(p => ({ ...p, [k]: e.target.value })); setDirty(true);
   };
 
-  const saveMut = useMutation<{ id: string } | { success: boolean }, Error>({
-    mutationFn: () =>
+  const saveMut = useMutation<{ id: string } | { success: boolean }, Error, BlogFormState>({
+    mutationFn: (variables) =>
       isNew
-        ? apiCreateBlogPost(form as unknown as BlogPost)
-        : apiUpdateBlogPost(postId, form),
-    onSuccess: () => {
-      toast.success(isNew ? "Post created" : "Post saved");
+        ? apiCreateBlogPost(variables as unknown as BlogPost)
+        : apiUpdateBlogPost(postId, variables),
+    onSuccess: (_, variables) => {
+      const isActuallyPublishing = variables.status === "published";
+      toast.success(isActuallyPublishing ? "Post published" : (isNew ? "Post created" : "Post saved"));
       qc.invalidateQueries({ queryKey: ["blog-posts"] });
       setDirty(false);
-      if (isNew) onClose();
+      if (isNew || isActuallyPublishing) onClose();
     },
     onError: () => toast.error("Failed to save post"),
   });
@@ -189,16 +193,40 @@ function BlogEditor({ post, onClose }: { post: BlogPost | "new"; onClose: () => 
       <Drawer open onClose={onClose} title={isNew ? "New Blog Post" : "Edit Post"} dirty={dirty} width="lg"
         footer={
           <div className="flex items-center gap-2 flex-wrap">
-            <Button loading={saveMut.isPending} disabled={!form.title} onClick={() => saveMut.mutate()}>Save draft</Button>
-            {!isNew && form.status !== "published" && (
-              <Button variant="secondary" icon={<Globe className="h-3.5 w-3.5" />} loading={publishMut.isPending} onClick={() => publishMut.mutate()}>
-                Publish
-              </Button>
+            {canEdit ? (
+              <>
+                <Button loading={saveMut.isPending} disabled={!form.title} onClick={() => saveMut.mutate(form)}>
+                  {form.status === "published" ? "Save changes" : "Save draft"}
+                </Button>
+                {(isNew || form.status !== "published") && (
+                  <Button
+                    variant="secondary"
+                    icon={<Globe className="h-3.5 w-3.5" />}
+                    loading={saveMut.isPending || publishMut.isPending}
+                    disabled={!form.title}
+                    onClick={() => {
+                      if (isNew) {
+                        saveMut.mutate({
+                          ...form,
+                          status: "published",
+                          published_at: new Date().toISOString()
+                        });
+                      } else {
+                        publishMut.mutate();
+                      }
+                    }}
+                  >
+                    Publish
+                  </Button>
+                )}
+                {!isNew && (
+                  <Button variant="danger" icon={<Trash2 className="h-3.5 w-3.5" />} onClick={() => setConfirmDelete(true)}>Delete</Button>
+                )}
+                <Button variant="secondary" onClick={onClose}>Cancel</Button>
+              </>
+            ) : (
+              <Button variant="secondary" onClick={onClose}>Close</Button>
             )}
-            {!isNew && (
-              <Button variant="danger" icon={<Trash2 className="h-3.5 w-3.5" />} onClick={() => setConfirmDelete(true)}>Delete</Button>
-            )}
-            <Button variant="secondary" onClick={onClose}>Cancel</Button>
           </div>
         }
       >
@@ -215,32 +243,34 @@ function BlogEditor({ post, onClose }: { post: BlogPost | "new"; onClose: () => 
 
         {editorTab === "content" && (
           <div className="space-y-4">
-            <Input label="Title" required value={form.title} onChange={f("title")} placeholder="Post title…" />
+            <Input label="Title" required value={form.title} onChange={f("title")} placeholder="Post title…" disabled={!canEdit} />
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-xs font-medium text-ink-3">Content</label>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="file"
-                    id="blog-body-image-upload"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={e => {
-                      const file = e.target.files?.[0];
-                      if (file) handleBodyUpload(file);
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="xs"
-                    icon={<ImageIcon className="h-3.5 w-3.5" />}
-                    loading={uploadingBody}
-                    onClick={() => document.getElementById("blog-body-image-upload")?.click()}
-                  >
-                    Insert Image
-                  </Button>
-                </div>
+                {canEdit && (
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="file"
+                      id="blog-body-image-upload"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) handleBodyUpload(file);
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="xs"
+                      icon={<ImageIcon className="h-3.5 w-3.5" />}
+                      loading={uploadingBody}
+                      onClick={() => document.getElementById("blog-body-image-upload")?.click()}
+                    >
+                      Insert Image
+                    </Button>
+                  </div>
+                )}
               </div>
               <textarea
                 id="blog-content-textarea"
@@ -249,6 +279,7 @@ function BlogEditor({ post, onClose }: { post: BlogPost | "new"; onClose: () => 
                 placeholder="Write your post content in markdown…"
                 rows={16}
                 className="os-input w-full resize-y font-mono text-sm"
+                disabled={!canEdit}
               />
             </div>
             <div>
@@ -259,6 +290,7 @@ function BlogEditor({ post, onClose }: { post: BlogPost | "new"; onClose: () => 
                 placeholder="Short summary shown in listings…"
                 rows={3}
                 className="os-input w-full resize-none"
+                disabled={!canEdit}
               />
             </div>
           </div>
@@ -266,7 +298,7 @@ function BlogEditor({ post, onClose }: { post: BlogPost | "new"; onClose: () => 
 
         {editorTab === "seo" && (
           <div className="space-y-4">
-            <Input label="SEO Title" value={form.seo_title} onChange={f("seo_title")} hint="Defaults to post title if blank" />
+            <Input label="SEO Title" value={form.seo_title} onChange={f("seo_title")} hint="Defaults to post title if blank" disabled={!canEdit} />
             <div>
               <label className="block text-xs font-medium text-ink-3 mb-1.5">SEO Description</label>
               <textarea
@@ -275,30 +307,35 @@ function BlogEditor({ post, onClose }: { post: BlogPost | "new"; onClose: () => 
                 placeholder="Meta description (150-160 characters recommended)…"
                 rows={4}
                 className="os-input w-full resize-none"
+                disabled={!canEdit}
               />
               <p className="text-2xs text-ink-4 mt-1">{form.seo_description.length} characters</p>
             </div>
             <div>
               <label className="block text-xs font-medium text-ink-3 mb-1.5">Cover Image</label>
               <div
-                className={`border border-dashed rounded-lg p-4 transition-all text-center cursor-pointer flex flex-col items-center justify-center min-h-[140px] bg-os-raised ${
-                  dragOverCover ? "border-brand-500 bg-brand-500/5" : "border-os-border hover:border-ink-4"
+                className={`border border-dashed rounded-lg p-4 transition-all text-center flex flex-col items-center justify-center min-h-[140px] bg-os-raised ${
+                  canEdit ? "cursor-pointer" : "cursor-default"
+                } ${
+                  dragOverCover && canEdit ? "border-brand-500 bg-brand-500/5" : "border-os-border hover:border-ink-4"
                 }`}
-                onDragOver={handleCoverDragOver}
-                onDragLeave={handleCoverDragLeave}
-                onDrop={handleCoverDrop}
-                onClick={() => document.getElementById("blog-cover-image-upload")?.click()}
+                onDragOver={canEdit ? handleCoverDragOver : undefined}
+                onDragLeave={canEdit ? handleCoverDragLeave : undefined}
+                onDrop={canEdit ? handleCoverDrop : undefined}
+                onClick={() => canEdit && document.getElementById("blog-cover-image-upload")?.click()}
               >
-                <input
-                  type="file"
-                  id="blog-cover-image-upload"
-                  className="hidden"
-                  accept="image/*"
-                  onChange={e => {
-                    const file = e.target.files?.[0];
-                    if (file) handleCoverUpload(file);
-                  }}
-                />
+                {canEdit && (
+                  <input
+                    type="file"
+                    id="blog-cover-image-upload"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) handleCoverUpload(file);
+                    }}
+                  />
+                )}
                 
                 {uploadingCover ? (
                   <div className="flex flex-col items-center gap-2">
@@ -308,39 +345,43 @@ function BlogEditor({ post, onClose }: { post: BlogPost | "new"; onClose: () => 
                 ) : form.cover_image ? (
                   <div className="relative w-full group rounded overflow-hidden">
                     <img src={form.cover_image} alt="Cover preview" className="h-32 w-full object-cover rounded" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                      <Button type="button" size="xs" variant="secondary">Change Image</Button>
-                      <Button
-                        type="button"
-                        size="xs"
-                        variant="danger"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setForm(p => ({ ...p, cover_image: "" }));
-                          setDirty(true);
-                        }}
-                      >
-                        Remove
-                      </Button>
-                    </div>
+                    {canEdit && (
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <Button type="button" size="xs" variant="secondary">Change Image</Button>
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="danger"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setForm(p => ({ ...p, cover_image: "" }));
+                            setDirty(true);
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="flex flex-col items-center">
                     <ImageIcon className="h-6 w-6 text-ink-3 mb-2" />
-                    <p className="text-xs font-medium text-ink-2">Drag & drop cover image, or click to upload</p>
-                    <p className="text-2xs text-ink-4 mt-1">Supports PNG, JPG, WEBP, GIF up to 5MB</p>
+                    <p className="text-xs font-medium text-ink-2">
+                      {canEdit ? "Drag & drop cover image, or click to upload" : "No cover image"}
+                    </p>
+                    {canEdit && <p className="text-2xs text-ink-4 mt-1">Supports PNG, JPG, WEBP, GIF up to 5MB</p>}
                   </div>
                 )}
               </div>
             </div>
-            <Input label="Cover Image URL" value={form.cover_image} onChange={f("cover_image")} placeholder="https://…" hint="Or paste an external image URL directly" />
+            <Input label="Cover Image URL" value={form.cover_image} onChange={f("cover_image")} placeholder="https://…" hint="Or paste an external image URL directly" disabled={!canEdit} />
           </div>
         )}
 
         {editorTab === "settings" && (
           <div className="space-y-4">
-            <Input label="Author" value={form.author} onChange={f("author")} placeholder="Author name" />
-            <Input label="Tags" value={form.tags} onChange={f("tags")} placeholder="comma, separated, tags" hint="Comma-separated tag list" />
+            <Input label="Author" value={form.author} onChange={f("author")} placeholder="Author name" disabled={!canEdit} />
+            <Input label="Tags" value={form.tags} onChange={f("tags")} placeholder="comma, separated, tags" hint="Comma-separated tag list" disabled={!canEdit} />
             <Select label="Status"
               options={[
                 { value: "draft", label: "Draft" },
@@ -348,9 +389,10 @@ function BlogEditor({ post, onClose }: { post: BlogPost | "new"; onClose: () => 
                 { value: "archived", label: "Archived" },
               ]}
               value={form.status}
+              disabled={!canEdit}
               onChange={v => { setForm(p => ({...p, status: v as BlogPost["status"]})); setDirty(true); }} />
             {form.status === "published" && (
-              <Input label="Published at" type="datetime-local" value={form.published_at} onChange={f("published_at")} />
+              <Input label="Published at" type="datetime-local" value={form.published_at} onChange={f("published_at")} disabled={!canEdit} />
             )}
           </div>
         )}
@@ -369,6 +411,8 @@ function BlogEditor({ post, onClose }: { post: BlogPost | "new"; onClose: () => 
 function BlogTab() {
   const [selected, setSelected] = useState<BlogPost | null>(null);
   const [showNew, setShowNew] = useState(false);
+  const { session } = useSession();
+  const canEdit = !!(session && ["super_admin", "admin", "ops", "operations"].includes(session.role));
 
   const { data, isLoading, error } = useQuery({ queryKey: ["blog-posts"], queryFn: () => apiListBlogPosts({}) });
   const posts: BlogPost[] = Array.isArray(data) ? data : ((data as any)?.posts ?? (data as any)?.data ?? []);
@@ -383,9 +427,11 @@ function BlogTab() {
         exportFilename="blog-posts"
         onRowClick={r => setSelected(r)} selectedId={selected?.id ?? selected?.slug}
         toolbar={
-          <Button variant="primary" size="sm" icon={<Plus className="h-3.5 w-3.5" />} onClick={() => setShowNew(true)}>
-            New post
-          </Button>
+          canEdit ? (
+            <Button variant="primary" size="sm" icon={<Plus className="h-3.5 w-3.5" />} onClick={() => setShowNew(true)}>
+              New post
+            </Button>
+          ) : undefined
         }
       />
       {selected && <BlogEditor post={selected} onClose={() => setSelected(null)} />}

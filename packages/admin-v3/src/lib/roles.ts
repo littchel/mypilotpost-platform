@@ -30,6 +30,8 @@ const ALL_WORKSPACES: WorkspaceConfig[] = [
 const ROLE_WORKSPACES: Partial<Record<AdminRole, WorkspaceId[]>> = {
   super_admin:  ["today", "customers", "billing", "commercial", "content", "operations", "config"],
   admin:        ["today", "customers", "billing", "commercial", "content", "operations", "config"],
+  ops:          ["today", "customers", "billing", "commercial", "content", "operations"],
+  operations:   ["today", "customers", "billing", "commercial", "content", "operations"],
   support:      ["today", "customers"],
   commercial:   ["today", "billing", "commercial"],
   content:      ["today", "content"],

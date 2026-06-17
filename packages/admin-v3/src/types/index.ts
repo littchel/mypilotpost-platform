@@ -16,7 +16,7 @@ export interface PaginatedResponse<T> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type AdminRole =
-  | "super_admin" | "admin" | "support" | "commercial"
+  | "super_admin" | "admin" | "ops" | "operations" | "support" | "commercial"
   | "content" | "developer" | "analyst" | "viewer";
 
 export interface AdminSession {
