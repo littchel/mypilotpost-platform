@@ -108,6 +108,7 @@ export async function saveToVault(request, env, auth) {
     campaign_id,
     metadata,
     source = "editor",
+    overlays,
   } = body;
 
   if (!bodyText && !title) {
@@ -133,6 +134,10 @@ export async function saveToVault(request, env, auth) {
   const mediaIdsArr = parseJson(media_ids, []);
   const hashtagsArr = parseJson(hashtags, []);
   const metadataObj = parseJson(metadata, {});
+  if (overlays !== undefined) {
+    metadataObj.overlays = overlays;
+  }
+  const overlaysJson = overlays !== undefined ? (typeof overlays === 'string' ? overlays : JSON.stringify(overlays)) : null;
   const derivedTitle = title || (bodyText.slice(0, 60) + (bodyText.length > 60 ? "..." : ""));
   const version      = existing ? (existing.version || 1) + 1 : 1;
   const snapshot = {
@@ -211,18 +216,19 @@ export async function saveToVault(request, env, auth) {
       if (existing) {
         await db.prepare(`
           UPDATE social_assets
-          SET title = ?, text = ?, campaign_id = ?, lifecycle_status = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+          SET title = ?, text = ?, campaign_id = ?, lifecycle_status = ?, status = ?,
+              overlays = COALESCE(?, overlays), updated_at = CURRENT_TIMESTAMP
           WHERE id = ? AND brand_id = ?
-        `).bind(derivedTitle, bodyText, campaign_id || null, lifecycle_status, lifecycle_status, id, brand_id).run();
+        `).bind(derivedTitle, bodyText, campaign_id || null, lifecycle_status, lifecycle_status, overlaysJson, id, brand_id).run();
       } else {
         const ctxId = crypto.randomUUID();
         await db.batch([
           db.prepare(`INSERT OR IGNORE INTO content_context (id, brand_id, user_id, locale) VALUES (?, ?, ?, 'en')`)
             .bind(ctxId, brand_id, user_id || ''),
           db.prepare(`
-            INSERT OR IGNORE INTO social_assets (id, brand_id, user_id, context_id, title, text, campaign_id, lifecycle_status, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `).bind(id, brand_id, user_id || '', ctxId, derivedTitle, bodyText, campaign_id || null, lifecycle_status, lifecycle_status),
+            INSERT OR IGNORE INTO social_assets (id, brand_id, user_id, context_id, title, text, campaign_id, lifecycle_status, status, overlays)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).bind(id, brand_id, user_id || '', ctxId, derivedTitle, bodyText, campaign_id || null, lifecycle_status, lifecycle_status, overlaysJson),
         ]);
       }
       // Sync social_variants (atomic delete + insert)
@@ -601,9 +607,9 @@ export async function vaultSchedule(request, env, auth) {
     if (conflict) continue;
 
     batch.push(db.prepare(`
-      INSERT INTO delivery_jobs (id, brand_id, content_type, content_id, platform, scheduled_at, status, campaign_id)
-      VALUES (?, ?, ?, ?, ?, ?, 'scheduled', ?)
-    `).bind(crypto.randomUUID(), brand_id, item.content_type, id, platform, normalized, item.campaign_id || null));
+      INSERT INTO delivery_jobs (id, brand_id, user_id, content_type, content_id, platform, scheduled_at, status, campaign_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'scheduled', ?)
+    `).bind(crypto.randomUUID(), brand_id, user_id, item.content_type, id, platform, normalized, item.campaign_id || null));
   }
 
   if (!batch.length) return error("All platform slots are conflicted", "CONFLICT", null, 409);
@@ -688,9 +694,9 @@ export async function vaultPublishNow(request, env, auth) {
     if (existing) continue;
 
     batch.push(db.prepare(`
-      INSERT INTO delivery_jobs (id, brand_id, content_type, content_id, platform, scheduled_at, status, campaign_id)
-      VALUES (?, ?, ?, ?, ?, ?, 'scheduled', ?)
-    `).bind(crypto.randomUUID(), brand_id, item.content_type, id, platform, nowUtc, item.campaign_id || null));
+      INSERT INTO delivery_jobs (id, brand_id, user_id, content_type, content_id, platform, scheduled_at, status, campaign_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'scheduled', ?)
+    `).bind(crypto.randomUUID(), brand_id, user_id, item.content_type, id, platform, nowUtc, item.campaign_id || null));
     created++;
   }
 

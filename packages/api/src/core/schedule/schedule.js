@@ -214,6 +214,7 @@ export async function createSchedule(request, env, auth) {
         INSERT INTO delivery_jobs (
           id,
           brand_id,
+          user_id,
           content_type,
           content_id,
           platform,
@@ -222,11 +223,12 @@ export async function createSchedule(request, env, auth) {
           campaign_id,
           metadata,
           created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, 'scheduled', ?, ?, CURRENT_TIMESTAMP)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'scheduled', ?, ?, CURRENT_TIMESTAMP)
       `)
       .bind(
         jobId,
         brandId,
+        auth.user_id,
         content_type,
         content_id,
         platform,
