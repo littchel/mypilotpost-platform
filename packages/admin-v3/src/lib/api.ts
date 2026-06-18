@@ -359,6 +359,26 @@ export const apiUploadBlogImage = (file: File) => {
   return request<{ success: boolean; url: string; filename: string }>("/v1/admin/blog/upload", { method: "POST", body });
 };
 
+export const apiListBlogCategories = () =>
+  request<any[]>("/v1/admin/blog/categories");
+
+export const apiCreateBlogCategory = (body: { category_name: string; category_slug: string }) =>
+  request<{ success: boolean; category_id: string }>("/v1/admin/blog/categories", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+
+export const apiUpdateBlogCategory = (id: string, body: { category_name?: string; category_slug?: string }) =>
+  request<{ success: boolean }>(`/v1/admin/blog/categories/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(body)
+  });
+
+export const apiDeleteBlogCategory = (id: string) =>
+  request<{ success: boolean }>(`/v1/admin/blog/categories/${id}`, {
+    method: "DELETE"
+  });
+
 export const apiListApprovals = (params: Record<string, string | number> = {}) => {
   const qs = new URLSearchParams(params as Record<string, string>).toString();
   return request<{ approvals: ContentApproval[]; status?: string }>(`/v1/admin/approvals?${qs}`);

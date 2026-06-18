@@ -399,6 +399,10 @@ export interface BlogPost {
   content?: string;
   excerpt?: string;
   cover_image?: string;
+  featured_image?: string;
+  category_id?: string;
+  category_name?: string;
+  category?: string;
   author?: string;
   status: "draft" | "published" | "archived";
   published_at?: string;

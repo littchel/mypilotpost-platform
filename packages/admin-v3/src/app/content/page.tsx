@@ -5,6 +5,7 @@ import {
   apiListBlogPosts, apiCreateBlogPost, apiUpdateBlogPost, apiDeleteBlogPost,
   apiGetAdminMedia, apiDeleteMedia, apiGetAdminSEO, apiGetJobs,
   apiUploadBlogImage,
+  apiListBlogCategories, apiCreateBlogCategory, apiUpdateBlogCategory, apiDeleteBlogCategory,
 } from "@/lib/api";
 import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
 import { Tabs } from "@/components/ui/Tabs";
@@ -34,30 +35,59 @@ function fmt(d?: string | null) {
 const BLOG_COLS: Column<BlogPost>[] = [
   { key: "title", header: "Title", sortable: true, render: r => <span className="text-sm font-medium text-ink-1">{r.title}</span> },
   { key: "status", header: "Status", render: r => <Badge variant={r.status === "published" ? "success" : r.status === "draft" ? "neutral" : "warning"}>{r.status}</Badge> },
+  { key: "category_name", header: "Category", render: r => <span className="text-sm text-ink-2">{r.category_name ?? r.category_id ?? r.category ?? "—"}</span> },
   { key: "author", header: "Author", render: r => <span className="text-sm text-ink-2">{r.author ?? "—"}</span> },
   { key: "published_at", header: "Published", sortable: true, render: r => <span className="text-sm text-ink-2">{fmt(r.published_at)}</span> },
   { key: "tags", header: "Tags", render: r => r.tags ? <span className="text-xs text-ink-3 truncate max-w-[120px]">{r.tags}</span> : <span className="text-ink-4">—</span> },
 ];
 
 type BlogFormState = {
-  title: string; content: string; excerpt: string;
-  cover_image: string; author: string; status: BlogPost["status"];
-  seo_title: string; seo_description: string; tags: string;
+  title: string;
+  slug: string;
+  content: string;
+  excerpt: string;
+  cover_image: string;
+  featured_image: string;
+  category_id: string;
+  author: string;
+  status: BlogPost["status"];
+  seo_title: string;
+  seo_description: string;
+  tags: string;
   published_at: string;
 };
 
 const EMPTY_POST: BlogFormState = {
-  title: "", content: "", excerpt: "",
-  cover_image: "", author: "", status: "draft",
-  seo_title: "", seo_description: "", tags: "", published_at: "",
+  title: "",
+  slug: "",
+  content: "",
+  excerpt: "",
+  cover_image: "",
+  featured_image: "",
+  category_id: "",
+  author: "",
+  status: "draft",
+  seo_title: "",
+  seo_description: "",
+  tags: "",
+  published_at: "",
 };
 
 function postToForm(p: BlogPost): BlogFormState {
   return {
-    title: p.title ?? "", content: p.content ?? "", excerpt: p.excerpt ?? "",
-    cover_image: p.cover_image ?? "", author: p.author ?? "", status: p.status ?? "draft",
-    seo_title: p.seo_title ?? "", seo_description: p.seo_description ?? "",
-    tags: p.tags ?? "", published_at: p.published_at ?? "",
+    title: p.title ?? "",
+    slug: p.slug ?? "",
+    content: p.content ?? "",
+    excerpt: p.excerpt ?? "",
+    cover_image: p.cover_image ?? "",
+    featured_image: p.featured_image ?? "",
+    category_id: p.category_id ?? "",
+    author: p.author ?? "",
+    status: p.status ?? "draft",
+    seo_title: p.seo_title ?? "",
+    seo_description: p.seo_description ?? "",
+    tags: p.tags ?? "",
+    published_at: p.published_at ?? "",
   };
 }
 
@@ -73,8 +103,27 @@ function BlogEditor({ post, onClose }: { post: BlogPost | "new"; onClose: () => 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editorTab, setEditorTab] = useState("content");
   const [uploadingCover, setUploadingCover] = useState(false);
+  const [uploadingFeatured, setUploadingFeatured] = useState(false);
   const [uploadingBody, setUploadingBody] = useState(false);
   const [dragOverCover, setDragOverCover] = useState(false);
+  const [dragOverFeatured, setDragOverFeatured] = useState(false);
+
+  const { data: categories } = useQuery({
+    queryKey: ["blog-categories"],
+    queryFn: apiListBlogCategories
+  });
+
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const title = e.target.value;
+    setForm(p => {
+      const next = { ...p, title };
+      if (isNew) {
+        next.slug = title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      }
+      return next;
+    });
+    setDirty(true);
+  };
 
   const handleCoverUpload = async (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -91,6 +140,24 @@ function BlogEditor({ post, onClose }: { post: BlogPost | "new"; onClose: () => 
       toast.error(err.message || "Failed to upload image");
     } finally {
       setUploadingCover(false);
+    }
+  };
+
+  const handleFeaturedUpload = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file");
+      return;
+    }
+    setUploadingFeatured(true);
+    try {
+      const res = await apiUploadBlogImage(file);
+      setForm(p => ({ ...p, featured_image: res.url }));
+      setDirty(true);
+      toast.success("Featured image uploaded");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to upload image");
+    } finally {
+      setUploadingFeatured(false);
     }
   };
 
@@ -146,6 +213,22 @@ function BlogEditor({ post, onClose }: { post: BlogPost | "new"; onClose: () => 
     setDragOverCover(false);
     const file = e.dataTransfer.files?.[0];
     if (file) handleCoverUpload(file);
+  };
+
+  const handleFeaturedDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOverFeatured(true);
+  };
+
+  const handleFeaturedDragLeave = () => {
+    setDragOverFeatured(false);
+  };
+
+  const handleFeaturedDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOverFeatured(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFeaturedUpload(file);
   };
 
   const f = (k: keyof BlogFormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -234,8 +317,10 @@ function BlogEditor({ post, onClose }: { post: BlogPost | "new"; onClose: () => 
           <Tabs
             tabs={[
               { id: "content", label: "Content" },
+              { id: "media", label: "Media" },
+              { id: "classification", label: "Classification" },
               { id: "seo", label: "SEO" },
-              { id: "settings", label: "Settings" },
+              { id: "publishing", label: "Publishing" },
             ]}
             active={editorTab} onChange={setEditorTab} size="sm" variant="pills"
           />
@@ -243,7 +328,8 @@ function BlogEditor({ post, onClose }: { post: BlogPost | "new"; onClose: () => 
 
         {editorTab === "content" && (
           <div className="space-y-4">
-            <Input label="Title" required value={form.title} onChange={f("title")} placeholder="Post title…" disabled={!canEdit} />
+            <Input label="Title" required value={form.title} onChange={handleTitleChange} placeholder="Post title…" disabled={!canEdit} />
+            <Input label="Slug" required value={form.slug} onChange={f("slug")} placeholder="post-url-slug" disabled={!canEdit} />
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-xs font-medium text-ink-3">Content</label>
@@ -296,23 +382,11 @@ function BlogEditor({ post, onClose }: { post: BlogPost | "new"; onClose: () => 
           </div>
         )}
 
-        {editorTab === "seo" && (
-          <div className="space-y-4">
-            <Input label="SEO Title" value={form.seo_title} onChange={f("seo_title")} hint="Defaults to post title if blank" disabled={!canEdit} />
-            <div>
-              <label className="block text-xs font-medium text-ink-3 mb-1.5">SEO Description</label>
-              <textarea
-                value={form.seo_description}
-                onChange={f("seo_description")}
-                placeholder="Meta description (150-160 characters recommended)…"
-                rows={4}
-                className="os-input w-full resize-none"
-                disabled={!canEdit}
-              />
-              <p className="text-2xs text-ink-4 mt-1">{form.seo_description.length} characters</p>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-ink-3 mb-1.5">Cover Image</label>
+        {editorTab === "media" && (
+          <div className="space-y-6">
+            {/* Cover Image Section */}
+            <div className="space-y-2">
+              <label className="block text-xs font-medium text-ink-3">Cover Image</label>
               <div
                 className={`border border-dashed rounded-lg p-4 transition-all text-center flex flex-col items-center justify-center min-h-[140px] bg-os-raised ${
                   canEdit ? "cursor-pointer" : "cursor-default"
@@ -373,15 +447,114 @@ function BlogEditor({ post, onClose }: { post: BlogPost | "new"; onClose: () => 
                   </div>
                 )}
               </div>
+              <Input label="Cover Image URL" value={form.cover_image} onChange={f("cover_image")} placeholder="https://…" hint="Or paste an external cover image URL directly" disabled={!canEdit} />
             </div>
-            <Input label="Cover Image URL" value={form.cover_image} onChange={f("cover_image")} placeholder="https://…" hint="Or paste an external image URL directly" disabled={!canEdit} />
+
+            {/* Featured Image Section */}
+            <div className="space-y-2">
+              <label className="block text-xs font-medium text-ink-3">Featured Image</label>
+              <div
+                className={`border border-dashed rounded-lg p-4 transition-all text-center flex flex-col items-center justify-center min-h-[140px] bg-os-raised ${
+                  canEdit ? "cursor-pointer" : "cursor-default"
+                } ${
+                  dragOverFeatured && canEdit ? "border-brand-500 bg-brand-500/5" : "border-os-border hover:border-ink-4"
+                }`}
+                onDragOver={canEdit ? handleFeaturedDragOver : undefined}
+                onDragLeave={canEdit ? handleFeaturedDragLeave : undefined}
+                onDrop={canEdit ? handleFeaturedDrop : undefined}
+                onClick={() => canEdit && document.getElementById("blog-featured-image-upload")?.click()}
+              >
+                {canEdit && (
+                  <input
+                    type="file"
+                    id="blog-featured-image-upload"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFeaturedUpload(file);
+                    }}
+                  />
+                )}
+                
+                {uploadingFeatured ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="animate-spin rounded-full h-5 w-5 border border-brand-500 border-t-transparent" />
+                    <p className="text-xs text-ink-3">Uploading featured image...</p>
+                  </div>
+                ) : form.featured_image ? (
+                  <div className="relative w-full group rounded overflow-hidden">
+                    <img src={form.featured_image} alt="Featured preview" className="h-32 w-full object-cover rounded" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    {canEdit && (
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <Button type="button" size="xs" variant="secondary">Change Image</Button>
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="danger"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setForm(p => ({ ...p, featured_image: "" }));
+                            setDirty(true);
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center">
+                    <ImageIcon className="h-6 w-6 text-ink-3 mb-2" />
+                    <p className="text-xs font-medium text-ink-2">
+                      {canEdit ? "Drag & drop featured image, or click to upload" : "No featured image"}
+                    </p>
+                    {canEdit && <p className="text-2xs text-ink-4 mt-1">Supports PNG, JPG, WEBP, GIF up to 5MB</p>}
+                  </div>
+                )}
+              </div>
+              <Input label="Featured Image URL" value={form.featured_image} onChange={f("featured_image")} placeholder="https://…" hint="Or paste an external featured image URL directly" disabled={!canEdit} />
+            </div>
           </div>
         )}
 
-        {editorTab === "settings" && (
+        {editorTab === "classification" && (
+          <div className="space-y-4">
+            <Select
+              label="Category"
+              value={form.category_id}
+              disabled={!canEdit}
+              onChange={v => { setForm(p => ({ ...p, category_id: v })); setDirty(true); }}
+              options={[
+                { value: "", label: "Select category..." },
+                ...(categories || []).map((cat: any) => ({ value: cat.category_id, label: cat.category_name }))
+              ]}
+            />
+            <Input label="Tags" value={form.tags} onChange={f("tags")} placeholder="comma, separated, tags" hint="Comma-separated tag list" disabled={!canEdit} />
+          </div>
+        )}
+
+        {editorTab === "seo" && (
+          <div className="space-y-4">
+            <Input label="SEO Title" value={form.seo_title} onChange={f("seo_title")} hint="Defaults to post title if blank" disabled={!canEdit} />
+            <div>
+              <label className="block text-xs font-medium text-ink-3 mb-1.5">SEO Description</label>
+              <textarea
+                value={form.seo_description}
+                onChange={f("seo_description")}
+                placeholder="Meta description (150-160 characters recommended)…"
+                rows={4}
+                className="os-input w-full resize-none"
+                disabled={!canEdit}
+              />
+              <p className="text-2xs text-ink-4 mt-1">{form.seo_description.length} characters</p>
+            </div>
+          </div>
+        )}
+
+        {editorTab === "publishing" && (
           <div className="space-y-4">
             <Input label="Author" value={form.author} onChange={f("author")} placeholder="Author name" disabled={!canEdit} />
-            <Input label="Tags" value={form.tags} onChange={f("tags")} placeholder="comma, separated, tags" hint="Comma-separated tag list" disabled={!canEdit} />
             <Select label="Status"
               options={[
                 { value: "draft", label: "Draft" },
@@ -408,13 +581,167 @@ function BlogEditor({ post, onClose }: { post: BlogPost | "new"; onClose: () => 
   );
 }
 
+function CategoryManager({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const { data: categories, isLoading } = useQuery({
+    queryKey: ["blog-categories"],
+    queryFn: apiListBlogCategories
+  });
+  
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editSlug, setEditSlug] = useState("");
+  
+  const [newName, setNewName] = useState("");
+  const [newSlug, setNewSlug] = useState("");
+  
+  const createMut = useMutation({
+    mutationFn: () => apiCreateBlogCategory({ category_name: newName, category_slug: newSlug }),
+    onSuccess: () => {
+      toast.success("Category created");
+      setNewName("");
+      setNewSlug("");
+      qc.invalidateQueries({ queryKey: ["blog-categories"] });
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to create category")
+  });
+
+  const updateMut = useMutation({
+    mutationFn: (id: string) => apiUpdateBlogCategory(id, { category_name: editName, category_slug: editSlug }),
+    onSuccess: () => {
+      toast.success("Category updated");
+      setEditingId(null);
+      qc.invalidateQueries({ queryKey: ["blog-categories"] });
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to update category")
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => apiDeleteBlogCategory(id),
+    onSuccess: () => {
+      toast.success("Category deleted");
+      qc.invalidateQueries({ queryKey: ["blog-categories"] });
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to delete category")
+  });
+
+  const handleNewNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setNewName(val);
+    setNewSlug(val.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
+  };
+
+  const handleEditNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setEditName(val);
+    setEditSlug(val.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
+  };
+
+  return (
+    <Drawer open onClose={onClose} title="Manage Categories" width="md">
+      <div className="space-y-6">
+        <div className="os-card-raised p-4 space-y-3">
+          <h3 className="text-xs font-semibold text-ink-1 uppercase tracking-wider">Create New Category</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Input label="Name" value={newName} onChange={handleNewNameChange} placeholder="e.g. Platform Updates" />
+            <Input label="Slug" value={newSlug} onChange={e => setNewSlug(e.target.value)} placeholder="e.g. platform-updates" />
+          </div>
+          <div className="flex justify-end">
+            <Button
+              variant="primary"
+              size="sm"
+              loading={createMut.isPending}
+              disabled={!newName || !newSlug}
+              onClick={() => createMut.mutate()}
+            >
+              Add Category
+            </Button>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <h3 className="text-xs font-semibold text-ink-1 uppercase tracking-wider">Existing Categories</h3>
+          {isLoading ? (
+            <p className="text-xs text-ink-3">Loading categories...</p>
+          ) : categories?.length === 0 ? (
+            <p className="text-xs text-ink-3">No categories found.</p>
+          ) : (
+            <div className="divide-y divide-os-border/40">
+              {categories?.map((cat: any) => (
+                <div key={cat.category_id} className="py-3 flex items-center justify-between gap-4">
+                  {editingId === cat.category_id ? (
+                    <div className="flex-1 space-y-2">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <Input value={editName} onChange={handleEditNameChange} placeholder="Category Name" />
+                        <Input value={editSlug} onChange={e => setEditSlug(e.target.value)} placeholder="Category Slug" />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button size="xs" variant="secondary" onClick={() => setEditingId(null)}>Cancel</Button>
+                        <Button size="xs" variant="primary" loading={updateMut.isPending} onClick={() => updateMut.mutate(cat.category_id)}>Save</Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <p className="text-sm font-medium text-ink-1">{cat.category_name}</p>
+                        <p className="text-2xs text-ink-3">slug: {cat.category_slug}</p>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          size="xs"
+                          variant="ghost"
+                          onClick={() => {
+                            setEditingId(cat.category_id);
+                            setEditName(cat.category_name);
+                            setEditSlug(cat.category_slug);
+                          }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant="ghost"
+                          className="text-red-500 hover:text-red-700"
+                          loading={deleteMut.isPending}
+                          onClick={() => {
+                            if (confirm(`Delete category "${cat.category_name}"?`)) {
+                              deleteMut.mutate(cat.category_id);
+                            }
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </Drawer>
+  );
+}
+
 function BlogTab() {
   const [selected, setSelected] = useState<BlogPost | null>(null);
   const [showNew, setShowNew] = useState(false);
+  const [showCategories, setShowCategories] = useState(false);
+  const [filterCategory, setFilterCategory] = useState("");
   const { session } = useSession();
   const canEdit = !!(session && ["super_admin", "admin", "ops", "operations"].includes(session.role));
 
-  const { data, isLoading, error } = useQuery({ queryKey: ["blog-posts"], queryFn: () => apiListBlogPosts({}) });
+  const { data: categories } = useQuery({
+    queryKey: ["blog-categories"],
+    queryFn: apiListBlogCategories
+  });
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["blog-posts", filterCategory],
+    queryFn: () => apiListBlogPosts(filterCategory ? { category_id: filterCategory } : {})
+  });
   const posts: BlogPost[] = Array.isArray(data) ? data : ((data as any)?.posts ?? (data as any)?.data ?? []);
 
   return (
@@ -427,15 +754,32 @@ function BlogTab() {
         exportFilename="blog-posts"
         onRowClick={r => setSelected(r)} selectedId={selected?.id ?? selected?.slug}
         toolbar={
-          canEdit ? (
-            <Button variant="primary" size="sm" icon={<Plus className="h-3.5 w-3.5" />} onClick={() => setShowNew(true)}>
-              New post
-            </Button>
-          ) : undefined
+          <div className="flex items-center gap-2 flex-wrap">
+            <Select
+              value={filterCategory}
+              onChange={setFilterCategory}
+              options={[
+                { value: "", label: "All Categories" },
+                ...(categories || []).map((c: any) => ({ value: c.category_id, label: c.category_name }))
+              ]}
+              className="w-44"
+            />
+            {canEdit && (
+              <>
+                <Button variant="secondary" size="sm" onClick={() => setShowCategories(true)}>
+                  Manage Categories
+                </Button>
+                <Button variant="primary" size="sm" icon={<Plus className="h-3.5 w-3.5" />} onClick={() => setShowNew(true)}>
+                  New post
+                </Button>
+              </>
+            )}
+          </div>
         }
       />
       {selected && <BlogEditor post={selected} onClose={() => setSelected(null)} />}
       {showNew && <BlogEditor post="new" onClose={() => setShowNew(false)} />}
+      {showCategories && <CategoryManager onClose={() => setShowCategories(false)} />}
     </>
   );
 }

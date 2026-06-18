@@ -401,7 +401,12 @@ import {
   deleteMarketingPost,
   publicListMarketingPosts,
   publicGetMarketingPost,
-  uploadBlogMedia
+  uploadBlogMedia,
+  getMarketingPost,
+  listBlogCategories,
+  createBlogCategory,
+  updateBlogCategory,
+  deleteBlogCategory
 } from "./core/marketing/blog.js";
 import { getAuditReport, getAuditReportPDF, getPublicAuditReport } from "./core/reports/audit_report.js";
 import { getPublicPricing } from "./api/admin/pricing.js";
@@ -1610,15 +1615,38 @@ export default {
           const auth = await requireAdminAuth(request, env);
           return uploadBlogMedia(request, env, auth);
         }
-        if (path.startsWith("/api/v1/admin/blog/") && method === "PATCH") {
+        if (path === "/api/v1/admin/blog/categories" && method === "GET") {
           const auth = await requireAdminAuth(request, env);
-          const id = path.split("/")[5];
-          return updateMarketingPost(request, env, auth, id);
+          return listBlogCategories(request, env, auth);
         }
-        if (path.startsWith("/api/v1/admin/blog/") && method === "DELETE") {
+        if (path === "/api/v1/admin/blog/categories" && method === "POST") {
+          const auth = await requireAdminAuth(request, env);
+          return createBlogCategory(request, env, auth);
+        }
+        if (path.startsWith("/api/v1/admin/blog/categories/") && method === "PATCH") {
+          const auth = await requireAdminAuth(request, env);
+          const categoryId = path.split("/")[6];
+          return updateBlogCategory(request, env, auth, categoryId);
+        }
+        if (path.startsWith("/api/v1/admin/blog/categories/") && method === "DELETE") {
+          const auth = await requireAdminAuth(request, env);
+          const categoryId = path.split("/")[6];
+          return deleteBlogCategory(request, env, auth, categoryId);
+        }
+        if (path.startsWith("/api/v1/admin/blog/") && !path.startsWith("/api/v1/admin/blog/categories")) {
           const auth = await requireAdminAuth(request, env);
           const id = path.split("/")[5];
-          return deleteMarketingPost(request, env, auth, id);
+          if (id && id !== "upload") {
+            if (method === "GET") {
+              return getMarketingPost(request, env, auth, id);
+            }
+            if (method === "PATCH") {
+              return updateMarketingPost(request, env, auth, id);
+            }
+            if (method === "DELETE") {
+              return deleteMarketingPost(request, env, auth, id);
+            }
+          }
         }
 
         /* ---------- PROMOTIONS ---------- */
@@ -2376,9 +2404,10 @@ export default {
 
           const response = await (async () => {
             const post = await env.mypilotpost.prepare(`
-              SELECT *
-              FROM marketing_blog_posts
-              WHERE id = ?
+              SELECT p.*, c.category_name, c.category_slug
+              FROM marketing_blog_posts p
+              LEFT JOIN blog_categories c ON p.category_id = c.category_id
+              WHERE p.id = ?
               LIMIT 1
             `).bind(id).first();
 
@@ -2386,7 +2415,14 @@ export default {
               return json({ error: "Not found" }, 404);
             }
 
-            return json({ post });
+            const decorated = {
+              ...post,
+              category: post.category_name || post.category_id || null,
+              content: post.content_html,
+              cover_image: post.cover_image || post.featured_image
+            };
+
+            return json({ post: decorated });
           })();
 
           return withCors(request, Promise.resolve(response));
