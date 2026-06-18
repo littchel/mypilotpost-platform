@@ -585,8 +585,21 @@ export default function CreatePost({
   const [canvaBanner, setCanvaBanner]       = useState(false);
   const [toast, setToast]                   = useState(null);
   const [overlays, setOverlays]             = useState(null);
-  const [showDesigner, setShowDesigner]     = useState(false);
+  const [overlayStudioOpen, setOverlayStudioOpen] = useState(false);
   const [saveState, setSaveState]           = useState("idle");
+
+  const handleApplyOverlays = (nextOverlays, newMedia = null) => {
+    setOverlays(nextOverlays);
+    if (newMedia) {
+      setMediaItems(prev => {
+        if (prev.length > 0) {
+          return [newMedia, ...prev.slice(1)];
+        } else {
+          return [newMedia];
+        }
+      });
+    }
+  };
   const isPublishing = publishPhase !== "idle" && publishPhase !== "queued" && publishPhase !== "failed";
 
   const fileInputRef    = useRef(null);
@@ -1238,113 +1251,62 @@ export default function CreatePost({
               </div>
             </div>
 
-            {/* ── CREATIVE INTELLIGENCE PANEL ── */}
+            {/* ── OVERLAY STUDIO CARD ── */}
             <div style={{ padding: "12px 14px 0", flexShrink: 0 }}>
-              <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, background: "#f8fafc", padding: 12, marginBottom: 10 }}>
+              <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, background: "#f8fafc", padding: 14, marginBottom: 10, color: "#1e293b" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                  <span className="extra-small fw-bold text-muted text-uppercase" style={{ letterSpacing: 0.8 }}>Creative Intelligence Panel</span>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, background: "#e0f2fe", color: "#0369a1", padding: "2px 8px", borderRadius: 20 }}>Visual Score: {mediaItems.length > 0 ? "92%" : "40%"}</span>
-                    <span style={{ fontSize: 10, fontWeight: 700, background: "#dcfce7", color: "#15803d", padding: "2px 8px", borderRadius: 20 }}>Brand Compliance: 100%</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <i className="fas fa-magic" style={{ color: "#2563eb", fontSize: 14 }}></i>
+                    <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: 0.5, color: "#0f172a" }}>Overlay Studio</span>
                   </div>
+                  {overlays && (
+                    <span style={{ fontSize: 9, fontWeight: 700, background: "#dbeafe", color: "#1e40af", padding: "2px 8px", borderRadius: 20 }}>
+                      Active Overlays
+                    </span>
+                  )}
                 </div>
 
-                {/* Tab strip */}
-                <div style={{ display: "flex", gap: 4, overflowX: "auto", paddingBottom: 6 }}>
-                  {["media", "freepik", "express", "designer"].map((tab) => {
-                    const labels = { media: "Pexels Search", freepik: "Freepik Search", express: "Adobe Express", designer: "Overlay Builder" };
-                    const icons = { media: "fa-search", freepik: "fa-search", express: "fa-bezier-curve", designer: "fa-layer-group" };
-                    const isActive = (tab === "designer" && showDesigner) || (tab === "media" && showSuggested && mediaTab !== "freepik") || (tab === "freepik" && showSuggested && mediaTab === "freepik") || (tab === "express" && activeTopTab === "adobe_express");
-                    return (
-                      <button
-                        key={tab}
-                        onClick={() => {
-                          if (tab === "designer") {
-                            setShowDesigner(v => !v);
-                            setShowSuggested(false);
-                            setActiveTopTab("editor");
-                          } else if (tab === "media") {
-                            setShowSuggested(true);
-                            setShowDesigner(false);
-                            setMediaTab("agencyPicks");
-                            loadMediaSuggestions();
-                            setActiveTopTab("editor");
-                          } else if (tab === "freepik") {
-                            setShowSuggested(true);
-                            setShowDesigner(false);
-                            setMediaTab("freepik");
-                            setActiveTopTab("editor");
-                            // Load fake freepik suggestions
-                            setMediaBuckets(prev => ({
-                              ...prev,
-                              freepik: [
-                                { id: "fp1", thumbnail_url: "https://picsum.photos/seed/fp1/200/200", url: "https://picsum.photos/seed/fp1/800/800", alt: "modern tech freepik", reasons: ["Aspirational tone"], ratio: 1.0, provider: "freepik" },
-                                { id: "fp2", thumbnail_url: "https://picsum.photos/seed/fp2/200/200", url: "https://picsum.photos/seed/fp2/800/800", alt: "office dashboard freepik", reasons: ["Brand match"], ratio: 1.0, provider: "freepik" },
-                                { id: "fp3", thumbnail_url: "https://picsum.photos/seed/fp3/200/200", url: "https://picsum.photos/seed/fp3/800/800", alt: "business lifestyle freepik", reasons: ["Curated topic"], ratio: 1.0, provider: "freepik" },
-                              ]
-                            }));
-                          } else if (tab === "express") {
-                            setShowDesigner(false);
-                            setShowSuggested(false);
-                            setActiveTopTab("adobe_express");
-                          }
-                        }}
-                        style={{
-                          flexShrink: 0, padding: "4px 10px", borderRadius: 20,
-                          border: `1px solid ${isActive ? "#2563eb" : "#cbd5e1"}`,
-                          background: isActive ? "#eff6ff" : "#fff",
-                          color: isActive ? "#2563eb" : "#64748b",
-                          fontSize: 10, fontWeight: 700, cursor: "pointer"
-                        }}
-                      >
-                        <i className={`fas ${icons[tab]} me-1`}></i>
-                        {labels[tab]}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Sub-panel content */}
-                {showDesigner && (
-                  <div style={{ marginTop: 8, padding: 10, background: "#0b0f1a", borderRadius: 8, border: "1px solid #252D42" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                      <span className="extra-small fw-bold text-uppercase" style={{ color: "#8892B0" }}>Overlay Builder</span>
-                      <AdobeExpress
-                        seedImage={overlays?.background?.url || null}
-                        onImport={(dataUrl) =>
-                          setOverlays(prev => ({
-                            ...(prev || { overlay_text: [], overlay_image: [] }),
-                            background: { ...((prev && prev.background) || { fit: "cover", color: "#111827" }), url: dataUrl },
-                          }))
-                        }
-                      />
+                <div style={{ display: "flex", gap: 12, alignItems: "center", background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: 10 }}>
+                  {/* Thumbnail */}
+                  <div style={{ width: 60, height: 60, borderRadius: 6, overflow: "hidden", background: "#f1f5f9", border: "1px solid #cbd5e1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    {overlays?.background?.url || mediaItems[0]?.url ? (
+                      <img src={overlays?.background?.url || mediaItems[0]?.url} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <i className="fas fa-image" style={{ color: "#cbd5e1", fontSize: 20 }}></i>
+                    )}
+                  </div>
+                  
+                  {/* Info status */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#334155" }}>
+                      {overlays ? "Custom layers configured" : "No active overlays"}
                     </div>
-                    <OverlayEditor
-                      value={overlays ? { ...overlays, __assetId: selectedVaultItem?.id || "temp" } : { __assetId: selectedVaultItem?.id || "temp" }}
-                      onChange={setOverlays}
-                    />
+                    <div style={{ fontSize: 10, color: "#64748b", marginTop: 4, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                      <span><i className="fas fa-font me-1"></i>{(overlays?.overlay_text || []).length} text</span>
+                      <span><i className="fas fa-shapes me-1"></i>{(overlays?.overlay_image || []).filter(o => o.isShape).length} shapes</span>
+                    </div>
                   </div>
-                )}
+                </div>
 
-                {activeTopTab === "adobe_express" && (
-                  <div style={{ marginTop: 8, textAlign: "center", padding: "10px 0" }}>
-                    <p style={{ fontSize: 11, color: "#64748b", marginBottom: 8 }}>Compose and import customized graphics from Adobe Express</p>
-                    <AdobeExpress
-                      seedImage={overlays?.background?.url || null}
-                      onImport={(dataUrl) => {
-                        setOverlays(prev => ({
-                          ...(prev || { overlay_text: [], overlay_image: [] }),
-                          background: { ...((prev && prev.background) || { fit: "cover", color: "#111827" }), url: dataUrl },
-                        }));
-                        setShowDesigner(true);
+                <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                  <button
+                    onClick={() => setOverlayStudioOpen(true)}
+                    style={{ flex: 1, background: "#2563eb", border: "none", borderRadius: 6, color: "#fff", fontSize: 11, fontWeight: 700, padding: "8px 12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                  >
+                    <i className="fas fa-edit"></i> Launch Overlay Studio
+                  </button>
+                  {overlays && (
+                    <button
+                      onClick={() => {
+                        if (confirm("Reset all overlays to empty?")) {
+                          setOverlays(null);
+                        }
                       }}
-                    />
-                  </div>
-                )}
-
-                <div style={{ display: "flex", gap: 10, marginTop: 8, fontSize: 10, color: "#64748b" }}>
-                  <span><i className="fas fa-check-circle text-success me-1"></i>Brand kit synced</span>
-                  <span><i className="fas fa-check-circle text-success me-1"></i>Typography compliance verified</span>
+                      style={{ background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: 6, color: "#ef4444", fontSize: 11, fontWeight: 700, padding: "8px 12px", cursor: "pointer" }}
+                    >
+                      Reset
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -1552,6 +1514,7 @@ export default function CreatePost({
             media={previewMedia}
             brandName={brandName}
             isLiveEditor={!selectedVaultItem}
+            overlays={overlays}
           />
         </div>
       </div>
@@ -1735,7 +1698,150 @@ export default function CreatePost({
         onReset={resetAfterPublish}
       />
 
+      {overlayStudioOpen && (
+        <OverlayStudioModal
+          open={overlayStudioOpen}
+          onClose={() => setOverlayStudioOpen(false)}
+          overlays={overlays}
+          onSave={handleApplyOverlays}
+          mediaItems={mediaItems}
+        />
+      )}
+
       {toast && <Toast msg={toast.msg} type={toast.type} />}
     </div>
+  );
+}
+
+// ── Overlay Studio Modal Component ────────────────────────────────────────────────
+function OverlayStudioModal({ open, onClose, overlays, onSave, mediaItems }) {
+  const [localOverlays, setLocalOverlays] = useState(overlays || null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      const initialBg = overlays?.background?.url || mediaItems[0]?.url || null;
+      setLocalOverlays({
+        background: {
+          url: initialBg,
+          fit: overlays?.background?.fit || "cover",
+          color: overlays?.background?.color || "#111827"
+        },
+        overlay_text: overlays?.overlay_text || [],
+        overlay_image: overlays?.overlay_image || []
+      });
+    }
+  }, [open, overlays, mediaItems]);
+
+  if (!open) return null;
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const isVideo = mediaItems[0]?.type === "video" || mediaItems[0]?.mime_type?.startsWith("video/") || (mediaItems[0]?.url && (mediaItems[0].url.endsWith(".mp4") || mediaItems[0].url.endsWith(".mov") || mediaItems[0].url.includes("video")));
+      
+      if (isVideo) {
+        onSave(localOverlays);
+        onClose();
+      } else {
+        const dataUrl = await OverlayEditor.exportCurrentPNG();
+        if (dataUrl) {
+          const blobBin = atob(dataUrl.split(',')[1]);
+          const array = [];
+          for (let i = 0; i < blobBin.length; i++) {
+            array.push(blobBin.charCodeAt(i));
+          }
+          const file = new Blob([new Uint8Array(array)], { type: 'image/png' });
+          const formData = new FormData();
+          formData.append("file", file, `mypilotpost-overlay-${Date.now()}.png`);
+          
+          const token = localStorage.getItem("mpp_token");
+          const res = await fetch(`${API_BASE}/api/customer/media/upload`, {
+            method: "POST",
+            headers: { Authorization: token ? `Bearer ${token}` : "" },
+            body: formData,
+          });
+          if (!res.ok) throw new Error("Failed to upload flattened overlay image");
+          const data = await res.json();
+          
+          const newMedia = {
+            id: `overlay_${Date.now()}`,
+            url: data.url,
+            preview_url: data.url,
+            type: "image",
+            mime_type: "image/png",
+            asset_id: data.id,
+            uploading: false
+          };
+          
+          onSave(localOverlays, newMedia);
+        } else {
+          onSave(localOverlays);
+        }
+        onClose();
+      }
+    } catch (e) {
+      alert("Error saving overlays: " + e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.85)", backdropFilter: "blur(4px)", zIndex: 2000 }} />
+      <div style={{
+        position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+        width: 1040, height: 600, background: "#0b0f19", borderRadius: 16,
+        boxShadow: "0 25px 50px -12px rgba(0,0,0,0.6)", zIndex: 2001,
+        display: "flex", flexDirection: "column", border: "1px solid #1e293b", overflow: "hidden"
+      }}>
+        <div style={{ padding: "14px 20px", borderBottom: "1px solid #1e293b", background: "#0f172a", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#2563eb", boxShadow: "0 0 10px #2563eb" }} />
+            <span style={{ fontWeight: 800, fontSize: 13, color: "#fff", letterSpacing: 0.5 }}>
+              OVERLAY STUDIO
+            </span>
+            <span style={{ fontSize: 10, background: "#1e293b", color: "#94a3b8", padding: "2px 8px", borderRadius: 12 }}>Visual Asset Workspace</span>
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#64748b" }}>×</button>
+        </div>
+        <div style={{ flex: 1, padding: 12, background: "#020617", overflow: "hidden" }}>
+          <OverlayEditor
+            value={localOverlays}
+            onChange={setLocalOverlays}
+            aspectKey="1:1"
+          />
+        </div>
+        <div style={{ padding: "12px 20px", borderTop: "1px solid #1e293b", background: "#0f172a", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+          <button
+            onClick={onClose}
+            style={{ background: "#1e293b", border: "none", borderRadius: 8, color: "#fff", fontSize: 12, fontWeight: 700, padding: "8px 16px", cursor: "pointer" }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            style={{
+              background: "#2563eb", border: "none", borderRadius: 8, color: "#fff", fontSize: 12, fontWeight: 700,
+              padding: "8px 20px", cursor: saving ? "wait" : "pointer", display: "flex", alignItems: "center", gap: 6
+            }}
+          >
+            {saving ? (
+              <>
+                <span className="spinner-border spinner-border-sm" style={{ width: 14, height: 14 }}></span>
+                <span>Saving...</span>
+              </>
+            ) : (
+              <>
+                <i className="fas fa-check-circle"></i>
+                <span>Apply & Save Overlays</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </>
   );
 }

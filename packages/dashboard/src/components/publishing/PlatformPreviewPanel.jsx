@@ -60,7 +60,101 @@ function BrandAvatar({ brandName, size = 32, radius = "50%" }) {
   );
 }
 
-function MediaArea({ media, platform, height = 240 }) {
+function PreviewOverlays({ overlays, height }) {
+  if (!overlays) return null;
+  const textLayers = overlays.overlay_text || [];
+  const imageLayers = overlays.overlay_image || [];
+  const allLayers = [
+    ...textLayers.map(o => ({ ...o, kind: "text" })),
+    ...imageLayers.map(o => ({ ...o, kind: "image" })),
+  ].sort((a, b) => (a.z ?? 0) - (b.z ?? 0));
+
+  return (
+    <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 4, overflow: "hidden" }}>
+      {allLayers.map(o => {
+        const commonStyle = {
+          position: "absolute",
+          left: `${o.x}%`,
+          top: `${o.y}%`,
+          width: `${o.w}%`,
+          height: o.kind === "image" ? `${o.h}%` : "auto",
+          transform: `rotate(${o.rotation || 0}deg)`,
+          transformOrigin: "center",
+          opacity: o.opacity ?? 1,
+          zIndex: (o.z ?? 0) + 1,
+        };
+
+        if (o.kind === "image") {
+          if (o.isShape) {
+            return (
+              <div
+                key={o.id}
+                style={{
+                  ...commonStyle,
+                  backgroundColor: o.color || "#2563eb",
+                  borderRadius: o.shapeType === "circle" ? "50%" : 0,
+                }}
+              />
+            );
+          }
+          return (
+            <img
+              key={o.id}
+              src={o.url}
+              alt=""
+              style={{ ...commonStyle, objectFit: "cover" }}
+            />
+          );
+        } else {
+          // text or CTA
+          if (o.isCTA) {
+            return (
+              <div
+                key={o.id}
+                style={{
+                  ...commonStyle,
+                  backgroundColor: o.ctaBgColor || "#2563eb",
+                  borderRadius: `${o.ctaBorderRadius ?? 6}px`,
+                  padding: `${o.ctaPadding / 3 ?? 2.5}px`,
+                  color: o.color || "#ffffff",
+                  fontFamily: o.fontFamily,
+                  fontWeight: o.bold ? 700 : 400,
+                  fontStyle: o.italic ? "italic" : "normal",
+                  textAlign: o.align || "center",
+                  fontSize: `${Math.max(6, (o.fontSize / 100) * height)}px`,
+                  wordBreak: "break-word",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.2)"
+                }}
+              >
+                {o.text}
+              </div>
+            );
+          }
+          return (
+            <div
+              key={o.id}
+              style={{
+                ...commonStyle,
+                color: o.color,
+                fontFamily: o.fontFamily,
+                fontWeight: o.bold ? 700 : 400,
+                fontStyle: o.italic ? "italic" : "normal",
+                textAlign: o.align || "center",
+                lineHeight: 1.2,
+                fontSize: `${Math.max(6, (o.fontSize / 100) * height)}px`,
+                wordBreak: "break-word"
+              }}
+            >
+              {o.text}
+            </div>
+          );
+        }
+      })}
+    </div>
+  );
+}
+
+function MediaArea({ media, platform, height = 240, overlays = null }) {
   const isVideo = media?.type === "video" || media?.mime_type?.startsWith("video/") || (media?.url && (media.url.endsWith(".mp4") || media.url.endsWith(".mov") || media.url.includes("video"))) || (media?.image && (media.image.endsWith(".mp4") || media.image.endsWith(".mov") || media.image.includes("video")));
   const mediaUrl = media?.url || media?.image;
 
@@ -84,6 +178,8 @@ function MediaArea({ media, platform, height = 240 }) {
               {Math.round(media.duration)}s
             </div>
           )}
+          {/* Overlays preview layered over video */}
+          <PreviewOverlays overlays={overlays} height={height} />
           {/* Safe zone overlay for vertical platforms */}
           {isVerticalPlatform && (
             <div style={{ position: "absolute", inset: 0, pointerEvents: "none", border: "2px dashed rgba(239, 68, 68, 0.4)", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 12, zIndex: 5 }}>
@@ -104,8 +200,9 @@ function MediaArea({ media, platform, height = 240 }) {
     }
 
     return (
-      <div style={S.mediaBox(height)}>
+      <div style={{ ...S.mediaBox(height), position: "relative", overflow: "hidden" }}>
         <img src={mediaUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        <PreviewOverlays overlays={overlays} height={height} />
       </div>
     );
   }
@@ -137,7 +234,7 @@ function Caption({ text, limit, platformKey }) {
 
 // ── Platform Renderers ─────────────────────────────────────────────────────────
 
-const FacebookRenderer = ({ content, media, brandName }) => (
+const FacebookRenderer = ({ content, media, brandName, overlays }) => (
   <div style={S.feedCard}>
     <div style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 8 }}>
       <BrandAvatar brandName={brandName} size={36} radius={8} />
@@ -149,7 +246,7 @@ const FacebookRenderer = ({ content, media, brandName }) => (
     <div style={{ padding: "0 14px 10px" }}>
       <Caption text={content} limit={500} />
     </div>
-    <MediaArea media={media} platform="facebook" height={220} />
+    <MediaArea media={media} platform="facebook" height={220} overlays={overlays} />
     <div style={{ padding: "4px 14px", display: "flex", gap: 2, borderTop: "1px solid #e4e6eb", color: "#65676b", fontSize: 12 }}>
       <button style={{ flex: 1, border: "none", background: "none", cursor: "pointer", padding: "8px 0", fontWeight: 600, color: "#65676b", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
         <i className="far fa-thumbs-up"></i> Like
@@ -164,7 +261,7 @@ const FacebookRenderer = ({ content, media, brandName }) => (
   </div>
 );
 
-const InstagramRenderer = ({ content, media, brandName }) => {
+const InstagramRenderer = ({ content, media, brandName, overlays }) => {
   const handle = brandName?.toLowerCase().replace(/\s+/g, "") || "yourbrand";
   return (
   <div style={S.feedCard}>
@@ -175,7 +272,7 @@ const InstagramRenderer = ({ content, media, brandName }) => {
       <span style={{ fontSize: 13, fontWeight: 700 }}>{handle}</span>
       <span style={{ marginLeft: "auto", fontSize: 18, color: "#262626" }}>···</span>
     </div>
-    <MediaArea media={media} platform="instagram" height={300} />
+    <MediaArea media={media} platform="instagram" height={300} overlays={overlays} />
     <div style={{ padding: "10px 12px" }}>
       <div style={S.actionRow}>
         <i className="far fa-heart"></i>
@@ -194,7 +291,7 @@ const InstagramRenderer = ({ content, media, brandName }) => {
   );
 };
 
-const LinkedInRenderer = ({ content, media, brandName }) => (
+const LinkedInRenderer = ({ content, media, brandName, overlays }) => (
   <div style={S.feedCard}>
     <div style={{ padding: "12px 14px", display: "flex", alignItems: "flex-start", gap: 10 }}>
       <BrandAvatar brandName={brandName} size={40} radius={4} />
@@ -208,7 +305,7 @@ const LinkedInRenderer = ({ content, media, brandName }) => (
     <div style={{ padding: "0 14px 10px", fontSize: 13, lineHeight: 1.6, color: "#000" }}>
       <Caption text={content} limit={210} />
     </div>
-    <MediaArea media={media} platform="linkedin" height={196} />
+    <MediaArea media={media} platform="linkedin" height={196} overlays={overlays} />
     <div style={{ padding: "8px 14px", borderTop: "1px solid #e0e0e0", display: "flex", justifyContent: "space-around", color: "#666", fontSize: 12, fontWeight: 600 }}>
       <span><i className="far fa-thumbs-up me-1"></i>Like</span>
       <span><i className="far fa-comment me-1"></i>Comment</span>
@@ -218,7 +315,7 @@ const LinkedInRenderer = ({ content, media, brandName }) => (
   </div>
 );
 
-const XRenderer = ({ content, media, brandName }) => (
+const XRenderer = ({ content, media, brandName, overlays }) => (
   <div style={S.feedCard}>
     <div style={{ padding: "14px 16px", display: "flex", gap: 10 }}>
       <BrandAvatar brandName={brandName} size={40} radius="50%" />
@@ -231,7 +328,7 @@ const XRenderer = ({ content, media, brandName }) => (
         <div style={{ fontSize: 14, lineHeight: 1.5, color: "#0f1419", marginBottom: 10 }}>
           <Caption text={content} limit={280} />
         </div>
-        {media?.image && <MediaArea media={media} platform="x" height={180} />}
+        {media?.image && <MediaArea media={media} platform="x" height={180} overlays={overlays} />}
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, color: "#536471", fontSize: 18, maxWidth: 300 }}>
           <i className="far fa-comment"></i>
           <i className="fas fa-retweet"></i>
@@ -244,10 +341,10 @@ const XRenderer = ({ content, media, brandName }) => (
   </div>
 );
 
-const TikTokRenderer = ({ content, media }) => (
+const TikTokRenderer = ({ content, media, overlays }) => (
   <div style={S.mobileCard}>
     <div style={{ position: "absolute", inset: 0, background: "#111", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <MediaArea media={media} platform="tiktok" height={498} />
+      <MediaArea media={media} platform="tiktok" height={498} overlays={overlays} />
     </div>
     {/* Safe zone overlays */}
     <div style={{ position: "absolute", top: 0, inset: "0 0 auto", height: "14%", background: "rgba(239,68,68,0.15)", borderBottom: "1px dashed #ef4444", zIndex: 5 }}>
@@ -275,10 +372,10 @@ const TikTokRenderer = ({ content, media }) => (
   </div>
 );
 
-const PinterestRenderer = ({ content, media, brandName }) => (
+const PinterestRenderer = ({ content, media, brandName, overlays }) => (
   <div style={{ ...S.feedCard, maxWidth: 280, borderRadius: 16 }}>
     <div style={{ position: "relative", borderRadius: "16px 16px 0 0", overflow: "hidden" }}>
-      <MediaArea media={media} platform="pinterest" height={340} />
+      <MediaArea media={media} platform="pinterest" height={340} overlays={overlays} />
       <div style={{ position: "absolute", bottom: 10, left: 10, right: 10 }}>
         <button style={{ width: "100%", background: "#e60023", border: "none", borderRadius: 20, color: "#fff", fontWeight: 700, fontSize: 13, padding: "8px 0", cursor: "pointer" }}>Save</button>
       </div>
@@ -295,7 +392,7 @@ const PinterestRenderer = ({ content, media, brandName }) => (
   </div>
 );
 
-const ThreadsRenderer = ({ content, media, brandName }) => (
+const ThreadsRenderer = ({ content, media, brandName, overlays }) => (
   <div style={S.feedCard}>
     <div style={{ padding: "14px 16px", display: "flex", gap: 12 }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
@@ -310,7 +407,7 @@ const ThreadsRenderer = ({ content, media, brandName }) => (
         <div style={{ fontSize: 14, lineHeight: 1.5, color: "#0f1419", marginBottom: 8 }}>
           <Caption text={content} limit={500} />
         </div>
-        {media?.image && <MediaArea media={media} platform="threads" height={180} />}
+        {media?.image && <MediaArea media={media} platform="threads" height={180} overlays={overlays} />}
         <div style={{ display: "flex", gap: 16, marginTop: 10, color: "#999", fontSize: 18 }}>
           <i className="far fa-heart"></i>
           <i className="far fa-comment"></i>
@@ -322,10 +419,10 @@ const ThreadsRenderer = ({ content, media, brandName }) => (
   </div>
 );
 
-const YouTubeRenderer = ({ content, media, brandName }) => (
+const YouTubeRenderer = ({ content, media, brandName, overlays }) => (
   <div style={S.feedCard}>
     <div style={{ position: "relative", background: "#000" }}>
-      <MediaArea media={media} platform="youtube" height={180} />
+      <MediaArea media={media} platform="youtube" height={180} overlays={overlays} />
       <div style={{ position: "absolute", bottom: 6, right: 8, background: "rgba(0,0,0,0.8)", color: "#fff", fontSize: 11, fontWeight: 700, padding: "2px 5px", borderRadius: 3 }}>0:00</div>
     </div>
     <div style={{ padding: "10px 12px", display: "flex", gap: 10 }}>
@@ -340,21 +437,15 @@ const YouTubeRenderer = ({ content, media, brandName }) => (
   </div>
 );
 
-const ShortsRenderer = ({ content, media }) => (
+const ShortsRenderer = ({ content, media, brandName, overlays }) => (
   <div style={S.mobileCard}>
-    <div style={{ position: "absolute", inset: 0, background: "#0f0f0f", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      {media?.image
-        ? <img src={media.image} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        : <div style={{ color: "#222", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-            <i className="fab fa-youtube" style={{ fontSize: 40 }}></i>
-            <span style={{ fontSize: 11, color: "#444" }}>Shorts Media</span>
-          </div>
-      }
+    <div style={{ position: "absolute", inset: 0, background: "#0f0f0f" }}>
+      <MediaArea media={media} platform="shorts" height={498} overlays={overlays} />
     </div>
     <div style={{ position: "absolute", bottom: 40, left: 10, right: 60, zIndex: 5 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
         <div style={{ ...S.avatar(20, "50%"), background: "#fff" }}></div>
-        <span style={{ fontSize: 11, fontWeight: 700, color: "#fff" }}>@yourbrand</span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: "#fff" }}>@{brandName?.toLowerCase().replace(/\s+/g, "") || "yourbrand"}</span>
         <button style={{ background: "#fff", color: "#000", border: "none", borderRadius: 4, fontSize: 10, padding: "2px 7px", fontWeight: 700 }}>Subscribe</button>
       </div>
       <div style={{ fontSize: 11, color: "#fff", lineHeight: 1.3 }}>
@@ -391,7 +482,7 @@ const PLABELS = {
 };
 
 // ── Main Panel ─────────────────────────────────────────────────────────────────
-export default function PlatformPreviewPanel({ platforms = [], content = "", overrides = {}, media = null, brandName = "Your Brand", isLiveEditor = true }) {
+export default function PlatformPreviewPanel({ platforms = [], content = "", overrides = {}, media = null, brandName = "Your Brand", isLiveEditor = true, overlays = null }) {
   const [activeTab, setActiveTab] = useState(platforms[0] || "facebook");
 
   const safeTab = platforms.includes(activeTab) ? activeTab : (platforms[0] || "facebook");
@@ -460,7 +551,7 @@ export default function PlatformPreviewPanel({ platforms = [], content = "", ove
       {/* Renderer area */}
       <div style={{ flex: 1, overflowY: "auto", padding: 24, display: "flex", alignItems: "flex-start", justifyContent: "center" }}>
         <div style={{ width: "100%" }}>
-          <Renderer platform={safeTab} content={currentContent} media={media} brandName={brandName} />
+          <Renderer platform={safeTab} content={currentContent} media={media} brandName={brandName} overlays={overlays} />
         </div>
       </div>
 
