@@ -50,7 +50,7 @@ async function runTest() {
 
     // 3. Insert mock connections for all 5 connected platforms
     console.log("\n3. Inserting mock social connections for BidMyMove brand...");
-    const platforms = ["facebook", "instagram", "linkedin", "x", "pinterest"];
+    const platforms = ["facebook", "linkedin", "x", "pinterest"];
     const encryptedToken = await encrypt("mock-access-token-123456", ENCRYPTION_SECRET);
 
     // Clean up existing connections for this brand to avoid duplication issues
