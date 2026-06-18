@@ -6,6 +6,16 @@
 import { json, error } from "./lib/json.js";
 import { SupportChatRoom } from "./core/realtime/ChatRoom.js";
 
+function resolveImageUrl(url, env) {
+  if (!url) return null;
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+  const base = env.BASE_URL || "https://api.mypilotpost.com";
+  const cleanUrl = url.startsWith("/") ? url : "/" + url;
+  return `${base}${cleanUrl}`;
+}
+
 /* ======================================================
    AUTH
 ====================================================== */
@@ -2415,11 +2425,13 @@ export default {
               return json({ error: "Not found" }, 404);
             }
 
+            const img = resolveImageUrl(post.cover_image || post.featured_image || null, env);
             const decorated = {
               ...post,
               category: post.category_name || post.category_id || null,
               content: post.content_html,
-              cover_image: post.cover_image || post.featured_image
+              cover_image: img,
+              featured_image: img
             };
 
             return json({ post: decorated });

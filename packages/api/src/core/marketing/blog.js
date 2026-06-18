@@ -2,6 +2,16 @@ import { json, error } from "../../lib/json.js";
 import { hasPermission } from "../../auth/permissions.js";
 import { logAdminAction } from "../../lib/admin_logger.js";
 
+function resolveImageUrl(url, env) {
+  if (!url) return null;
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+  const base = env.BASE_URL || "https://api.mypilotpost.com";
+  const cleanUrl = url.startsWith("/") ? url : "/" + url;
+  return `${base}${cleanUrl}`;
+}
+
 /* ================= ADMIN (AUTH REQUIRED) ================= */
 
 export async function createMarketingPost(request, env, auth) {
@@ -114,11 +124,15 @@ export async function listMarketingPosts(request, env, auth) {
     ? await env.mypilotpost.prepare(query).bind(...binds).all()
     : await env.mypilotpost.prepare(query).all();
 
-  const posts = (results || []).map(post => ({
-    ...post,
-    content: post.content_html,
-    cover_image: post.cover_image || post.featured_image
-  }));
+  const posts = (results || []).map(post => {
+    const img = resolveImageUrl(post.cover_image || post.featured_image || null, env);
+    return {
+      ...post,
+      content: post.content_html,
+      cover_image: img,
+      featured_image: img
+    };
+  });
 
   return json(posts);
 }
@@ -140,10 +154,12 @@ export async function getMarketingPost(request, env, auth, id) {
     return json({ error: "Post not found" }, 404);
   }
 
+  const img = resolveImageUrl(post.cover_image || post.featured_image || null, env);
   const decorated = {
     ...post,
     content: post.content_html,
-    cover_image: post.cover_image || post.featured_image
+    cover_image: img,
+    featured_image: img
   };
 
   return json(decorated);
@@ -382,12 +398,16 @@ export async function publicListMarketingPosts(request, env) {
     ? await env.mypilotpost.prepare(query).bind(...binds).all()
     : await env.mypilotpost.prepare(query).all();
 
-  const posts = (results || []).map(post => ({
-    ...post,
-    category: post.category_name || post.category_id || null, // fallback
-    content: post.content_html,
-    cover_image: post.cover_image || post.featured_image
-  }));
+  const posts = (results || []).map(post => {
+    const img = resolveImageUrl(post.cover_image || post.featured_image || null, env);
+    return {
+      ...post,
+      category: post.category_name || post.category_id || null, // fallback
+      content: post.content_html,
+      cover_image: img,
+      featured_image: img
+    };
+  });
 
   return json({ posts });
 }
@@ -405,11 +425,13 @@ export async function publicGetMarketingPost(request, env, slug) {
     return json({ error: "Not found" }, 404);
   }
 
+  const img = resolveImageUrl(post.cover_image || post.featured_image || null, env);
   const decorated = {
     ...post,
     category: post.category_name || post.category_id || null, // fallback
     content: post.content_html,
-    cover_image: post.cover_image || post.featured_image
+    cover_image: img,
+    featured_image: img
   };
 
   return json({ post: decorated });
