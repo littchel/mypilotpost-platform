@@ -138,9 +138,29 @@ export async function executeDeliveryJob(env, job) {
     }).catch(() => {});
 
   } catch (err) {
-    const errorCode = err.message?.includes("TOKEN") ? "AUTH_ERROR" : 
-                     err.message === "TIMEOUT" ? "TIMEOUT" : "EXECUTION_ERROR";
-    
+    const errMsg = err.message || "";
+    let errorCode = "UNKNOWN";
+
+    if (errMsg.includes("ACCOUNT_RESTRICTED") || errMsg.includes("User access is restricted") || errMsg.includes("User is restricted")) {
+      errorCode = "ACCOUNT_RESTRICTED";
+    } else if (errMsg.includes("MEDIA_UNREACHABLE") || errMsg.includes("MEDIA_URL_INACCESSIBLE") || errMsg.includes("522")) {
+      errorCode = "MEDIA_UNREACHABLE";
+    } else if (errMsg.includes("MEDIA_INVALID") || errMsg.includes("REQUIRES_MEDIA") || errMsg.includes("Aspect ratio") || errMsg.includes("duration") || errMsg.includes("exceeds")) {
+      errorCode = "MEDIA_INVALID";
+    } else if (errMsg.includes("TOKEN_EXPIRED") || errMsg.includes("session has expired") || errMsg.includes("INVALID_ACCESS_TOKEN") || errMsg.includes("token") || errMsg.includes("TOKEN")) {
+      errorCode = "TOKEN_EXPIRED";
+    } else if (errMsg.includes("PAGE_NOT_LINKED") || errMsg.includes("PAGE_NOT_FOUND")) {
+      errorCode = "PAGE_NOT_LINKED";
+    } else if (errMsg.includes("BUSINESS_ACCOUNT_REQUIRED")) {
+      errorCode = "BUSINESS_ACCOUNT_REQUIRED";
+    } else if (errMsg.includes("PERMISSION_DENIED") || errMsg.includes("forbidden") || errMsg.includes("ACCESS_DENIED") || errMsg.includes("forbidden")) {
+      errorCode = "PERMISSION_DENIED";
+    } else if (errMsg.includes("RATE_LIMITED") || errMsg.includes("too many requests") || errMsg.includes("depleted") || errMsg.includes("limit")) {
+      errorCode = "RATE_LIMITED";
+    } else if (errMsg === "TIMEOUT") {
+      errorCode = "TIMEOUT";
+    }
+
     console.error(`POSTER: ${job.platform} delivery failed`, { job_id: job.id, error: err.message });
 
     // Log failed delivery
@@ -150,7 +170,7 @@ export async function executeDeliveryJob(env, job) {
     `).bind(job.id, job.brand_id, job.platform, job.delivery_attempts + 1, err.message).run().catch(() => {});
 
     await recordAttempt(db, job, job.delivery_attempts + 1, "failed", errorCode, err.message);
-    await syncContentStatusWithJobs(db, job, 'failed', errorCode);
+    await syncContentStatusWithJobs(db, job, 'failed', errorCode, null, err.message);
 
     const attemptNumber = job.delivery_attempts + 1;
     const isExhausted = attemptNumber >= MAX_ATTEMPTS;
@@ -172,7 +192,7 @@ export async function executeDeliveryJob(env, job) {
    STATE SYNC (AUTHORITATIVE)
 ===================================================== */
 
-async function syncContentStatusWithJobs(db, job, platformStatus, errorType = null, externalId = null) {
+async function syncContentStatusWithJobs(db, job, platformStatus, errorType = null, externalId = null, externalErrorMessage = null) {
   const contentTable = job.content_type === 'blog' ? 'blog_posts' : 'social_assets';
   
   // 1. Update this specific job — COALESCE preserves external_post_id if already set (prevents retry wipe)
@@ -180,6 +200,7 @@ async function syncContentStatusWithJobs(db, job, platformStatus, errorType = nu
     UPDATE delivery_jobs
     SET status = ?,
         last_error = ?,
+        external_error_message = ?,
         external_post_id = COALESCE(?, external_post_id),
         published_at = COALESCE(?, published_at),
         updated_at = CURRENT_TIMESTAMP
@@ -187,6 +208,7 @@ async function syncContentStatusWithJobs(db, job, platformStatus, errorType = nu
   `).bind(
     platformStatus === 'success' ? 'published' : 'failed',
     errorType,
+    externalErrorMessage,
     externalId || null,
     platformStatus === 'success' ? new Date().toISOString() : null,
     job.id

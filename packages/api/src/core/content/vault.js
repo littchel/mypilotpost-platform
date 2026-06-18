@@ -606,6 +606,18 @@ export async function vaultSchedule(request, env, auth) {
     const conflict = await hasConflict(db, brand_id, platform, scheduled_at);
     if (conflict) continue;
 
+    // Run Pre-flight validations before scheduling
+    if (platform === 'instagram') {
+      try {
+        const { resolveDeliveryData } = await import("../delivery/resolver.js");
+        const { preflightInstagramPublish } = await import("../delivery/validation.js");
+        const resolved = await resolveDeliveryData(env, { brand_id, platform, content_id: id, content_type: item.content_type });
+        await preflightInstagramPublish({ connection: resolved.connection, content: resolved.content, env });
+      } catch (err) {
+        return error(err.message, "PREFLIGHT_FAILED", null, 400);
+      }
+    }
+
     batch.push(db.prepare(`
       INSERT INTO delivery_jobs (id, brand_id, user_id, content_type, content_id, platform, scheduled_at, status, campaign_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, 'scheduled', ?)
@@ -692,6 +704,18 @@ export async function vaultPublishNow(request, env, auth) {
       `SELECT id FROM delivery_jobs WHERE content_id = ? AND platform = ? AND status IN ('scheduled','processing')`
     ).bind(id, platform).first();
     if (existing) continue;
+
+    // Run Pre-flight validations before publishing
+    if (platform === 'instagram') {
+      try {
+        const { resolveDeliveryData } = await import("../delivery/resolver.js");
+        const { preflightInstagramPublish } = await import("../delivery/validation.js");
+        const resolved = await resolveDeliveryData(env, { brand_id, platform, content_id: id, content_type: item.content_type });
+        await preflightInstagramPublish({ connection: resolved.connection, content: resolved.content, env });
+      } catch (err) {
+        return error(err.message, "PREFLIGHT_FAILED", null, 400);
+      }
+    }
 
     batch.push(db.prepare(`
       INSERT INTO delivery_jobs (id, brand_id, user_id, content_type, content_id, platform, scheduled_at, status, campaign_id)

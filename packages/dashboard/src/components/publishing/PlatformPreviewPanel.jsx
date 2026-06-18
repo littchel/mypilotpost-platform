@@ -61,18 +61,60 @@ function BrandAvatar({ brandName, size = 32, radius = "50%" }) {
 }
 
 function MediaArea({ media, platform, height = 240 }) {
-  if (media?.image) {
+  const isVideo = media?.type === "video" || media?.mime_type?.startsWith("video/") || (media?.url && (media.url.endsWith(".mp4") || media.url.endsWith(".mov") || media.url.includes("video"))) || (media?.image && (media.image.endsWith(".mp4") || media.image.endsWith(".mov") || media.image.includes("video")));
+  const mediaUrl = media?.url || media?.image;
+
+  if (mediaUrl) {
+    if (isVideo) {
+      const isVerticalPlatform = platform === "instagram_story" || platform === "shorts" || platform === "tiktok";
+      return (
+        <div style={{ ...S.mediaBox(height), position: "relative", background: "#000" }}>
+          <video
+            src={mediaUrl}
+            autoPlay
+            muted
+            loop
+            playsInline
+            controls
+            style={{ width: "100%", height: "100%", objectFit: isVerticalPlatform ? "contain" : "cover", background: "#000" }}
+          />
+          {/* Duration Badge */}
+          {media.duration && (
+            <div style={{ position: "absolute", top: 8, right: 8, background: "rgba(0,0,0,0.6)", color: "#fff", padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 10 }}>
+              {Math.round(media.duration)}s
+            </div>
+          )}
+          {/* Safe zone overlay for vertical platforms */}
+          {isVerticalPlatform && (
+            <div style={{ position: "absolute", inset: 0, pointerEvents: "none", border: "2px dashed rgba(239, 68, 68, 0.4)", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 12, zIndex: 5 }}>
+              <div style={{ fontSize: 9, color: "#ef4444", fontWeight: 700, textShadow: "0 1px 2px rgba(0,0,0,0.8)" }}>SAFE ZONE (Header area)</div>
+              <div style={{ display: "flex", justifyContent: "flex-end", flex: 1, alignItems: "center" }}>
+                {/* Simulated vertical buttons */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 14, color: "#fff", fontSize: 16, textShadow: "0 1px 3px rgba(0,0,0,0.6)", paddingRight: 6 }}>
+                  <i className="fas fa-heart"></i>
+                  <i className="fas fa-comment"></i>
+                  <i className="fas fa-share"></i>
+                </div>
+              </div>
+              <div style={{ fontSize: 9, color: "#ef4444", fontWeight: 700, textShadow: "0 1px 2px rgba(0,0,0,0.8)", textAlign: "center" }}>SAFE ZONE (Caption area)</div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
     return (
       <div style={S.mediaBox(height)}>
-        <img src={media.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        <img src={mediaUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
       </div>
     );
   }
+
   return (
     <div style={S.mediaBox(height)}>
       <div style={S.emptyMedia}>
-        <i className="fas fa-image" style={{ fontSize: 28 }}></i>
-        <span style={{ fontSize: 11 }}>No media</span>
+        <i className="fas fa-photo-video" style={{ fontSize: 28 }}></i>
+        <span style={{ fontSize: 11 }}>No media attached</span>
       </div>
     </div>
   );
@@ -205,13 +247,7 @@ const XRenderer = ({ content, media, brandName }) => (
 const TikTokRenderer = ({ content, media }) => (
   <div style={S.mobileCard}>
     <div style={{ position: "absolute", inset: 0, background: "#111", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      {media?.image
-        ? <img src={media.image} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        : <div style={{ color: "#333", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-            <i className="fab fa-tiktok" style={{ fontSize: 40 }}></i>
-            <span style={{ fontSize: 11, color: "#555" }}>Video Media</span>
-          </div>
-      }
+      <MediaArea media={media} platform="tiktok" height={498} />
     </div>
     {/* Safe zone overlays */}
     <div style={{ position: "absolute", top: 0, inset: "0 0 auto", height: "14%", background: "rgba(239,68,68,0.15)", borderBottom: "1px dashed #ef4444", zIndex: 5 }}>
@@ -361,7 +397,9 @@ export default function PlatformPreviewPanel({ platforms = [], content = "", ove
   const safeTab = platforms.includes(activeTab) ? activeTab : (platforms[0] || "facebook");
 
   const currentContent = overrides[safeTab] || content;
-  const validation = validateContent(safeTab, currentContent, media ? "image" : null, null);
+  const mediaType = media?.type || (media?.mime_type?.startsWith("video/") ? "video" : (media?.url || media?.image ? "image" : null));
+  const mediaMeta = media ? { ratio: media.width && media.height ? `${media.width}:${media.height}` : (media.ratio || null), duration: media.duration } : null;
+  const validation = validateContent(safeTab, currentContent, mediaType, mediaMeta);
   const Renderer = RENDERERS[safeTab] || FacebookRenderer;
 
   return (

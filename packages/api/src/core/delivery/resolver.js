@@ -12,11 +12,42 @@ import { getDB } from "../../lib/db.js";
 import { decrypt } from "../../lib/crypto.js";
 import { ensureValidConnection } from "../../integrations/refresh_manager.js";
 
-async function validateAndLogMedia(db, brand_id, mediaItems) {
+async function validateAndLogMedia(db, brand_id, mediaItems, env) {
   if (!mediaItems || mediaItems.length === 0) return mediaItems;
 
   return Promise.all(mediaItems.map(async (item) => {
     if (!item.preview_url) return item;
+
+    // Direct R2 bucket bypass validation to avoid Cloudflare HTTP loopback 522 timeouts
+    if (item.provider === 'direct' && env?.MEDIA_BUCKET) {
+      const r2Key = item.r2_key || item.external_id;
+      try {
+        const obj = await env.MEDIA_BUCKET.head(r2Key);
+        if (obj) {
+          const contentType = obj.httpMetadata?.contentType || 'image/jpeg';
+          const contentLength = obj.size || 0;
+          db.prepare(`
+            INSERT INTO media_validations (media_id, brand_id, url, status_code, content_type, content_length, is_public, validated_at)
+            VALUES (?, ?, ?, 200, ?, ?, 1, CURRENT_TIMESTAMP)
+          `).bind(item.id || null, brand_id, item.preview_url, contentType, contentLength).run().catch(() => {});
+          return { ...item, validation_status: 'valid' };
+        } else {
+          db.prepare(`
+            INSERT INTO media_validations (media_id, brand_id, url, status_code, content_type, content_length, is_public, validated_at, error)
+            VALUES (?, ?, ?, 404, null, null, 0, CURRENT_TIMESTAMP, 'R2_OBJECT_NOT_FOUND')
+          `).bind(item.id || null, brand_id, item.preview_url).run().catch(() => {});
+          throw new Error(`MEDIA_URL_INACCESSIBLE: ${item.preview_url} (R2 key not found)`);
+        }
+      } catch (err) {
+        if (err.message.startsWith('MEDIA_URL_INACCESSIBLE')) throw err;
+        db.prepare(`
+          INSERT INTO media_validations (media_id, brand_id, url, status_code, content_type, content_length, is_public, validated_at, error)
+          VALUES (?, ?, ?, 500, null, null, 0, CURRENT_TIMESTAMP, ?)
+        `).bind(item.id || null, brand_id, item.preview_url, err.message).run().catch(() => {});
+        return { ...item, validation_status: 'validation_failed' };
+      }
+    }
+
     try {
       const res = await fetch(item.preview_url, {
         method: 'HEAD',
@@ -132,7 +163,7 @@ export async function resolveDeliveryData(env, job) {
   }));
 
   // Validate media URLs are publicly accessible before handing to adapters
-  const validatedMedia = await validateAndLogMedia(db, job.brand_id, resolvedMedia);
+  const validatedMedia = await validateAndLogMedia(db, job.brand_id, resolvedMedia, env);
 
   return {
     content: {

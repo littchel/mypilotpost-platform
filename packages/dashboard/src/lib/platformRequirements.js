@@ -98,17 +98,63 @@ export const validateContent = (platform, content, mediaType, mediaMeta) => {
     results.messages.push(`High hashtag count (${hashtags.length}). Recommended: max ${limits.maxHashtags}.`);
   }
 
-  // 3. Media Validation (Mocked)
+  // 3. Media Requirement Check
+  if ((platform === "instagram" || platform === "instagram_story") && !mediaType) {
+    results.state = "BLOCKED";
+    results.messages.push(`Instagram requires at least one image or video.`);
+  }
+
+  if (platform === "shorts" && mediaType !== "video") {
+    results.state = "BLOCKED";
+    results.messages.push(`YouTube Shorts requires a video.`);
+  }
+
+  if (platform === "pinterest" && !mediaType) {
+    results.state = "BLOCKED";
+    results.messages.push(`Pinterest Pins require an image or video.`);
+  }
+
+  // 4. Media Metadata check (Aspect ratio, Duration, Size)
   if (mediaType && mediaMeta) {
-    if (mediaMeta.ratio && !limits.mediaRatios.includes(mediaMeta.ratio)) {
-      if (results.state === "SAFE") results.state = "WARNING";
-      results.messages.push(`Aspect ratio ${mediaMeta.ratio} is not ideal. Best: ${limits.mediaRatios.join(', ')}.`);
+    // Video duration checks
+    if (mediaType === "video" && mediaMeta.duration && limits.videoMaxDurationSeconds) {
+      if (mediaMeta.duration > limits.videoMaxDurationSeconds) {
+        results.state = "BLOCKED";
+        results.messages.push(`Video exceeds duration limit (${Math.round(mediaMeta.duration)}s / ${limits.videoMaxDurationSeconds}s).`);
+      }
+    }
+
+    // Aspect ratio validations
+    if (mediaMeta.ratio) {
+      let ratioVal = null;
+      if (typeof mediaMeta.ratio === "number") {
+        ratioVal = mediaMeta.ratio;
+      } else if (typeof mediaMeta.ratio === "string" && mediaMeta.ratio.includes(":")) {
+        const [w, h] = mediaMeta.ratio.split(":").map(Number);
+        if (w && h) ratioVal = w / h;
+      }
+
+      if (ratioVal) {
+        if (platform === "instagram") {
+          // Instagram feed supports 1.91:1 (1.91) down to 4:5 (0.8). Outside this is invalid/blocked.
+          if (ratioVal < 0.79 || ratioVal > 1.92) {
+            results.state = "BLOCKED";
+            results.messages.push(`Instagram aspect ratio is invalid (${mediaMeta.ratio}). Supported: 4:5 to 1.91:1.`);
+          }
+        } else if (platform === "instagram_story" || platform === "shorts" || platform === "tiktok") {
+          // Requires 9:16 vertical (0.56)
+          if (ratioVal > 0.65) {
+            if (results.state === "SAFE") results.state = "WARNING";
+            results.messages.push(`Landscape or square media will crop or scale on vertical platforms.`);
+          }
+        }
+      }
     }
   }
 
-  // 4. Safe Zones
+  // 5. Safe Zones
   if (limits.hasSafeZones) {
-    results.messages.push(`Safe zone overlaps are active. Ensure critical UI doesn't obscure text.`);
+    results.messages.push(`Preview safe zones active. Ensure text is not obscured by platform UI overlays.`);
   }
 
   return results;

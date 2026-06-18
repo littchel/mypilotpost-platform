@@ -1113,7 +1113,19 @@ export default function CreatePost({
   })();
   const previewContent  = selectedVaultItem ? (selectedVaultItem.body || "") : content;
   const previewOverrides = selectedVaultItem ? {} : overrides;
-  const previewMedia    = selectedVaultItem ? null : (mediaItems.length > 0 ? { image: mediaItems[0]?.url } : null);
+  const previewMedia    = selectedVaultItem
+    ? null
+    : (mediaItems.length > 0
+        ? {
+            image: mediaItems[0]?.url,
+            url: mediaItems[0]?.url,
+            type: mediaItems[0]?.type || (mediaItems[0]?.mime_type?.startsWith("video/") ? "video" : "image"),
+            mime_type: mediaItems[0]?.mime_type,
+            width: mediaItems[0]?.width || null,
+            height: mediaItems[0]?.height || null,
+            duration: mediaItems[0]?.duration || null,
+          }
+        : null);
   const vaultStatusMeta = selectedVaultItem
     ? (VAULT_STATUS_META[selectedVaultItem.lifecycle_status] || { label: selectedVaultItem.lifecycle_status, color: "#64748b", bg: "#f1f5f9" })
     : null;
