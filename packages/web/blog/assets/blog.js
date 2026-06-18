@@ -170,10 +170,14 @@
     const readingTimeEl = document.getElementById("reading-time");
     const contentEl = document.getElementById("content");
 
+    const contentRaw = post.content_html || "";
+    const contentHtml = window.marked && window.marked.parse ? window.marked.parse(contentRaw) : contentRaw;
+    const resolvedContentHtml = resolveRelativeContentImages(contentHtml, window.MPP_CONFIG.API_URL);
+
     if (titleEl) titleEl.textContent = post.title;
     if (dateEl) dateEl.textContent = formatDate(post.published_at);
-    if (readingTimeEl) readingTimeEl.textContent = calculateReadingTime(post.content_html) + " min read";
-    if (contentEl) contentEl.innerHTML = post.content_html;
+    if (readingTimeEl) readingTimeEl.textContent = calculateReadingTime(resolvedContentHtml) + " min read";
+    if (contentEl) contentEl.innerHTML = resolvedContentHtml;
 
     injectSEO(post);
     injectJSONLD(post);
@@ -224,6 +228,21 @@
     const text = html.replace(/<[^>]*>?/gm, "");
     const words = text.split(/\s+/).length;
     return Math.ceil(words / 200);
+  }
+
+  function resolveRelativeContentImages(html, apiUrl) {
+    if (!html) return html;
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = html;
+    const imgs = tempDiv.querySelectorAll("img");
+    imgs.forEach(img => {
+      const src = img.getAttribute("src");
+      if (src && !src.startsWith("http://") && !src.startsWith("https://") && !src.startsWith("data:")) {
+        const cleanSrc = src.startsWith("/") ? src : "/" + src;
+        img.setAttribute("src", apiUrl + cleanSrc);
+      }
+    });
+    return tempDiv.innerHTML;
   }
 
   function formatDate(date) {

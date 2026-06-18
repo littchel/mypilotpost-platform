@@ -67,9 +67,9 @@ export async function scheduleContent(request, env, auth) {
 
      const jobId = crypto.randomUUID();
      batch.push(db.prepare(`
-       INSERT INTO delivery_jobs (id, brand_id, content_type, content_id, platform, scheduled_at, status, campaign_id)
-       VALUES (?, ?, ?, ?, ?, ?, 'scheduled', ?)
-     `).bind(jobId, brand_id, content_type, content_id, platform, normalized, campaignId));
+       INSERT INTO delivery_jobs (id, brand_id, user_id, content_type, content_id, platform, scheduled_at, status, campaign_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'scheduled', ?)
+     `).bind(jobId, brand_id, auth.user_id, content_type, content_id, platform, normalized, campaignId));
   }
 
   if (batch.length === 0) return error("All platform slots are conflicted or already scheduled.", "CONFLICT", null, 409);
@@ -154,9 +154,9 @@ export async function postNow(request, env, auth) {
 
     const jobId = crypto.randomUUID();
     batch.push(db.prepare(`
-      INSERT INTO delivery_jobs (id, brand_id, content_type, content_id, platform, scheduled_at, status)
-      VALUES (?, ?, ?, ?, ?, ?, 'scheduled')
-    `).bind(jobId, brand_id, content_type, content_id, platform, normalizedNow));
+      INSERT INTO delivery_jobs (id, brand_id, user_id, content_type, content_id, platform, scheduled_at, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'scheduled')
+    `).bind(jobId, brand_id, auth.user_id, content_type, content_id, platform, normalizedNow));
     createdCount++;
   }
 

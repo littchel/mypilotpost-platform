@@ -10,6 +10,7 @@
 
 import { getDB } from "../../lib/db.js";
 import { decrypt } from "../../lib/crypto.js";
+import { ensureValidConnection } from "../../integrations/refresh_manager.js";
 
 async function validateAndLogMedia(db, brand_id, mediaItems) {
   if (!mediaItems || mediaItems.length === 0) return mediaItems;
@@ -87,6 +88,8 @@ export async function resolveDeliveryData(env, job) {
       platform_username,
       access_token,
       refresh_token,
+      expires_at,
+      status,
       meta
     FROM social_connections
     WHERE brand_id = ? AND platform = ? AND status = 'active'
@@ -96,10 +99,16 @@ export async function resolveDeliveryData(env, job) {
 
   if (!connection) throw new Error(`CONNECTION_NOT_FOUND: ${job.platform}`);
 
+  // Preemptively refresh connection if it's expiring soon
+  const validConnection = await ensureValidConnection(db, connection, env);
+  if (validConnection.status !== 'active') {
+    throw new Error(`CONNECTION_REFRESH_FAILED: Connection status is '${validConnection.status}'`);
+  }
+
   // 4. Decrypt Token
   let access_token = null;
   try {
-    access_token = await decrypt(connection.access_token, secret);
+    access_token = await decrypt(validConnection.access_token, secret);
   } catch (err) {
     throw new Error(`TOKEN_DECRYPTION_FAILED: ${err.message}`);
   }

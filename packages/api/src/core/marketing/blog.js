@@ -41,8 +41,8 @@ export async function createMarketingPost(request, env, auth) {
     } = body;
 
     const finalContent = content_html || content || "";
-    const finalFeaturedImage = featured_image || cover_image || null;
-    const finalCoverImage = cover_image || featured_image || null;
+    const finalFeaturedImage = featured_image || null;
+    const finalCoverImage = cover_image || null;
     const finalCategoryId = category_id || category || null;
 
     if (!slug || !title || !finalContent) {
@@ -125,12 +125,13 @@ export async function listMarketingPosts(request, env, auth) {
     : await env.mypilotpost.prepare(query).all();
 
   const posts = (results || []).map(post => {
-    const img = resolveImageUrl(post.cover_image || post.featured_image || null, env);
+    const coverImg = resolveImageUrl(post.cover_image || post.featured_image || null, env);
+    const featuredImg = resolveImageUrl(post.featured_image || post.cover_image || null, env);
     return {
       ...post,
       content: post.content_html,
-      cover_image: img,
-      featured_image: img
+      cover_image: coverImg,
+      featured_image: featuredImg
     };
   });
 
@@ -154,12 +155,13 @@ export async function getMarketingPost(request, env, auth, id) {
     return json({ error: "Post not found" }, 404);
   }
 
-  const img = resolveImageUrl(post.cover_image || post.featured_image || null, env);
+  const coverImg = resolveImageUrl(post.cover_image || post.featured_image || null, env);
+  const featuredImg = resolveImageUrl(post.featured_image || post.cover_image || null, env);
   const decorated = {
     ...post,
     content: post.content_html,
-    cover_image: img,
-    featured_image: img
+    cover_image: coverImg,
+    featured_image: featuredImg
   };
 
   return json(decorated);
@@ -206,15 +208,12 @@ export async function updateMarketingPost(request, env, auth, id) {
       binds.push(body.content);
     }
 
-    // Handle cover image & featured image updates
+    // Handle cover image & featured image updates independently
     if (body.cover_image !== undefined) {
       updates.push("cover_image = ?");
       binds.push(body.cover_image);
-      updates.push("featured_image = ?");
-      binds.push(body.cover_image);
-    } else if (body.featured_image !== undefined) {
-      updates.push("cover_image = ?");
-      binds.push(body.featured_image);
+    }
+    if (body.featured_image !== undefined) {
       updates.push("featured_image = ?");
       binds.push(body.featured_image);
     }
@@ -399,13 +398,14 @@ export async function publicListMarketingPosts(request, env) {
     : await env.mypilotpost.prepare(query).all();
 
   const posts = (results || []).map(post => {
-    const img = resolveImageUrl(post.cover_image || post.featured_image || null, env);
+    const coverImg = resolveImageUrl(post.cover_image || post.featured_image || null, env);
+    const featuredImg = resolveImageUrl(post.featured_image || post.cover_image || null, env);
     return {
       ...post,
       category: post.category_name || post.category_id || null, // fallback
       content: post.content_html,
-      cover_image: img,
-      featured_image: img
+      cover_image: coverImg,
+      featured_image: featuredImg
     };
   });
 
@@ -425,13 +425,14 @@ export async function publicGetMarketingPost(request, env, slug) {
     return json({ error: "Not found" }, 404);
   }
 
-  const img = resolveImageUrl(post.cover_image || post.featured_image || null, env);
+  const coverImg = resolveImageUrl(post.cover_image || post.featured_image || null, env);
+  const featuredImg = resolveImageUrl(post.featured_image || post.cover_image || null, env);
   const decorated = {
     ...post,
     category: post.category_name || post.category_id || null, // fallback
     content: post.content_html,
-    cover_image: img,
-    featured_image: img
+    cover_image: coverImg,
+    featured_image: featuredImg
   };
 
   return json({ post: decorated });

@@ -10,7 +10,7 @@ const MPP_CONFIG = {
     
     // Determine API URL (if needed by static pages)
     API_URL: (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-        ? 'http://localhost:8788'
+        ? 'http://localhost:8787'
         : 'https://api.mypilotpost.com'
 };
 

@@ -10,20 +10,34 @@ export async function publish({ content, connection, env }) {
   const { access_token } = connection;
 
   // 1. Get Author URN
-  const profileRes = await fetch("https://api.linkedin.com/v2/me", {
-    headers: {
-      Authorization: `Bearer ${access_token}`,
-      "LinkedIn-Version": "202306",
-      "X-Restli-Protocol-Version": "2.0.0"
+  let authorUrn = null;
+  if (connection.account_id) {
+    authorUrn = `urn:li:person:${connection.account_id}`;
+  } else {
+    let profileId = null;
+    const userinfoRes = await fetch("https://api.linkedin.com/v2/userinfo", {
+      headers: { Authorization: `Bearer ${access_token}` }
+    });
+    if (userinfoRes.ok) {
+      const uinfo = await userinfoRes.json();
+      profileId = uinfo.sub;
+    } else {
+      const profileRes = await fetch("https://api.linkedin.com/v2/me", {
+        headers: {
+          Authorization: `Bearer ${access_token}`,
+          "LinkedIn-Version": "202306",
+          "X-Restli-Protocol-Version": "2.0.0"
+        }
+      });
+      if (profileRes.ok) {
+        const profile = await profileRes.json();
+        profileId = profile.id;
+      } else {
+        throw new Error(`LINKEDIN_PROFILE_FAILED: Unable to resolve profile via /v2/userinfo or /v2/me`);
+      }
     }
-  });
-
-  if (!profileRes.ok) {
-    throw new Error(`LINKEDIN_PROFILE_FAILED: ${await profileRes.text()}`);
+    authorUrn = `urn:li:person:${profileId}`;
   }
-
-  const profile = await profileRes.json();
-  const authorUrn = `urn:li:person:${profile.id}`;
 
   // 2. Media Upload
   let mediaUrn = null;

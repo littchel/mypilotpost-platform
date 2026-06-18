@@ -65,6 +65,7 @@
 
   <!-- Config (provides MPP_CONFIG.API_URL) -->
   <script src="/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -986,10 +987,32 @@
       return minutes + " min read";
     }
 
-    // Helper: extract first image from content_html if featured_image missing
-    function extractFirstImage(html) {
-      const match = html.match(/<img[^>]+src="([^">]+)"/);
-      return match ? match[1] : null;
+    // Helper: extract first image from content_html/markdown if featured_image missing
+    function extractFirstImage(htmlOrMarkdown) {
+      if (!htmlOrMarkdown) return null;
+      // 1. Try HTML img tags
+      const htmlMatch = htmlOrMarkdown.match(/<img[^>]+src="([^">]+)"/);
+      if (htmlMatch) return htmlMatch[1];
+      // 2. Try Markdown image syntax: ![alt](url)
+      const mdMatch = htmlOrMarkdown.match(/!\[[^\]]*\]\(([^)]+)\)/);
+      if (mdMatch) return mdMatch[1];
+      return null;
+    }
+
+    // Helper: resolve relative image URLs to point absolutely to the API URL
+    function resolveRelativeContentImages(html, apiUrl) {
+      if (!html) return html;
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = html;
+      const imgs = tempDiv.querySelectorAll('img');
+      imgs.forEach(img => {
+        const src = img.getAttribute('src');
+        if (src && !src.startsWith('http://') && !src.startsWith('https://') && !src.startsWith('data:')) {
+          const cleanSrc = src.startsWith('/') ? src : '/' + src;
+          img.setAttribute('src', apiUrl + cleanSrc);
+        }
+      });
+      return tempDiv.innerHTML;
     }
 
     // Helper: build a simple TOC from h2 headings (if any)
@@ -1041,11 +1064,20 @@
         const publishedStr = published.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
         const publishedIso = post.published_at || published.toISOString().split('T')[0];
         const author = post.author || "myPilotPost Team";
-        const readingTime = calculateReadingTime(contentRaw);
-        const featuredImage = post.featured_image || extractFirstImage(contentRaw) || "/images/default-blog-image.jpg";
+
+        // Parse Markdown to HTML if required, and resolve relative image paths
+        const contentHtml = window.marked && window.marked.parse ? window.marked.parse(contentRaw) : contentRaw;
+        const resolvedContentHtml = resolveRelativeContentImages(contentHtml, window.MPP_CONFIG.API_URL);
+
+        const readingTime = calculateReadingTime(resolvedContentHtml);
+        
+        let featuredImage = post.featured_image || extractFirstImage(contentRaw) || "/images/default-blog-image.jpg";
+        if (featuredImage && !featuredImage.startsWith('http://') && !featuredImage.startsWith('https://') && !featuredImage.startsWith('/') && !featuredImage.startsWith('data:')) {
+          featuredImage = window.MPP_CONFIG.API_URL + '/' + featuredImage;
+        }
 
         // Process content for TOC
-        const { tocHtml, modifiedHtml } = generateTableOfContents(contentRaw);
+        const { tocHtml, modifiedHtml } = generateTableOfContents(resolvedContentHtml);
         const finalContentHtml = modifiedHtml;
 
         // Build the full article HTML
