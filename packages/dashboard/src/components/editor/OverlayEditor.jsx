@@ -1,5 +1,5 @@
 // packages/dashboard/src/components/editor/OverlayEditor.jsx
-// Upgraded Overlay Studio Workspace Engine.
+// Upgraded Brand Overlay Workspace Engine.
 // Supports: Video backgrounds, shapes, logo layers, CTA buttons, template library, safe-zones, precise X/Y sliders, and canvas export.
 
 import React, { useRef, useState, useEffect, useCallback } from "react";

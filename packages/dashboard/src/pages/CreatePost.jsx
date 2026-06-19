@@ -562,7 +562,7 @@ export default function CreatePost({
   const [overrides, setOverrides]           = useState({});
   const [selectedPlatforms, setSelectedPlatforms] = useState([]);
   const [mediaItems, setMediaItems]         = useState([]);
-  const [showSuggested, setShowSuggested]   = useState(false);
+  const [showSuggested, setShowSuggested]   = useState(true); // Default to true for the suggested images grid
   const [mediaTab, setMediaTab]             = useState("agencyPicks");
   const [mediaBuckets, setMediaBuckets]     = useState(null); // { agencyPicks, trending, humanStories, professional, minimal }
   const [mediaLoading, setMediaLoading]     = useState(false);
@@ -573,6 +573,8 @@ export default function CreatePost({
   const [libraryOpen, setLibraryOpen]       = useState(false);
   const [campaignId, setCampaignId]         = useState(propCampaignId || "");
   const [scheduledTime, setScheduledTime]   = useState("");
+  const [scheduledDate, setScheduledDate]   = useState("");
+  const [scheduledTimeOnly, setScheduledTimeOnly] = useState("");
   const [timezone, setTimezone]             = useState(brandTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
   const [activeTopTab, setActiveTopTab]     = useState("editor");
   const [vaultItems, setVaultItems]         = useState([]);
@@ -587,8 +589,45 @@ export default function CreatePost({
   const [canvaBanner, setCanvaBanner]       = useState(false);
   const [toast, setToast]                   = useState(null);
   const [overlays, setOverlays]             = useState(null);
-  const [overlayStudioOpen, setOverlayStudioOpen] = useState(false);
+  const [brandOverlayOpen, setBrandOverlayOpen] = useState(false);
+  const [applyOverlay, setApplyOverlay]     = useState(true);
   const [saveState, setSaveState]           = useState("idle");
+
+  // Sync scheduledTime -> Date/Time inputs
+  useEffect(() => {
+    if (scheduledTime) {
+      const parts = scheduledTime.split("T");
+      if (parts[0]) setScheduledDate(parts[0]);
+      if (parts[1]) setScheduledTimeOnly(parts[1].slice(0, 5));
+    } else {
+      setScheduledDate("");
+      setScheduledTimeOnly("");
+    }
+  }, [scheduledTime]);
+
+  const handleDateChange = (dateVal) => {
+    setScheduledDate(dateVal);
+    if (dateVal && scheduledTimeOnly) {
+      setScheduledTime(`${dateVal}T${scheduledTimeOnly}`);
+    } else {
+      setScheduledTime("");
+    }
+  };
+
+  const handleTimeChange = (timeVal) => {
+    setScheduledTimeOnly(timeVal);
+    if (scheduledDate && timeVal) {
+      setScheduledTime(`${scheduledDate}T${timeVal}`);
+    } else {
+      setScheduledTime("");
+    }
+  };
+
+  const handleDiscard = () => {
+    if (window.confirm("Are you sure you want to discard this post? All unsaved content will be lost.")) {
+      resetAfterPublish();
+    }
+  };
 
   const handleApplyOverlays = (nextOverlays, newMedia = null) => {
     setOverlays(nextOverlays);
@@ -815,6 +854,10 @@ export default function CreatePost({
       setMediaLoading(false);
     }
   }, [mediaBuckets, selectedPlatforms, content, brandName, brandIndustry]);
+
+  useEffect(() => {
+    loadMediaSuggestions();
+  }, [loadMediaSuggestions]);
 
   const handleSuggestedToggle = () => {
     const next = !showSuggested;
@@ -1046,7 +1089,7 @@ export default function CreatePost({
       campaign_id: campaignId || null,
       lifecycle_status: "draft",
       content_type: "social",
-      overlays: overlays || undefined,
+      overlays: (applyOverlay ? overlays : null) || undefined,
     });
     if (data?.content_id) await linkMedia(data.content_id);
     return data?.content_id;
@@ -1096,7 +1139,7 @@ export default function CreatePost({
         campaign_id: campaignId || null,
         lifecycle_status: "draft",
         content_type: "social",
-        overlays: overlays || undefined,
+        overlays: (applyOverlay ? overlays : null) || undefined,
       });
 
       // Step 2: link media
@@ -1197,7 +1240,6 @@ export default function CreatePost({
       <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple style={{ display: "none" }} onChange={handleFileSelect} />
       <input ref={canvaFileRef} type="file" accept="image/*,video/*" style={{ display: "none" }} onChange={handleCanvaFileSelect} />
 
-      {/* ── TOP BAR: Workspace tabs + Assistant ─────────────────────────── */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexShrink: 0, gap: 12 }}>
         <div style={{ display: "flex", gap: 5 }}>
           {WORKSPACE_TABS.map(tab => {
@@ -1221,228 +1263,251 @@ export default function CreatePost({
                 {tab.label}
                 {count > 0 && (
                   <span style={{
-                    fontSize: 10, fontWeight: 700,
-                    background: active ? "#2563eb" : "#e2e8f0",
-                    color: active ? "#fff" : "#64748b",
-                    borderRadius: 99, padding: "1px 6px", minWidth: 18, textAlign: "center",
-                  }}>{count}</span>
+                    background: active ? "#2563eb" : "#cbd5e1",
+                    color: "#fff",
+                    padding: "1px 5px",
+                    borderRadius: 10,
+                    fontSize: 10,
+                    fontWeight: 700
+                  }}>
+                    {count}
+                  </span>
                 )}
               </button>
             );
           })}
         </div>
         <button
-          className="btn-pilot"
           onClick={() => setAssistantOpen(true)}
-          style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700 }}
+          style={{
+            background: "#fff", border: "1px solid #cbd5e1", borderRadius: 8,
+            color: "#1e293b", fontSize: 12, fontWeight: 700, padding: "7px 14px",
+            cursor: "pointer", display: "flex", alignItems: "center", gap: 6
+          }}
         >
-          <i className="fas fa-robot"></i> myPilotPost Assistant
+          <i className="fas fa-magic" style={{ color: "#7c3aed" }}></i> Social Assistant
         </button>
       </div>
 
-      {/* ── WORKSPACE: Editor tab ↔ Vault tabs ───────────────────────────── */}
       {activeTopTab === "editor" ? (
         <>
+          {/* ── MAIN TWO-COLUMN ─────────────────────────────────────────────── */}
+          <div style={{ display: "flex", gap: 14, flex: 1, minHeight: 0 }}>
 
-          {/* ── CANVA BANNER ────────────────────────────────────────────────── */}
-          {canvaBanner && (
-        <div style={{
-          background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: 8,
-          padding: "10px 14px", marginBottom: 10, flexShrink: 0,
-          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <i className="fas fa-pen-fancy" style={{ color: "#7c3aed", fontSize: 14 }}></i>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "#4c1d95" }}>
-              Finished designing in Canva? Export as PNG, JPG, or MP4 and upload it here.
-            </span>
-          </div>
-          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-            <button
-              onClick={() => canvaFileRef.current?.click()}
-              style={{ background: "#7c3aed", border: "none", borderRadius: 6, color: "#fff", fontSize: 11, fontWeight: 700, padding: "6px 12px", cursor: "pointer" }}
-            >
-              <i className="fas fa-upload me-1"></i> Upload Design
-            </button>
-            <button onClick={() => setCanvaBanner(false)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 16, cursor: "pointer" }}>×</button>
-          </div>
-        </div>
-      )}
+            {/* LEFT COLUMN (Composer) — ~60% width */}
+        <div style={{ width: "60%", display: "flex", flexDirection: "column", minHeight: 0, gap: 12 }}>
+          <div className="card-workspace" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden", padding: 14, gap: 12 }}>
+            
+            {/* Title (Mockup layout header) */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f1f5f9", paddingBottom: 8 }}>
+              <h2 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: "#0f172a" }}>
+                Lines of Proposal <span style={{ color: "#64748b", fontWeight: 500, fontSize: 11 }}>(Version 3.1 - Updated Layout)</span>
+              </h2>
+            </div>
 
-      {/* ── MAIN TWO-COLUMN ─────────────────────────────────────────────── */}
-      <div style={{ display: "flex", gap: 14, flex: 1, minHeight: 0 }}>
-
-        {/* LEFT 45% */}
-        <div style={{ width: "45%", display: "flex", flexDirection: "column", minHeight: 0 }}>
-          <div className="card-workspace" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden", padding: 0 }}>
-
-            {/* ── Campaign Selector ── */}
-            <div style={{ padding: "12px 14px 0", flexShrink: 0, display: "flex", gap: 10, alignItems: "center" }}>
+            {/* Campaign Selector + Edit Brand Overlay row */}
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
               <div style={{ flex: 1 }}>
-                <label className="extra-small fw-bold text-muted text-uppercase mb-1">Campaign</label>
+                <label className="extra-small fw-bold text-muted text-uppercase mb-1" style={{ display: "block" }}>Campaign</label>
                 <select className="form-select form-select-sm border-subtle" value={campaignId} onChange={e => setCampaignId(e.target.value)}>
                   <option value="">No Campaign</option>
                   {campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
+              <button
+                type="button"
+                onClick={() => setBrandOverlayOpen(true)}
+                style={{
+                  background: "#fff", border: "1px solid #cbd5e1", borderRadius: 8,
+                  color: "#1e293b", fontSize: 12, fontWeight: 600, padding: "8px 14px",
+                  cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+                  height: 31
+                }}
+              >
+                <i className="fas fa-palette" style={{ color: "#475569" }}></i> Edit Brand Overlay
+              </button>
             </div>
 
-            {/* ── OVERLAY STUDIO CARD ── */}
-            <div style={{ padding: "12px 14px 0", flexShrink: 0 }}>
-              <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, background: "#f8fafc", padding: 14, marginBottom: 10, color: "#1e293b" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <i className="fas fa-magic" style={{ color: "#2563eb", fontSize: 14 }}></i>
-                    <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: 0.5, color: "#0f172a" }}>Overlay Studio</span>
-                  </div>
-                  {overlays && (
-                    <span style={{ fontSize: 9, fontWeight: 700, background: "#dbeafe", color: "#1e40af", padding: "2px 8px", borderRadius: 20 }}>
-                      Active Overlays
-                    </span>
-                  )}
-                </div>
-
-                <div style={{ display: "flex", gap: 12, alignItems: "center", background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: 10 }}>
-                  {/* Thumbnail */}
-                  <div style={{ width: 60, height: 60, borderRadius: 6, overflow: "hidden", background: "#f1f5f9", border: "1px solid #cbd5e1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    {overlays?.background?.url || mediaItems[0]?.url ? (
-                      <img src={overlays?.background?.url || mediaItems[0]?.url} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    ) : (
-                      <i className="fas fa-image" style={{ color: "#cbd5e1", fontSize: 20 }}></i>
-                    )}
-                  </div>
-                  
-                  {/* Info status */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "#334155" }}>
-                      {overlays ? "Custom layers configured" : "No active overlays"}
-                    </div>
-                    <div style={{ fontSize: 10, color: "#64748b", marginTop: 4, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                      <span><i className="fas fa-font me-1"></i>{(overlays?.overlay_text || []).length} text</span>
-                      <span><i className="fas fa-shapes me-1"></i>{(overlays?.overlay_image || []).filter(o => o.isShape).length} shapes</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                  <button
-                    onClick={() => setOverlayStudioOpen(true)}
-                    style={{ flex: 1, background: "#2563eb", border: "none", borderRadius: 6, color: "#fff", fontSize: 11, fontWeight: 700, padding: "8px 12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-                  >
-                    <i className="fas fa-edit"></i> Launch Overlay Studio
-                  </button>
-                  {overlays && (
-                    <button
-                      onClick={() => {
-                        if (confirm("Reset all overlays to empty?")) {
-                          setOverlays(null);
-                        }
-                      }}
-                      style={{ background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: 6, color: "#ef4444", fontSize: 11, fontWeight: 700, padding: "8px 12px", cursor: "pointer" }}
-                    >
-                      Reset
-                    </button>
-                  )}
-                </div>
+            {/* Post Text label + Apply Brand Overlay switch row */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <label className="extra-small fw-bold text-muted text-uppercase mb-0">Post Text:</label>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }}>Apply Brand Overlay</span>
+                <label className="switch" style={{ position: "relative", display: "inline-block", width: 34, height: 20 }}>
+                  <input
+                    type="checkbox"
+                    checked={applyOverlay}
+                    onChange={e => setApplyOverlay(e.target.checked)}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span style={{
+                    position: "absolute", cursor: "pointer", inset: 0,
+                    backgroundColor: applyOverlay ? "#2563eb" : "#cbd5e1",
+                    transition: "background-color 0.2s", borderRadius: 20
+                  }}>
+                    <span style={{
+                      position: "absolute", height: 14, width: 14, left: applyOverlay ? 17 : 3, bottom: 3,
+                      backgroundColor: "white", transition: "left 0.2s", borderRadius: "50%"
+                    }} />
+                  </span>
+                </label>
               </div>
             </div>
 
-            {/* ── CONTENT EDITOR ─────────────────────────────────────── */}
-            <div style={{ padding: "0 14px", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, flexShrink: 0 }}>
-                <label className="extra-small fw-bold text-muted text-uppercase mb-0">Post</label>
-                <span style={{ fontSize: 10, color: content.length > 2200 ? "#ef4444" : "#94a3b8" }}>{content.length} chars</span>
-              </div>
-
+            {/* Clean editor text-area */}
+            <div style={{
+              flex: 1, border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden",
+              background: "#fff", display: "flex", flexDirection: "column", minHeight: 120,
+              position: "relative"
+            }}>
+              <WatermarkEditor value={content} onChange={setContent} />
               <div style={{
-                flex: 1, border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden",
-                background: "#fff", display: "flex", flexDirection: "column", minHeight: 140,
+                position: "absolute", bottom: 6, right: 10,
+                fontSize: 10, color: content.length > 2200 ? "#ef4444" : "#94a3b8",
+                fontWeight: 600, background: "rgba(255, 255, 255, 0.9)", padding: "2px 4px", borderRadius: 4
               }}>
-                <WatermarkEditor value={content} onChange={setContent} />
+                {content.length}/280
               </div>
             </div>
 
-            {/* ── MEDIA STRIP ─────────────────────────────────────────── */}
-            <div style={{ padding: "10px 14px 14px", flexShrink: 0, borderTop: "1px solid #f1f5f9", marginTop: 10 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                <label className="extra-small fw-bold text-muted text-uppercase mb-0">Media</label>
+            {/* Media Row */}
+            <div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                <label className="extra-small fw-bold text-muted text-uppercase mb-0">Media:</label>
                 <div style={{ display: "flex", gap: 5 }}>
                   <button
-                    onClick={handleCanvaImport}
-                    style={{ border: "1px solid #7c3aed", background: "#fff", color: "#7c3aed", borderRadius: 6, padding: "4px 10px", fontSize: 10, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}
+                    onClick={() => { replaceIndexRef.current = null; fileInputRef.current?.click(); }}
+                    style={{ ...mediaBtn, padding: "4px 10px" }}
                   >
-                    <i className="fas fa-pen-fancy"></i> Canva
-                  </button>
-                  <button onClick={() => { replaceIndexRef.current = null; fileInputRef.current?.click(); }} style={mediaBtn}>
-                    <i className="fas fa-upload"></i> Upload
+                    <i className="fas fa-image"></i> Upload
                   </button>
                   <button onClick={() => setLibraryOpen(true)} style={mediaBtn}>
-                    <i className="fas fa-photo-video"></i> Library
+                    <i className="fas fa-images"></i> Library
+                  </button>
+                  <button onClick={handleCanvaImport} style={mediaBtn}>
+                    <i className="fas fa-palette"></i> Canva
+                  </button>
+                  <button onClick={() => showToast("Adobe Express integration loading...", "info")} style={mediaBtn}>
+                    <i className="fas fa-edit"></i> Adobe Express
                   </button>
                   <button
                     onClick={handleSuggestedToggle}
-                    style={{ ...mediaBtn, border: showSuggested ? "1px solid #0ea5e9" : "1px solid #e2e8f0", color: showSuggested ? "#0ea5e9" : "#475569", background: showSuggested ? "#f0f9ff" : "#fff" }}
+                    style={{
+                      ...mediaBtn,
+                      border: showSuggested ? "1px solid #0ea5e9" : "1px solid #e2e8f0",
+                      color: showSuggested ? "#0ea5e9" : "#475569",
+                      background: showSuggested ? "#f0f9ff" : "#fff"
+                    }}
                   >
-                    ✨ Agency Picks
+                    <i className="fas fa-star"></i> Suggested
                   </button>
                 </div>
               </div>
 
-              {/* Attached media */}
-              <div style={{
-                display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4,
-                minHeight: mediaItems.length === 0 && !showSuggested ? 80 : "auto",
-                alignItems: mediaItems.length === 0 && !showSuggested ? "center" : "flex-start",
-                justifyContent: mediaItems.length === 0 && !showSuggested ? "center" : "flex-start",
-                border: mediaItems.length === 0 && !showSuggested ? "1px dashed #e2e8f0" : "none",
-                borderRadius: 8, background: mediaItems.length === 0 && !showSuggested ? "#f8fafc" : "transparent",
-              }}>
-                {mediaItems.length === 0 && !showSuggested ? (
-                  <div style={{ textAlign: "center", color: "#cbd5e1" }}>
-                    <i className="fas fa-photo-video" style={{ fontSize: 20, marginBottom: 4 }}></i>
-                    <div style={{ fontSize: 10 }}>Upload, Library, Canva, or Suggested</div>
-                  </div>
-                ) : (
-                  mediaItems.map((item, i) => (
-                    <MediaCard
-                      key={item.id || i}
-                      item={item} index={i}
-                      onReplace={replaceMedia} onRemove={removeMedia}
-                      onMoveLeft={idx => moveMedia(idx, -1)} onMoveRight={idx => moveMedia(idx, 1)}
-                      isFirst={i === 0} isLast={i === mediaItems.length - 1}
-                    />
-                  ))
-                )}
-              </div>
+              {/* Media Split Grid */}
+              <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+                {/* Left Side: Primary attached media */}
+                <div style={{
+                  width: 160, height: 160, borderRadius: 10,
+                  border: mediaItems[0] ? "1px solid #cbd5e1" : "1px dashed #cbd5e1",
+                  background: "#f8fafc", position: "relative", overflow: "hidden",
+                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0
+                }}>
+                  {mediaItems[0] ? (
+                    <>
+                      {mediaItems[0].type === "video" ? (
+                        <video src={mediaItems[0].url} style={{ width: "100%", height: "100%", objectFit: "cover" }} controls />
+                      ) : (
+                        <img src={mediaItems[0].url} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      )}
+                      
+                      {/* Overlay applied on top of primary preview */}
+                      {applyOverlay && overlays && (
+                        <PreviewOverlays overlays={overlays} height={160} />
+                      )}
 
-              {/* Agency media picker */}
-              {showSuggested && (
-                <MediaPickerPanel
-                  loading={mediaLoading}
-                  error={mediaError}
-                  buckets={mediaBuckets}
-                  activeTab={mediaTab}
-                  onTabChange={setMediaTab}
-                  onUse={handlePexelsUse}
-                  using={pexelsUsing}
-                  onRetry={() => { setMediaBuckets(null); loadMediaSuggestions(); }}
-                />
-              )}
+                      {/* Remove button */}
+                      <button
+                        onClick={() => removeMedia(0)}
+                        style={{
+                          position: "absolute", top: 6, right: 6,
+                          width: 20, height: 20, borderRadius: "50%",
+                          background: "rgba(15, 23, 42, 0.75)", color: "#fff",
+                          border: "none", cursor: "pointer", fontSize: 10,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          zIndex: 10
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </>
+                  ) : (
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      style={{ textAlign: "center", color: "#94a3b8", cursor: "pointer", padding: 10 }}
+                    >
+                      <i className="fas fa-camera" style={{ fontSize: 24, marginBottom: 6 }}></i>
+                      <div style={{ fontSize: 10, fontWeight: 700 }}>Primary Media</div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Side: 2x4 suggested media slots */}
+                <div style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, height: 160 }}>
+                  {Array.from({ length: 8 }).map((_, idx) => {
+                    const sugg = suggestionItems[idx];
+                    return (
+                      <div
+                        key={idx}
+                        style={{
+                          borderRadius: 8, border: sugg ? "1px solid #cbd5e1" : "1px dashed #cbd5e1",
+                          background: "#fff", position: "relative", overflow: "hidden",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          cursor: sugg ? "pointer" : "default"
+                        }}
+                        onClick={() => {
+                          if (sugg) handlePexelsUse(sugg);
+                        }}
+                      >
+                        {sugg ? (
+                          <>
+                            <img src={sugg.preview_url || sugg.url} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            {pexelsUsing === (sugg.external_id || sugg.id) && (
+                              <div style={{
+                                position: "absolute", inset: 0, background: "rgba(255,255,255,0.7)",
+                                display: "flex", alignItems: "center", justifyContent: "center"
+                              }}>
+                                <span className="spinner-border spinner-border-sm" style={{ width: 14, height: 14, color: "#2563eb" }}></span>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div style={{ color: "#e2e8f0" }}>
+                            <i className="fas fa-image" style={{ fontSize: 14 }}></i>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
+
           </div>
         </div>
 
-        {/* RIGHT 55% — Platform Rendering */}
-        <div style={{ width: "55%", display: "flex", flexDirection: "column", minHeight: 0, gap: 8 }}>
-
-          {/* Live Platform Rendering Engine & Selectors Card */}
+        {/* RIGHT COLUMN (Preview & Platforms) — ~40% width */}
+        <div style={{ width: "40%", display: "flex", flexDirection: "column", minHeight: 0, gap: 12 }}>
+          
+          {/* Target platform selector card */}
           <div className="card-workspace" style={{ padding: 14, flexShrink: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+            
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span className="extra-small fw-bold text-muted text-uppercase" style={{ letterSpacing: 0.8 }}>Target Platforms & Format Settings</span>
               <span className="extra-small text-muted">{selectedPlatforms.length} selected</span>
             </div>
 
-            {/* Platforms selector */}
+            {/* Platforms selector buttons */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
               {allKnownPlatforms.map(conn => {
                 const m = PLATFORM_META[conn.platform];
@@ -1482,12 +1547,9 @@ export default function CreatePost({
                   </button>
                 );
               })}
-              {allKnownPlatforms.length === 0 && (
-                <span style={{ fontSize: 12, color: "#94a3b8" }}>No platforms connected — go to Integrations</span>
-              )}
             </div>
 
-            {/* Instagram Format Selector */}
+            {/* Instagram format selector details */}
             {selectedPlatforms.some(p => p.startsWith("instagram")) && (
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4, padding: "8px 12px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }}>Instagram Format:</span>
@@ -1522,10 +1584,10 @@ export default function CreatePost({
               </div>
             )}
 
-            {/* Per-platform variants overrides */}
+            {/* Platform caption overrides */}
             {selectedPlatforms.length > 1 && (
               <div style={{ marginTop: 4 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Platform Variants (Caption Overrides)</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Platform Caption Overrides</div>
                 <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
                   {selectedPlatforms.map(p => {
                     const m = PLATFORM_META[p];
@@ -1539,57 +1601,22 @@ export default function CreatePost({
                         style={{
                           border: `1px solid ${overrides[p] ? "#10b981" : "#e2e8f0"}`,
                           background: overrides[p] ? "#f0fdf4" : "#f8fafc",
-                          borderRadius: 20, padding: "3px 10px", fontSize: 10, fontWeight: 600,
-                          cursor: "pointer", color: overrides[p] ? "#065f46" : "#64748b",
-                          display: "flex", alignItems: "center", gap: 4,
+                          color: overrides[p] ? "#10b981" : "#64748b",
+                          borderRadius: 8, padding: "3px 8px",
+                          fontSize: 10, fontWeight: 600, cursor: "pointer"
                         }}
                       >
-                        {m && <PlatformIcon platform={p} size={11} />}
-                        {m?.label || p} {overrides[p] ? "✓" : ""}
+                        {m?.label || p} {overrides[p] ? "✓" : "+"}
                       </button>
                     );
                   })}
                 </div>
               </div>
             )}
+
           </div>
 
-          {/* Lifecycle status banner — appears when a vault item is selected */}
-          {selectedVaultItem && vaultStatusMeta && (
-            <div style={{
-              background: vaultStatusMeta.bg,
-              border: `1px solid ${vaultStatusMeta.color}44`,
-              borderRadius: 8, padding: "8px 14px", flexShrink: 0,
-              display: "flex", alignItems: "center", gap: 10,
-            }}>
-              <span style={{
-                fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em",
-                color: vaultStatusMeta.color, background: "#fff",
-                border: `1px solid ${vaultStatusMeta.color}55`,
-                padding: "2px 8px", borderRadius: 20,
-              }}>
-                {vaultStatusMeta.label}
-              </span>
-              {selectedVaultItem.scheduled_at && (
-                <span style={{ fontSize: 11, color: "#64748b", display: "flex", alignItems: "center", gap: 5 }}>
-                  <i className="fas fa-clock" style={{ fontSize: 10 }}></i>
-                  {new Date(selectedVaultItem.scheduled_at).toLocaleString("en-GB", {
-                    weekday: "short", day: "numeric", month: "short",
-                    hour: "2-digit", minute: "2-digit",
-                  })}
-                </span>
-              )}
-              <span style={{ flex: 1, fontSize: 11, color: "#94a3b8", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {(selectedVaultItem.title || selectedVaultItem.body || "").slice(0, 60)}
-              </span>
-              <button
-                onClick={() => setSelectedVaultItem(null)}
-                title="Back to live editor"
-                style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "0 2px" }}
-              >×</button>
-            </div>
-          )}
-
+          {/* Rendering Mockup Card */}
           <PlatformPreviewPanel
             platforms={previewPlatforms.length ? previewPlatforms : (selectedPlatforms.length ? selectedPlatforms : [])}
             content={previewContent}
@@ -1597,79 +1624,151 @@ export default function CreatePost({
             media={previewMedia}
             brandName={brandName}
             isLiveEditor={!selectedVaultItem}
-            overlays={overlays}
+            overlays={applyOverlay ? overlays : null}
           />
         </div>
+
       </div>
 
       {/* ── BOTTOM ACTION BAR ─────────────────────────────────────────────── */}
-      <div style={{ marginTop: 10, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-
-        <button
-          onClick={handleDraft}
-          disabled={isPublishing}
-          style={{ border: "1px solid #e2e8f0", background: "#fff", color: "#475569", borderRadius: 8, padding: "8px 16px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
-        >
-          <i className="fas fa-save me-1"></i> Save Draft
-        </button>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ textAlign: "right" }}>
-            {scheduleLabel && (
-              <div style={{ fontSize: 10, color: "#64748b", marginBottom: 3, fontWeight: 600 }}>
-                <i className="fas fa-clock me-1"></i>{scheduleLabel}
-              </div>
-            )}
-            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              <input
-                type="datetime-local"
-                className="form-control form-control-sm border-subtle"
-                style={{ fontSize: 11, width: 175 }}
-                value={scheduledTime}
-                onChange={e => setScheduledTime(e.target.value)}
-              />
-              <select
-                value={timezone}
-                onChange={e => setTimezone(e.target.value)}
-                className="form-select form-select-sm border-subtle"
-                style={{ fontSize: 10, width: 130 }}
-              >
-                {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz}</option>)}
-              </select>
-            </div>
+      <div className="card-workspace" style={{
+        marginTop: 14,
+        padding: "12px 16px",
+        background: "#f8fafc",
+        border: "1px solid #e2e8f0",
+        borderRadius: 12,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+        flexShrink: 0
+      }}>
+        {/* Left Side: Scheduling and Discard */}
+        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Date:</span>
+            <input
+              type="date"
+              className="form-control form-control-sm border-subtle"
+              style={{ fontSize: 12, padding: "4px 8px", borderRadius: 6, width: 130 }}
+              value={scheduledDate}
+              onChange={e => handleDateChange(e.target.value)}
+            />
           </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Time:</span>
+            <input
+              type="time"
+              className="form-control form-control-sm border-subtle"
+              style={{ fontSize: 12, padding: "4px 8px", borderRadius: 6, width: 100 }}
+              value={scheduledTimeOnly}
+              onChange={e => handleTimeChange(e.target.value)}
+            />
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Timezone:</span>
+            <select
+              value={timezone}
+              onChange={e => setTimezone(e.target.value)}
+              className="form-select form-select-sm border-subtle"
+              style={{ fontSize: 11, padding: "4px 8px", borderRadius: 6, width: 130, background: "#fff" }}
+            >
+              {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz}</option>)}
+            </select>
+          </div>
+
+          <button
+            onClick={handleDiscard}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#ef4444",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "6px 10px",
+              borderRadius: 6,
+              transition: "background 0.15s"
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = "#fee2e2"}
+            onMouseLeave={e => e.currentTarget.style.background = "none"}
+          >
+            <i className="fas fa-trash-alt"></i> Discard
+          </button>
+        </div>
+
+        {/* Right Side: Actions */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button
+            onClick={handleDraft}
+            disabled={saveState === "saving" || !canPublish}
+            style={{
+              border: "1px solid #cbd5e1",
+              background: "#fff",
+              color: canPublish ? "#334155" : "#94a3b8",
+              borderRadius: 8,
+              padding: "8px 16px",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: canPublish ? "pointer" : "not-allowed",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              transition: "all 0.15s"
+            }}
+          >
+            <i className="fas fa-save"></i> Save Draft
+          </button>
 
           <button
             onClick={handleApproval}
             disabled={isPublishing || !canPublish}
             style={{
-              border: "1px solid #e2e8f0", background: "#fff", color: canPublish ? "#475569" : "#cbd5e1",
-              borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 600,
-              cursor: canPublish ? "pointer" : "not-allowed", whiteSpace: "nowrap",
+              border: "1px solid #cbd5e1",
+              background: "#fff",
+              color: canPublish ? "#334155" : "#94a3b8",
+              borderRadius: 8,
+              padding: "8px 16px",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: canPublish ? "pointer" : "not-allowed",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              transition: "all 0.15s"
             }}
           >
-            <i className="fas fa-user-check me-1"></i> Send For Approval
+            <i className="fas fa-upload"></i> Send for Approval
+          </button>
+
+          <button
+            onClick={() => setVerificationOpen(true)}
+            disabled={!canPublish}
+            style={{
+              border: "none",
+              background: canPublish ? "#0f172a" : "#cbd5e1",
+              color: canPublish ? "#fff" : "#64748b",
+              borderRadius: 8,
+              padding: "8px 20px",
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: canPublish ? "pointer" : "not-allowed",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              transition: "all 0.15s"
+            }}
+          >
+            <i className="fas fa-rocket"></i> {scheduledTime ? "Schedule Post" : "Publish Post"}
           </button>
         </div>
-
-        <button
-          onClick={() => setVerificationOpen(true)}
-          disabled={!canPublish}
-          style={{
-            border: "none",
-            background: canPublish ? "#0f172a" : "#e2e8f0",
-            color: canPublish ? "#fff" : "#94a3b8",
-            borderRadius: 8, padding: "10px 22px",
-            fontSize: 13, fontWeight: 700,
-            cursor: canPublish ? "pointer" : "not-allowed",
-            display: "flex", alignItems: "center", gap: 8,
-          }}
-        >
-          <i className="fas fa-rocket"></i> {scheduledTime ? "Schedule" : "Publish"}
-        </button>
       </div>
-
-        </>
+    </>
       ) : (
 
         /* ── VAULT WORKSPACE ─────────────────────────────────────────────── */
@@ -1781,10 +1880,10 @@ export default function CreatePost({
         onReset={resetAfterPublish}
       />
 
-      {overlayStudioOpen && (
-        <OverlayStudioModal
-          open={overlayStudioOpen}
-          onClose={() => setOverlayStudioOpen(false)}
+      {brandOverlayOpen && (
+        <BrandOverlayModal
+          open={brandOverlayOpen}
+          onClose={() => setBrandOverlayOpen(false)}
           overlays={overlays}
           onSave={handleApplyOverlays}
           mediaItems={mediaItems}
@@ -1796,8 +1895,8 @@ export default function CreatePost({
   );
 }
 
-// ── Overlay Studio Modal Component ────────────────────────────────────────────────
-function OverlayStudioModal({ open, onClose, overlays, onSave, mediaItems }) {
+// ── Brand Overlay Modal Component ────────────────────────────────────────────────
+function BrandOverlayModal({ open, onClose, overlays, onSave, mediaItems }) {
   const [localOverlays, setLocalOverlays] = useState(overlays || null);
   const [saving, setSaving] = useState(false);
 
@@ -1883,7 +1982,7 @@ function OverlayStudioModal({ open, onClose, overlays, onSave, mediaItems }) {
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#2563eb", boxShadow: "0 0 10px #2563eb" }} />
             <span style={{ fontWeight: 800, fontSize: 13, color: "#fff", letterSpacing: 0.5 }}>
-              OVERLAY STUDIO
+              BRAND OVERLAY
             </span>
             <span style={{ fontSize: 10, background: "#1e293b", color: "#94a3b8", padding: "2px 8px", borderRadius: 12 }}>Visual Asset Workspace</span>
           </div>
