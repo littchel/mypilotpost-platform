@@ -168,7 +168,7 @@ export const PROVIDERS = {
     type: "publishing",
     capabilities: ["publish_social"],
     auth: "oauth2",
-    scopes: "boards:read,pins:read,pins:write,user_accounts:read",
+    scopes: "boards:read,boards:write,pins:read,pins:write,user_accounts:read",
     endpoints: {
       auth: "https://www.pinterest.com/oauth/",
       token: "https://api.pinterest.com/v5/oauth/token"

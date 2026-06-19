@@ -649,6 +649,20 @@ export default function CreatePost({
     }
   }, [connections]);
 
+  useEffect(() => {
+    const hasVideo = mediaItems.some(item => item.type === "video");
+    if (!hasVideo && selectedPlatforms.includes("youtube")) {
+      setSelectedPlatforms(prev => {
+        const next = prev.filter(p => p !== "youtube");
+        if (next.length === 0 && connections.length > 0) {
+          const active = connections.filter(c => c.status === "active" && c.platform !== "youtube").map(c => c.platform);
+          if (active.length > 0) return [active[0]];
+        }
+        return next;
+      });
+    }
+  }, [mediaItems, selectedPlatforms, connections]);
+
   const showToast = useCallback((msg, type = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 4000);
@@ -660,6 +674,13 @@ export default function CreatePost({
 
   const togglePlatform = (key, isExpired) => {
     if (isExpired) return;
+    if (key === "youtube") {
+      const hasVideo = mediaItems.some(item => item.type === "video");
+      if (!hasVideo) {
+        showToast("YouTube requires a video file.", "error");
+        return;
+      }
+    }
     const isInstagram = key === "instagram";
     setSelectedPlatforms(prev => {
       const hasPlatform = isInstagram 
@@ -1430,18 +1451,28 @@ export default function CreatePost({
                 const isSelected = conn.platform === "instagram" 
                   ? selectedPlatforms.some(p => p.startsWith("instagram"))
                   : selectedPlatforms.includes(conn.platform);
+                const hasVideo = mediaItems.some(item => item.type === "video");
+                const isYouTube = conn.platform === "youtube";
+                const isYouTubeDisabled = isYouTube && !hasVideo;
+                const isDisabled = isExpired || isYouTubeDisabled;
                 return (
                   <button
                     key={conn.platform}
-                    onClick={() => togglePlatform(conn.platform, isExpired)}
-                    title={isExpired ? "Reconnect required" : conn.platform_username ? `@${conn.platform_username}` : m.label}
+                    onClick={() => {
+                      if (isYouTubeDisabled) {
+                        showToast("YouTube requires a video file.", "error");
+                      } else {
+                        togglePlatform(conn.platform, isExpired);
+                      }
+                    }}
+                    title={isExpired ? "Reconnect required" : isYouTubeDisabled ? "YouTube requires a video file" : conn.platform_username ? `@${conn.platform_username}` : m.label}
                     style={{
-                      border: `1px solid ${isExpired ? "#fecaca" : isSelected ? m.color : "#e2e8f0"}`,
-                      background: isExpired ? "#fef2f2" : isSelected ? m.color + "15" : "#fff",
-                      color: isExpired ? "#dc2626" : isSelected ? m.color : "#64748b",
+                      border: `1px solid ${isExpired ? "#fecaca" : isYouTubeDisabled ? "#cbd5e1" : isSelected ? m.color : "#e2e8f0"}`,
+                      background: isExpired ? "#fef2f2" : isYouTubeDisabled ? "#f1f5f9" : isSelected ? m.color + "15" : "#fff",
+                      color: isExpired ? "#dc2626" : isYouTubeDisabled ? "#94a3b8" : isSelected ? m.color : "#64748b",
                       borderRadius: 20, padding: "4px 11px",
-                      fontSize: 11, fontWeight: 600, cursor: isExpired ? "not-allowed" : "pointer",
-                      display: "flex", alignItems: "center", gap: 5, opacity: isExpired ? 0.7 : 1,
+                      fontSize: 11, fontWeight: 600, cursor: isDisabled ? "not-allowed" : "pointer",
+                      display: "flex", alignItems: "center", gap: 5, opacity: isDisabled ? 0.5 : 1,
                     }}
                   >
                     <PlatformIcon platform={conn.platform} size={12} />
