@@ -571,7 +571,15 @@ async function withCors(request, responsePromise) {
     }
 
     const contentType = response.headers.get("Content-Type") || "";
-    if (contentType.includes("text/event-stream")) {
+    const isBinary = contentType.startsWith("image/") || 
+                     contentType.startsWith("video/") || 
+                     contentType.startsWith("audio/") || 
+                     contentType.startsWith("font/") ||
+                     contentType === "application/octet-stream" || 
+                     contentType === "application/pdf" ||
+                     contentType === "application/zip";
+
+    if (contentType.includes("text/event-stream") || isBinary) {
       return new Response(response.body, {
         status: response.status,
         headers: {
