@@ -7,6 +7,7 @@ import { getDB } from "../lib/db.js";
 import { encrypt } from "../lib/crypto.js";
 import { getProvider } from "./registry.js";
 import { getAdapter } from "./providers/index.js";
+import { listPinterestBoards } from "./google-accounts.js";
 
 /**
  * Generate PKCE Code Verifier and Challenge (SHA-256)
@@ -300,6 +301,58 @@ export async function handleUnifiedCallback(request, env) {
     // linkedin_personal publishes as the authenticated member — no picker needed.
     // linkedin_pages selects a company page once the Community Management API is approved.
     // UPSERT conflict path keeps the original row id — query by unique key to get it.
+    if (platform === "pinterest") {
+      const actual = await db.prepare(
+        `SELECT id, selected_resource_id FROM social_connections
+         WHERE brand_id = ? AND platform = ? AND account_id = ?`
+      ).bind(brand_id, platform, normalized.account_id).first();
+      const target_id = actual?.id || connection_id;
+
+      if (actual?.selected_resource_id) {
+        // Already selected previously, keep active
+        await db.prepare(
+          `UPDATE social_connections SET status = 'active' WHERE id = ?`
+        ).bind(target_id).run();
+        return Response.redirect(`${env.FRONTEND_URL}?oauth_success=${platform}`, 302);
+      }
+
+      try {
+        const boards = await listPinterestBoards(tokenData.access_token);
+        if (boards.length === 1) {
+          const board = boards[0];
+          await db.prepare(`
+            UPDATE social_connections 
+            SET selected_resource_id = ?,
+                selected_resource_name = ?,
+                resource_type = 'board',
+                status = 'active',
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+          `).bind(board.id, board.name, target_id).run();
+          
+          return Response.redirect(`${env.FRONTEND_URL}?oauth_success=${platform}`, 302);
+        } else {
+          await db.prepare(
+            `UPDATE social_connections SET status = 'CONNECTED_NEEDS_RESOURCE' WHERE id = ?`
+          ).bind(target_id).run();
+          
+          return Response.redirect(
+            `${env.FRONTEND_URL}?oauth_success=${platform}&needs_selection=1&conn_id=${target_id}`,
+            302
+          );
+        }
+      } catch (err) {
+        console.error("[OAUTH_CALLBACK_PINTEREST_BOARD_FETCH_FAILED]", err);
+        await db.prepare(
+          `UPDATE social_connections SET status = 'CONNECTED_NEEDS_RESOURCE' WHERE id = ?`
+        ).bind(target_id).run();
+        return Response.redirect(
+          `${env.FRONTEND_URL}?oauth_success=${platform}&needs_selection=1&conn_id=${target_id}`,
+          302
+        );
+      }
+    }
+
     const NEEDS_SELECTION = ["google_analytics", "google_search_console", "google_business", "linkedin_pages"];
     if (NEEDS_SELECTION.includes(platform)) {
       const actual = await db.prepare(

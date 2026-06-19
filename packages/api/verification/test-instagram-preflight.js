@@ -159,6 +159,109 @@ async function runTests() {
     assert(err.message.includes("exceeds Instagram limit"), "Preflight should reject images larger than 8MB");
   }
 
+  // 2.5 WebP support
+  mockR2Bucket.head = async () => ({
+    size: 2 * 1024 * 1024,
+    httpMetadata: { contentType: "image/webp" }
+  });
+  try {
+    await preflightInstagramPublish({ connection: mockConnection, content: contentValidMedia, env: mockEnv });
+    assert(true, "Preflight should accept WebP images");
+  } catch (err) {
+    assert(false, `Preflight rejected WebP image: ${err.message}`);
+  }
+
+  // 2.6 Image Aspect Ratio
+  const contentBadAspectRatio = {
+    text: "Caption",
+    media: [{
+      ...validR2Media,
+      width: 100,
+      height: 400
+    }]
+  };
+  try {
+    await preflightInstagramPublish({ connection: mockConnection, content: contentBadAspectRatio, env: mockEnv });
+    assert(false, "Should have thrown aspect ratio error");
+  } catch (err) {
+    assert(err.message.includes("aspect ratio must be between"), "Preflight should validate and reject bad image aspect ratio");
+  }
+
+  // 2.7 Video Duration Check (too short)
+  const videoMediaShort = {
+    provider: "direct",
+    external_id: "test-video.mp4",
+    preview_url: "https://api.mypilotpost.com/test-video.mp4",
+    duration_seconds: 2,
+    width: 640,
+    height: 640
+  };
+  mockR2Bucket.head = async () => ({
+    size: 10 * 1024 * 1024,
+    httpMetadata: { contentType: "video/mp4" }
+  });
+  try {
+    await preflightInstagramPublish({
+      connection: mockConnection,
+      content: { text: "Caption", media: [videoMediaShort] },
+      env: mockEnv
+    });
+    assert(false, "Should have rejected too short video duration");
+  } catch (err) {
+    assert(err.message.includes("duration must be between"), "Preflight should reject videos shorter than 3s");
+  }
+
+  // 2.8 Video Duration Check (too long)
+  const videoMediaLong = {
+    ...videoMediaShort,
+    duration_seconds: 120
+  };
+  try {
+    await preflightInstagramPublish({
+      connection: mockConnection,
+      content: { text: "Caption", media: [videoMediaLong] },
+      env: mockEnv
+    });
+    assert(false, "Should have rejected too long video duration");
+  } catch (err) {
+    assert(err.message.includes("duration must be between"), "Preflight should reject videos longer than 90s");
+  }
+
+  // 2.9 Video Duration (valid) & Aspect Ratio
+  const videoMediaValid = {
+    ...videoMediaShort,
+    duration_seconds: 15
+  };
+  try {
+    await preflightInstagramPublish({
+      connection: mockConnection,
+      content: { text: "Caption", media: [videoMediaValid] },
+      env: mockEnv
+    });
+    assert(true, "Preflight should pass valid video with correct duration and aspect ratio");
+  } catch (err) {
+    assert(false, `Preflight failed on valid video: ${err.message}`);
+  }
+
+  // 2.10 Carousel Multi-Item Validation
+  const carouselContent = {
+    text: "Caption",
+    media: [
+      { ...validR2Media, width: 600, height: 600 },
+      { ...validR2Media, width: 100, height: 400 } // invalid aspect ratio
+    ]
+  };
+  mockR2Bucket.head = async () => ({
+    size: 2 * 1024 * 1024,
+    httpMetadata: { contentType: "image/jpeg" }
+  });
+  try {
+    await preflightInstagramPublish({ connection: mockConnection, content: carouselContent, env: mockEnv });
+    assert(false, "Should have failed carousel validation due to one invalid item");
+  } catch (err) {
+    assert(err.message.includes("aspect ratio must be between"), "Preflight should validate all items in a carousel");
+  }
+
   // Restore fetch
   globalThis.fetch = originalFetch;
 

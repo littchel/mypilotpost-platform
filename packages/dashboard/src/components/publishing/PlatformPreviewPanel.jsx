@@ -154,13 +154,27 @@ function PreviewOverlays({ overlays, height }) {
   );
 }
 
+function getMediaUrl(m) {
+  if (!m) return null;
+  return m.preview_url || m.url || m.image;
+}
+
+function isMediaVideo(m) {
+  if (!m) return false;
+  const mime = m.mime_type || "";
+  const url = getMediaUrl(m) || "";
+  return m.type === "video" || mime.startsWith("video/") || url.endsWith(".mp4") || url.endsWith(".mov") || url.includes("video");
+}
+
 function MediaArea({ media, platform, height = 240, overlays = null }) {
-  const isVideo = media?.type === "video" || media?.mime_type?.startsWith("video/") || (media?.url && (media.url.endsWith(".mp4") || media.url.endsWith(".mov") || media.url.includes("video"))) || (media?.image && (media.image.endsWith(".mp4") || media.image.endsWith(".mov") || media.image.includes("video")));
-  const mediaUrl = media?.url || media?.image;
+  const mediaItems = Array.isArray(media) ? media : (media ? [media] : []);
+  const mainMedia = mediaItems[0];
+  const isVideo = isMediaVideo(mainMedia);
+  const mediaUrl = getMediaUrl(mainMedia);
 
   if (mediaUrl) {
     if (isVideo) {
-      const isVerticalPlatform = platform === "instagram_story" || platform === "shorts" || platform === "tiktok";
+      const isVerticalPlatform = platform === "instagram_story" || platform === "instagram_reel" || platform === "shorts" || platform === "tiktok";
       return (
         <div style={{ ...S.mediaBox(height), position: "relative", background: "#000" }}>
           <video
@@ -173,9 +187,9 @@ function MediaArea({ media, platform, height = 240, overlays = null }) {
             style={{ width: "100%", height: "100%", objectFit: isVerticalPlatform ? "contain" : "cover", background: "#000" }}
           />
           {/* Duration Badge */}
-          {media.duration && (
+          {mainMedia?.duration && (
             <div style={{ position: "absolute", top: 8, right: 8, background: "rgba(0,0,0,0.6)", color: "#fff", padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 10 }}>
-              {Math.round(media.duration)}s
+              {Math.round(mainMedia.duration)}s
             </div>
           )}
           {/* Overlays preview layered over video */}
@@ -261,33 +275,357 @@ const FacebookRenderer = ({ content, media, brandName, overlays }) => (
   </div>
 );
 
-const InstagramRenderer = ({ content, media, brandName, overlays }) => {
+const InstagramFeedRenderer = ({ content, media, brandName, overlays }) => {
   const handle = brandName?.toLowerCase().replace(/\s+/g, "") || "yourbrand";
+  const mediaItems = Array.isArray(media) ? media : (media ? [media] : []);
+  const mainMedia = mediaItems[0];
   return (
-  <div style={S.feedCard}>
-    <div style={{ padding: "10px 12px", display: "flex", alignItems: "center", gap: 8, borderBottom: "1px solid #efefef" }}>
-      <div style={{ width: 30, height: 30, borderRadius: "50%", background: "linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-        <span style={{ fontSize: 11, fontWeight: 800, color: "#fff" }}>{handle[0]?.toUpperCase()}</span>
+    <div style={S.feedCard}>
+      <div style={{ padding: "10px 12px", display: "flex", alignItems: "center", gap: 8, borderBottom: "1px solid #efefef" }}>
+        <div style={{ width: 30, height: 30, borderRadius: "50%", background: "linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <span style={{ fontSize: 11, fontWeight: 800, color: "#fff" }}>{handle[0]?.toUpperCase()}</span>
+        </div>
+        <span style={{ fontSize: 13, fontWeight: 700 }}>{handle}</span>
+        <span style={{ marginLeft: "auto", fontSize: 18, color: "#262626" }}>···</span>
       </div>
-      <span style={{ fontSize: 13, fontWeight: 700 }}>{handle}</span>
-      <span style={{ marginLeft: "auto", fontSize: 18, color: "#262626" }}>···</span>
-    </div>
-    <MediaArea media={media} platform="instagram" height={300} overlays={overlays} />
-    <div style={{ padding: "10px 12px" }}>
-      <div style={S.actionRow}>
-        <i className="far fa-heart"></i>
-        <i className="far fa-comment"></i>
-        <i className="far fa-paper-plane"></i>
-        <i className="far fa-bookmark" style={{ marginLeft: "auto" }}></i>
-      </div>
-      <div style={{ padding: "0 2px" }}>
-        <div style={{ fontSize: 13, lineHeight: 1.4 }}>
-          <span style={{ fontWeight: 700, marginRight: 6 }}>{handle}</span>
-          <Caption text={content} limit={125} />
+      <MediaArea media={mainMedia} platform="instagram" height={300} overlays={overlays} />
+      <div style={{ padding: "10px 12px" }}>
+        <div style={S.actionRow}>
+          <i className="far fa-heart"></i>
+          <i className="far fa-comment"></i>
+          <i className="far fa-paper-plane"></i>
+          <i className="far fa-bookmark" style={{ marginLeft: "auto" }}></i>
+        </div>
+        <div style={{ padding: "0 2px" }}>
+          <div style={{ fontSize: 13, lineHeight: 1.4 }}>
+            <span style={{ fontWeight: 700, marginRight: 6 }}>{handle}</span>
+            <Caption text={content} limit={125} />
+          </div>
         </div>
       </div>
     </div>
-  </div>
+  );
+};
+
+const InstagramStoryRenderer = ({ content, media, brandName, overlays }) => {
+  const mediaItems = Array.isArray(media) ? media : (media ? [media] : []);
+  const mainMedia = mediaItems[0];
+  const mediaUrl = getMediaUrl(mainMedia);
+  const isVideo = isMediaVideo(mainMedia);
+  const handle = brandName?.toLowerCase().replace(/\s+/g, "") || "yourbrand";
+
+  return (
+    <div style={S.mobileCard}>
+      <div style={{ position: "absolute", inset: 0, background: "#1a1a1a" }}>
+        {mediaUrl ? (
+          isVideo ? (
+            <video
+              src={mediaUrl}
+              autoPlay
+              muted
+              loop
+              playsInline
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          ) : (
+            <img
+              src={mediaUrl}
+              alt=""
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          )
+        ) : (
+          <div style={{ ...S.mediaBox(498), background: "#262626" }}>
+            <div style={S.emptyMedia}>
+              <i className="fas fa-photo-video" style={{ fontSize: 32 }}></i>
+              <span style={{ fontSize: 12 }}>Story Preview</span>
+            </div>
+          </div>
+        )}
+        <PreviewOverlays overlays={overlays} height={498} />
+      </div>
+
+      {/* Story Progress Indicators */}
+      <div style={{ position: "absolute", top: 12, left: 8, right: 8, display: "flex", gap: 4, zIndex: 10 }}>
+        <div style={{ flex: 1, height: 2, background: "rgba(255,255,255,0.8)", borderRadius: 1 }}></div>
+        <div style={{ flex: 1, height: 2, background: "rgba(255,255,255,0.35)", borderRadius: 1 }}></div>
+        <div style={{ flex: 1, height: 2, background: "rgba(255,255,255,0.35)", borderRadius: 1 }}></div>
+      </div>
+
+      {/* Story Profile Header */}
+      <div style={{ position: "absolute", top: 22, left: 10, right: 10, display: "flex", alignItems: "center", gap: 8, zIndex: 10 }}>
+        <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)", display: "flex", alignItems: "center", justifyContent: "center", border: "1.5px solid #fff" }}>
+          <span style={{ fontSize: 10, fontWeight: 900, color: "#fff" }}>{handle[0]?.toUpperCase()}</span>
+        </div>
+        <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>{handle}</span>
+        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.8)", textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>1h</span>
+        <span style={{ marginLeft: "auto", color: "#fff", fontSize: 16, cursor: "pointer", textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>✕</span>
+      </div>
+
+      {/* Story overlay text caption */}
+      {content && (
+        <div style={{ position: "absolute", bottom: 20, left: 16, right: 16, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(10px)", borderRadius: 8, padding: "8px 12px", zIndex: 10, border: "1px solid rgba(255,255,255,0.15)" }}>
+          <p style={{ margin: 0, fontSize: 12, color: "#fff", lineHeight: 1.4, wordBreak: "break-word" }}>
+            {content.slice(0, 150)}{content.length > 150 ? "..." : ""}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const InstagramReelRenderer = ({ content, media, brandName, overlays }) => {
+  const mediaItems = Array.isArray(media) ? media : (media ? [media] : []);
+  const mainMedia = mediaItems[0];
+  const mediaUrl = getMediaUrl(mainMedia);
+  const handle = brandName?.toLowerCase().replace(/\s+/g, "") || "yourbrand";
+
+  return (
+    <div style={S.mobileCard}>
+      <div style={{ position: "absolute", inset: 0, background: "#000" }}>
+        {mediaUrl ? (
+          <video
+            src={mediaUrl}
+            autoPlay
+            muted
+            loop
+            playsInline
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        ) : (
+          <div style={{ ...S.mediaBox(498), background: "#1a1a1a" }}>
+            <div style={S.emptyMedia}>
+              <i className="fas fa-video" style={{ fontSize: 32 }}></i>
+              <span style={{ fontSize: 12 }}>Reel Preview</span>
+            </div>
+          </div>
+        )}
+        <PreviewOverlays overlays={overlays} height={498} />
+      </div>
+
+      {/* Reel Info Controls Overlay */}
+      <div style={{ position: "absolute", bottom: 16, left: 12, right: 48, zIndex: 10, color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.8)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ fontSize: 10, fontWeight: 900, color: "#000" }}>{handle[0]?.toUpperCase()}</span>
+          </div>
+          <span style={{ fontSize: 12, fontWeight: 700 }}>{handle}</span>
+          <button style={{ border: "1px solid #fff", background: "none", color: "#fff", borderRadius: 4, padding: "2px 8px", fontSize: 10, fontWeight: 700 }}>Follow</button>
+        </div>
+
+        <div style={{ fontSize: 11, lineHeight: 1.4, marginBottom: 8, maxHeight: 60, overflow: "hidden" }}>
+          {content ? (content.length > 90 ? content.slice(0, 90) + "..." : content) : <span style={{ color: "#bbb" }}>Reel caption...</span>}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: "#e2e8f0" }}>
+          <i className="fas fa-music"></i>
+          <span>Original Audio - {brandName}</span>
+        </div>
+      </div>
+
+      {/* Right side interaction buttons */}
+      <div style={{ position: "absolute", bottom: 20, right: 8, zIndex: 10, display: "flex", flexDirection: "column", gap: 16, alignItems: "center", color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.8)" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <i className="fas fa-heart" style={{ fontSize: 20 }}></i>
+          <span style={{ fontSize: 10, marginTop: 4 }}>Like</span>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <i className="fas fa-comment" style={{ fontSize: 20 }}></i>
+          <span style={{ fontSize: 10, marginTop: 4 }}>0</span>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <i className="fas fa-paper-plane" style={{ fontSize: 18 }}></i>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <i className="fas fa-ellipsis-h" style={{ fontSize: 16 }}></i>
+        </div>
+        <div style={{ width: 24, height: 24, borderRadius: 4, border: "2px solid #fff", background: "#333", display: "flex", alignItems: "center", justifyContent: "center", marginTop: 8 }}>
+          <i className="fas fa-music" style={{ fontSize: 9 }}></i>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const InstagramCarouselRenderer = ({ content, media, brandName, overlays }) => {
+  const mediaItems = Array.isArray(media) ? media : (media ? [media] : []);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const handle = brandName?.toLowerCase().replace(/\s+/g, "") || "yourbrand";
+
+  const nextSlide = (e) => {
+    e.stopPropagation();
+    if (mediaItems.length > 0) {
+      setActiveIndex((prev) => (prev + 1) % mediaItems.length);
+    }
+  };
+
+  const prevSlide = (e) => {
+    e.stopPropagation();
+    if (mediaItems.length > 0) {
+      setActiveIndex((prev) => (prev - 1 + mediaItems.length) % mediaItems.length);
+    }
+  };
+
+  const currentMedia = mediaItems[activeIndex];
+
+  return (
+    <div style={S.feedCard}>
+      <div style={{ padding: "10px 12px", display: "flex", alignItems: "center", gap: 8, borderBottom: "1px solid #efefef" }}>
+        <div style={{ width: 30, height: 30, borderRadius: "50%", background: "linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <span style={{ fontSize: 11, fontWeight: 800, color: "#fff" }}>{handle[0]?.toUpperCase()}</span>
+        </div>
+        <span style={{ fontSize: 13, fontWeight: 700 }}>{handle}</span>
+        <span style={{ marginLeft: "auto", fontSize: 18, color: "#262626" }}>···</span>
+      </div>
+
+      <div style={{ position: "relative", width: "100%", height: 300, background: "#f1f5f9" }}>
+        {currentMedia ? (
+          <MediaArea media={currentMedia} platform="instagram_carousel" height={300} overlays={overlays} />
+        ) : (
+          <div style={S.mediaBox(300)}>
+            <div style={S.emptyMedia}>
+              <i className="fas fa-photo-video" style={{ fontSize: 28 }}></i>
+              <span style={{ fontSize: 11 }}>No media attached</span>
+            </div>
+          </div>
+        )}
+
+        {mediaItems.length > 1 && (
+          <>
+            <button
+              onClick={prevSlide}
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: 10,
+                transform: "translateY(-50%)",
+                background: "rgba(255, 255, 255, 0.8)",
+                border: "none",
+                borderRadius: "50%",
+                width: 28,
+                height: 28,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+                zIndex: 10,
+              }}
+            >
+              <i className="fas fa-chevron-left" style={{ color: "#333", fontSize: 12 }}></i>
+            </button>
+            <button
+              onClick={nextSlide}
+              style={{
+                position: "absolute",
+                top: "50%",
+                right: 10,
+                transform: "translateY(-50%)",
+                background: "rgba(255, 255, 255, 0.8)",
+                border: "none",
+                borderRadius: "50%",
+                width: 28,
+                height: 28,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+                zIndex: 10,
+              }}
+            >
+              <i className="fas fa-chevron-right" style={{ color: "#333", fontSize: 12 }}></i>
+            </button>
+            
+            <div style={{ position: "absolute", bottom: 10, left: 0, right: 0, display: "flex", justifyContent: "center", gap: 5, zIndex: 10 }}>
+              {mediaItems.map((_, i) => (
+                <div
+                  key={i}
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    backgroundColor: i === activeIndex ? "#0095f6" : "rgba(255,255,255,0.6)",
+                    transition: "background-color 0.2s"
+                  }}
+                />
+              ))}
+            </div>
+
+            <div style={{ position: "absolute", top: 10, right: 10, background: "rgba(0,0,0,0.7)", color: "#fff", padding: "3px 8px", borderRadius: 12, fontSize: 10, fontWeight: 700, zIndex: 10 }}>
+              {activeIndex + 1}/{mediaItems.length}
+            </div>
+          </>
+        )}
+      </div>
+
+      <div style={{ padding: "10px 12px" }}>
+        <div style={S.actionRow}>
+          <i className="far fa-heart"></i>
+          <i className="far fa-comment"></i>
+          <i className="far fa-paper-plane"></i>
+          <i className="far fa-bookmark" style={{ marginLeft: "auto" }}></i>
+        </div>
+        <div style={{ padding: "0 2px" }}>
+          <div style={{ fontSize: 13, lineHeight: 1.4 }}>
+            <span style={{ fontWeight: 700, marginRight: 6 }}>{handle}</span>
+            <Caption text={content} limit={125} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const InstagramRenderer = ({ content, media, brandName, overlays }) => {
+  const [format, setFormat] = useState("feed");
+  const mediaItems = Array.isArray(media) ? media : (media ? [media] : []);
+  const hasMultiple = mediaItems.length > 1;
+  const firstItem = mediaItems[0];
+  const isVideo = isMediaVideo(firstItem);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%" }}>
+      {/* Dynamic sub-format switcher for Instagram */}
+      <div style={{ display: "flex", gap: 6, justifyContent: "center", marginBottom: 6 }}>
+        {["feed", "story", "reel", "carousel"].map((fmt) => {
+          const disabled = (fmt === "carousel" && !hasMultiple) || (fmt === "reel" && !isVideo && mediaItems.length > 0);
+          return (
+            <button
+              key={fmt}
+              disabled={disabled}
+              onClick={() => setFormat(fmt)}
+              style={{
+                border: "none",
+                background: format === fmt ? "#0095f6" : "#f1f5f9",
+                color: format === fmt ? "#fff" : (disabled ? "#cbd5e1" : "#475569"),
+                borderRadius: 4,
+                padding: "4px 10px",
+                fontSize: 10,
+                fontWeight: 700,
+                cursor: disabled ? "not-allowed" : "pointer",
+                opacity: disabled ? 0.5 : 1,
+              }}
+            >
+              {fmt.toUpperCase()}
+            </button>
+          );
+        })}
+      </div>
+
+      {format === "feed" && (
+        <InstagramFeedRenderer content={content} media={media} brandName={brandName} overlays={overlays} />
+      )}
+      {format === "story" && (
+        <InstagramStoryRenderer content={content} media={media} brandName={brandName} overlays={overlays} />
+      )}
+      {format === "reel" && (
+        <InstagramReelRenderer content={content} media={media} brandName={brandName} overlays={overlays} />
+      )}
+      {format === "carousel" && (
+        <InstagramCarouselRenderer content={content} media={media} brandName={brandName} overlays={overlays} />
+      )}
+    </div>
   );
 };
 
@@ -315,31 +653,34 @@ const LinkedInRenderer = ({ content, media, brandName, overlays }) => (
   </div>
 );
 
-const XRenderer = ({ content, media, brandName, overlays }) => (
-  <div style={S.feedCard}>
-    <div style={{ padding: "14px 16px", display: "flex", gap: 10 }}>
-      <BrandAvatar brandName={brandName} size={40} radius="50%" />
-      <div style={{ flex: 1 }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 4 }}>
-          <span style={{ fontSize: 14, fontWeight: 800, color: "#0f1419" }}>{brandName}</span>
-          <i className="fas fa-circle-check" style={{ color: "#1d9bf0", fontSize: 12 }}></i>
-          <span style={{ fontSize: 13, color: "#536471" }}>@{brandName?.toLowerCase().replace(/\s+/g, "")} · now</span>
-        </div>
-        <div style={{ fontSize: 14, lineHeight: 1.5, color: "#0f1419", marginBottom: 10 }}>
-          <Caption text={content} limit={280} />
-        </div>
-        {media?.image && <MediaArea media={media} platform="x" height={180} overlays={overlays} />}
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, color: "#536471", fontSize: 18, maxWidth: 300 }}>
-          <i className="far fa-comment"></i>
-          <i className="fas fa-retweet"></i>
-          <i className="far fa-heart"></i>
-          <i className="fas fa-chart-bar"></i>
-          <i className="fas fa-upload"></i>
+const XRenderer = ({ content, media, brandName, overlays }) => {
+  const hasMedia = Array.isArray(media) ? (media.length > 0 && getMediaUrl(media[0])) : (media && getMediaUrl(media));
+  return (
+    <div style={S.feedCard}>
+      <div style={{ padding: "14px 16px", display: "flex", gap: 10 }}>
+        <BrandAvatar brandName={brandName} size={40} radius="50%" />
+        <div style={{ flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 4 }}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: "#0f1419" }}>{brandName}</span>
+            <i className="fas fa-circle-check" style={{ color: "#1d9bf0", fontSize: 12 }}></i>
+            <span style={{ fontSize: 13, color: "#536471" }}>@{brandName?.toLowerCase().replace(/\s+/g, "")} · now</span>
+          </div>
+          <div style={{ fontSize: 14, lineHeight: 1.5, color: "#0f1419", marginBottom: 10 }}>
+            <Caption text={content} limit={280} />
+          </div>
+          {hasMedia && <MediaArea media={media} platform="x" height={180} overlays={overlays} />}
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, color: "#536471", fontSize: 18, maxWidth: 300 }}>
+            <i className="far fa-comment"></i>
+            <i className="fas fa-retweet"></i>
+            <i className="far fa-heart"></i>
+            <i className="fas fa-chart-bar"></i>
+            <i className="fas fa-upload"></i>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const TikTokRenderer = ({ content, media, overlays }) => (
   <div style={S.mobileCard}>
@@ -392,32 +733,35 @@ const PinterestRenderer = ({ content, media, brandName, overlays }) => (
   </div>
 );
 
-const ThreadsRenderer = ({ content, media, brandName, overlays }) => (
-  <div style={S.feedCard}>
-    <div style={{ padding: "14px 16px", display: "flex", gap: 12 }}>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <BrandAvatar brandName={brandName} size={36} radius="50%" />
-        <div style={{ flex: 1, width: 2, background: "#e2e8f0", margin: "6px 0", minHeight: 20 }}></div>
-      </div>
-      <div style={{ flex: 1 }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 6 }}>
-          <span style={{ fontSize: 13, fontWeight: 700 }}>{brandName?.toLowerCase().replace(/\s+/g, "") || "yourbrand"}</span>
-          <span style={{ fontSize: 12, color: "#999" }}>· now</span>
+const ThreadsRenderer = ({ content, media, brandName, overlays }) => {
+  const hasMedia = Array.isArray(media) ? (media.length > 0 && getMediaUrl(media[0])) : (media && getMediaUrl(media));
+  return (
+    <div style={S.feedCard}>
+      <div style={{ padding: "14px 16px", display: "flex", gap: 12 }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <BrandAvatar brandName={brandName} size={36} radius="50%" />
+          <div style={{ flex: 1, width: 2, background: "#e2e8f0", margin: "6px 0", minHeight: 20 }}></div>
         </div>
-        <div style={{ fontSize: 14, lineHeight: 1.5, color: "#0f1419", marginBottom: 8 }}>
-          <Caption text={content} limit={500} />
-        </div>
-        {media?.image && <MediaArea media={media} platform="threads" height={180} overlays={overlays} />}
-        <div style={{ display: "flex", gap: 16, marginTop: 10, color: "#999", fontSize: 18 }}>
-          <i className="far fa-heart"></i>
-          <i className="far fa-comment"></i>
-          <i className="fas fa-retweet"></i>
-          <i className="far fa-paper-plane"></i>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 6 }}>
+            <span style={{ fontSize: 13, fontWeight: 700 }}>{brandName?.toLowerCase().replace(/\s+/g, "") || "yourbrand"}</span>
+            <span style={{ fontSize: 12, color: "#999" }}>· now</span>
+          </div>
+          <div style={{ fontSize: 14, lineHeight: 1.5, color: "#0f1419", marginBottom: 8 }}>
+            <Caption text={content} limit={500} />
+          </div>
+          {hasMedia && <MediaArea media={media} platform="threads" height={180} overlays={overlays} />}
+          <div style={{ display: "flex", gap: 16, marginTop: 10, color: "#999", fontSize: 18 }}>
+            <i className="far fa-heart"></i>
+            <i className="far fa-comment"></i>
+            <i className="fas fa-retweet"></i>
+            <i className="far fa-paper-plane"></i>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const YouTubeRenderer = ({ content, media, brandName, overlays }) => (
   <div style={S.feedCard}>
@@ -465,6 +809,9 @@ const ShortsRenderer = ({ content, media, brandName, overlays }) => (
 const RENDERERS = {
   facebook:  FacebookRenderer,
   instagram: InstagramRenderer,
+  instagram_story: InstagramStoryRenderer,
+  instagram_reel: InstagramReelRenderer,
+  instagram_carousel: InstagramCarouselRenderer,
   linkedin:  LinkedInRenderer,
   x:         XRenderer,
   tiktok:    TikTokRenderer,
@@ -476,9 +823,18 @@ const RENDERERS = {
 
 // ── Platform labels ────────────────────────────────────────────────────────────
 const PLABELS = {
-  facebook: "Facebook", instagram: "Instagram", linkedin: "LinkedIn",
-  x: "X", tiktok: "TikTok", pinterest: "Pinterest",
-  threads: "Threads", youtube: "YouTube", shorts: "Shorts",
+  facebook: "Facebook",
+  instagram: "Instagram Feed",
+  instagram_story: "Instagram Story",
+  instagram_reel: "Instagram Reel",
+  instagram_carousel: "Instagram Carousel",
+  linkedin: "LinkedIn",
+  x: "X",
+  tiktok: "TikTok",
+  pinterest: "Pinterest",
+  threads: "Threads",
+  youtube: "YouTube",
+  shorts: "Shorts",
 };
 
 // ── Main Panel ─────────────────────────────────────────────────────────────────
@@ -488,8 +844,10 @@ export default function PlatformPreviewPanel({ platforms = [], content = "", ove
   const safeTab = platforms.includes(activeTab) ? activeTab : (platforms[0] || "facebook");
 
   const currentContent = overrides[safeTab] || content;
-  const mediaType = media?.type || (media?.mime_type?.startsWith("video/") ? "video" : (media?.url || media?.image ? "image" : null));
-  const mediaMeta = media ? { ratio: media.width && media.height ? `${media.width}:${media.height}` : (media.ratio || null), duration: media.duration } : null;
+  const mediaItems = Array.isArray(media) ? media : (media ? [media] : []);
+  const mainMedia = mediaItems[0];
+  const mediaType = mainMedia?.type || (mainMedia?.mime_type?.startsWith("video/") ? "video" : (getMediaUrl(mainMedia) ? "image" : null));
+  const mediaMeta = mainMedia ? { ratio: mainMedia.width && mainMedia.height ? `${mainMedia.width}:${mainMedia.height}` : (mainMedia.ratio || null), duration: mainMedia.duration } : null;
   const validation = validateContent(safeTab, currentContent, mediaType, mediaMeta);
   const Renderer = RENDERERS[safeTab] || FacebookRenderer;
 

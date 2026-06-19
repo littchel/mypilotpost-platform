@@ -228,20 +228,22 @@ function ApprovalTable({ items, onReview }) {
 
 // ─── Preview Modal ────────────────────────────────────────────────────────────
 function PreviewModal({ item, brandName, onClose, onEdit, onShare }) {
-  const [mediaUrl, setMediaUrl] = useState(null);
+  const [mediaItems, setMediaItems] = useState([]);
+  const mediaUrl = mediaItems[0]?.preview_url || mediaItems[0]?.url || mediaItems[0]?.image || null;
 
   useEffect(() => {
     if (!item?.id) return;
     // Parse metadata.image as immediate fallback (no request needed)
     try {
       const meta = typeof item.metadata === "string" ? JSON.parse(item.metadata) : (item.metadata || {});
-      if (meta.image) setMediaUrl(meta.image);
+      if (meta.image) setMediaItems([{ preview_url: meta.image, url: meta.image }]);
     } catch { /* ignore */ }
     // Fetch formally attached media — overrides metadata.image if present
     apiRequest(`/api/customer/media/attached/${item.content_type || "social"}/${item.id}`)
       .then(res => {
-        const first = (res?.items || [])[0];
-        if (first?.preview_url) setMediaUrl(first.preview_url);
+        if (res?.items && res.items.length > 0) {
+          setMediaItems(res.items);
+        }
       })
       .catch(() => {});
   }, [item?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -273,6 +275,7 @@ function PreviewModal({ item, brandName, onClose, onEdit, onShare }) {
             content={item.body || ""}
             brandName={brandName || "Your Brand"}
             isLiveEditor={false}
+            media={mediaItems}
           />
         </div>
         <div style={{ padding: "12px 20px", borderTop: `1px solid ${C.border}`, display: "flex", justifyContent: "flex-end", gap: 10, flexShrink: 0, background: C.surface }}>

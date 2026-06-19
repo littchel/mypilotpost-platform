@@ -106,7 +106,7 @@ const PROVIDERS = [
   { id: "tiktok",               name: "TikTok",                 color: "#010101", bgColor: "#010101",   description: "Connect your TikTok account for video sharing." },
   { id: "threads",              name: "Threads",                color: "#1C1C1C", bgColor: "#1C1C1C",   description: "Publish to your Threads audience directly." },
   { id: "youtube",              name: "YouTube",                color: "#FF0000", bgColor: "#FF0000",   description: "Schedule and publish video content to your channel." },
-  { id: "pinterest",            name: "Pinterest",              color: "#BD081C", bgColor: "#BD081C",   description: "Pin your latest content to boards automatically." },
+  { id: "pinterest",            name: "Pinterest",              color: "#BD081C", bgColor: "#BD081C",   description: "Pin your latest content to boards automatically.", requiresResource: true, resourceLabel: "Board" },
   { id: "wordpress",            name: "WordPress",              color: "#21759B", bgColor: "#21759B",   description: "Publish blog articles directly to your WordPress site." },
   { id: "canva",                name: "Canva",                  color: "#00C4CC", bgColor: "#00C4CC",   description: "Design graphics and import them directly into posts." },
   { id: "dropbox",              name: "Dropbox",                color: "#0061FF", bgColor: "#0061FF",   description: "Import and sync media assets from your Dropbox." },
@@ -116,10 +116,10 @@ const PROVIDERS = [
   { id: "google_search_console",name: "Google Search Console",  color: "#4285F4", bgColor: "#4285F4",   description: "Track search queries, clicks, impressions, and page rankings.", requiresResource: true, resourceLabel: "Site" },
 ];
 
-const NEEDS_RESOURCE = ["google_analytics", "google_search_console", "google_business", "linkedin_pages"];
+const NEEDS_RESOURCE = ["google_analytics", "google_search_console", "google_business", "linkedin_pages", "pinterest"];
 
 /* ── Resource Picker Modal ── */
-function ResourcePickerModal({ platform, connId, onConfirm, onCancel }) {
+function ResourcePickerModal({ platform, connId, onConfirm, onCancel, onReconnect }) {
   const [resources,     setResources]     = useState([]);
   const [loading,       setLoading]       = useState(true);
   const [error,         setError]         = useState(null);
@@ -214,7 +214,19 @@ function ResourcePickerModal({ platform, connId, onConfirm, onCancel }) {
         {!loading && !error && resources.length === 0 && (
           <div className="rp-state rp-empty">
             <AlertCircle size={20} />
-            <span>No resources found. Make sure you have the right permissions.</span>
+            {platform === "pinterest" ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', width: '100%' }}>
+                <span style={{ fontWeight: 'bold', color: '#b91c1c', fontSize: '1.05rem' }}>Pinterest Setup Required</span>
+                <span style={{ fontSize: '0.85rem', color: '#4b5563' }}>Create a board on Pinterest to enable publishing.</span>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <PilotButton type="outline" size="sm" onClick={() => fetchResources(null)}>Refresh Boards</PilotButton>
+                  <PilotButton type="primary" size="sm" onClick={() => { onCancel(); onReconnect(); }}>Reconnect Account</PilotButton>
+                  <PilotButton type="outline" size="sm" disabled>Set Default Board</PilotButton>
+                </div>
+              </div>
+            ) : (
+              <span>No resources found. Make sure you have the right permissions.</span>
+            )}
           </div>
         )}
 
@@ -342,6 +354,7 @@ const IntegrationsManager = () => {
           connId={picker.connId}
           onConfirm={handlePickerConfirm}
           onCancel={closePicker}
+          onReconnect={() => handleConnect(picker.platform)}
         />
       )}
 
@@ -384,7 +397,7 @@ const IntegrationsManager = () => {
               const providerMeta   = PROVIDERS.find(x => x.id === p.id);
 
               return (
-                <WorkspaceCard key={p.id} className={`integration-card${connected ? " integration-card--connected" : ""}${needsResource ? " integration-card--needs-resource" : ""}`}>
+                <WorkspaceCard key={p.id} className={`integration-card${connected ? " integration-card--connected" : ""}${needsResource ? (p.id === 'pinterest' ? " integration-card--error" : " integration-card--needs-resource") : ""}`}>
                   <div className="card-top">
                     <div className="platform-icon" style={{ background: p.bgColor }}>
                       <PlatformIcon id={p.id} />
@@ -396,8 +409,8 @@ const IntegrationsManager = () => {
                             <ShieldCheck size={11} /> Connected
                           </span>
                         ) : needsResource ? (
-                          <span className="status-badge status-badge--warn">
-                            <AlertCircle size={11} /> Select Resource
+                          <span className={`status-badge status-badge--${p.id === 'pinterest' ? 'error' : 'warn'}`}>
+                            <AlertCircle size={11} /> {p.id === 'pinterest' ? 'Pinterest Setup Required' : 'Select Resource'}
                           </span>
                         ) : (
                           <span className="status-badge status-badge--error">
@@ -428,9 +441,12 @@ const IntegrationsManager = () => {
                         </div>
                       )}
                       {needsResource && (
-                        <div className="needs-resource-banner">
+                        <div className="needs-resource-banner" style={p.id === 'pinterest' ? { background: '#fef2f2', color: '#b91c1c', border: '1px solid #fca5a5' } : undefined}>
                           <AlertCircle size={13} />
-                          Select a {providerMeta?.resourceLabel?.toLowerCase() || "resource"} to activate
+                          {p.id === 'pinterest'
+                            ? "Pinterest Setup Required: Create a board on Pinterest to enable publishing."
+                            : `Select a ${providerMeta?.resourceLabel?.toLowerCase() || "resource"} to activate`
+                          }
                         </div>
                       )}
                       {isExpired && (
@@ -531,6 +547,7 @@ const IntegrationsManager = () => {
         .integration-card { display: flex; flex-direction: column; height: 100%; }
         .integration-card--connected { border-color: #bbf7d0 !important; }
         .integration-card--needs-resource { border-color: #fde68a !important; }
+        .integration-card--error { border-color: #fca5a5 !important; }
         /* ── Card parts ── */
         .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
         .platform-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }

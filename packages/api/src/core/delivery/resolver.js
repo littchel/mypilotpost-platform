@@ -103,7 +103,7 @@ export async function resolveDeliveryData(env, job) {
 
   // 2. Resolve Media
   const { results: media } = await db.prepare(`
-    SELECT ma.id, ma.preview_url, ma.provider, ma.mime_type, ma.external_id, l.position, l.role
+    SELECT ma.id, ma.preview_url, ma.provider, ma.mime_type, ma.external_id, ma.width, ma.height, ma.duration_seconds, l.position, l.role
     FROM content_media_links l
     JOIN media_assets ma ON ma.id = l.media_id
     WHERE l.content_id = ? AND l.brand_id = ?
@@ -121,7 +121,10 @@ export async function resolveDeliveryData(env, job) {
       refresh_token,
       expires_at,
       status,
-      meta
+      meta,
+      selected_resource_id,
+      selected_resource_name,
+      resource_type
     FROM social_connections
     WHERE brand_id = ? AND platform = ? AND status = 'active'
     ORDER BY updated_at DESC
@@ -168,11 +171,13 @@ export async function resolveDeliveryData(env, job) {
   return {
     content: {
       id: asset.id,
+      job_id: job.id,
       text: asset.caption || asset.text, // Platform variant takes priority
       title: asset.title,
       hashtags: asset.hashtags,
       media: validatedMedia,
-      type: job.content_type
+      type: job.content_type,
+      link: asset.link || asset.url || asset.destination_url || null
     },
     connection: {
       id: connection.id,
@@ -180,7 +185,10 @@ export async function resolveDeliveryData(env, job) {
       account_id: connection.account_id,
       account_name: connection.platform_username,
       access_token: access_token,
-      metadata: metadata
+      metadata: metadata,
+      selected_resource_id: connection.selected_resource_id,
+      selected_resource_name: connection.selected_resource_name,
+      resource_type: connection.resource_type
     }
   };
 }

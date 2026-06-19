@@ -183,6 +183,40 @@ async function listLinkedInOrgs(accessToken) {
   return items;
 }
 
+export async function listPinterestBoards(accessToken) {
+  let items = [];
+  let bookmark = null;
+  do {
+    const url = new URL("https://api.pinterest.com/v5/boards");
+    if (bookmark) {
+      url.searchParams.set("bookmark", bookmark);
+    }
+    const res = await fetch(url.toString(), {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json"
+      }
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(`Pinterest API failed: ${errData.message || res.statusText}`);
+    }
+    const data = await res.json();
+    if (data.items && Array.isArray(data.items)) {
+      for (const board of data.items) {
+        items.push({
+          id: board.id,
+          name: board.name,
+          resource_type: "board",
+          extra: board.privacy || "PUBLIC"
+        });
+      }
+    }
+    bookmark = data.bookmark;
+  } while (bookmark);
+  return items;
+}
+
 /* ─────────────────────────────────────────────────────────────
    Dispatcher
 ───────────────────────────────────────────────────────────── */
@@ -195,6 +229,7 @@ export async function listResourcesForPlatform(platform, accessToken, accountId)
                                     ? listGMBLocations(accessToken, accountId)
                                     : listGMBAccounts(accessToken);
     case "linkedin_pages":        return listLinkedInOrgs(accessToken);
+    case "pinterest":             return listPinterestBoards(accessToken);
     default: throw new Error(`Resource listing not supported for platform: ${platform}`);
   }
 }

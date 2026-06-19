@@ -96,31 +96,51 @@ export async function preflightInstagramPublish({ connection, content, env }) {
     throw new Error(`PREFLIGHT_NETWORK_ERROR: Unable to communicate with Meta API during pre-flight check (${err.message}).`);
   }
 
-  // 3. Preflight Media checks (size and MIME type limits)
-  const validation = await validateMediaForPublishing(primaryMedia, env);
-  if (!validation.valid) {
-    throw new Error(`MEDIA_UNREACHABLE: Attached media is unreachable. Reason: ${validation.error}`);
-  }
+  // 3. Preflight Media checks (size, MIME type, aspect ratio, duration limits)
+  for (let i = 0; i < media.length; i++) {
+    const item = media[i];
+    const validation = await validateMediaForPublishing(item, env);
+    if (!validation.valid) {
+      throw new Error(`MEDIA_UNREACHABLE: Attached media at index ${i} is unreachable. Reason: ${validation.error}`);
+    }
 
-  const mime = validation.contentType || "";
-  const sizeMb = (validation.size || 0) / (1024 * 1024);
+    const mime = validation.contentType || item.mime_type || "";
+    const sizeMb = (validation.size || 0) / (1024 * 1024);
 
-  if (mime.startsWith("image/")) {
-    if (sizeMb > 8) {
-      throw new Error(`MEDIA_INVALID: Image size exceeds Instagram limit of 8MB (actual: ${sizeMb.toFixed(1)}MB).`);
+    if (mime.startsWith("image/")) {
+      if (sizeMb > 8) {
+        throw new Error(`MEDIA_INVALID: Image at index ${i} size exceeds Instagram limit of 8MB (actual: ${sizeMb.toFixed(1)}MB).`);
+      }
+      if (mime !== "image/jpeg" && mime !== "image/png" && mime !== "image/webp") {
+        throw new Error(`MEDIA_INVALID: Instagram only supports JPEG, PNG, and WebP images. (MIME: ${mime} at index ${i})`);
+      }
+      if (item.width && item.height) {
+        const ar = item.width / item.height;
+        if (ar < 0.56 || ar > 1.92) {
+          throw new Error(`MEDIA_INVALID: Image at index ${i} aspect ratio must be between 9:16 (0.56) and 1.91:1 (1.91) (actual: ${ar.toFixed(2)}).`);
+        }
+      }
+    } else if (mime.startsWith("video/")) {
+      if (sizeMb > 100) {
+        throw new Error(`MEDIA_INVALID: Video at index ${i} size exceeds Instagram limit of 100MB (actual: ${sizeMb.toFixed(1)}MB).`);
+      }
+      if (mime !== "video/mp4" && mime !== "video/quicktime") {
+        throw new Error(`MEDIA_INVALID: Instagram only supports MP4 and QuickTime (MOV) videos. (MIME: ${mime} at index ${i})`);
+      }
+      if (item.duration_seconds !== undefined && item.duration_seconds !== null) {
+        if (item.duration_seconds < 3 || item.duration_seconds > 90) {
+          throw new Error(`MEDIA_INVALID: Video at index ${i} duration must be between 3 and 90 seconds (actual: ${item.duration_seconds}s).`);
+        }
+      }
+      if (item.width && item.height) {
+        const ar = item.width / item.height;
+        if (ar < 0.56 || ar > 1.92) {
+          throw new Error(`MEDIA_INVALID: Video at index ${i} aspect ratio must be between 9:16 (0.56) and 1.91:1 (1.91) (actual: ${ar.toFixed(2)}).`);
+        }
+      }
+    } else {
+      throw new Error(`MEDIA_INVALID: Unsupported media type for Instagram: ${mime} at index ${i}`);
     }
-    if (mime !== "image/jpeg" && mime !== "image/png") {
-      throw new Error(`MEDIA_INVALID: Instagram only supports JPEG and PNG images. (MIME: ${mime})`);
-    }
-  } else if (mime.startsWith("video/")) {
-    if (sizeMb > 100) {
-      throw new Error(`MEDIA_INVALID: Video size exceeds Instagram limit of 100MB (actual: ${sizeMb.toFixed(1)}MB).`);
-    }
-    if (mime !== "video/mp4" && mime !== "video/quicktime") {
-      throw new Error(`MEDIA_INVALID: Instagram only supports MP4 and QuickTime (MOV) videos. (MIME: ${mime})`);
-    }
-  } else {
-    throw new Error(`MEDIA_INVALID: Unsupported media type for Instagram: ${mime}`);
   }
 
   return { success: true };

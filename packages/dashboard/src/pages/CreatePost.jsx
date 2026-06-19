@@ -1129,15 +1129,16 @@ export default function CreatePost({
   const previewMedia    = selectedVaultItem
     ? null
     : (mediaItems.length > 0
-        ? {
-            image: mediaItems[0]?.url,
-            url: mediaItems[0]?.url,
-            type: mediaItems[0]?.type || (mediaItems[0]?.mime_type?.startsWith("video/") ? "video" : "image"),
-            mime_type: mediaItems[0]?.mime_type,
-            width: mediaItems[0]?.width || null,
-            height: mediaItems[0]?.height || null,
-            duration: mediaItems[0]?.duration || null,
-          }
+        ? mediaItems.map(item => ({
+            image: item?.url || item?.preview_url,
+            url: item?.url || item?.preview_url,
+            preview_url: item?.preview_url || item?.url,
+            type: item?.type || (item?.mime_type?.startsWith("video/") ? "video" : "image"),
+            mime_type: item?.mime_type,
+            width: item?.width || null,
+            height: item?.height || null,
+            duration: item?.duration || null,
+          }))
         : null);
   const vaultStatusMeta = selectedVaultItem
     ? (VAULT_STATUS_META[selectedVaultItem.lifecycle_status] || { label: selectedVaultItem.lifecycle_status, color: "#64748b", bg: "#f1f5f9" })
