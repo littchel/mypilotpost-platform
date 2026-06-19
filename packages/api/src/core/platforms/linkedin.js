@@ -42,10 +42,12 @@ export async function publish({ content, connection, env }) {
   // 2. Media Upload
   let mediaUrn = null;
   const primaryMedia = media.find(m => m.role === 'primary' || m.position === 0);
+  const isVideo = primaryMedia && (primaryMedia.mime_type?.startsWith("video/") || primaryMedia.preview_url?.includes(".mp4") || primaryMedia.preview_url?.includes(".mov"));
 
   if (primaryMedia) {
     try {
       const asset = await fetchMediaAsset(primaryMedia, env);
+      const recipe = isVideo ? "urn:li:digitalmediaRecipe:feedshare-video" : "urn:li:digitalmediaRecipe:feedshare-image";
 
       // Register
       const regRes = await fetch("https://api.linkedin.com/v2/assets?action=registerUpload", {
@@ -57,7 +59,7 @@ export async function publish({ content, connection, env }) {
         },
         body: JSON.stringify({
           registerUploadRequest: {
-            recipes: ["urn:li:digitalmediaRecipe:feedshare-image"],
+            recipes: [recipe],
             owner: authorUrn,
             serviceRelationships: [{ relationshipType: "OWNER", identifier: "urn:li:userGeneratedContent" }]
           }
@@ -81,18 +83,19 @@ export async function publish({ content, connection, env }) {
   }
 
   // 3. Publish
+  const mediaCategory = isVideo ? "VIDEO" : "IMAGE";
   const payload = {
     author: authorUrn,
     lifecycleState: "PUBLISHED",
     specificContent: {
       "com.linkedin.ugc.ShareContent": {
         shareCommentary: { text },
-        shareMediaCategory: mediaUrn ? "IMAGE" : "NONE",
+        shareMediaCategory: mediaUrn ? mediaCategory : "NONE",
         media: mediaUrn ? [{
           status: "READY",
-          description: { text: "Post Image" },
+          description: { text: isVideo ? "Post Video" : "Post Image" },
           media: mediaUrn,
-          title: { text: "Image Content" }
+          title: { text: isVideo ? "Video Content" : "Image Content" }
         }] : undefined
       }
     },

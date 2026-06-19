@@ -31,27 +31,35 @@ export async function publish({ content, connection, env }) {
   const primaryMedia = media.find(m => m.role === "primary" || m.position === 1);
 
   if (primaryMedia) {
-    // ── PHOTO POST ───────────────────────────────────────────────────────
     // Hard fail if media fetch fails — no silent text fallback.
     const asset = await fetchMediaAsset(primaryMedia, env);
+    const isVideo = asset.mimeType?.startsWith("video/") || primaryMedia.preview_url?.includes(".mp4") || primaryMedia.preview_url?.includes(".mov");
 
     const formData = new FormData();
     formData.append("source", new Blob([asset.data], { type: asset.mimeType }));
-    formData.append("caption", text);
+    formData.append(isVideo ? "description" : "caption", text);
     formData.append("access_token", access_token);
     if (proof) formData.append("appsecret_proof", proof);
 
+    const endpoint = isVideo ? "videos" : "photos";
     const res = await fetch(
-      `https://graph.facebook.com/v19.0/${account_id}/photos`,
+      `https://graph.facebook.com/v19.0/${account_id}/${endpoint}`,
       { method: "POST", body: formData }
     );
 
     if (!res.ok) {
       const body = await res.text();
-      throw new Error(`FACEBOOK_PHOTO_FAILED: ${body}`);
+      throw new Error(`FACEBOOK_${isVideo ? "VIDEO" : "PHOTO"}_FAILED: ${body}`);
     }
 
     const data = await res.json();
+
+    if (isVideo) {
+      return {
+        success: true,
+        external_id: data.id,
+      };
+    }
 
     // Facebook /photos returns { id, post_id } — post_id is the feed post
     return {
