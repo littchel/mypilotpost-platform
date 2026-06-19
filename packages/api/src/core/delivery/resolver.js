@@ -100,7 +100,7 @@ export async function resolveDeliveryData(env, job) {
     WHERE sa.id = ? AND sa.brand_id = ?
     ORDER BY CASE WHEN sv.platform = ? THEN 0 ELSE 1 END ASC
     LIMIT 1
-  `).bind(job.platform, queryPlatform, job.platform, job.content_id, job.brand_id).first();
+  `).bind(job.platform, queryPlatform, job.content_id, job.brand_id, job.platform).first();
 
   if (!asset) throw new Error(`CONTENT_NOT_FOUND: ${job.content_id}`);
 
