@@ -607,7 +607,7 @@ export async function vaultSchedule(request, env, auth) {
     if (conflict) continue;
 
     // Run Pre-flight validations before scheduling
-    if (platform === 'instagram') {
+    if (platform.startsWith('instagram')) {
       try {
         const { resolveDeliveryData } = await import("../delivery/resolver.js");
         const { preflightInstagramPublish } = await import("../delivery/validation.js");
@@ -706,7 +706,7 @@ export async function vaultPublishNow(request, env, auth) {
     if (existing) continue;
 
     // Run Pre-flight validations before publishing
-    if (platform === 'instagram') {
+    if (platform.startsWith('instagram')) {
       try {
         const { resolveDeliveryData } = await import("../delivery/resolver.js");
         const { preflightInstagramPublish } = await import("../delivery/validation.js");

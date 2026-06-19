@@ -92,12 +92,15 @@ export async function resolveDeliveryData(env, job) {
 
   // 1. Resolve Content (Social or Blog)
   const contentTable = job.content_type === 'blog' ? 'blog_posts' : 'social_assets';
+  const queryPlatform = job.platform.startsWith("instagram") ? "instagram" : job.platform;
   const asset = await db.prepare(`
     SELECT sa.*, sv.caption, sv.hashtags
     FROM ${contentTable} sa
-    LEFT JOIN social_variants sv ON sv.social_asset_id = sa.id AND sv.platform = ?
+    LEFT JOIN social_variants sv ON sv.social_asset_id = sa.id AND (sv.platform = ? OR sv.platform = ?)
     WHERE sa.id = ? AND sa.brand_id = ?
-  `).bind(job.platform, job.content_id, job.brand_id).first();
+    ORDER BY CASE WHEN sv.platform = ? THEN 0 ELSE 1 END ASC
+    LIMIT 1
+  `).bind(job.platform, queryPlatform, job.platform, job.content_id, job.brand_id).first();
 
   if (!asset) throw new Error(`CONTENT_NOT_FOUND: ${job.content_id}`);
 
@@ -129,7 +132,7 @@ export async function resolveDeliveryData(env, job) {
     WHERE brand_id = ? AND platform = ? AND status = 'active'
     ORDER BY updated_at DESC
     LIMIT 1
-  `).bind(job.brand_id, job.platform).first();
+  `).bind(job.brand_id, queryPlatform).first();
 
   if (!connection) throw new Error(`CONNECTION_NOT_FOUND: ${job.platform}`);
 
@@ -177,7 +180,8 @@ export async function resolveDeliveryData(env, job) {
       hashtags: asset.hashtags,
       media: validatedMedia,
       type: job.content_type,
-      link: asset.link || asset.url || asset.destination_url || null
+      link: asset.link || asset.url || asset.destination_url || null,
+      platform: job.platform
     },
     connection: {
       id: connection.id,

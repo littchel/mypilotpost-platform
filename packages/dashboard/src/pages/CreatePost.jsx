@@ -37,6 +37,8 @@ function apiJSON(endpoint, method, body) {
 const PLATFORM_META = {
   facebook:  { label: "Facebook",  icon: "fab fa-facebook",  color: "#1877f2" },
   instagram: { label: "Instagram", icon: "fab fa-instagram", color: "#e1306c" },
+  instagram_story: { label: "Instagram Story", icon: "fab fa-instagram", color: "#e1306c" },
+  instagram_reel: { label: "Instagram Reel", icon: "fab fa-instagram", color: "#e1306c" },
   linkedin:  { label: "LinkedIn",  icon: "fab fa-linkedin",  color: "#0a66c2" },
   x:         { label: "X",         icon: "fab fa-x-twitter", color: "#000"    },
   tiktok:    { label: "TikTok",    icon: "fab fa-tiktok",    color: "#010101" },
@@ -658,9 +660,21 @@ export default function CreatePost({
 
   const togglePlatform = (key, isExpired) => {
     if (isExpired) return;
-    setSelectedPlatforms(prev =>
-      prev.includes(key) ? (prev.length > 1 ? prev.filter(p => p !== key) : prev) : [...prev, key]
-    );
+    const isInstagram = key === "instagram";
+    setSelectedPlatforms(prev => {
+      const hasPlatform = isInstagram 
+        ? prev.some(p => p.startsWith("instagram"))
+        : prev.includes(key);
+        
+      if (hasPlatform) {
+        const next = isInstagram 
+          ? prev.filter(p => !p.startsWith("instagram"))
+          : prev.filter(p => p !== key);
+        return next.length > 0 ? next : prev;
+      } else {
+        return [...prev, key];
+      }
+    });
   };
 
   // ── File upload (R2) ────────────────────────────────────────────────────
@@ -1413,7 +1427,9 @@ export default function CreatePost({
                 const m = PLATFORM_META[conn.platform];
                 if (!m) return null;
                 const isExpired = conn.status === "error" || conn.status === "expired";
-                const isSelected = selectedPlatforms.includes(conn.platform);
+                const isSelected = conn.platform === "instagram" 
+                  ? selectedPlatforms.some(p => p.startsWith("instagram"))
+                  : selectedPlatforms.includes(conn.platform);
                 return (
                   <button
                     key={conn.platform}
@@ -1439,6 +1455,41 @@ export default function CreatePost({
                 <span style={{ fontSize: 12, color: "#94a3b8" }}>No platforms connected — go to Integrations</span>
               )}
             </div>
+
+            {/* Instagram Format Selector */}
+            {selectedPlatforms.some(p => p.startsWith("instagram")) && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4, padding: "8px 12px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }}>Instagram Format:</span>
+                {["feed", "story", "reel"].map(format => {
+                  const label = format === "feed" ? "Feed" : format === "story" ? "Story" : "Reel";
+                  const targetPlatform = format === "feed" ? "instagram" : `instagram_${format}`;
+                  const isCurrent = selectedPlatforms.includes(targetPlatform);
+                  return (
+                    <button
+                      key={format}
+                      type="button"
+                      onClick={() => {
+                        setSelectedPlatforms(prev =>
+                          prev.map(p => p.startsWith("instagram") ? targetPlatform : p)
+                        );
+                      }}
+                      style={{
+                        background: isCurrent ? "#e1306c" : "#fff",
+                        color: isCurrent ? "#fff" : "#64748b",
+                        border: `1px solid ${isCurrent ? "#e1306c" : "#e2e8f0"}`,
+                        borderRadius: 12,
+                        padding: "3px 10px",
+                        fontSize: 10,
+                        fontWeight: 600,
+                        cursor: "pointer"
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Per-platform variants overrides */}
             {selectedPlatforms.length > 1 && (

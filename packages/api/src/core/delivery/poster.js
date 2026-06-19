@@ -29,6 +29,8 @@ import * as google_business from "../platforms/google_business.js";
 
 const ADAPTERS = {
   instagram,
+  instagram_story: instagram,
+  instagram_reel: instagram,
   facebook,
   linkedin,
   linkedin_personal: linkedin, // personal profile — same adapter, split at OAuth level

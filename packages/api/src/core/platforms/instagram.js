@@ -66,7 +66,11 @@ export async function publish({ content, connection, env }) {
 
   // Phase 1: Classification
   let mediaClass = "IMAGE";
-  if (media.length > 1) {
+  if (content.platform === "instagram_story") {
+    mediaClass = "STORY";
+  } else if (content.platform === "instagram_reel") {
+    mediaClass = "VIDEO";
+  } else if (media.length > 1) {
     mediaClass = "CAROUSEL";
   } else {
     const mainItem = media[0];
@@ -122,6 +126,44 @@ export async function publish({ content, connection, env }) {
     containerId = container.id;
 
     console.log(`INSTAGRAM: Image container created — id=${containerId}`);
+    await pollContainer(containerId, access_token, proof, 20);
+
+  } else if (mediaClass === "STORY") {
+    // Phase 2b: STORY PUBLISHING
+    const primaryMedia = media[0];
+    const isVideo = primaryMedia.mime_type?.startsWith("video/") || primaryMedia.preview_url?.includes(".mp4") || primaryMedia.preview_url?.includes(".mov");
+
+    const containerBody = {
+      media_type: "STORIES",
+      access_token,
+    };
+    if (isVideo) {
+      containerBody.video_url = primaryMedia.preview_url;
+    } else {
+      containerBody.image_url = primaryMedia.preview_url;
+    }
+    if (proof) containerBody.appsecret_proof = proof;
+
+    const containerRes = await fetch(
+      `https://graph.facebook.com/v19.0/${account_id}/media`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(containerBody),
+      }
+    );
+
+    if (!containerRes.ok) {
+      throw new Error(`INSTAGRAM_STORY_CONTAINER_FAILED: ${await containerRes.text()}`);
+    }
+
+    const container = await containerRes.json();
+    if (!container.id) {
+      throw new Error(`INSTAGRAM_STORY_CONTAINER_NO_ID: ${JSON.stringify(container)}`);
+    }
+    containerId = container.id;
+
+    console.log(`INSTAGRAM: Story container created — id=${containerId}`);
     await pollContainer(containerId, access_token, proof, 20);
 
   } else if (mediaClass === "VIDEO") {

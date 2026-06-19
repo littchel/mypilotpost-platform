@@ -52,6 +52,16 @@ export async function validateMediaForPublishing(item, env) {
   }
 }
 
+async function appSecretProof(accessToken, appSecret) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw", enc.encode(appSecret),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(accessToken));
+  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
 /**
  * Runs pre-flight checks for Instagram connection and account status.
  */
@@ -65,10 +75,21 @@ export async function preflightInstagramPublish({ connection, content, env }) {
     throw new Error("INSTAGRAM_REQUIRES_MEDIA: Instagram posts must contain an image or video.");
   }
 
+  const proof = env?.META_CLIENT_SECRET
+    ? await appSecretProof(access_token, env.META_CLIENT_SECRET)
+    : null;
+
+  const url = new URL(`https://graph.facebook.com/v19.0/${account_id}`);
+  url.searchParams.set("fields", "id,username");
+  url.searchParams.set("access_token", access_token);
+  if (proof) {
+    url.searchParams.set("appsecret_proof", proof);
+  }
+
   // 2. Query Meta API to check account status and permissions
   try {
     const testRes = await fetch(
-      `https://graph.facebook.com/v19.0/${account_id}?fields=id,username&access_token=${access_token}`,
+      url.toString(),
       { method: "GET" }
     );
 
