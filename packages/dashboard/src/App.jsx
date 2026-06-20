@@ -1335,7 +1335,7 @@ function App() {
             setSelectedCampaignId={setSelectedCampaignId}
             switchTab={switchTab}
             campaigns={campaignsList}
-            connections={connectionsData?.connections || []}
+            connections={(connectionsData?.connections || []).filter(c => c.platform !== "wordpress" && c.platform !== "wordpress_ecommerce")}
             brandName={activeBrand?.name || companyName || "Your Brand"}
             brandIndustry={activeBrand?.industry || ""}
             brandTimezone={activeBrand?.timezone || null}

@@ -710,6 +710,12 @@ export default function CreatePost({
     }
   }, [mediaItems, selectedPlatforms, filteredConnections]);
 
+  useEffect(() => {
+    if (selectedPlatforms.some(p => p === "wordpress" || p === "wordpress_ecommerce")) {
+      setSelectedPlatforms(prev => prev.filter(p => p !== "wordpress" && p !== "wordpress_ecommerce"));
+    }
+  }, [selectedPlatforms]);
+
   const showToast = useCallback((msg, type = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 4000);
