@@ -11,6 +11,7 @@ import * as x from "./x.js";
 import * as tiktok from "./tiktok.js";
 import * as pinterest from "./pinterest.js";
 import * as wordpress from "./wordpress.js";
+import * as wordpress_ecommerce from "./wordpress_ecommerce.js";
 import * as google_drive from "./google_drive.js";
 import * as dropbox from "./dropbox.js";
 import * as canva from "./canva.js";
@@ -34,6 +35,7 @@ export const ADAPTERS = {
   tiktok,
   pinterest,
   wordpress,
+  wordpress_ecommerce,
   dropbox,
   canva,
   threads,

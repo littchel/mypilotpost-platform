@@ -279,6 +279,10 @@ export default function ArticleComposer({ campaigns = [] }) {
     try { return JSON.parse(sessionStorage.getItem('mpp_article_image') || 'null'); } catch { return null; }
   });
   const [articleId, setArticleId] = useState(() => sessionStorage.getItem('mpp_article_id') || null);
+  const [listItems, setListItems] = useState([]);
+  const [listLoading, setListLoading] = useState(false);
+  const [scheduledAt, setScheduledAt] = useState("");
+
 
   const wordCount = countWords(body);
   const seoScore = computeSEO({ title, body, primaryKeyword, secondaryKeywords });
@@ -333,15 +337,103 @@ export default function ArticleComposer({ campaigns = [] }) {
     }
   };
 
+  useEffect(() => {
+    if (contentSubTab === "compose") return;
+    let statusFilter = "";
+    if (contentSubTab === "drafts") statusFilter = "draft";
+    if (contentSubTab === "scheduled") statusFilter = "scheduled";
+    if (contentSubTab === "approval") statusFilter = "pending";
+
+    setListLoading(true);
+    apiRequest(`/api/customer/vault?type=blog&status=${statusFilter}`)
+      .then(res => {
+        setListItems(res?.data || []);
+      })
+      .catch(err => {
+        console.error("Failed to load articles", err);
+      })
+      .finally(() => {
+        setListLoading(false);
+      });
+  }, [contentSubTab]);
+
+  const loadArticle = (item) => {
+    setArticleId(item.id);
+    setTitle(item.title || "");
+    setBody(item.body || "");
+    try { sessionStorage.setItem('mpp_article_id', item.id); } catch {}
+    
+    let metadataObj = {};
+    try {
+      metadataObj = typeof item.metadata === "string" ? JSON.parse(item.metadata) : (item.metadata || {});
+    } catch (e) {
+      metadataObj = {};
+    }
+    setPrimaryKeyword(metadataObj.keyword || "");
+    setSecondaryKeywords(metadataObj.secondaryKeywords || "");
+    
+    const selectedDomain = GOOGLE_DOMAINS.find(d => d.domain === metadataObj.domain) || GOOGLE_DOMAINS[0];
+    setDomain(selectedDomain);
+
+    let mediaIds = [];
+    try {
+      mediaIds = typeof item.media_ids === "string" ? JSON.parse(item.media_ids) : (item.media_ids || []);
+    } catch (e) {
+      mediaIds = [];
+    }
+    
+    if (mediaIds.length > 0) {
+      apiRequest(`/api/customer/vault/${item.id}`)
+        .then(res => {
+          const firstMedia = res?.media?.[0] || res?.data?.media?.[0];
+          if (firstMedia) {
+            const entry = { url: firstMedia.preview_url || firstMedia.url || "", assetId: firstMedia.id };
+            setAttachedImage(entry);
+            try { sessionStorage.setItem('mpp_article_image', JSON.stringify(entry)); } catch {}
+          } else {
+            setAttachedImage(null);
+            try { sessionStorage.removeItem('mpp_article_image'); } catch {}
+          }
+        })
+        .catch(() => {
+          setAttachedImage(null);
+          try { sessionStorage.removeItem('mpp_article_image'); } catch {}
+        });
+    } else {
+      setAttachedImage(null);
+      try { sessionStorage.removeItem('mpp_article_image'); } catch {}
+    }
+
+    setContentSubTab("compose");
+  };
+
+  const handleNewArticle = () => {
+    setArticleId(null);
+    setTitle("");
+    setBody("");
+    setPrimaryKeyword("");
+    setSecondaryKeywords("");
+    setDomain(GOOGLE_DOMAINS[0]);
+    setAttachedImage(null);
+    setScheduledAt("");
+    try {
+      sessionStorage.removeItem('mpp_article_id');
+      sessionStorage.removeItem('mpp_article_image');
+    } catch {}
+    setContentSubTab("compose");
+  };
+
   const handleSave = async () => {
     if (!title.trim() && !body.trim()) return null;
     try {
       const resp = await apiRequest("/api/customer/vault", {
         method: "POST",
         body: JSON.stringify({
+          content_id:       articleId || null,
           content_type:     "blog",
           title,
           body,
+          platforms:        ["wordpress"],
           campaign_id:      campaignId || null,
           lifecycle_status: "draft",
           metadata:         JSON.stringify({ keyword: primaryKeyword, secondaryKeywords, domain: domain?.domain }),
@@ -365,7 +457,10 @@ export default function ArticleComposer({ campaigns = [] }) {
   const handlePost = async () => {
     const id = await handleSave();
     if (id) {
-      await apiRequest(`/api/customer/vault/${id}/publish-now`, { method: "POST" }).catch(() => {});
+      await apiRequest(`/api/customer/vault/${id}/publish-now`, {
+        method: "POST",
+        body: JSON.stringify({ platforms: ["wordpress"] })
+      }).catch(() => {});
       alert("Article queued for delivery.");
     } else {
       alert("Nothing to post — add a title or content first.");
@@ -373,9 +468,28 @@ export default function ArticleComposer({ campaigns = [] }) {
   };
 
   const handleSchedule = async () => {
+    if (!scheduledAt) {
+      alert("Please select a date and time to schedule this article.");
+      return;
+    }
     const id = await handleSave();
-    if (id) alert("Draft saved. Use Calendar to set a publish date.");
-    else alert("Nothing to save — add a title or content first.");
+    if (id) {
+      try {
+        await apiRequest(`/api/customer/vault/${id}/schedule`, {
+          method: "POST",
+          body: JSON.stringify({
+            platforms: ["wordpress"],
+            scheduled_at: new Date(scheduledAt).toISOString(),
+          }),
+        });
+        alert(`Article scheduled for ${new Date(scheduledAt).toLocaleString()}`);
+        setScheduledAt("");
+      } catch (err) {
+        alert(err.message || "Failed to schedule article.");
+      }
+    } else {
+      alert("Nothing to save — add a title or content first.");
+    }
   };
 
   return (
@@ -387,12 +501,14 @@ export default function ArticleComposer({ campaigns = [] }) {
             <option value="">No Campaign</option>
             {campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
+          <button className={`btn-grey${contentSubTab === "compose" ? " active" : ""}`} onClick={() => setContentSubTab("compose")}>Editor</button>
           <button className={`btn-grey${contentSubTab === "drafts" ? " active" : ""}`} onClick={() => setContentSubTab("drafts")}>Drafts</button>
           <button className={`btn-grey${contentSubTab === "scheduled" ? " active" : ""}`} onClick={() => setContentSubTab("scheduled")}>Scheduled</button>
           <button className={`btn-grey${contentSubTab === "approval" ? " active" : ""}`} onClick={() => setContentSubTab("approval")}>Share for Approval</button>
           <button className="btn-grey" onClick={() => setImageOpen(true)}>Image</button>
         </div>
-        <div>
+        <div className="d-flex gap-2">
+          <button className="btn-grey" onClick={handleNewArticle} style={{ fontSize: 12 }}>New Article</button>
           <button className="btn-pilot" onClick={() => setAssistantOpen(true)}>myPilotPost Assistant</button>
         </div>
       </div>
@@ -431,6 +547,10 @@ export default function ArticleComposer({ campaigns = [] }) {
                 <hr className="my-1" />
                 <button className="btn-grey btn-sm w-100 mb-1">Grammar Check</button>
               </div>
+              <div className="card-workspace health-sidebar-card mt-2">
+                <label className="extra-small fw-bold text-muted mb-1 text-uppercase">Schedule Publish Date</label>
+                <input className="form-control form-control-sm extra-small mb-1" type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} min={new Date(Date.now() + 60000).toISOString().slice(0, 16)} style={{ borderRadius: 6, border: '1px solid #cbd5e1', padding: '4px 8px', fontSize: 12, outline: 'none' }} />
+              </div>
               <div className="d-grid gap-2 mt-2">
                 <button className="btn-grey" onClick={handleSchedule}>Schedule Article</button>
                 <div className="d-flex gap-2">
@@ -442,9 +562,50 @@ export default function ArticleComposer({ campaigns = [] }) {
           </div>
         </>
       ) : (
-        <div className="card-workspace p-5 text-center text-muted">
-          <h5>No {contentSubTab} found.</h5>
-          <button className="btn-pilot mt-3" onClick={() => setContentSubTab("compose")}>Back to Editor</button>
+        <div className="card-workspace p-4">
+          <h5 className="mb-3 text-capitalize fw-bold" style={{ fontSize: 16 }}>{contentSubTab}</h5>
+          {listLoading ? (
+            <div className="text-center py-5">
+              <span className="spinner-border spinner-border-sm text-primary" style={{ width: 24, height: 24 }}></span>
+              <p className="text-muted small mt-2">Loading articles...</p>
+            </div>
+          ) : listItems.length === 0 ? (
+            <div className="text-center py-5 text-muted">
+              <i className="fas fa-file-alt fa-2x mb-3" style={{ opacity: 0.3 }}></i>
+              <h5>No {contentSubTab} found.</h5>
+              <button className="btn-pilot mt-3" onClick={handleNewArticle}>Create New Article</button>
+            </div>
+          ) : (
+            <div className="d-flex flex-column gap-2">
+              {listItems.map(item => (
+                <div key={item.id} className="d-flex justify-content-between align-items-center p-3 border rounded-3 bg-light hover-shadow" style={{ transition: "all 0.2s" }}>
+                  <div style={{ flex: 1, minWidth: 0, marginRight: 16 }}>
+                    <div className="fw-bold text-dark text-truncate" style={{ fontSize: 14 }}>{item.title || "Untitled Article"}</div>
+                    <div className="text-muted extra-small mt-1 text-truncate">
+                      {item.body ? item.body.replace(/[#*`]/g, "").slice(0, 120) : "No content..."}
+                    </div>
+                    <div className="text-muted extra-small mt-1">
+                      Last updated: {new Date(item.updated_at || item.created_at).toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="d-flex gap-2">
+                    <button className="btn btn-sm btn-outline-primary" onClick={() => loadArticle(item)} style={{ fontSize: 12, padding: "4px 12px" }}>
+                      Edit
+                    </button>
+                    <button className="btn btn-sm btn-outline-danger" onClick={async () => {
+                      if (confirm("Are you sure you want to delete this article?")) {
+                        await apiRequest(`/api/customer/vault/${item.id}`, { method: "DELETE" }).catch(() => {});
+                        setListItems(prev => prev.filter(i => i.id !== item.id));
+                        if (articleId === item.id) handleNewArticle();
+                      }
+                    }} style={{ fontSize: 12, padding: "4px 8px" }}>
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

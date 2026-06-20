@@ -11,6 +11,8 @@ import { json } from "../../lib/json.js";
 // Static capability map — what each platform supports (code-level truth)
 const PLATFORM_CAPABILITIES = {
   facebook:           { publishing: true,  analytics: true,  media: false, refresh: true,  webhooks: false },
+  facebook_story:     { publishing: true,  analytics: false, media: false, refresh: true,  webhooks: false },
+  facebook_reel:      { publishing: true,  analytics: false, media: false, refresh: true,  webhooks: false },
   instagram:          { publishing: true,  analytics: true,  media: false, refresh: true,  webhooks: false },
   threads:            { publishing: true,  analytics: true,  media: false, refresh: false, webhooks: false },
   x:                  { publishing: true,  analytics: true,  media: false, refresh: true,  webhooks: false },
@@ -24,6 +26,7 @@ const PLATFORM_CAPABILITIES = {
   canva:              { publishing: false, analytics: false, media: true,  refresh: false, webhooks: false },
   dropbox:            { publishing: false, analytics: false, media: true,  refresh: true,  webhooks: false },
   wordpress:          { publishing: true,  analytics: false, media: false, refresh: true,  webhooks: false },
+  wordpress_ecommerce: { publishing: true,  analytics: false, media: false, refresh: true,  webhooks: false },
 };
 
 function tokenHealth(conn) {

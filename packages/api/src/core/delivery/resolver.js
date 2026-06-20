@@ -92,7 +92,7 @@ export async function resolveDeliveryData(env, job) {
 
   // 1. Resolve Content (Social or Blog)
   const contentTable = job.content_type === 'blog' ? 'blog_posts' : 'social_assets';
-  const queryPlatform = job.platform.startsWith("instagram") ? "instagram" : job.platform;
+  const queryPlatform = job.platform.startsWith("instagram") ? "instagram" : (job.platform.startsWith("facebook") ? "facebook" : job.platform);
   const asset = await db.prepare(`
     SELECT sa.*, sv.caption, sv.hashtags
     FROM ${contentTable} sa

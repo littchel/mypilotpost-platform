@@ -34,7 +34,8 @@ import {
 import {
   startUnifiedOAuth,
   handleUnifiedCallback,
-  connectWordPressCustom
+  connectWordPressCustom,
+  connectWordPressEcommerceCustom
 } from "./integrations/oauth_unified.js";
 
 import { getAdobeConfig, getAdobeStatus } from "./integrations/adobe.js";
@@ -1083,6 +1084,12 @@ export default {
       if (method === "POST" && path === "/api/oauth/wordpress/custom-connect") {
         const auth = await requireAuth(request, env);
         return withCors(request, connectWordPressCustom(request, env, auth));
+      }
+
+      /* ---------- WORDPRESS ECOMMERCE CUSTOM CONNECT (PROTECTED — requires JWT) ---------- */
+      if (method === "POST" && path === "/api/oauth/wordpress_ecommerce/custom-connect") {
+        const auth = await requireAuth(request, env);
+        return withCors(request, connectWordPressEcommerceCustom(request, env, auth));
       }
 
       /* ---------- RESOURCE SELECTION (PROTECTED) ---------- */

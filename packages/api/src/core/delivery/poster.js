@@ -24,6 +24,7 @@ import * as x from "../platforms/x.js";
 import * as google from "../platforms/google.js";
 import * as pinterest from "../platforms/pinterest.js";
 import * as wordpress from "../platforms/wordpress.js";
+import * as wordpress_ecommerce from "../platforms/wordpress_ecommerce.js";
 import * as threads from "../platforms/threads.js";
 import * as google_business from "../platforms/google_business.js";
 
@@ -32,6 +33,8 @@ const ADAPTERS = {
   instagram_story: instagram,
   instagram_reel: instagram,
   facebook,
+  facebook_story: facebook,
+  facebook_reel: facebook,
   linkedin,
   linkedin_personal: linkedin, // personal profile — same adapter, split at OAuth level
   tiktok,
@@ -40,12 +43,13 @@ const ADAPTERS = {
   youtube: google, // delivery_jobs use platform='youtube'; adapter lives in google.js
   pinterest,
   wordpress,
+  wordpress_ecommerce,
   threads,
   google_business,
 };
 
 const MAX_ATTEMPTS = 3;
-const DELIVERY_TIMEOUT_MS = 25000; // Increased for media uploads
+const DELIVERY_TIMEOUT_MS = 120000; // Increased for container polling and transcoding
 
 /* =====================================================
    EXECUTE DELIVERY JOB

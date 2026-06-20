@@ -35,8 +35,10 @@ function apiJSON(endpoint, method, body) {
 
 // ── Platform metadata ───────────────────────────────────────────────────────────
 const PLATFORM_META = {
-  facebook:  { label: "Facebook",  icon: "fab fa-facebook",  color: "#1877f2" },
-  instagram: { label: "Instagram", icon: "fab fa-instagram", color: "#e1306c" },
+  facebook:  { label: "Facebook Feed",  icon: "fab fa-facebook",  color: "#1877f2" },
+  facebook_story: { label: "Facebook Story", icon: "fab fa-facebook", color: "#1877f2" },
+  facebook_reel: { label: "Facebook Reel", icon: "fab fa-facebook", color: "#1877f2" },
+  instagram: { label: "Instagram Feed", icon: "fab fa-instagram", color: "#e1306c" },
   instagram_story: { label: "Instagram Story", icon: "fab fa-instagram", color: "#e1306c" },
   instagram_reel: { label: "Instagram Reel", icon: "fab fa-instagram", color: "#e1306c" },
   linkedin:  { label: "LinkedIn",  icon: "fab fa-linkedin",  color: "#0a66c2" },
@@ -45,6 +47,8 @@ const PLATFORM_META = {
   pinterest: { label: "Pinterest", icon: "fab fa-pinterest", color: "#e60023" },
   threads:   { label: "Threads",   icon: "fab fa-threads",   color: "#000"    },
   youtube:   { label: "YouTube",   icon: "fab fa-youtube",   color: "#ff0000" },
+  wordpress: { label: "WordPress Blog", icon: "fab fa-wordpress", color: "#21759b" },
+  wordpress_ecommerce: { label: "WooCommerce", icon: "fab fa-wordpress", color: "#96588A" },
 };
 
 const TIMEZONES = [
@@ -331,9 +335,12 @@ const PUBLISH_PHASES = {
 
 function VerificationPanel({ open, onClose, data, onPublish, onSchedule, onDraft, isPublishing, publishPhase, publishResult, onReset }) {
   const { platforms, content, overrides, media, scheduledTime, timezone } = data;
+  const mainMedia = media?.[0];
+  const mediaType = mainMedia?.type || (mainMedia?.mime_type?.startsWith("video/") ? "video" : (mainMedia?.url ? "image" : null));
+  const mediaMeta = mainMedia ? { ratio: mainMedia.ratio || null, duration: mainMedia.duration || null } : null;
   const validations = platforms.map(p => ({
     platform: p,
-    result: validateContent(p, overrides[p] || content, media.length > 0 ? "image" : null, null),
+    result: validateContent(p, overrides[p] || content, mediaType, mediaMeta),
   }));
   const hasBlocks   = validations.some(v => v.result.state === "BLOCKED");
   const hasWarnings = validations.some(v => v.result.state === "WARNING");
@@ -571,6 +578,7 @@ export default function CreatePost({
   // legacy compat (read by handleAssistantGenerate)
   const [pexelsItems, setPexelsItems]       = useState([]);
   const [libraryOpen, setLibraryOpen]       = useState(false);
+  const filteredConnections = connections.filter(c => c.platform !== "wordpress" && c.platform !== "wordpress_ecommerce");
   const [campaignId, setCampaignId]         = useState(propCampaignId || "");
   const [scheduledTime, setScheduledTime]   = useState("");
   const [scheduledDate, setScheduledDate]   = useState("");
@@ -682,33 +690,33 @@ export default function CreatePost({
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (connections.length > 0 && selectedPlatforms.length === 0) {
-      const active = connections.filter(c => c.status === "active").map(c => c.platform);
+    if (filteredConnections.length > 0 && selectedPlatforms.length === 0) {
+      const active = filteredConnections.filter(c => c.status === "active").map(c => c.platform);
       if (active.length > 0) setSelectedPlatforms([active[0]]);
     }
-  }, [connections]);
+  }, [filteredConnections]);
 
   useEffect(() => {
     const hasVideo = mediaItems.some(item => item.type === "video");
     if (!hasVideo && selectedPlatforms.includes("youtube")) {
       setSelectedPlatforms(prev => {
         const next = prev.filter(p => p !== "youtube");
-        if (next.length === 0 && connections.length > 0) {
-          const active = connections.filter(c => c.status === "active" && c.platform !== "youtube").map(c => c.platform);
+        if (next.length === 0 && filteredConnections.length > 0) {
+          const active = filteredConnections.filter(c => c.status === "active" && c.platform !== "youtube").map(c => c.platform);
           if (active.length > 0) return [active[0]];
         }
         return next;
       });
     }
-  }, [mediaItems, selectedPlatforms, connections]);
+  }, [mediaItems, selectedPlatforms, filteredConnections]);
 
   const showToast = useCallback((msg, type = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 4000);
   }, []);
 
-  const activeConnections  = connections.filter(c => c.status === "active");
-  const expiredConnections = connections.filter(c => c.status === "error" || c.status === "expired");
+  const activeConnections  = filteredConnections.filter(c => c.status === "active");
+  const expiredConnections = filteredConnections.filter(c => c.status === "error" || c.status === "expired");
   const allKnownPlatforms  = [...activeConnections, ...expiredConnections];
 
   const togglePlatform = (key, isExpired) => {
@@ -721,15 +729,26 @@ export default function CreatePost({
       }
     }
     const isInstagram = key === "instagram";
+    const isFacebook = key === "facebook";
     setSelectedPlatforms(prev => {
-      const hasPlatform = isInstagram 
-        ? prev.some(p => p.startsWith("instagram"))
-        : prev.includes(key);
+      let hasPlatform = false;
+      if (isInstagram) {
+        hasPlatform = prev.some(p => p.startsWith("instagram"));
+      } else if (isFacebook) {
+        hasPlatform = prev.some(p => p.startsWith("facebook"));
+      } else {
+        hasPlatform = prev.includes(key);
+      }
         
       if (hasPlatform) {
-        const next = isInstagram 
-          ? prev.filter(p => !p.startsWith("instagram"))
-          : prev.filter(p => p !== key);
+        let next = prev;
+        if (isInstagram) {
+          next = prev.filter(p => !p.startsWith("instagram"));
+        } else if (isFacebook) {
+          next = prev.filter(p => !p.startsWith("facebook"));
+        } else {
+          next = prev.filter(p => p !== key);
+        }
         return next.length > 0 ? next : prev;
       } else {
         return [...prev, key];
@@ -1503,7 +1522,9 @@ export default function CreatePost({
                 const isExpired = conn.status === "error" || conn.status === "expired";
                 const isSelected = conn.platform === "instagram" 
                   ? selectedPlatforms.some(p => p.startsWith("instagram"))
-                  : selectedPlatforms.includes(conn.platform);
+                  : conn.platform === "facebook"
+                    ? selectedPlatforms.some(p => p.startsWith("facebook"))
+                    : selectedPlatforms.includes(conn.platform);
                 const hasVideo = mediaItems.some(item => item.type === "video");
                 const isYouTube = conn.platform === "youtube";
                 const isYouTubeDisabled = isYouTube && !hasVideo;
@@ -1536,6 +1557,41 @@ export default function CreatePost({
                 );
               })}
             </div>
+
+            {/* Facebook format selector details */}
+            {selectedPlatforms.some(p => p.startsWith("facebook")) && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4, padding: "8px 12px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }}>Facebook Format:</span>
+                {["feed", "story", "reel"].map(format => {
+                  const label = format === "feed" ? "Feed" : format === "story" ? "Story" : "Reel";
+                  const targetPlatform = format === "feed" ? "facebook" : `facebook_${format}`;
+                  const isCurrent = selectedPlatforms.includes(targetPlatform);
+                  return (
+                    <button
+                      key={format}
+                      type="button"
+                      onClick={() => {
+                        setSelectedPlatforms(prev =>
+                          prev.map(p => p.startsWith("facebook") ? targetPlatform : p)
+                        );
+                      }}
+                      style={{
+                        background: isCurrent ? "#1877f2" : "#fff",
+                        color: isCurrent ? "#fff" : "#64748b",
+                        border: `1px solid ${isCurrent ? "#1877f2" : "#e2e8f0"}`,
+                        borderRadius: 12,
+                        padding: "3px 10px",
+                        fontSize: 10,
+                        fontWeight: 600,
+                        cursor: "pointer"
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Instagram format selector details */}
             {selectedPlatforms.some(p => p.startsWith("instagram")) && (
@@ -1834,7 +1890,7 @@ export default function CreatePost({
           isOpen={assistantOpen}
           onClose={() => setAssistantOpen(false)}
           onComplete={handleAssistantGenerate}
-          connections={connections}
+          connections={filteredConnections}
         />
       )}
 

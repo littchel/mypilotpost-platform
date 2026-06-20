@@ -165,7 +165,7 @@ async function runTests() {
 
   // 1.2 Image Post
   fetchMocks.push({
-    match: (url, opts) => url.includes("graph.facebook.com") && url.includes("/photos") && opts.method === "POST",
+    match: (url, opts) => url.includes("graph.facebook.com") && url.includes("/photos") && opts.method === "POST" && (!opts.body || !opts.body.get || opts.body.get("published") !== "false"),
     response: async (url, opts) => {
       assert(opts.body instanceof FormData, "Facebook image uses FormData");
       assert(opts.body.get("caption") === "Image post", "Facebook image caption matches");
@@ -204,6 +204,109 @@ async function runTests() {
     env: mockEnv
   });
   passCountAssert("Facebook video post verified successfully");
+
+  // 1.4 Facebook Photo Story
+  fetchMocks.push({
+    match: (url, opts) => url.includes("graph.facebook.com") && url.includes("/photos") && opts.method === "POST" && opts.body && opts.body.get && opts.body.get("published") === "false",
+    response: async (url, opts) => {
+      assert(opts.body instanceof FormData, "Facebook story photo upload uses FormData");
+      assert(opts.body.get("published") === "false", "Facebook story photo is unpublished");
+      return { ok: true, status: 200, json: async () => ({ id: "fb_story_photo_id" }) };
+    }
+  });
+  fetchMocks.push({
+    match: (url, opts) => url.includes("graph.facebook.com") && url.includes("/photo_stories") && opts.method === "POST",
+    response: async (url, opts) => {
+      const body = JSON.parse(opts.body);
+      assert(body.photo_id === "fb_story_photo_id", "Facebook story photo ID matches linked photo");
+      return { ok: true, status: 200, json: async () => ({ id: "fb_photo_story_123" }) };
+    }
+  });
+
+  await publishFacebook({
+    content: {
+      text: "Story text",
+      platform: "facebook_story",
+      media: [{ preview_url: "https://example.com/media/test.jpg", mime_type: "image/jpeg", role: "primary" }]
+    },
+    connection: { access_token: "token", account_id: "page123" },
+    env: mockEnv
+  });
+  passCountAssert("Facebook Photo Story verified successfully");
+
+  // 1.5 Facebook Video Story
+  let storyVideoUploadUrl = "https://rupload.facebook.com/story-video-upload-123";
+  fetchMocks.push({
+    match: (url, opts) => url.includes("graph.facebook.com") && url.includes("/video_stories") && opts.method === "POST" && opts.body && JSON.parse(opts.body).upload_phase === "start",
+    response: async (url, opts) => {
+      return { ok: true, status: 200, json: async () => ({ video_id: "fb_story_video_id", upload_url: storyVideoUploadUrl }) };
+    }
+  });
+  fetchMocks.push({
+    match: (url, opts) => url === storyVideoUploadUrl && opts.method === "POST",
+    response: async (url, opts) => {
+      const offset = opts.headers instanceof Headers ? opts.headers.get("file_offset") : opts.headers?.file_offset;
+      assert(offset === "0", "Binary offset is 0");
+      return { ok: true, status: 200, text: async () => "OK" };
+    }
+  });
+  fetchMocks.push({
+    match: (url, opts) => url.includes("graph.facebook.com") && url.includes("/video_stories") && opts.method === "POST" && opts.body && JSON.parse(opts.body).upload_phase === "finish",
+    response: async (url, opts) => {
+      const body = JSON.parse(opts.body);
+      assert(body.video_id === "fb_story_video_id", "Facebook story finish video_id matches");
+      return { ok: true, status: 200, json: async () => ({ success: true }) };
+    }
+  });
+
+  await publishFacebook({
+    content: {
+      text: "Story text",
+      platform: "facebook_story",
+      media: [{ preview_url: "https://example.com/media/test.mp4", mime_type: "video/mp4", role: "primary" }]
+    },
+    connection: { access_token: "token", account_id: "page123" },
+    env: mockEnv
+  });
+  passCountAssert("Facebook Video Story verified successfully");
+
+  // 1.6 Facebook Video Reel
+  let reelVideoUploadUrl = "https://rupload.facebook.com/reel-video-upload-123";
+  fetchMocks.push({
+    match: (url, opts) => url.includes("graph.facebook.com") && url.includes("/video_reels") && opts.method === "POST" && opts.body && JSON.parse(opts.body).upload_phase === "start",
+    response: async (url, opts) => {
+      return { ok: true, status: 200, json: async () => ({ video_id: "fb_reel_video_id", upload_url: reelVideoUploadUrl }) };
+    }
+  });
+  fetchMocks.push({
+    match: (url, opts) => url === reelVideoUploadUrl && opts.method === "POST",
+    response: async (url, opts) => {
+      const offset = opts.headers instanceof Headers ? opts.headers.get("file_offset") : opts.headers?.file_offset;
+      assert(offset === "0", "Binary offset is 0");
+      return { ok: true, status: 200, text: async () => "OK" };
+    }
+  });
+  fetchMocks.push({
+    match: (url, opts) => url.includes("graph.facebook.com") && url.includes("/video_reels") && opts.method === "POST" && opts.body && JSON.parse(opts.body).upload_phase === "finish",
+    response: async (url, opts) => {
+      const body = JSON.parse(opts.body);
+      assert(body.video_id === "fb_reel_video_id", "Facebook reel finish video_id matches");
+      assert(body.video_state === "PUBLISHED", "Facebook reel state is PUBLISHED");
+      assert(body.description === "Reel description text", "Facebook reel description matches");
+      return { ok: true, status: 200, json: async () => ({ success: true }) };
+    }
+  });
+
+  await publishFacebook({
+    content: {
+      text: "Reel description text",
+      platform: "facebook_reel",
+      media: [{ preview_url: "https://example.com/media/test.mp4", mime_type: "video/mp4", role: "primary" }]
+    },
+    connection: { access_token: "token", account_id: "page123" },
+    env: mockEnv
+  });
+  passCountAssert("Facebook Reel verified successfully");
 
   // =========================================================================
   // SCENARIO 2: LinkedIn Adapter Verification

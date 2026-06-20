@@ -174,7 +174,7 @@ function MediaArea({ media, platform, height = 240, overlays = null }) {
 
   if (mediaUrl) {
     if (isVideo) {
-      const isVerticalPlatform = platform === "instagram_story" || platform === "instagram_reel" || platform === "shorts" || platform === "tiktok";
+      const isVerticalPlatform = platform === "instagram_story" || platform === "instagram_reel" || platform === "facebook_story" || platform === "facebook_reel" || platform === "shorts" || platform === "tiktok";
       return (
         <div style={{ ...S.mediaBox(height), position: "relative", background: "#000" }}>
           <video
@@ -274,6 +274,133 @@ const FacebookRenderer = ({ content, media, brandName, overlays }) => (
     </div>
   </div>
 );
+
+const FacebookStoryRenderer = ({ content, media, brandName, overlays }) => {
+  const mediaItems = Array.isArray(media) ? media : (media ? [media] : []);
+  const mainMedia = mediaItems[0];
+  const mediaUrl = getMediaUrl(mainMedia);
+  const isVideo = isMediaVideo(mainMedia);
+  const handle = brandName || "Your Brand";
+
+  return (
+    <div style={S.mobileCard}>
+      <div style={{ position: "absolute", inset: 0, background: "#1a1a1a" }}>
+        {mediaUrl ? (
+          isVideo ? (
+            <video
+              src={mediaUrl}
+              autoPlay
+              muted
+              loop
+              playsInline
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          ) : (
+            <img
+              src={mediaUrl}
+              alt=""
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          )
+        ) : (
+          <div style={{ ...S.mediaBox(498), background: "#262626" }}>
+            <div style={S.emptyMedia}>
+              <i className="fas fa-photo-video" style={{ fontSize: 32 }}></i>
+              <span style={{ fontSize: 12 }}>Story Preview</span>
+            </div>
+          </div>
+        )}
+        <PreviewOverlays overlays={overlays} height={498} />
+      </div>
+
+      {/* Story Progress Indicators */}
+      <div style={{ position: "absolute", top: 12, left: 8, right: 8, display: "flex", gap: 4, zIndex: 10 }}>
+        <div style={{ flex: 1, height: 2, background: "rgba(255,255,255,0.8)", borderRadius: 1 }}></div>
+        <div style={{ flex: 1, height: 2, background: "rgba(255,255,255,0.35)", borderRadius: 1 }}></div>
+      </div>
+
+      {/* Story Profile Header */}
+      <div style={{ position: "absolute", top: 22, left: 10, right: 10, display: "flex", alignItems: "center", gap: 8, zIndex: 10 }}>
+        <BrandAvatar brandName={brandName} size={28} radius={8} />
+        <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>{handle}</span>
+        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.8)", textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>Just now</span>
+        <span style={{ marginLeft: "auto", color: "#fff", fontSize: 16, cursor: "pointer", textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>✕</span>
+      </div>
+
+      {/* Story overlay text caption */}
+      {content && (
+        <div style={{ position: "absolute", bottom: 20, left: 16, right: 16, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(10px)", borderRadius: 8, padding: "8px 12px", zIndex: 10, border: "1px solid rgba(255,255,255,0.15)" }}>
+          <p style={{ margin: 0, fontSize: 12, color: "#fff", lineHeight: 1.4, wordBreak: "break-word" }}>
+            {content.slice(0, 150)}{content.length > 150 ? "..." : ""}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const FacebookReelRenderer = ({ content, media, brandName, overlays }) => {
+  const mediaItems = Array.isArray(media) ? media : (media ? [media] : []);
+  const mainMedia = mediaItems[0];
+  const mediaUrl = getMediaUrl(mainMedia);
+  const handle = brandName || "Your Brand";
+
+  return (
+    <div style={S.mobileCard}>
+      <div style={{ position: "absolute", inset: 0, background: "#000" }}>
+        {mediaUrl ? (
+          <video
+            src={mediaUrl}
+            autoPlay
+            muted
+            loop
+            playsInline
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        ) : (
+          <div style={{ ...S.mediaBox(498), background: "#1a1a1a" }}>
+            <div style={S.emptyMedia}>
+              <i className="fas fa-video" style={{ fontSize: 32 }}></i>
+              <span style={{ fontSize: 12 }}>Reel Preview</span>
+            </div>
+          </div>
+        )}
+        <PreviewOverlays overlays={overlays} height={498} />
+      </div>
+
+      {/* Reel Info Controls Overlay */}
+      <div style={{ position: "absolute", bottom: 16, left: 12, right: 48, zIndex: 10, color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.8)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          <BrandAvatar brandName={brandName} size={26} radius={6} />
+          <span style={{ fontSize: 12, fontWeight: 700 }}>{handle}</span>
+          <button style={{ border: "none", background: "#1877F2", color: "#fff", borderRadius: 4, padding: "2px 8px", fontSize: 10, fontWeight: 700 }}>Follow</button>
+        </div>
+
+        <div style={{ fontSize: 11, lineHeight: 1.4, marginBottom: 8, maxHeight: 60, overflow: "hidden" }}>
+          {content ? (content.length > 90 ? content.slice(0, 90) + "..." : content) : <span style={{ color: "#bbb" }}>Reel description...</span>}
+        </div>
+      </div>
+
+      {/* Right side interaction buttons */}
+      <div style={{ position: "absolute", bottom: 20, right: 8, zIndex: 10, display: "flex", flexDirection: "column", gap: 16, alignItems: "center", color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.8)" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <i className="fas fa-thumbs-up" style={{ fontSize: 20 }}></i>
+          <span style={{ fontSize: 10, marginTop: 4 }}>Like</span>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <i className="fas fa-comment" style={{ fontSize: 20 }}></i>
+          <span style={{ fontSize: 10, marginTop: 4 }}>0</span>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <i className="fas fa-share" style={{ fontSize: 18 }}></i>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <i className="fas fa-ellipsis-h" style={{ fontSize: 16 }}></i>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const InstagramFeedRenderer = ({ content, media, brandName, overlays }) => {
   const handle = brandName?.toLowerCase().replace(/\s+/g, "") || "yourbrand";
@@ -806,8 +933,46 @@ const ShortsRenderer = ({ content, media, brandName, overlays }) => (
   </div>
 );
 
+const WordPressRenderer = ({ content, media, brandName, overlays }) => (
+  <div style={S.feedCard}>
+    <div style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 8, borderBottom: "1px solid #edf2f7" }}>
+      <BrandAvatar brandName={brandName} size={36} radius={8} />
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#2d3748" }}>{brandName} Blog</div>
+        <div style={{ fontSize: 11, color: "#718096" }}>WordPress Post</div>
+      </div>
+    </div>
+    <div style={{ padding: "16px 14px 10px" }}>
+      <Caption text={content} limit={1000} />
+    </div>
+    {media && <MediaArea media={media} platform="wordpress" height={220} overlays={overlays} />}
+  </div>
+);
+
+const WordPressEcommerceRenderer = ({ content, media, brandName, overlays }) => (
+  <div style={S.feedCard}>
+    <div style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 8, borderBottom: "1px solid #edf2f7" }}>
+      <BrandAvatar brandName={brandName} size={36} radius={8} />
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#2d3748" }}>{brandName} Store</div>
+        <div style={{ fontSize: 11, color: "#96588A", fontWeight: 600 }}>WooCommerce Product</div>
+      </div>
+    </div>
+    {media && <MediaArea media={media} platform="wordpress_ecommerce" height={260} overlays={overlays} />}
+    <div style={{ padding: "16px 14px" }}>
+      <div style={{ fontSize: 14, fontWeight: 700, color: "#2d3748", marginBottom: 6 }}>Product Details</div>
+      <div style={{ display: "inline-block", background: "#f0fdf4", color: "#166534", fontSize: 12, fontWeight: 700, padding: "2px 6px", borderRadius: 4, marginBottom: 10 }}>
+        $0.00 (Active product)
+      </div>
+      <Caption text={content} limit={500} />
+    </div>
+  </div>
+);
+
 const RENDERERS = {
   facebook:  FacebookRenderer,
+  facebook_story: FacebookStoryRenderer,
+  facebook_reel: FacebookReelRenderer,
   instagram: InstagramRenderer,
   instagram_story: InstagramStoryRenderer,
   instagram_reel: InstagramReelRenderer,
@@ -819,11 +984,15 @@ const RENDERERS = {
   threads:   ThreadsRenderer,
   youtube:   YouTubeRenderer,
   shorts:    ShortsRenderer,
+  wordpress: WordPressRenderer,
+  wordpress_ecommerce: WordPressEcommerceRenderer,
 };
 
 // ── Platform labels ────────────────────────────────────────────────────────────
 const PLABELS = {
-  facebook: "Facebook",
+  facebook: "Facebook Feed",
+  facebook_story: "Facebook Story",
+  facebook_reel: "Facebook Reel",
   instagram: "Instagram Feed",
   instagram_story: "Instagram Story",
   instagram_reel: "Instagram Reel",
@@ -835,6 +1004,8 @@ const PLABELS = {
   threads: "Threads",
   youtube: "YouTube",
   shorts: "Shorts",
+  wordpress: "WordPress Blog",
+  wordpress_ecommerce: "WooCommerce Store",
 };
 
 // ── Main Panel ─────────────────────────────────────────────────────────────────

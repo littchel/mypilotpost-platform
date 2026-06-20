@@ -11,6 +11,20 @@ export const PLATFORM_LIMITS = {
     mediaRatios: ["1.91:1", "1:1", "4:5"],
     videoMaxDurationSeconds: 14400, // 240 mins
   },
+  facebook_story: {
+    maxChars: 2200,
+    optimalChars: 80,
+    mediaRatios: ["9:16"],
+    videoMaxDurationSeconds: 60,
+    hasSafeZones: true
+  },
+  facebook_reel: {
+    maxChars: 2200,
+    optimalChars: 80,
+    mediaRatios: ["9:16"],
+    videoMaxDurationSeconds: 90,
+    hasSafeZones: true
+  },
   instagram: {
     maxChars: 2200,
     optimalChars: 150,
@@ -68,6 +82,20 @@ export const PLATFORM_LIMITS = {
     mediaRatios: ["9:16"],
     videoMaxDurationSeconds: 60,
     hasSafeZones: true
+  },
+  wordpress: {
+    maxChars: 100000,
+    optimalChars: 1500,
+    maxHashtags: 10,
+    mediaRatios: [],
+    videoMaxDurationSeconds: null,
+  },
+  wordpress_ecommerce: {
+    maxChars: 100000,
+    optimalChars: 1000,
+    maxHashtags: 10,
+    mediaRatios: [],
+    videoMaxDurationSeconds: null,
   }
 };
 
@@ -99,9 +127,16 @@ export const validateContent = (platform, content, mediaType, mediaMeta) => {
   }
 
   // 3. Media Requirement Check
-  if ((platform === "instagram" || platform === "instagram_story") && !mediaType) {
+  if ((platform === "instagram" || platform === "instagram_story" || platform === "facebook_story" || platform === "facebook_reel") && !mediaType) {
     results.state = "BLOCKED";
-    results.messages.push(`Instagram requires at least one image or video.`);
+    const displayName = platform.startsWith("facebook") ? "Facebook" : "Instagram";
+    const subFormat = platform.endsWith("story") ? "Story" : (platform.endsWith("reel") ? "Reel" : "Post");
+    results.messages.push(`${displayName} ${subFormat} requires at least one image or video.`);
+  }
+
+  if (platform === "facebook_reel" && mediaType !== "video") {
+    results.state = "BLOCKED";
+    results.messages.push(`Facebook Reels require a video.`);
   }
 
   if (platform === "shorts" && mediaType !== "video") {
@@ -141,7 +176,7 @@ export const validateContent = (platform, content, mediaType, mediaMeta) => {
             results.state = "BLOCKED";
             results.messages.push(`Instagram aspect ratio is invalid (${mediaMeta.ratio}). Supported: 4:5 to 1.91:1.`);
           }
-        } else if (platform === "instagram_story" || platform === "shorts" || platform === "tiktok") {
+        } else if (platform === "instagram_story" || platform === "facebook_story" || platform === "facebook_reel" || platform === "shorts" || platform === "tiktok") {
           // Requires 9:16 vertical (0.56)
           if (ratioVal > 0.65) {
             if (results.state === "SAFE") results.state = "WARNING";

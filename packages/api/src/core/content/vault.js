@@ -694,6 +694,8 @@ export async function vaultPublishNow(request, env, auth) {
   try { body = await request.json(); }
   catch { body = {}; }
 
+  const { platforms = [] } = body;
+
   const db  = getDB(env);
   const item = await fetchVaultItem(db, id, brand_id);
   if (!item) return error("Content not found", "NOT_FOUND", null, 404);

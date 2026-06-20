@@ -11,12 +11,18 @@ const PLATFORM_LABELS = {
   instagram: "Instagram", facebook: "Facebook", linkedin: "LinkedIn",
   x: "X",               tiktok: "TikTok",     youtube: "YouTube",
   pinterest: "Pinterest", threads: "Threads",
+  wordpress: "WordPress Blog", wordpress_ecommerce: "WooCommerce Store",
+  facebook_story: "Facebook Story", facebook_reel: "Facebook Reel",
+  instagram_story: "Instagram Story", instagram_reel: "Instagram Reel",
 };
 
 const PLATFORM_COLORS = {
   instagram: "#E4405F", facebook: "#1877F2", linkedin: "#0A66C2",
   x: "#111827",         tiktok: "#111827",   youtube: "#FF0000",
   pinterest: "#BD081C", threads: "#111827",
+  wordpress: "#21759B", wordpress_ecommerce: "#96588A",
+  facebook_story: "#1877F2", facebook_reel: "#1877F2",
+  instagram_story: "#E4405F", instagram_reel: "#E4405F",
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

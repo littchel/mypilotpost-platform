@@ -267,6 +267,13 @@ export const PROVIDERS = {
       token: "https://public-api.wordpress.com/oauth2/token"
     }
   },
+  wordpress_ecommerce: {
+    name: "WordPress eCommerce",
+    type: "publishing",
+    capabilities: ["publish_blog"],
+    auth: "custom",
+    endpoints: {}
+  },
 
   // --- AUTOMATION ---
   zapier: {

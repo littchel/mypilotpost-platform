@@ -94,6 +94,7 @@ const PlatformIcon = ({ id }) => {
   };
 
   if (id === "linkedin_personal" || id === "linkedin_pages") return icons.linkedin;
+  if (id === "wordpress_ecommerce") return icons.wordpress;
 
   return icons[id] || (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
@@ -112,7 +113,8 @@ const PROVIDERS = [
   { id: "threads",              name: "Threads",                color: "#1C1C1C", bgColor: "#1C1C1C",   description: "Publish to your Threads audience directly." },
   { id: "youtube",              name: "YouTube",                color: "#FF0000", bgColor: "#FF0000",   description: "Schedule and publish video content to your channel." },
   { id: "pinterest",            name: "Pinterest",              color: "#BD081C", bgColor: "#BD081C",   description: "Pin your latest content to boards automatically.", requiresResource: true, resourceLabel: "Board" },
-  { id: "wordpress",            name: "WordPress",              color: "#21759B", bgColor: "#21759B",   description: "Publish blog articles directly to your WordPress site." },
+  { id: "wordpress",            name: "WordPress Blog",         color: "#21759B", bgColor: "#21759B",   description: "Publish blog articles directly to your WordPress site." },
+  { id: "wordpress_ecommerce",  name: "WooCommerce Store",      color: "#96588A", bgColor: "#96588A",   description: "Publish your product catalog directly to your WooCommerce store." },
   { id: "adobe",                name: "Adobe",                  color: "#FF0000", bgColor: "#FA0F00",   description: "Access and import your assets directly from Adobe Creative Cloud." },
   { id: "canva",                name: "Canva",                  color: "#00C4CC", bgColor: "#00C4CC",   description: "Design graphics and import them directly into posts." },
   { id: "dropbox",              name: "Dropbox",                color: "#0061FF", bgColor: "#0061FF",   description: "Import and sync media assets from your Dropbox." },
@@ -396,6 +398,124 @@ function WpConnectModal({ onCancel, onSuccess }) {
   );
 }
 
+/* ── WooCommerce Custom Connection Modal ── */
+function WcConnectModal({ onCancel, onSuccess }) {
+  const [storeUrl, setStoreUrl] = useState("");
+  const [consumerKey, setConsumerKey] = useState("");
+  const [consumerSecret, setConsumerSecret] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!storeUrl || !consumerKey || !consumerSecret) {
+      setError("Please fill in all fields.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await apiRequest("/api/oauth/wordpress_ecommerce/custom-connect", {
+        method: "POST",
+        body: JSON.stringify({
+          store_url: storeUrl,
+          consumer_key: consumerKey,
+          consumer_secret: consumerSecret
+        })
+      });
+      if (response.success) {
+        onSuccess();
+      } else {
+        throw new Error(response.error || "WooCommerce connection failed");
+      }
+    } catch (err) {
+      setError(err.message || "Failed to connect. Please verify your WooCommerce URL and API Keys.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="rp-overlay">
+      <div className="rp-modal" style={{ maxWidth: "520px" }}>
+        <div className="rp-header">
+          <h3>Connect WooCommerce Store</h3>
+          <button className="rp-close" onClick={onCancel}><X size={18} /></button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="wp-connect-form">
+          <div className="wp-connect-body">
+            <div className="instructions-section">
+              <h4>How to connect your WooCommerce store:</h4>
+              <ol>
+                <li>Log in to your self-hosted WooCommerce Admin panel.</li>
+                <li>Go to <strong>WooCommerce</strong> &rarr; <strong>Settings</strong> &rarr; <strong>Advanced</strong> &rarr; <strong>REST API</strong>.</li>
+                <li>Click <strong>Add Key</strong>.</li>
+                <li>Set Description (e.g., <code>myPilotPost</code>), select user, and set Permissions to <strong>Read/Write</strong>.</li>
+                <li>Click <strong>Generate API Key</strong>.</li>
+                <li>Copy the Consumer Key (starts with <code>ck_</code>) and Consumer Secret (starts with <code>cs_</code>) and paste them below.</li>
+              </ol>
+            </div>
+
+            {error && (
+              <div className="rp-error" style={{ margin: "0 0 16px" }}>
+                <AlertCircle size={15} />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div className="form-group">
+              <label>WooCommerce Store URL</label>
+              <input
+                type="url"
+                placeholder="https://example.com"
+                value={storeUrl}
+                onChange={(e) => setStoreUrl(e.target.value)}
+                required
+                disabled={loading}
+              />
+              <span className="input-hint">Enter your homepage/store URL (e.g. https://mystore.com)</span>
+            </div>
+
+            <div className="form-group">
+              <label>Consumer Key</label>
+              <input
+                type="text"
+                placeholder="ck_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                value={consumerKey}
+                onChange={(e) => setConsumerKey(e.target.value)}
+                required
+                disabled={loading}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Consumer Secret</label>
+              <input
+                type="password"
+                placeholder="cs_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                value={consumerSecret}
+                onChange={(e) => setConsumerSecret(e.target.value)}
+                required
+                disabled={loading}
+              />
+            </div>
+          </div>
+
+          <div className="rp-footer">
+            <button className="pilot-btn btn-outline btn-sm" type="button" onClick={onCancel} disabled={loading}>
+              Cancel
+            </button>
+            <button className="pilot-btn btn-primary btn-sm" type="submit" disabled={loading}>
+              {loading ? "Verifying..." : "Connect Store"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 const IntegrationsManager = () => {
   const { token } = useAuth();
   const [integrations, setIntegrations] = useState([]);
@@ -403,6 +523,7 @@ const IntegrationsManager = () => {
   const [fetchError, setFetchError]     = useState(null);
   const [picker, setPicker]             = useState(null); // { platform, connId }
   const [wpModalOpen, setWpModalOpen]   = useState(false);
+  const [wcModalOpen, setWcModalOpen]   = useState(false);
 
   const fetchIntegrations = useCallback(async () => {
     setLoading(true);
@@ -440,6 +561,10 @@ const IntegrationsManager = () => {
   const handleConnect = async (provider) => {
     if (provider === "wordpress") {
       setWpModalOpen(true);
+      return;
+    }
+    if (provider === "wordpress_ecommerce") {
+      setWcModalOpen(true);
       return;
     }
     try {
@@ -491,6 +616,16 @@ const IntegrationsManager = () => {
           onCancel={() => setWpModalOpen(false)}
           onSuccess={() => {
             setWpModalOpen(false);
+            fetchIntegrations();
+          }}
+        />
+      )}
+
+      {wcModalOpen && (
+        <WcConnectModal
+          onCancel={() => setWcModalOpen(false)}
+          onSuccess={() => {
+            setWcModalOpen(false);
             fetchIntegrations();
           }}
         />

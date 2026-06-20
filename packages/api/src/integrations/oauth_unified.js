@@ -510,3 +510,160 @@ export async function connectWordPressCustom(request, env, userContext) {
   }
 }
 
+/**
+ * WordPress eCommerce (WooCommerce) Custom Connect Handler
+ * Verifies WooCommerce credentials (ck_* and cs_*), encrypts the basic auth header, and stores it in social_connections.
+ */
+export async function connectWordPressEcommerceCustom(request, env, userContext) {
+  const { brand_id, user_id } = userContext;
+  
+  let body;
+  try {
+    body = await request.json();
+  } catch (err) {
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  const { store_url, consumer_key, consumer_secret } = body;
+  if (!store_url || !consumer_key || !consumer_secret) {
+    return new Response(JSON.stringify({ error: "store_url, consumer_key, and consumer_secret are required" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  let cleanUrl = store_url.trim().replace(/\/+$/, "");
+  if (!/^https?:\/\//i.test(cleanUrl)) {
+    cleanUrl = "https://" + cleanUrl;
+  }
+
+  const cleanStoreUrl = cleanUrl.replace(/^https?:\/\//i, "");
+  const authHeader = "Basic " + btoa(`${consumer_key}:${consumer_secret}`);
+
+  // Verification endpoint: system_status
+  const wcUrl = `${cleanUrl}/wp-json/wc/v3/system_status`;
+  console.log(`[WC_CONNECT] Verifying credentials at ${wcUrl}`);
+  
+  try {
+    let wpRes = await fetch(wcUrl, {
+      method: "GET",
+      headers: {
+        "Authorization": authHeader,
+        "Accept": "application/json",
+        "User-Agent": "myPilotPost/1.0"
+      }
+    });
+
+    // Fallback try for products endpoint (in case system_status permissions are restricted or blocked by security plugins)
+    if (!wpRes.ok) {
+      console.warn(`[WC_CONNECT_WARN] system_status endpoint failed with status=${wpRes.status}. Trying fallback products endpoint.`);
+      const fallbackUrl = `${cleanUrl}/wp-json/wc/v3/products?per_page=1`;
+      const fallbackRes = await fetch(fallbackUrl, {
+        method: "GET",
+        headers: {
+          "Authorization": authHeader,
+          "Accept": "application/json",
+          "User-Agent": "myPilotPost/1.0"
+        }
+      });
+      if (fallbackRes.ok) {
+        wpRes = fallbackRes;
+      }
+    }
+
+    if (!wpRes.ok) {
+      const errText = await wpRes.text().catch(() => "");
+      console.error(`[WC_CONNECT_FAILED] status=${wpRes.status} body=${errText}`);
+      let errorMessage = "WooCommerce verification failed. Please check your Store URL, Consumer Key, and Consumer Secret.";
+      try {
+        const errJson = JSON.parse(errText);
+        if (errJson.message) {
+          errorMessage = `WooCommerce Error: ${errJson.message}`;
+        }
+      } catch (e) {}
+      return new Response(JSON.stringify({ error: errorMessage }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    // Try to extract site title from system_status or default
+    let siteTitle = "WooCommerce Store";
+    try {
+      const wpData = await wpRes.json();
+      if (wpData.environment?.site_title) {
+        siteTitle = wpData.environment.site_title;
+      } else if (Array.isArray(wpData)) {
+        // From fallback products list, we don't have store metadata easily, just use url
+        siteTitle = "WooCommerce Store";
+      }
+    } catch (e) {}
+
+    const account_id = cleanStoreUrl;
+    const platform_username = `${siteTitle} (${cleanStoreUrl})`;
+
+    if (!env.ENCRYPTION_SECRET) {
+      throw new Error("ENCRYPTION_SECRET not set in Worker environment");
+    }
+    const access_enc = await encrypt(authHeader, env.ENCRYPTION_SECRET);
+
+    const db = getDB(env);
+    const connection_id = crypto.randomUUID();
+
+    // Check quota if it is a new connection
+    const existingConnection = await db.prepare(`
+      SELECT 1 FROM social_connections
+      WHERE brand_id = ? AND platform = 'wordpress_ecommerce' AND account_id = ? AND status != 'disconnected'
+      LIMIT 1
+    `).bind(brand_id, account_id).first();
+
+    if (!existingConnection) {
+      await checkAndIncrement(db, user_id, 'accounts');
+    }
+
+    const meta = {
+      store_url: cleanUrl,
+      consumer_key: consumer_key,
+      site_title: siteTitle
+    };
+
+    await db.prepare(`
+      INSERT INTO social_connections (
+        id, user_id, brand_id, platform, account_id, platform_username,
+        access_token, refresh_token, expires_at, scopes, status, meta, updated_at
+      ) VALUES (?, ?, ?, 'wordpress_ecommerce', ?, ?, ?, NULL, NULL, 'global', 'active', ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(brand_id, platform, account_id) DO UPDATE SET
+        platform_username = excluded.platform_username,
+        access_token = excluded.access_token,
+        status = 'active',
+        meta = excluded.meta,
+        updated_at = CURRENT_TIMESTAMP,
+        last_refreshed_at = CURRENT_TIMESTAMP
+    `).bind(
+      connection_id,
+      user_id,
+      brand_id,
+      account_id,
+      platform_username,
+      access_enc,
+      JSON.stringify(meta)
+    ).run();
+
+    return new Response(JSON.stringify({ success: true, account_id, platform_username }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+
+  } catch (err) {
+    console.error("[WC_CONNECT_ERROR]", err);
+    return new Response(JSON.stringify({ error: `Connection failed: ${err.message || String(err)}` }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+}
+
+

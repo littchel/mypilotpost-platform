@@ -63,7 +63,11 @@ const SVGS = {
 
 const PLATFORM_COLORS = {
   facebook: "#1877F2",
+  facebook_story: "#1877F2",
+  facebook_reel: "#1877F2",
   instagram: "#E4405F",
+  instagram_story: "#E4405F",
+  instagram_reel: "#E4405F",
   linkedin: "#0A66C2",
   linkedin_personal: "#0A66C2",
   linkedin_pages: "#0A66C2",
@@ -73,6 +77,7 @@ const PLATFORM_COLORS = {
   tiktok: "#000000",
   threads: "#000000",
   wordpress: "#21759B",
+  wordpress_ecommerce: "#96588A",
   google_business: "#4285F4",
 };
 
@@ -80,8 +85,13 @@ export function getPlatformColor(platform) {
   return PLATFORM_COLORS[platform] || "#64748b";
 }
 
-export default function PlatformIcon({ platform, size = 20, color }) {
-  const key = platform === "linkedin_pages" ? "linkedin" : platform;
+export default function PlatformIcon({ platform = "", size = 20, color }) {
+  let key = platform;
+  if (platform.startsWith("facebook")) key = "facebook";
+  else if (platform.startsWith("instagram")) key = "instagram";
+  else if (platform === "linkedin_pages") key = "linkedin";
+  else if (platform === "wordpress_ecommerce") key = "wordpress";
+
   const defaultColor = PLATFORM_COLORS[platform] || "#64748b";
   const renderColor = color || defaultColor;
   const fn = SVGS[key];
