@@ -2,17 +2,19 @@ import React, { useState } from 'react';
 
 /**
  * BlogAssistantModal
- * 5-step wizard for myPilotPost Assistant — Blog
- * Matches provided screenshots exactly.
- *
- * Step 1 — Article Goal
- * Step 2 — Target Audience
- * Step 3 — Focus Keywords
- * Step 4 — Localization
- * Step 5 — Review & Generate
+ * Dual-mode wizard for myPilotPost Assistant — Blog
+ * Matches the style and layout of SocialAssistantModal.jsx exactly.
  */
 
 const TOTAL_STEPS = 5;
+
+const BLUE      = "#2563eb";
+const BLUE_BG   = "#eff6ff";
+const DARK      = "#0f172a";
+const MUTED     = "#64748b";
+const LIGHT     = "#f8fafc";
+const SIDEBAR   = "#0f172a";
+const SIDEBAR_B = "#1e293b";
 
 // ── Step data ─────────────────────────────────────────────────────────────────
 const ARTICLE_GOALS = [
@@ -175,35 +177,58 @@ const GOOGLE_DOMAINS = [
   { label: 'Palestine (google.ps)', value: 'google.ps' },
 ];
 
-// ── Stepper Component ─────────────────────────────────────────────────────────
-function Stepper({ current }) {
+const STEP_LABELS = [
+  "Article Goal",
+  "Target Audience",
+  "Focus Keywords",
+  "Localization",
+  "Review & Generate"
+];
+
+// ── Left sidebar step nav ──────────────────────────────────────────────────────
+function StepNav({ step, goal, audience, primaryKeyword, domain }) {
+  const summaries = [
+    goal || null,
+    audience || null,
+    primaryKeyword || null,
+    GOOGLE_DOMAINS.find(d => d.value === domain)?.label || domain || null,
+    null
+  ];
+
   return (
-    <div className="assistant-stepper">
-      {Array.from({ length: TOTAL_STEPS }, (_, i) => {
-        const n = i + 1;
-        const isCompleted = n < current;
-        const isActive = n === current;
+    <div style={{ padding: "28px 20px", display: "flex", flexDirection: "column", gap: 6 }}>
+      {STEP_LABELS.map((label, i) => {
+        const num = i + 1;
+        const done = step > num;
+        const active = step === num;
         return (
-          <React.Fragment key={n}>
-            {i > 0 && (
-              <div className={`stepper-line${isCompleted ? ' stepper-line--done' : ''}`} />
-            )}
-            <div className="stepper-step">
-              <div className={`stepper-circle ${isCompleted ? 'stepper-circle--done' : isActive ? 'stepper-circle--active' : 'stepper-circle--future'}`}>
-                {n}
-              </div>
-              <span className={`stepper-label${isActive ? ' stepper-label--active' : ''}`}>
-                Step {n}
-              </span>
+          <div key={num} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "10px 0", borderBottom: i < TOTAL_STEPS - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+            <div style={{
+              width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
+              background: done ? BLUE : active ? "rgba(37,99,235,0.25)" : "rgba(255,255,255,0.08)",
+              border: `2px solid ${done ? BLUE : active ? BLUE : "rgba(255,255,255,0.15)"}`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              marginTop: 1,
+            }}>
+              {done
+                ? <i className="fas fa-check" style={{ fontSize: 10, color: "#fff" }}></i>
+                : <span style={{ fontSize: 11, fontWeight: 700, color: active ? "#fff" : "rgba(255,255,255,0.4)" }}>{num}</span>
+              }
             </div>
-          </React.Fragment>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 12, fontWeight: active ? 700 : 500, color: active ? "#fff" : done ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.35)", lineHeight: 1.3 }}>{label}</div>
+              {summaries[i] && (
+                <div style={{ fontSize: 10, color: done ? BLUE : "rgba(255,255,255,0.5)", marginTop: 2, fontWeight: done ? 600 : 400, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap", maxWidth: 140 }}>{summaries[i]}</div>
+              )}
+            </div>
+          </div>
         );
       })}
     </div>
   );
 }
 
-// ── Step 1: Article Goal ──────────────────────────────────────────────────────
+// ── Step components ───────────────────────────────────────────────────────────
 function Step1({ data, setData }) {
   return (
     <div>
@@ -224,7 +249,6 @@ function Step1({ data, setData }) {
   );
 }
 
-// ── Step 2: Target Audience ───────────────────────────────────────────────────
 function Step2({ data, setData }) {
   return (
     <div>
@@ -245,7 +269,6 @@ function Step2({ data, setData }) {
   );
 }
 
-// ── Step 3: Focus Keywords ────────────────────────────────────────────────────
 function Step3({ data, setData }) {
   return (
     <div>
@@ -279,7 +302,6 @@ function Step3({ data, setData }) {
   );
 }
 
-// ── Step 4: Localization ──────────────────────────────────────────────────────
 function Step4({ data, setData }) {
   return (
     <div>
@@ -305,7 +327,6 @@ function Step4({ data, setData }) {
   );
 }
 
-// ── Step 5: Review & Generate ─────────────────────────────────────────────────
 function Step5({ data, onGenerate }) {
   const domainLabel = GOOGLE_DOMAINS.find(d => d.value === data.domain)?.label || data.domain;
 
@@ -314,40 +335,36 @@ function Step5({ data, onGenerate }) {
       <h5 className="fw-bold mb-1">Generate Article</h5>
       <p className="text-muted small mb-4">Review your settings and generate</p>
 
-      <div className="assistant-summary-card mb-4">
-        <div className="assistant-summary-row">
-          <div className="assistant-summary-col">
-            <div className="assistant-summary-label">Goal</div>
-            <div className="assistant-summary-value">{data.goal || '—'}</div>
+      <div className="assistant-summary-card mb-4" style={{ background: LIGHT, border: "1px solid #e2e8f0", padding: 18, borderRadius: 10 }}>
+        <div className="row g-3">
+          <div className="col-6">
+            <div className="extra-small text-muted text-uppercase fw-bold mb-1">Goal</div>
+            <div className="small fw-bold text-dark">{data.goal || '—'}</div>
           </div>
-          <div className="assistant-summary-col">
-            <div className="assistant-summary-label">Audience</div>
-            <div className="assistant-summary-value">{data.audience || '—'}</div>
+          <div className="col-6">
+            <div className="extra-small text-muted text-uppercase fw-bold mb-1">Audience</div>
+            <div className="small fw-bold text-dark">{data.audience || '—'}</div>
           </div>
-        </div>
-        <div className="assistant-summary-row" style={{ marginTop: 16 }}>
-          <div className="assistant-summary-col">
-            <div className="assistant-summary-label">Primary Keyword</div>
-            <div className="assistant-summary-value">{data.primaryKeyword || '—'}</div>
+          <div className="col-6">
+            <div className="extra-small text-muted text-uppercase fw-bold mb-1">Primary Keyword</div>
+            <div className="small fw-bold text-dark">{data.primaryKeyword || '—'}</div>
           </div>
-          <div className="assistant-summary-col">
-            <div className="assistant-summary-label">Target Domain</div>
-            <div className="assistant-summary-value">{domainLabel}</div>
+          <div className="col-6">
+            <div className="extra-small text-muted text-uppercase fw-bold mb-1">Target Domain</div>
+            <div className="small fw-bold text-dark">{domainLabel}</div>
           </div>
-        </div>
-        {data.secondaryKeywords && (
-          <div className="assistant-summary-row" style={{ marginTop: 16 }}>
-            <div className="assistant-summary-col" style={{ flex: '1 1 100%' }}>
-              <div className="assistant-summary-label">Secondary Keywords</div>
-              <div className="assistant-summary-value" style={{ fontSize: '0.88rem' }}>{data.secondaryKeywords}</div>
+          {data.secondaryKeywords && (
+            <div className="col-12 border-top pt-2">
+              <div className="extra-small text-muted text-uppercase fw-bold mb-1">Secondary Keywords</div>
+              <div className="small text-dark">{data.secondaryKeywords}</div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <button
         className="btn-pilot w-100 d-flex align-items-center justify-content-center gap-2"
-        style={{ padding: '14px 24px', fontSize: '0.95rem' }}
+        style={{ padding: '14px 24px', fontSize: '0.95rem', borderRadius: 10 }}
         onClick={onGenerate}
       >
         <i className="fas fa-magic"></i>
@@ -359,7 +376,10 @@ function Step5({ data, onGenerate }) {
 
 // ── Main Modal ────────────────────────────────────────────────────────────────
 export default function BlogAssistantModal({ isOpen, onClose, onGenerate }) {
+  const [mode, setMode] = useState(null); // null, "generate", "improve"
   const [step, setStep] = useState(1);
+  
+  // "Generate for me" state
   const [data, setData] = useState({
     goal: '',
     audience: '',
@@ -367,6 +387,13 @@ export default function BlogAssistantModal({ isOpen, onClose, onGenerate }) {
     secondaryKeywords: '',
     domain: 'google.com',
   });
+
+  // "Improve my idea" state
+  const [improveIdea, setImproveIdea] = useState('');
+  const [improveAudience, setImproveAudience] = useState('');
+  const [improvePrimaryKeyword, setImprovePrimaryKeyword] = useState('');
+  const [improveSecondaryKeywords, setImproveSecondaryKeywords] = useState('');
+  const [improveDomain, setImproveDomain] = useState('google.com');
 
   if (!isOpen) return null;
 
@@ -381,61 +408,276 @@ export default function BlogAssistantModal({ isOpen, onClose, onGenerate }) {
 
   const handleGenerate = () => {
     if (onGenerate) onGenerate(data);
+    handleClose();
+  };
+
+  const handleImproveGenerate = () => {
+    if (onGenerate) {
+      onGenerate({
+        goal: improveIdea,
+        audience: improveAudience,
+        primaryKeyword: improvePrimaryKeyword,
+        secondaryKeywords: improveSecondaryKeywords,
+        domain: improveDomain
+      });
+    }
+    handleClose();
+  };
+
+  const handleClose = () => {
+    setMode(null);
+    setStep(1);
+    setImproveIdea('');
+    setImproveAudience('');
+    setImprovePrimaryKeyword('');
+    setImproveSecondaryKeywords('');
+    setImproveDomain('google.com');
     onClose();
   };
 
   return (
-    <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={onClose}>
-      <div className="modal-dialog modal-lg modal-dialog-centered" onClick={e => e.stopPropagation()}>
-        <div className="modal-content" style={{ borderRadius: 16, border: 'none', overflow: 'hidden' }}>
+    <>
+      <style>{`
+        @keyframes mppSpin { to { transform: rotate(360deg); } }
+        .mpp-modal-right::-webkit-scrollbar { width: 4px; }
+        .mpp-modal-right::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
+      `}</style>
+      <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 1060, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+        <div style={{ background: "#fff", borderRadius: 16, width: "90vw", maxWidth: 1080, height: "88vh", display: "flex", overflow: "hidden", boxShadow: "0 32px 80px rgba(0,0,0,0.35)", flexDirection: "row" }}>
+          
+          {/* ── LEFT SIDEBAR ── */}
+          <div style={{ width: 240, background: SIDEBAR, flexShrink: 0, display: "flex", flexDirection: "column", borderRadius: "16px 0 0 16px" }}>
+            {/* Header */}
+            <div style={{ padding: "22px 20px 16px", borderBottom: `1px solid ${SIDEBAR_B}` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 9, background: BLUE, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <i className="fas fa-robot" style={{ color: "#fff", fontSize: 16 }}></i>
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", letterSpacing: -0.3 }}>AI Assistant</div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", marginTop: 1 }}>myPilotPost</div>
+                </div>
+              </div>
+            </div>
 
-          {/* Header */}
-          <div className="modal-header border-bottom px-4 py-3">
-            <h5 className="modal-title fw-bold d-flex align-items-center gap-2" style={{ color: 'var(--text-heading)' }}>
-              <svg width={26} height={26} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect width="24" height="24" rx="6" fill="#2563eb"/>
-                <path d="M4 12L20 4L16 20L12 13L4 12Z" fill="white"/>
-                <path d="M12 13L16 9" stroke="#2563eb" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
-              myPilotPost Assistant - Blog
-            </h5>
-            <button type="button" className="btn-close" onClick={onClose}></button>
-          </div>
+            {/* Step navigation / Brief */}
+            <div style={{ flex: 1, overflowY: "auto" }}>
+              {mode === "generate" && (
+                <StepNav step={step} goal={data.goal} audience={data.audience} primaryKeyword={data.primaryKeyword} domain={data.domain} />
+              )}
+              {mode === "improve" && (
+                <div style={{ padding: "28px 20px", color: "rgba(255,255,255,0.5)", fontSize: 12 }}>
+                  <i className="fas fa-magic" style={{ fontSize: 24, color: BLUE, display: "block", marginBottom: 10 }}></i>
+                  We will apply your Brand DNA and guidelines to transform your custom idea into a structured, high-quality blog article.
+                </div>
+              )}
+              {mode === null && (
+                <div style={{ padding: "28px 20px", color: "rgba(255,255,255,0.4)", fontSize: 12 }}>
+                  <i className="fas fa-lightbulb" style={{ fontSize: 24, color: BLUE, display: "block", marginBottom: 10 }}></i>
+                  Select a workflow to begin. The AI helper uses search optimization and credibility guidelines automatically.
+                </div>
+              )}
+            </div>
 
-          {/* Body */}
-          <div className="modal-body px-4 pt-4 pb-2">
-            <Stepper current={step} />
-            <div style={{ minHeight: 280, marginTop: 8 }}>
-              {step === 1 && <Step1 data={data} setData={setData} />}
-              {step === 2 && <Step2 data={data} setData={setData} />}
-              {step === 3 && <Step3 data={data} setData={setData} />}
-              {step === 4 && <Step4 data={data} setData={setData} />}
-              {step === 5 && <Step5 data={data} onGenerate={handleGenerate} />}
+            {/* Footer close */}
+            <div style={{ padding: "14px 20px", borderTop: `1px solid ${SIDEBAR_B}` }}>
+              <button onClick={handleClose} style={{ width: "100%", border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.5)", borderRadius: 8, padding: "8px 0", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
+                ✕ Close
+              </button>
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="modal-footer border-top px-4 py-3 d-flex justify-content-between">
-            {step > 1 ? (
-              <button className="btn-grey d-flex align-items-center gap-2" onClick={prev}>
-                <i className="fas fa-arrow-left"></i> Previous
-              </button>
-            ) : (
-              <div />
-            )}
-            {step < TOTAL_STEPS && (
-              <button
-                className="btn-pilot d-flex align-items-center gap-2"
-                onClick={next}
-                disabled={!canNext()}
-                style={{ opacity: canNext() ? 1 : 0.5, cursor: canNext() ? 'pointer' : 'default' }}
-              >
-                Next <i className="fas fa-arrow-right"></i>
-              </button>
+          {/* ── RIGHT PANEL ── */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+            {/* Header */}
+            <div style={{ padding: "20px 28px 16px", borderBottom: "1px solid #f1f5f9", flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: DARK, lineHeight: 1.2 }}>
+                  {mode === null ? "myPilotPost Assistant - Blog" : mode === "generate" ? `Step ${step}: ${STEP_LABELS[step - 1]}` : "Improve my idea"}
+                </div>
+                <div style={{ fontSize: 12, color: MUTED, marginTop: 4 }}>
+                  {mode === null && "Choose how you'd like to draft your article."}
+                  {mode === "generate" && (
+                    step === 1 ? "Choose the core objective for this blog post." :
+                    step === 2 ? "Who is the primary reader segment for this post?" :
+                    step === 3 ? "Define search terms you want the article to rank for." :
+                    step === 4 ? "Select which localized Google index to optimize search scores against." :
+                    "Review all information and trigger article generation."
+                  )}
+                  {mode === "improve" && "Paste or describe your article idea — the assistant writes a full structured article."}
+                </div>
+              </div>
+              {mode !== null && (
+                <button onClick={() => { setMode(null); setStep(1); }} style={{ background: "none", border: "1px solid #cbd5e1", borderRadius: 6, color: "#475569", fontSize: 11, fontWeight: 600, padding: "5px 10px", cursor: "pointer" }}>
+                  ← Back to Options
+                </button>
+              )}
+            </div>
+
+            {/* Content Body */}
+            <div className="mpp-modal-right" style={{ flex: 1, overflowY: "auto", padding: "22px 28px" }}>
+              {mode === null && (
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "20px 0" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 480, margin: "0 auto", width: "100%" }}>
+                    <button onClick={() => setMode("generate")} style={{
+                      border: `2px solid ${BLUE}`, background: BLUE_BG, borderRadius: 14, padding: "20px 24px",
+                      display: "flex", alignItems: "flex-start", gap: 16, cursor: "pointer", textAlign: "left",
+                      transition: "all 0.15s",
+                    }}>
+                      <div style={{ width: 40, height: 40, borderRadius: 10, background: BLUE, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
+                        <i className="fas fa-magic" style={{ color: "#fff", fontSize: 17 }} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: BLUE, marginBottom: 4 }}>Generate for me</div>
+                        <div style={{ fontSize: 13, color: MUTED, lineHeight: 1.5 }}>Tell the assistant your goal, target audience, focus keywords, and localization domain — it builds the article from scratch using your Brand DNA.</div>
+                      </div>
+                    </button>
+                    <button onClick={() => setMode("improve")} style={{
+                      border: "2px solid #e5e7eb", background: "#fff", borderRadius: 14, padding: "20px 24px",
+                      display: "flex", alignItems: "flex-start", gap: 16, cursor: "pointer", textAlign: "left",
+                      transition: "all 0.15s",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = "#6366f1"; e.currentTarget.style.background = "#f5f3ff"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = "#e5e7eb"; e.currentTarget.style.background = "#fff"; }}
+                    >
+                      <div style={{ width: 40, height: 40, borderRadius: 10, background: "#f5f3ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
+                        <i className="fas fa-pencil-alt" style={{ color: "#6366f1", fontSize: 17 }} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: "#4f46e5", marginBottom: 4 }}>Improve my idea</div>
+                        <div style={{ fontSize: 13, color: MUTED, lineHeight: 1.5 }}>Paste or describe your article idea — the assistant writes a full structured SEO article based on your idea.</div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {mode === "generate" && (
+                <div style={{ minHeight: 280 }}>
+                  {step === 1 && <Step1 data={data} setData={setData} />}
+                  {step === 2 && <Step2 data={data} setData={setData} />}
+                  {step === 3 && <Step3 data={data} setData={setData} />}
+                  {step === 4 && <Step4 data={data} setData={setData} />}
+                  {step === 5 && <Step5 data={data} onGenerate={handleGenerate} />}
+                </div>
+              )}
+
+              {mode === "improve" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  <div className="mb-2">
+                    <label className="extra-small fw-bold text-muted text-uppercase mb-2 d-block">Article Idea / Concept</label>
+                    <textarea
+                      className="form-control"
+                      value={improveIdea}
+                      onChange={e => setImproveIdea(e.target.value)}
+                      placeholder="e.g. 'Write a guide on solar energy ROI for homeowners in South Africa, covering installation costs, grid rebates, and monthly savings...'"
+                      style={{ borderRadius: 10, padding: "12px 16px", minHeight: 120, fontSize: 13, lineHeight: 1.6 }}
+                    />
+                  </div>
+
+                  <div className="row g-2">
+                    <div className="col-md-6">
+                      <label className="extra-small fw-bold text-muted text-uppercase mb-2 d-block">Target Audience</label>
+                      <select
+                        className="form-select form-select-sm"
+                        value={improveAudience}
+                        onChange={e => setImproveAudience(e.target.value)}
+                        style={{ borderRadius: 10, padding: "10px 14px", height: 44, fontSize: 13 }}
+                      >
+                        <option value="">Select target audience...</option>
+                        {AUDIENCES.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                      </select>
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="extra-small fw-bold text-muted text-uppercase mb-2 d-block">Primary Keyword</label>
+                      <input
+                        className="form-control"
+                        type="text"
+                        placeholder="e.g. solar energy ROI"
+                        value={improvePrimaryKeyword}
+                        onChange={e => setImprovePrimaryKeyword(e.target.value)}
+                        style={{ borderRadius: 10, padding: "10px 14px", height: 44, fontSize: 13 }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="row g-2">
+                    <div className="col-md-6">
+                      <label className="extra-small fw-bold text-muted text-uppercase mb-2 d-block">Secondary Keywords (comma-separated)</label>
+                      <input
+                        className="form-control"
+                        type="text"
+                        placeholder="e.g. solar panel savings, load shedding"
+                        value={improveSecondaryKeywords}
+                        onChange={e => setImproveSecondaryKeywords(e.target.value)}
+                        style={{ borderRadius: 10, padding: "10px 14px", height: 44, fontSize: 13 }}
+                      />
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="extra-small fw-bold text-muted text-uppercase mb-2 d-block">Localization</label>
+                      <select
+                        className="form-select form-select-sm"
+                        value={improveDomain}
+                        onChange={e => setImproveDomain(e.target.value)}
+                        style={{ borderRadius: 10, padding: "10px 14px", height: 44, fontSize: 13 }}
+                      >
+                        {GOOGLE_DOMAINS.map(d => (
+                          <option key={d.value} value={d.value}>{d.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="mt-3">
+                    <button
+                      className="btn-pilot w-100 d-flex align-items-center justify-content-center gap-2"
+                      style={{ padding: "14px 24px", fontSize: "0.95rem", borderRadius: 10 }}
+                      onClick={handleImproveGenerate}
+                      disabled={!improveIdea.trim() || !improveAudience || !improvePrimaryKeyword.trim()}
+                      style={{
+                        padding: "14px 24px", fontSize: "0.95rem", borderRadius: 10,
+                        opacity: (!improveIdea.trim() || !improveAudience || !improvePrimaryKeyword.trim()) ? 0.5 : 1,
+                        cursor: (!improveIdea.trim() || !improveAudience || !improvePrimaryKeyword.trim()) ? "not-allowed" : "pointer"
+                      }}
+                    >
+                      <i className="fas fa-magic"></i>
+                      Generate Article Content
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer buttons (only in step-by-step wizard) */}
+            {mode === "generate" && (
+              <div className="modal-footer border-top px-4 py-3 d-flex justify-content-between">
+                {step > 1 ? (
+                  <button className="btn btn-outline-secondary d-flex align-items-center gap-2" onClick={prev} style={{ borderRadius: 8, padding: "8px 16px", fontSize: 12 }}>
+                    <i className="fas fa-arrow-left"></i> Previous
+                  </button>
+                ) : (
+                  <div />
+                )}
+                {step < TOTAL_STEPS && (
+                  <button
+                    className="btn btn-primary d-flex align-items-center gap-2"
+                    onClick={next}
+                    disabled={!canNext()}
+                    style={{
+                      borderRadius: 8, padding: "8px 16px", fontSize: 12,
+                      opacity: canNext() ? 1 : 0.5, cursor: canNext() ? 'pointer' : 'default'
+                    }}
+                  >
+                    Next <i className="fas fa-arrow-right"></i>
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
