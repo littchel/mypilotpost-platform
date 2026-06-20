@@ -46,7 +46,11 @@ export async function publish({ content, connection, env }) {
       const initRes = await fetch(`https://graph.facebook.com/v19.0/${account_id}/video_stories`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ upload_phase: "start", access_token })
+        body: JSON.stringify({
+          upload_phase: "start",
+          access_token,
+          ...(proof ? { appsecret_proof: proof } : {})
+        })
       });
       if (!initRes.ok) {
         throw new Error(`FACEBOOK_STORY_INIT_FAILED: ${await initRes.text()}`);
@@ -76,7 +80,8 @@ export async function publish({ content, connection, env }) {
         body: JSON.stringify({
           upload_phase: "finish",
           video_id: initData.video_id,
-          access_token
+          access_token,
+          ...(proof ? { appsecret_proof: proof } : {})
         })
       });
       if (!finishRes.ok) {
@@ -109,7 +114,8 @@ export async function publish({ content, connection, env }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           photo_id: photoData.id,
-          access_token
+          access_token,
+          ...(proof ? { appsecret_proof: proof } : {})
         })
       });
       if (!storyRes.ok) {
@@ -134,7 +140,11 @@ export async function publish({ content, connection, env }) {
     const initRes = await fetch(`https://graph.facebook.com/v19.0/${account_id}/video_reels`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ upload_phase: "start", access_token })
+      body: JSON.stringify({
+        upload_phase: "start",
+        access_token,
+        ...(proof ? { appsecret_proof: proof } : {})
+      })
     });
     if (!initRes.ok) {
       throw new Error(`FACEBOOK_REEL_INIT_FAILED: ${await initRes.text()}`);
@@ -166,7 +176,8 @@ export async function publish({ content, connection, env }) {
         video_id: initData.video_id,
         video_state: "PUBLISHED",
         description: text || "",
-        access_token
+        access_token,
+        ...(proof ? { appsecret_proof: proof } : {})
       })
     });
     if (!finishRes.ok) {
