@@ -989,7 +989,7 @@ export default function CreatePost({
       }
     }
     setOverlays(itemOverlays);
-    setShowDesigner(!!itemOverlays);
+    setApplyOverlay(!!itemOverlays);
 
     setSelectedVaultItem(item);
     setActiveTopTab("editor");
@@ -1174,7 +1174,7 @@ export default function CreatePost({
     setPublishResult(null);
     setVerificationOpen(false);
     setContent(""); setOverrides({}); setMediaItems([]);
-    setOverlays(null); setShowDesigner(false);
+    setOverlays(null); setApplyOverlay(true);
     setScheduledTime(""); setSelectedPlatforms(activeConnections.slice(0, 1).map(c => c.platform));
     setActiveTopTab("editor");
   };
@@ -1229,11 +1229,7 @@ export default function CreatePost({
     { id: "scheduled", label: "Scheduled", icon: "fas fa-clock"      },
   ];
 
-  const scheduleLabel = (() => {
-    if (!scheduledTime) return null;
-    const d = new Date(scheduledTime);
-    return `${d.toLocaleDateString("en-GB", { weekday: "long" })} ${d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} · ${timezone}`;
-  })();
+  const suggestionItems = mediaBuckets?.[mediaTab] || [];
 
   return (
     <div id="tab-create-post" className="h-100 d-flex flex-column" style={{ minHeight: 0 }}>
