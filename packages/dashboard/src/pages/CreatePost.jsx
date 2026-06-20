@@ -1276,12 +1276,12 @@ export default function CreatePost({
         <button
           onClick={() => setAssistantOpen(true)}
           style={{
-            background: "#fff", border: "1px solid #cbd5e1", borderRadius: 8,
-            color: "#1e293b", fontSize: 12, fontWeight: 700, padding: "7px 14px",
+            background: "var(--pilot-blue, #2563eb)", border: "none", borderRadius: 8,
+            color: "#fff", fontSize: 12, fontWeight: 700, padding: "7px 14px",
             cursor: "pointer", display: "flex", alignItems: "center", gap: 6
           }}
         >
-          <i className="fas fa-magic" style={{ color: "#7c3aed" }}></i> Social Assistant
+          <i className="fas fa-robot"></i> myPilotPost Assistant
         </button>
       </div>
 
@@ -1293,14 +1293,6 @@ export default function CreatePost({
             {/* LEFT COLUMN (Composer) — ~60% width */}
         <div style={{ width: "60%", display: "flex", flexDirection: "column", minHeight: 0, gap: 12 }}>
           <div className="card-workspace" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden", padding: 14, gap: 12 }}>
-            
-            {/* Title (Mockup layout header) */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f1f5f9", paddingBottom: 8 }}>
-              <h2 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: "#0f172a" }}>
-                Lines of Proposal <span style={{ color: "#64748b", fontWeight: 500, fontSize: 11 }}>(Version 3.1 - Updated Layout)</span>
-              </h2>
-            </div>
-
             {/* Campaign Selector + Edit Brand Overlay row */}
             <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
               <div style={{ flex: 1 }}>
@@ -1642,24 +1634,13 @@ export default function CreatePost({
         {/* Left Side: Scheduling and Discard */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Date:</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Schedule:</span>
             <input
-              type="date"
+              type="datetime-local"
               className="form-control form-control-sm border-subtle"
-              style={{ fontSize: 12, padding: "4px 8px", borderRadius: 6, width: 130 }}
-              value={scheduledDate}
-              onChange={e => handleDateChange(e.target.value)}
-            />
-          </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Time:</span>
-            <input
-              type="time"
-              className="form-control form-control-sm border-subtle"
-              style={{ fontSize: 12, padding: "4px 8px", borderRadius: 6, width: 100 }}
-              value={scheduledTimeOnly}
-              onChange={e => handleTimeChange(e.target.value)}
+              style={{ fontSize: 12, padding: "4px 8px", borderRadius: 6, width: 180 }}
+              value={scheduledTime}
+              onChange={e => setScheduledTime(e.target.value)}
             />
           </div>
 
