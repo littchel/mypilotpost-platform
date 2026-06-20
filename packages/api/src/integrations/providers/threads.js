@@ -8,9 +8,9 @@ export async function normalize(tokenData, env) {
 
   // Exchange short-lived token for long-lived token (60 days, no refresh_token)
   try {
-    const credKey = "META";
+    const clientSecret = env.THREADS_CLIENT_SECRET || env.META_CLIENT_SECRET;
     const llRes = await fetch(
-      `https://graph.threads.net/access_token?grant_type=th_exchange_token&client_secret=${env[`${credKey}_CLIENT_SECRET`]}&access_token=${access_token}`
+      `https://graph.threads.net/access_token?grant_type=th_exchange_token&client_secret=${clientSecret}&access_token=${access_token}`
     );
     if (llRes.ok) {
       const llData = await llRes.json();

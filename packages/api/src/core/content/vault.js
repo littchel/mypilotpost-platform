@@ -593,9 +593,18 @@ export async function vaultSchedule(request, env, auth) {
   const item = await fetchVaultItem(db, id, brand_id);
   if (!item) return error("Content not found", "NOT_FOUND", null, 404);
 
-  const schedulablePlatforms = platforms.length
+  let schedulablePlatforms = platforms.length
     ? platforms
     : JSON.parse(item.platforms || '[]');
+
+  if (!schedulablePlatforms.length && item.content_type === 'blog') {
+    const activeWp = await db.prepare(
+      `SELECT platform FROM social_connections WHERE brand_id = ? AND platform = 'wordpress' AND status = 'active' LIMIT 1`
+    ).bind(brand_id).first();
+    if (activeWp) {
+      schedulablePlatforms = ['wordpress'];
+    }
+  }
 
   if (!schedulablePlatforms.length) return error("No platforms specified", "BAD_REQUEST", null, 400);
 
@@ -689,17 +698,26 @@ export async function vaultPublishNow(request, env, auth) {
   const item = await fetchVaultItem(db, id, brand_id);
   if (!item) return error("Content not found", "NOT_FOUND", null, 404);
 
-  const platforms = body.platforms?.length
-    ? body.platforms
+  let resolvedPlatforms = platforms.length
+    ? platforms
     : JSON.parse(item.platforms || '[]');
 
-  if (!platforms.length) return error("No platforms specified", "BAD_REQUEST", null, 400);
+  if (!resolvedPlatforms.length && item.content_type === 'blog') {
+    const activeWp = await db.prepare(
+      `SELECT platform FROM social_connections WHERE brand_id = ? AND platform = 'wordpress' AND status = 'active' LIMIT 1`
+    ).bind(brand_id).first();
+    if (activeWp) {
+      resolvedPlatforms = ['wordpress'];
+    }
+  }
+
+  if (!resolvedPlatforms.length) return error("No platforms specified", "BAD_REQUEST", null, 400);
 
   const nowUtc = normalizeForSQLite(new Date().toISOString());
   const batch  = [];
   let created  = 0;
 
-  for (const platform of platforms) {
+  for (const platform of resolvedPlatforms) {
     const existing = await db.prepare(
       `SELECT id FROM delivery_jobs WHERE content_id = ? AND platform = ? AND status IN ('scheduled','processing')`
     ).bind(id, platform).first();

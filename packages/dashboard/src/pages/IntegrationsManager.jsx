@@ -55,6 +55,11 @@ const PlatformIcon = ({ id }) => {
         <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zM1.895 12c0-1.677.365-3.27 1.018-4.707L7.762 20.9A10.12 10.12 0 011.895 12zM12 22.105c-1.135 0-2.228-.168-3.26-.476l3.463-10.063 3.548 9.716c.023.056.05.107.08.155A10.134 10.134 0 0112 22.105zm1.43-15.266c.626-.033 1.19-.099 1.19-.099.56-.066.494-.891-.066-.858 0 0-1.684.132-2.772.132-1.022 0-2.74-.132-2.74-.132-.561-.033-.627.825-.066.858 0 0 .528.066 1.09.099l1.62 4.44-2.277 6.826-3.786-11.266c.626-.033 1.19-.099 1.19-.099.56-.066.494-.891-.066-.858 0 0-1.684.132-2.772.132-.195 0-.424-.005-.67-.012C4.53 4.29 8.063 1.895 12 1.895c2.91 0 5.558 1.114 7.546 2.932-.048-.003-.094-.009-.144-.009-1.022 0-1.747.89-1.747 1.847 0 .857.495 1.583 1.022 2.44.396.693.858 1.583.858 2.869 0 .89-.34 1.923-.793 3.374L17.29 17.6l-3.861-11.76zM17.16 20.53l3.528-10.197c.659-1.649.879-2.967.879-4.14 0-.426-.028-.82-.08-1.186A10.1 10.1 0 0122.105 12c0 3.944-2.127 7.394-5.295 9.34l.35-.81z"/>
       </svg>
     ),
+    adobe: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
+        <path d="M13.9 2h7.8L15 22h-6.2L13.9 2zm-3.8 0L2 22h6.1l1.8-6.1h6l.5 1.7L13.1 8.8l-3 6.8zm.5-6.8l1.4 3h-2.8l1.4-3z"/>
+      </svg>
+    ),
     canva: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
         <path d="M11.998 0C5.371 0 0 5.372 0 12s5.371 12 11.998 12C18.629 24 24 18.628 24 12S18.629 0 11.998 0zm-.053 4.53c1.738 0 3.277.834 4.22 2.124.018.026.015.063-.01.087a2.656 2.656 0 01-.31.229c-.026.017-.065.011-.085-.017C14.96 5.8 13.58 5.11 12.05 5.11c-2.762 0-5.008 2.22-5.008 4.956 0 1.82.999 3.427 2.497 4.302.022.013.029.042.015.065a2.76 2.76 0 01-.325.427c-.017.019-.048.022-.069.007a5.987 5.987 0 01-2.668-4.97c0-3.334 2.727-6.367 6.453-6.367zm3.648 12.29c-1.03 1.102-2.5 1.786-4.13 1.786-2.996 0-5.436-2.376-5.436-5.296 0-1.34.497-2.56 1.315-3.49.021-.025.058-.027.082-.007.108.096.219.2.323.314a.055.055 0 01-.004.077 4.32 4.32 0 00-1.18 2.966c0 2.431 2.01 4.405 4.49 4.405 1.334 0 2.53-.57 3.369-1.472.02-.022.054-.025.077-.005l.01.008.318.327c.024.025.022.064-.003.09l-.231.297z"/>
@@ -108,6 +113,7 @@ const PROVIDERS = [
   { id: "youtube",              name: "YouTube",                color: "#FF0000", bgColor: "#FF0000",   description: "Schedule and publish video content to your channel." },
   { id: "pinterest",            name: "Pinterest",              color: "#BD081C", bgColor: "#BD081C",   description: "Pin your latest content to boards automatically.", requiresResource: true, resourceLabel: "Board" },
   { id: "wordpress",            name: "WordPress",              color: "#21759B", bgColor: "#21759B",   description: "Publish blog articles directly to your WordPress site." },
+  { id: "adobe",                name: "Adobe",                  color: "#FF0000", bgColor: "#FA0F00",   description: "Access and import your assets directly from Adobe Creative Cloud." },
   { id: "canva",                name: "Canva",                  color: "#00C4CC", bgColor: "#00C4CC",   description: "Design graphics and import them directly into posts." },
   { id: "dropbox",              name: "Dropbox",                color: "#0061FF", bgColor: "#0061FF",   description: "Import and sync media assets from your Dropbox." },
   { id: "google",               name: "Google Drive",           color: "#4285F4", bgColor: "#4285F4",   description: "Import images and documents from Google Drive." },
@@ -273,12 +279,130 @@ function ResourcePickerModal({ platform, connId, onConfirm, onCancel, onReconnec
   );
 }
 
+/* ── WordPress Custom Connection Modal ── */
+function WpConnectModal({ onCancel, onSuccess }) {
+  const [blogUrl, setBlogUrl] = useState("");
+  const [username, setUsername] = useState("");
+  const [appPassword, setAppPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!blogUrl || !username || !appPassword) {
+      setError("Please fill in all fields.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await apiRequest("/api/oauth/wordpress/custom-connect", {
+        method: "POST",
+        body: JSON.stringify({
+          blog_url: blogUrl,
+          username: username,
+          application_password: appPassword
+        })
+      });
+      if (response.success) {
+        onSuccess();
+      } else {
+        throw new Error(response.error || "WordPress connection failed");
+      }
+    } catch (err) {
+      setError(err.message || "Failed to connect. Please verify your WordPress URL and credentials.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="rp-overlay">
+      <div className="rp-modal" style={{ maxWidth: "520px" }}>
+        <div className="rp-header">
+          <h3>Connect WordPress Blog</h3>
+          <button className="rp-close" onClick={onCancel}><X size={18} /></button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="wp-connect-form">
+          <div className="wp-connect-body">
+            <div className="instructions-section">
+              <h4>How to connect your WordPress site:</h4>
+              <ol>
+                <li>Log in to your self-hosted WordPress Admin panel.</li>
+                <li>Go to <strong>Users</strong> &rarr; <strong>Profile</strong>.</li>
+                <li>Scroll down to the <strong>Application Passwords</strong> section.</li>
+                <li>Enter a name (e.g., <code>myPilotPost</code>) and click <strong>Add New Application Password</strong>.</li>
+                <li>Copy the 24-character password generated and paste it below.</li>
+              </ol>
+            </div>
+
+            {error && (
+              <div className="rp-error" style={{ margin: "0 0 16px" }}>
+                <AlertCircle size={15} />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div className="form-group">
+              <label>WordPress Site / Blog URL</label>
+              <input
+                type="url"
+                placeholder="https://example.com"
+                value={blogUrl}
+                onChange={(e) => setBlogUrl(e.target.value)}
+                required
+                disabled={loading}
+              />
+              <span className="input-hint">Enter your homepage URL (e.g. https://myblog.com)</span>
+            </div>
+
+            <div className="form-group">
+              <label>Username or Email Address</label>
+              <input
+                type="text"
+                placeholder="Enter WordPress username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                disabled={loading}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Application Password</label>
+              <input
+                type="password"
+                placeholder="xxxx xxxx xxxx xxxx xxxx xxxx"
+                value={appPassword}
+                onChange={(e) => setAppPassword(e.target.value)}
+                required
+                disabled={loading}
+              />
+            </div>
+          </div>
+
+          <div className="rp-footer">
+            <button className="pilot-btn btn-outline btn-sm" type="button" onClick={onCancel} disabled={loading}>
+              Cancel
+            </button>
+            <button className="pilot-btn btn-primary btn-sm" type="submit" disabled={loading}>
+              {loading ? "Verifying..." : "Connect Site"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 const IntegrationsManager = () => {
   const { token } = useAuth();
   const [integrations, setIntegrations] = useState([]);
   const [loading, setLoading]           = useState(true);
   const [fetchError, setFetchError]     = useState(null);
   const [picker, setPicker]             = useState(null); // { platform, connId }
+  const [wpModalOpen, setWpModalOpen]   = useState(false);
 
   const fetchIntegrations = useCallback(async () => {
     setLoading(true);
@@ -314,6 +438,10 @@ const IntegrationsManager = () => {
   }, []);
 
   const handleConnect = async (provider) => {
+    if (provider === "wordpress") {
+      setWpModalOpen(true);
+      return;
+    }
     try {
       const data = await apiRequest(`/api/oauth/${provider}/connect`);
       if (data?.url) window.location.assign(data.url);
@@ -355,6 +483,16 @@ const IntegrationsManager = () => {
           onConfirm={handlePickerConfirm}
           onCancel={closePicker}
           onReconnect={() => handleConnect(picker.platform)}
+        />
+      )}
+
+      {wpModalOpen && (
+        <WpConnectModal
+          onCancel={() => setWpModalOpen(false)}
+          onSuccess={() => {
+            setWpModalOpen(false);
+            fetchIntegrations();
+          }}
         />
       )}
 
@@ -594,6 +732,18 @@ const IntegrationsManager = () => {
         .rp-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; border-top: 1px solid #e5e7eb; }
         .spin { animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── WordPress Custom Connect Styles ── */
+        .wp-connect-form { display: flex; flex-direction: column; overflow: hidden; }
+        .wp-connect-body { padding: 20px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; max-height: 50vh; }
+        .instructions-section { background: #f8fafc; border: 1px solid var(--border-subtle); padding: 14px 16px; border-radius: 8px; }
+        .instructions-section h4 { margin: 0 0 8px 0; font-size: 0.82rem; font-weight: 700; color: var(--text-dark); }
+        .instructions-section ol { margin: 0; padding-left: 18px; font-size: 0.78rem; color: var(--text-gray); line-height: 1.5; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group label { font-size: 0.78rem; font-weight: 700; color: var(--text-dark); }
+        .form-group input { padding: 8px 12px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 0.85rem; color: var(--text-dark); }
+        .form-group input:focus { outline: none; border-color: var(--pilot-blue); }
+        .input-hint { font-size: 0.7rem; color: var(--text-gray); }
       `}</style>
     </>
   );

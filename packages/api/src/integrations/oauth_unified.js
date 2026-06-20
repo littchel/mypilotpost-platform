@@ -8,6 +8,7 @@ import { encrypt } from "../lib/crypto.js";
 import { getProvider } from "./registry.js";
 import { getAdapter } from "./providers/index.js";
 import { listPinterestBoards } from "./google-accounts.js";
+import { checkAndIncrement } from "../core/billing/enforcement.js";
 
 /**
  * Generate PKCE Code Verifier and Challenge (SHA-256)
@@ -73,23 +74,23 @@ export async function startUnifiedOAuth(request, env, userContext) {
   await env.OAUTH_STATE.put(`state:${state}`, JSON.stringify(stateData), { expirationTtl: 600 });
 
   const credKey = provider.credential_key || platform.toUpperCase();
-  const client_id = env[`${credKey}_CLIENT_ID`];
-  const client_secret = env[`${credKey}_CLIENT_SECRET`];
+  const client_id = env[`${platform.toUpperCase()}_CLIENT_ID`] || env[`${credKey}_CLIENT_ID`];
+  const client_secret = env[`${platform.toUpperCase()}_CLIENT_SECRET`] || env[`${credKey}_CLIENT_SECRET`];
 
   // Defensive: catch missing credentials before Google sees an undefined client_id
   // (undefined client_id produces 401: deleted_client or invalid_client from Google)
   if (!client_id) {
-    console.error(`[OAUTH_MISSING_CREDENTIAL] ${platform}: ${credKey}_CLIENT_ID is not set in Worker environment`);
+    console.error(`[OAUTH_MISSING_CREDENTIAL] ${platform}: ${platform.toUpperCase()}_CLIENT_ID or ${credKey}_CLIENT_ID is not set in Worker environment`);
     return new Response(JSON.stringify({
       error: `OAuth credentials not configured for ${platform}. Please contact support.`,
-      debug: `Missing env var: ${credKey}_CLIENT_ID`
+      debug: `Missing env var: ${platform.toUpperCase()}_CLIENT_ID or ${credKey}_CLIENT_ID`
     }), { status: 400, headers: { "Content-Type": "application/json" } });
   }
   if (!client_secret) {
-    console.error(`[OAUTH_MISSING_CREDENTIAL] ${platform}: ${credKey}_CLIENT_SECRET is not set in Worker environment`);
+    console.error(`[OAUTH_MISSING_CREDENTIAL] ${platform}: ${platform.toUpperCase()}_CLIENT_SECRET or ${credKey}_CLIENT_SECRET is not set in Worker environment`);
     return new Response(JSON.stringify({
       error: `OAuth credentials not configured for ${platform}. Please contact support.`,
-      debug: `Missing env var: ${credKey}_CLIENT_SECRET`
+      debug: `Missing env var: ${platform.toUpperCase()}_CLIENT_SECRET or ${credKey}_CLIENT_SECRET`
     }), { status: 400, headers: { "Content-Type": "application/json" } });
   }
 
@@ -180,12 +181,12 @@ export async function handleUnifiedCallback(request, env) {
   const provider = getProvider(platform);
   if (!provider) throw new Error(`Unsupported platform: ${platform}`);
   const credKey = provider.credential_key || platform.toUpperCase();
-  const client_id = env[`${credKey}_CLIENT_ID`];
-  const client_secret = env[`${credKey}_CLIENT_SECRET`];
+  const client_id = env[`${platform.toUpperCase()}_CLIENT_ID`] || env[`${credKey}_CLIENT_ID`];
+  const client_secret = env[`${platform.toUpperCase()}_CLIENT_SECRET`] || env[`${credKey}_CLIENT_SECRET`];
 
   if (!client_id || !client_secret) {
-    console.error(`[OAUTH_CALLBACK_MISSING_CRED] ${platform}: ${credKey}_CLIENT_ID=${!!client_id} ${credKey}_CLIENT_SECRET=${!!client_secret}`);
-    throw new Error(`OAuth credentials not configured for ${platform} (${credKey}_CLIENT_ID or _SECRET missing)`);
+    console.error(`[OAUTH_CALLBACK_MISSING_CRED] ${platform}: client_id=${!!client_id} client_secret=${!!client_secret}`);
+    throw new Error(`OAuth credentials not configured for ${platform} (${platform.toUpperCase()}_CLIENT_ID or _SECRET or ${credKey}_CLIENT_ID or _SECRET missing)`);
   }
 
   // Canva and X require PKCE — a missing verifier means state was written without PKCE, which is a bug
@@ -378,3 +379,134 @@ export async function handleUnifiedCallback(request, env) {
     return Response.redirect(`${env.FRONTEND_URL}?oauth_error=${encodeURIComponent(err.message || String(err) || 'OAuth failed')}`, 302);
   }
 }
+
+/**
+ * WordPress Custom Connect Handler
+ * Verifies credentials, encrypts basic auth header, and stores connection in social_connections.
+ */
+export async function connectWordPressCustom(request, env, userContext) {
+  const { brand_id, user_id } = userContext;
+  
+  let body;
+  try {
+    body = await request.json();
+  } catch (err) {
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  const { blog_url, username, application_password } = body;
+  if (!blog_url || !username || !application_password) {
+    return new Response(JSON.stringify({ error: "blog_url, username, and application_password are required" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  let cleanUrl = blog_url.trim().replace(/\/+$/, "");
+  if (!/^https?:\/\//i.test(cleanUrl)) {
+    cleanUrl = "https://" + cleanUrl;
+  }
+
+  const cleanBlogUrl = cleanUrl.replace(/^https?:\/\//i, "");
+  const authHeader = "Basic " + btoa(`${username}:${application_password}`);
+
+  const wpUrl = `${cleanUrl}/wp-json/wp/v2/users/me`;
+  console.log(`[WP_CONNECT] Verifying credentials at ${wpUrl}`);
+  
+  try {
+    const wpRes = await fetch(wpUrl, {
+      method: "GET",
+      headers: {
+        "Authorization": authHeader,
+        "Accept": "application/json",
+        "User-Agent": "myPilotPost/1.0"
+      }
+    });
+
+    if (!wpRes.ok) {
+      const errText = await wpRes.text().catch(() => "");
+      console.error(`[WP_CONNECT_FAILED] status=${wpRes.status} body=${errText}`);
+      let errorMessage = "WordPress verification failed. Please check your URL, username, and application password.";
+      try {
+        const errJson = JSON.parse(errText);
+        if (errJson.message) {
+          errorMessage = `WordPress Error: ${errJson.message}`;
+        }
+      } catch (e) {}
+      return new Response(JSON.stringify({ error: errorMessage }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    const wpUser = await wpRes.json();
+    const userId = wpUser.id;
+    const wpUsername = wpUser.name || wpUser.slug || username;
+
+    const account_id = `${cleanBlogUrl}:${userId}`;
+    const platform_username = `${wpUsername} (${cleanBlogUrl})`;
+
+    if (!env.ENCRYPTION_SECRET) {
+      throw new Error("ENCRYPTION_SECRET not set in Worker environment");
+    }
+    const access_enc = await encrypt(authHeader, env.ENCRYPTION_SECRET);
+
+    const db = getDB(env);
+    const connection_id = crypto.randomUUID();
+
+    // Check quota if it is a new connection
+    const existingConnection = await db.prepare(`
+      SELECT 1 FROM social_connections
+      WHERE brand_id = ? AND platform = 'wordpress' AND account_id = ? AND status != 'disconnected'
+      LIMIT 1
+    `).bind(brand_id, account_id).first();
+
+    if (!existingConnection) {
+      await checkAndIncrement(db, user_id, 'accounts');
+    }
+
+    const meta = {
+      blog_url: cleanUrl,
+      username: username,
+      user_id: userId
+    };
+
+    await db.prepare(`
+      INSERT INTO social_connections (
+        id, user_id, brand_id, platform, account_id, platform_username,
+        access_token, refresh_token, expires_at, scopes, status, meta, updated_at
+      ) VALUES (?, ?, ?, 'wordpress', ?, ?, ?, NULL, NULL, 'global', 'active', ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(brand_id, platform, account_id) DO UPDATE SET
+        platform_username = excluded.platform_username,
+        access_token = excluded.access_token,
+        status = 'active',
+        meta = excluded.meta,
+        updated_at = CURRENT_TIMESTAMP,
+        last_refreshed_at = CURRENT_TIMESTAMP
+    `).bind(
+      connection_id,
+      user_id,
+      brand_id,
+      account_id,
+      platform_username,
+      access_enc,
+      JSON.stringify(meta)
+    ).run();
+
+    return new Response(JSON.stringify({ success: true, account_id, platform_username }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+
+  } catch (err) {
+    console.error("[WP_CONNECT_ERROR]", err);
+    return new Response(JSON.stringify({ error: `Connection failed: ${err.message || String(err)}` }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+}
+

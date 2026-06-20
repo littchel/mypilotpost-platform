@@ -15,6 +15,7 @@ import * as google_drive from "./google_drive.js";
 import * as dropbox from "./dropbox.js";
 import * as canva from "./canva.js";
 import * as threads from "./threads.js";
+import * as adobe from "./adobe.js";
 
 export const ADAPTERS = {
   linkedin,
@@ -36,6 +37,7 @@ export const ADAPTERS = {
   dropbox,
   canva,
   threads,
+  adobe,
 };
 
 export function getAdapter(provider) {

@@ -11,15 +11,23 @@ export async function normalize(tokenData, env) {
     }
   );
 
-  const { data: profile } = await profileRes.json();
-  if (!profileRes.ok) throw new Error("TikTok profile fetch failed");
+  if (!profileRes.ok) {
+    const errText = await profileRes.text().catch(() => "");
+    throw new Error(`TikTok profile fetch failed with status ${profileRes.status}: ${errText}`);
+  }
+
+  const payload = await profileRes.json();
+  const user = payload?.data?.user;
+  if (!user) {
+    throw new Error("TikTok profile fetch returned empty user data");
+  }
 
   return {
-    account_id: profile.user.open_id,
-    platform_username: profile.user.display_name,
+    account_id: user.open_id,
+    platform_username: user.display_name,
     meta: {
-      avatar_url: profile.user.avatar_url,
-      union_id: profile.user.union_id
+      avatar_url: user.avatar_url,
+      union_id: user.union_id
     }
   };
 }

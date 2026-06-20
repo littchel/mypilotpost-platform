@@ -41,6 +41,17 @@ export const PROVIDERS = {
       token: "https://api.dropboxapi.com/oauth2/token"
     }
   },
+  adobe: {
+    name: "Adobe",
+    type: "media",
+    capabilities: ["import_media"],
+    auth: "oauth2",
+    scopes: "openid,AdobeID,profile,creative_sdk",
+    endpoints: {
+      auth: "https://ims-na1.adobelogin.com/ims/authorize/v2",
+      token: "https://ims-na1.adobelogin.com/ims/token/v3"
+    }
+  },
 
   // --- SOCIAL / PUBLISHING ---
 
@@ -157,7 +168,7 @@ export const PROVIDERS = {
     capabilities: ["publish_social"],
     auth: "oauth2",
     client_id_param: "client_key",  // TikTok uses client_key instead of client_id
-    scopes: "user.info.basic,video.upload,video.list",
+    scopes: "user.info.basic,video.publish,video.upload,video.list",
     endpoints: {
       auth: "https://www.tiktok.com/v2/auth/authorize/",
       token: "https://open.tiktokapis.com/v2/oauth/token/"
@@ -184,7 +195,7 @@ export const PROVIDERS = {
     credential_key: "META",
     scopes: "threads_basic,threads_content_publish",
     endpoints: {
-      auth: "https://threads.net/oauth/authorize",
+      auth: "https://www.threads.net/oauth/authorize",
       token: "https://graph.threads.net/oauth/access_token"
     }
   },
