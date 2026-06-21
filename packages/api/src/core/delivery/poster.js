@@ -153,14 +153,21 @@ export async function executeDeliveryJob(env, job) {
       errorCode = "MEDIA_UNREACHABLE";
     } else if (errMsg.includes("MEDIA_INVALID") || errMsg.includes("REQUIRES_MEDIA") || errMsg.includes("Aspect ratio") || errMsg.includes("duration") || errMsg.includes("exceeds")) {
       errorCode = "MEDIA_INVALID";
+    } else if (
+      errMsg.includes("PERMISSION_DENIED") ||
+      errMsg.includes("forbidden") ||
+      errMsg.includes("ACCESS_DENIED") ||
+      errMsg.includes("sufficient permissions") ||
+      errMsg.includes("correct set of scopes") ||
+      errMsg.includes("Missing:")
+    ) {
+      errorCode = "PERMISSION_DENIED";
     } else if (errMsg.includes("TOKEN_EXPIRED") || errMsg.includes("session has expired") || errMsg.includes("INVALID_ACCESS_TOKEN") || errMsg.includes("token") || errMsg.includes("TOKEN")) {
       errorCode = "TOKEN_EXPIRED";
     } else if (errMsg.includes("PAGE_NOT_LINKED") || errMsg.includes("PAGE_NOT_FOUND")) {
       errorCode = "PAGE_NOT_LINKED";
     } else if (errMsg.includes("BUSINESS_ACCOUNT_REQUIRED")) {
       errorCode = "BUSINESS_ACCOUNT_REQUIRED";
-    } else if (errMsg.includes("PERMISSION_DENIED") || errMsg.includes("forbidden") || errMsg.includes("ACCESS_DENIED") || errMsg.includes("forbidden")) {
-      errorCode = "PERMISSION_DENIED";
     } else if (errMsg.includes("RATE_LIMITED") || errMsg.includes("too many requests") || errMsg.includes("depleted") || errMsg.includes("limit")) {
       errorCode = "RATE_LIMITED";
     } else if (errMsg === "TIMEOUT") {

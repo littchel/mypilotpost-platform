@@ -18,6 +18,10 @@ export async function publish({ content, connection, env }) {
     const boardsRes = await fetch("https://api.pinterest.com/v5/boards", {
       headers: { Authorization: `Bearer ${access_token}` }
     });
+    if (!boardsRes.ok) {
+      const errData = await boardsRes.json().catch(() => ({}));
+      throw new Error(`Pinterest board fetch failed: ${errData.message || boardsRes.statusText}`);
+    }
     const boards = await boardsRes.json();
     if (!boards.items || boards.items.length === 0) {
       throw new Error("PINTEREST_NO_BOARDS_FOUND");
@@ -124,7 +128,13 @@ export async function publish({ content, connection, env }) {
   });
 
   const data = await res.json();
-  if (!res.ok) throw new Error(`PINTEREST_PUBLISH_FAILED: ${data.message || res.statusText}`);
+  if (!res.ok) {
+    let errMsg = data.message || res.statusText || "Unknown error";
+    if (errMsg.includes("Missing:") || errMsg.includes("sufficient permissions")) {
+      throw new Error(`PINTEREST_PUBLISH_FAILED: Insufficient permissions. Pinterest requires the 'boards:write' scope to create pins. Please disconnect and reconnect your Pinterest connection in Integrations to grant this permission.`);
+    }
+    throw new Error(`PINTEREST_PUBLISH_FAILED: ${errMsg}`);
+  }
 
   return {
     success: true,
