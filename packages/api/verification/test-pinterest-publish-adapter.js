@@ -6,6 +6,8 @@ if (!globalThis.crypto) {
 import { listPinterestBoards } from "../src/integrations/google-accounts.js";
 import { handleUnifiedCallback } from "../src/integrations/oauth_unified.js";
 import { publish } from "../src/core/platforms/pinterest.js";
+import { refreshSocialConnection, ensureValidConnection } from "../src/integrations/refresh_manager.js";
+import { encrypt } from "../src/lib/crypto.js";
 
 async function runTests() {
   console.log("🚀 STARTING PINTEREST PUBLISH & CONFIGURATION TEST SUITE\n");
@@ -343,6 +345,87 @@ async function runTests() {
     assert(pinCreationBody.media_source.media_id === "vid-media-888", "Payload references uploaded media ID");
   } catch (err) {
     assert(false, `Video pin publish failed: ${err.message}`);
+  }
+
+  // =========================================================================
+  // TEST 7: Preemptive Token Refresh & Fallback Env Resolution
+  // =========================================================================
+  console.log("\nTest 7: Preemptive Token Refresh & Fallback Env Resolution");
+
+  let refreshDbUpdates = [];
+  const mockRefreshDB = {
+    prepare: (sql) => {
+      return {
+        bind: (...args) => {
+          return {
+            run: async () => {
+              refreshDbUpdates.push({ sql, args });
+              return { success: true };
+            },
+            first: async () => {
+              // Return connection with active status
+              return {
+                id: "connection-123",
+                platform: "pinterest",
+                access_token: "encrypted-new-access-token",
+                refresh_token: "encrypted-pinterest-refresh-token",
+                expires_at: new Date(Date.now() + 3600 * 1000).toISOString(),
+                status: "active"
+              };
+            }
+          };
+        }
+      };
+    }
+  };
+
+  const mockRefreshEnv = {
+    mypilotpost: mockRefreshDB,
+    DB: mockRefreshDB,
+    ENCRYPTION_SECRET: "my-super-secret-key-must-be-32-bytes-long",
+    // ONLY PINTEREST_APP_ID / SECRET are set (fallback check)
+    PINTEREST_APP_ID: "fallback-app-id",
+    PINTEREST_APP_SECRET: "fallback-app-secret"
+  };
+
+  const encryptedRefreshToken = await encrypt("pinterest-refresh-token", "my-super-secret-key-must-be-32-bytes-long");
+
+  const mockExpiringConnection = {
+    id: "connection-123",
+    platform: "pinterest",
+    access_token: "encrypted-old-access-token",
+    refresh_token: encryptedRefreshToken,
+    expires_at: new Date(Date.now() - 60000).toISOString(), // Expired 1 min ago
+    status: "active"
+  };
+
+  let tokenRefreshCalled = false;
+  let sentAuthHeader = null;
+
+  setupFetchMock((url, options) => {
+    if (url.includes("/v5/oauth/token") && options.method === "POST") {
+      tokenRefreshCalled = true;
+      sentAuthHeader = options.headers?.["Authorization"];
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          access_token: "refreshed-access-token",
+          expires_in: 86400
+        })
+      };
+    }
+    return { ok: false, status: 400 };
+  });
+
+  try {
+    const validConn = await ensureValidConnection(mockRefreshDB, mockExpiringConnection, mockRefreshEnv);
+    assert(tokenRefreshCalled, "Preemptive refresh triggered when token is expiring/expired");
+    assert(sentAuthHeader === `Basic ${btoa("fallback-app-id:fallback-app-secret")}`, "Basic Auth correctly resolves using fallback PINTEREST_APP_ID environment credentials");
+    assert(refreshDbUpdates.some(u => u.sql.includes("UPDATE social_connections")), "Updates social_connections with new tokens in DB");
+    assert(validConn.access_token === "encrypted-new-access-token", "Returns updated connection");
+  } catch (err) {
+    assert(false, `Pinterest preemptive refresh test failed: ${err.message}`);
   }
 
   // Restore fetch and response

@@ -36,7 +36,8 @@ export async function oauthStart(request, env, providerConfig, brandId) {
 
   const authUrl = new URL(providerConfig.authUrl);
   authUrl.searchParams.set("response_type", "code");
-  authUrl.searchParams.set("client_id", env[providerConfig.clientIdEnv]);
+  const clientId = env[providerConfig.clientIdEnv] || (providerConfig.name === 'pinterest' ? (env.PINTEREST_CLIENT_ID || env.PINTEREST_APP_ID) : null);
+  authUrl.searchParams.set("client_id", clientId);
   authUrl.searchParams.set("redirect_uri", redirectUri);
   authUrl.searchParams.set("scope", providerConfig.scopes);
   authUrl.searchParams.set("state", state);
@@ -88,8 +89,8 @@ export async function oauthCallback(request, env, providerConfig) {
         grant_type: "authorization_code",
         code,
         redirect_uri: redirectUri,
-        client_id: env[providerConfig.clientIdEnv],
-        client_secret: env[providerConfig.clientSecretEnv]
+        client_id: env[providerConfig.clientIdEnv] || (providerConfig.name === 'pinterest' ? (env.PINTEREST_CLIENT_ID || env.PINTEREST_APP_ID) : null),
+        client_secret: env[providerConfig.clientSecretEnv] || (providerConfig.name === 'pinterest' ? (env.PINTEREST_CLIENT_SECRET || env.PINTEREST_APP_SECRET) : null)
       })
     });
 

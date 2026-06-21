@@ -26,8 +26,12 @@ export async function refreshSocialConnection(db, connection, env) {
     const refreshToken = await decrypt(connection.refresh_token, secret);
 
     const credKey = (provider.credential_key || connection.platform).toUpperCase();
-    const client_id = env[`${credKey}_CLIENT_ID`];
-    const client_secret = env[`${credKey}_CLIENT_SECRET`];
+    let client_id = env[`${credKey}_CLIENT_ID`];
+    let client_secret = env[`${credKey}_CLIENT_SECRET`];
+    if (connection.platform === 'pinterest') {
+      client_id = client_id || env.PINTEREST_CLIENT_ID || env.PINTEREST_APP_ID;
+      client_secret = client_secret || env.PINTEREST_CLIENT_SECRET || env.PINTEREST_APP_SECRET;
+    }
 
     // X and Pinterest require HTTP Basic auth — credentials must NOT appear in body
     const useBasicAuth = connection.platform === 'x' || connection.platform === 'pinterest';
@@ -135,7 +139,15 @@ export async function ensureValidConnection(db, connection, env) {
   if (connection.status !== 'active') return connection;
 
   const now = Date.now();
-  const expiry = connection.expires_at ? new Date(connection.expires_at).getTime() : null;
+  let expiry = null;
+  if (connection.expires_at) {
+    if (!isNaN(connection.expires_at)) {
+      const val = Number(connection.expires_at);
+      expiry = val < 10000000000 ? val * 1000 : val;
+    } else {
+      expiry = new Date(connection.expires_at).getTime();
+    }
+  }
 
   // Refresh ONLY when: expires_at < now + 5 minutes
   if (expiry && (expiry - now < 300000)) {

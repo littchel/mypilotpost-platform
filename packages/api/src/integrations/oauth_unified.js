@@ -74,8 +74,12 @@ export async function startUnifiedOAuth(request, env, userContext) {
   await env.OAUTH_STATE.put(`state:${state}`, JSON.stringify(stateData), { expirationTtl: 600 });
 
   const credKey = provider.credential_key || platform.toUpperCase();
-  const client_id = env[`${platform.toUpperCase()}_CLIENT_ID`] || env[`${credKey}_CLIENT_ID`];
-  const client_secret = env[`${platform.toUpperCase()}_CLIENT_SECRET`] || env[`${credKey}_CLIENT_SECRET`];
+  let client_id = env[`${platform.toUpperCase()}_CLIENT_ID`] || env[`${credKey}_CLIENT_ID`];
+  let client_secret = env[`${platform.toUpperCase()}_CLIENT_SECRET`] || env[`${credKey}_CLIENT_SECRET`];
+  if (platform === 'pinterest') {
+    client_id = client_id || env.PINTEREST_APP_ID;
+    client_secret = client_secret || env.PINTEREST_APP_SECRET;
+  }
 
   // Defensive: catch missing credentials before Google sees an undefined client_id
   // (undefined client_id produces 401: deleted_client or invalid_client from Google)
@@ -181,8 +185,12 @@ export async function handleUnifiedCallback(request, env) {
   const provider = getProvider(platform);
   if (!provider) throw new Error(`Unsupported platform: ${platform}`);
   const credKey = provider.credential_key || platform.toUpperCase();
-  const client_id = env[`${platform.toUpperCase()}_CLIENT_ID`] || env[`${credKey}_CLIENT_ID`];
-  const client_secret = env[`${platform.toUpperCase()}_CLIENT_SECRET`] || env[`${credKey}_CLIENT_SECRET`];
+  let client_id = env[`${platform.toUpperCase()}_CLIENT_ID`] || env[`${credKey}_CLIENT_ID`];
+  let client_secret = env[`${platform.toUpperCase()}_CLIENT_SECRET`] || env[`${credKey}_CLIENT_SECRET`];
+  if (platform === 'pinterest') {
+    client_id = client_id || env.PINTEREST_APP_ID;
+    client_secret = client_secret || env.PINTEREST_APP_SECRET;
+  }
 
   if (!client_id || !client_secret) {
     console.error(`[OAUTH_CALLBACK_MISSING_CRED] ${platform}: client_id=${!!client_id} client_secret=${!!client_secret}`);
