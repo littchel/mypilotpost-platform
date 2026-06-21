@@ -583,12 +583,8 @@ export default function ArticleComposer({ campaigns = [] }) {
       if (data.primaryKeyword)    setPrimaryKeyword(data.primaryKeyword);
       if (data.secondaryKeywords) setSecondaryKeywords(data.secondaryKeywords);
       loadTabCounts();
-    } catch {
-      // Fallback to structured template when API unavailable
-      setTitle(`${data.goal} for ${data.audience}`);
-      setBody(`# ${data.goal} Strategy\n\nThis article focuses on ${data.primaryKeyword} to target ${data.audience}.\n\nSecondary focus areas: ${data.secondaryKeywords}.\n\nLocalization set to ${data.domain}.\n\nGenerated with myPilotPost Assistant.`);
-      setPrimaryKeyword(data.primaryKeyword);
-      setSecondaryKeywords(data.secondaryKeywords);
+    } catch (err) {
+      alert(`AI Generation Failed: ${err.message || "Unknown error"}. Check backend configuration.`);
     } finally {
       setGenerating(false);
     }

@@ -204,7 +204,7 @@ export async function trackedRunLLM(env, {
       `).bind(
         generationId, brand_id, user_id, content_type, platform,
         prompt.slice(0, 2000),
-        result ? JSON.stringify(result) : null,
+        result ? JSON.stringify(result) : "{}",
         model, tokens, latency_ms,
         status === "ok" ? 1 : 0,
         status,

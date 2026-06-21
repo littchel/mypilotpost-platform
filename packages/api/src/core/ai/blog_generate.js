@@ -26,7 +26,7 @@ export async function generateBlogArticle(request, env, auth) {
     return error("Invalid JSON body", "INVALID_JSON", null, 400);
   }
 
-  const { context_id, draft_id, goal, audience, primary_keyword } = body || {};
+  const { context_id, draft_id, goal, audience, primary_keyword, secondary_keywords, domain } = body || {};
 
   if (!goal || !audience || !primary_keyword) {
     return error(
@@ -45,13 +45,18 @@ export async function generateBlogArticle(request, env, auth) {
     const draftResponse = await createBlogPost(
       new Request("http://internal/create", {
         method: "POST",
-        body: JSON.stringify({ title: `${goal} — ${primary_keyword}` })
+        body: JSON.stringify({
+          title: `${goal} — ${primary_keyword}`,
+          body: "Initial placeholder content for the blog post draft before AI generation completes.",
+          slug: null,
+          campaign_id: null
+        })
       }),
       env,
       auth
     );
     const draftJson = await draftResponse.json();
-    contentId = draftJson?.draft_id;
+    contentId = draftJson?.content_id || draftJson?.draft_id;
     contextId = draftJson?.context_id;
     if (!contentId) return error("Failed to create blog draft", "SERVER_ERROR", null, 500);
   }
@@ -65,7 +70,7 @@ export async function generateBlogArticle(request, env, auth) {
     : "";
 
   // Phase 6 — context hash
-  const ctxHash = await contextHash(auth.brand_id, 'blog', `${primary_keyword}|${goal}`);
+  const ctxHash = await contextHash(auth.brand_id, 'blog', `${primary_keyword}|${goal}|${secondary_keywords || ""}|${domain || ""}`);
 
   /* ---------------- AI GENERATION ---------------- */
   const prompt = `Write a structured, brand-aligned blog article.
@@ -73,6 +78,7 @@ ${brandContext ? `\nBRAND CONTEXT:\n${brandContext}\n` : ""}
 Goal: ${goal}
 Target audience: ${audience}
 Primary keyword: "${primary_keyword}"
+${secondary_keywords ? `Secondary keywords to include: ${secondary_keywords}\n` : ""}${domain ? `Target localization/Google domain: ${domain}\n` : ""}
 
 REQUIREMENTS:
 - Write in the brand's voice and style as defined above — not generic
@@ -143,12 +149,11 @@ Respond in strict JSON:
   /* ---------------- PERSIST ---------------- */
   if (bodyText) {
     await updateBlogPost(
-      new Request("http://internal/update", {
+      new Request(`http://internal/update/${contentId}`, {
         method: "PATCH",
         body: JSON.stringify({ title, body: bodyText })
       }),
       env,
-      contentId,
       auth
     );
   }
