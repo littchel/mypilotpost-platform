@@ -159,7 +159,11 @@ export async function executeDeliveryJob(env, job) {
       errMsg.includes("ACCESS_DENIED") ||
       errMsg.includes("sufficient permissions") ||
       errMsg.includes("correct set of scopes") ||
-      errMsg.includes("Missing:")
+      errMsg.includes("Missing:") ||
+      errMsg.includes("does not have permission") ||
+      errMsg.includes("lack of") ||
+      errMsg.includes("OAuthException") ||
+      errMsg.toLowerCase().includes("permission")
     ) {
       errorCode = "PERMISSION_DENIED";
     } else if (errMsg.includes("TOKEN_EXPIRED") || errMsg.includes("session has expired") || errMsg.includes("INVALID_ACCESS_TOKEN") || errMsg.includes("token") || errMsg.includes("TOKEN")) {

@@ -105,7 +105,7 @@ export const PROVIDERS = {
     auth: "oauth2",
     credential_key: "META",
     // meta alias uses Facebook Pages scopes only — Instagram connects separately via /instagram/connect
-    scopes: "public_profile,pages_show_list,pages_read_engagement,pages_manage_posts,pages_manage_metadata,business_management",
+    scopes: "public_profile,pages_show_list,pages_read_engagement,pages_manage_posts,pages_manage_metadata,business_management,publish_video",
     endpoints: {
       auth: "https://www.facebook.com/v21.0/dialog/oauth",
       token: "https://graph.facebook.com/v21.0/oauth/access_token"
@@ -118,7 +118,7 @@ export const PROVIDERS = {
     auth: "oauth2",
     credential_key: "META",
     // Facebook Pages scopes ONLY — instagram_* scopes MUST NOT be included here
-    scopes: "public_profile,pages_show_list,pages_read_engagement,pages_manage_posts,pages_manage_metadata,business_management",
+    scopes: "public_profile,pages_show_list,pages_read_engagement,pages_manage_posts,pages_manage_metadata,business_management,publish_video",
     endpoints: {
       auth: "https://www.facebook.com/v21.0/dialog/oauth",
       token: "https://graph.facebook.com/v21.0/oauth/access_token"

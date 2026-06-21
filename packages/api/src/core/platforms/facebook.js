@@ -20,6 +20,38 @@ async function appSecretProof(accessToken, appSecret) {
   return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+async function handleFacebookResponse(res, errorPrefix) {
+  if (res.ok) {
+    if (typeof res.json === "function") {
+      return await res.json();
+    }
+    return res;
+  }
+
+  let text = "";
+  if (typeof res.text === "function") {
+    text = await res.text();
+  } else if (typeof res.json === "function") {
+    try {
+      text = JSON.stringify(await res.json());
+    } catch (_) {}
+  }
+
+  let msg = text || "Unknown error";
+  let parsed = null;
+  try {
+    parsed = JSON.parse(text);
+    if (parsed.error?.message) {
+      msg = parsed.error.message;
+    }
+  } catch (_) {}
+
+  if (msg.includes("permission") || msg.includes("pages_show_list") || msg.includes("publish_video")) {
+    throw new Error(`${errorPrefix}: Insufficient permissions. Facebook requires the 'pages_show_list' and 'publish_video' permissions to publish Stories and Reels. Please disconnect and reconnect your Facebook integration in Integrations to grant these.`);
+  }
+  throw new Error(`${errorPrefix}: ${msg}`);
+}
+
 export async function publish({ content, connection, env }) {
   const { text, media } = content;
   const { access_token, account_id } = connection;
@@ -52,10 +84,7 @@ export async function publish({ content, connection, env }) {
           ...(proof ? { appsecret_proof: proof } : {})
         })
       });
-      if (!initRes.ok) {
-        throw new Error(`FACEBOOK_STORY_INIT_FAILED: ${await initRes.text()}`);
-      }
-      const initData = await initRes.json();
+      const initData = await handleFacebookResponse(initRes, "FACEBOOK_STORY_INIT_FAILED");
 
       console.log(`[FB_STORY] Uploading raw video data`);
       // 2. Binary upload
@@ -84,9 +113,7 @@ export async function publish({ content, connection, env }) {
           ...(proof ? { appsecret_proof: proof } : {})
         })
       });
-      if (!finishRes.ok) {
-        throw new Error(`FACEBOOK_STORY_FINISH_FAILED: ${await finishRes.text()}`);
-      }
+      await handleFacebookResponse(finishRes, "FACEBOOK_STORY_FINISH_FAILED");
       return { success: true, external_id: initData.video_id };
 
     } else {
@@ -102,10 +129,7 @@ export async function publish({ content, connection, env }) {
         method: "POST",
         body: formData
       });
-      if (!uploadRes.ok) {
-        throw new Error(`FACEBOOK_STORY_PHOTO_UPLOAD_FAILED: ${await uploadRes.text()}`);
-      }
-      const photoData = await uploadRes.json();
+      const photoData = await handleFacebookResponse(uploadRes, "FACEBOOK_STORY_PHOTO_UPLOAD_FAILED");
 
       console.log(`[FB_STORY] Linking photo to story`);
       // Link photo as story
@@ -118,10 +142,7 @@ export async function publish({ content, connection, env }) {
           ...(proof ? { appsecret_proof: proof } : {})
         })
       });
-      if (!storyRes.ok) {
-        throw new Error(`FACEBOOK_STORY_PHOTO_PUBLISH_FAILED: ${await storyRes.text()}`);
-      }
-      const storyData = await storyRes.json();
+      const storyData = await handleFacebookResponse(storyRes, "FACEBOOK_STORY_PHOTO_PUBLISH_FAILED");
       return { success: true, external_id: storyData.id || photoData.id };
     }
   }
@@ -146,10 +167,7 @@ export async function publish({ content, connection, env }) {
         ...(proof ? { appsecret_proof: proof } : {})
       })
     });
-    if (!initRes.ok) {
-      throw new Error(`FACEBOOK_REEL_INIT_FAILED: ${await initRes.text()}`);
-    }
-    const initData = await initRes.json();
+    const initData = await handleFacebookResponse(initRes, "FACEBOOK_REEL_INIT_FAILED");
 
     console.log(`[FB_REEL] Uploading raw video data`);
     // 2. Binary upload (resumable)
@@ -180,9 +198,7 @@ export async function publish({ content, connection, env }) {
         ...(proof ? { appsecret_proof: proof } : {})
       })
     });
-    if (!finishRes.ok) {
-      throw new Error(`FACEBOOK_REEL_FINISH_FAILED: ${await finishRes.text()}`);
-    }
+    await handleFacebookResponse(finishRes, "FACEBOOK_REEL_FINISH_FAILED");
     return { success: true, external_id: initData.video_id };
   }
 
@@ -202,13 +218,7 @@ export async function publish({ content, connection, env }) {
       `https://graph.facebook.com/v19.0/${account_id}/${endpoint}`,
       { method: "POST", body: formData }
     );
-
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`FACEBOOK_${isVideo ? "VIDEO" : "PHOTO"}_FAILED: ${body}`);
-    }
-
-    const data = await res.json();
+    const data = await handleFacebookResponse(res, isVideo ? "FACEBOOK_VIDEO_FAILED" : "FACEBOOK_PHOTO_FAILED");
 
     if (isVideo) {
       return {
@@ -238,11 +248,6 @@ export async function publish({ content, connection, env }) {
       body: JSON.stringify(feedBody),
     }
   );
-
-  if (!res.ok) {
-    throw new Error(`FACEBOOK_FEED_FAILED: ${await res.text()}`);
-  }
-
-  const data = await res.json();
+  const data = await handleFacebookResponse(res, "FACEBOOK_FEED_FAILED");
   return { success: true, external_id: data.id };
 }
