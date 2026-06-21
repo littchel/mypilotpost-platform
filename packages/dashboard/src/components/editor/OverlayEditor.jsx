@@ -68,7 +68,7 @@ const DEFAULT_TEMPLATES = [
 
 function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
 
-export default function OverlayEditor({ value, onChange, aspectKey = "1:1" }) {
+export default function OverlayEditor({ value, onChange, aspectKey = "1:1", height = 560 }) {
   const [state, setState] = useState(() => normalize(value));
   const [selected, setSelected] = useState(null); // { kind:'text'|'image', id }
   const [aspect, setAspect] = useState(aspectKey);
@@ -410,12 +410,12 @@ export default function OverlayEditor({ value, onChange, aspectKey = "1:1" }) {
   const arPct = ASPECTS[aspect];
 
   return (
-    <div style={{ display: "flex", gap: 20, alignItems: "stretch", width: "100%", height: 520, background: "#0b0f19", color: "#f8fafc", borderRadius: 12, overflow: "hidden", border: "1px solid #1e293b" }}>
+    <div style={{ display: "flex", gap: 20, alignItems: "stretch", width: "100%", height, background: "#0b0f19", color: "#f8fafc", borderRadius: 12, overflow: "hidden", border: "1px solid #1e293b" }}>
       {/* ── EXPOSE EXPORT PNG METHOD ── */}
       <ExportBridge onReady={(fn) => { OverlayEditor._export = fn; }} exportPNG={exportPNG} />
 
       {/* ── LEFT STAGE (70%) ── */}
-      <div style={{ flex: 1, background: "#020617", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20, position: "relative" }}>
+      <div style={{ flex: 1, background: "#020617", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "12px 20px", position: "relative", overflowY: "auto" }}>
         
         {/* Top bar toolbar */}
         <div style={{ width: "100%", maxWidth: 460, display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -450,8 +450,8 @@ export default function OverlayEditor({ value, onChange, aspectKey = "1:1" }) {
           onPointerDown={() => setSelected(null)}
           style={{
             position: "relative",
-            width: aspect === "9:16" ? 270 : 360,
-            height: aspect === "9:16" ? 480 : Math.round(360 / arPct),
+            width: aspect === "9:16" ? 240 : 320,
+            height: aspect === "9:16" ? 426 : Math.round(320 / arPct),
             background: state.background.color,
             borderRadius: 8,
             overflow: "hidden",
@@ -485,8 +485,8 @@ export default function OverlayEditor({ value, onChange, aspectKey = "1:1" }) {
           {/* Render overlay layers */}
           {allLayers.map(o => {
             const isSel = selected && selected.id === o.id;
-            const widthVal = aspect === "9:16" ? 270 : 360;
-            const heightVal = aspect === "9:16" ? 480 : Math.round(360 / arPct);
+            const widthVal = aspect === "9:16" ? 240 : 320;
+            const heightVal = aspect === "9:16" ? 426 : Math.round(320 / arPct);
             
             const common = {
               position: "absolute", left: `${o.x}%`, top: `${o.y}%`, width: `${o.w}%`,
@@ -573,7 +573,7 @@ export default function OverlayEditor({ value, onChange, aspectKey = "1:1" }) {
         </div>
 
         {/* Bottom toolbar quick inserts */}
-        <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+        <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap", justifyContent: "center" }}>
           <button onClick={addText} style={btnTool}><i className="fas fa-font me-1"></i>+ Text</button>
           <button onClick={addCTAButton} style={btnTool}><i className="fas fa-hand-pointer me-1"></i>+ CTA Button</button>
           <button onClick={() => addShape("rectangle")} style={btnTool}><i className="fas fa-square me-1"></i>+ Rectangle</button>

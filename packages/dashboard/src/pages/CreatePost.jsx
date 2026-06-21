@@ -2011,7 +2011,7 @@ function BrandOverlayModal({ open, onClose, overlays, onSave, mediaItems }) {
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.85)", backdropFilter: "blur(4px)", zIndex: 2000 }} />
       <div style={{
         position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-        width: 1040, height: 600, background: "#0b0f19", borderRadius: 16,
+        width: "95%", maxWidth: 1080, height: "90%", maxHeight: 740, background: "#0b0f19", borderRadius: 16,
         boxShadow: "0 25px 50px -12px rgba(0,0,0,0.6)", zIndex: 2001,
         display: "flex", flexDirection: "column", border: "1px solid #1e293b", overflow: "hidden"
       }}>
@@ -2030,6 +2030,7 @@ function BrandOverlayModal({ open, onClose, overlays, onSave, mediaItems }) {
             value={localOverlays}
             onChange={setLocalOverlays}
             aspectKey="1:1"
+            height="100%"
           />
         </div>
         <div style={{ padding: "12px 20px", borderTop: "1px solid #1e293b", background: "#0f172a", display: "flex", justifyContent: "flex-end", gap: 10 }}>
