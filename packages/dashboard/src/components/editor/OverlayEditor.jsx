@@ -3,6 +3,8 @@
 // Supports: Video backgrounds, shapes, logo layers, CTA buttons, template library, safe-zones, precise X/Y sliders, and canvas export.
 
 import React, { useRef, useState, useEffect, useCallback } from "react";
+import { useBrand } from "../../contexts/BrandContext";
+import { useApi } from "../../lib/api/hooks";
 
 const FONTS = ["Inter", "Arial", "Georgia", "Times New Roman", "Courier New", "Impact", "Verdana", "Outfit", "Playfair Display"];
 const ASPECTS = { "1:1": 1, "4:5": 4 / 5, "9:16": 9 / 16, "16:9": 16 / 9 };
@@ -25,6 +27,225 @@ let _idc = 0;
 const uid = (p) => `${p}_${Date.now()}_${_idc++}`;
 
 const EMPTY = { background: { url: null, fit: "cover", color: "#111827" }, overlay_text: [], overlay_image: [] };
+
+function resolveColor(str, defaultColor) {
+  if (!str) return defaultColor;
+  str = str.trim();
+  if (/^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(str)) {
+    return str;
+  }
+  if (/^[0-9a-f]{3,6}$/i.test(str)) {
+    return `#${str}`;
+  }
+  const cssColors = ["white", "black", "red", "green", "blue", "yellow", "gray", "silver", "maroon", "purple", "fuchsia", "lime", "olive", "navy", "teal", "aqua", "orange", "aliceblue", "antiquewhite", "aquamarine", "azure", "beige", "bisque", "blanchedalmond", "blueviolet", "brown", "burlywood", "cadetblue", "chartreuse", "chocolate", "coral", "cornflowerblue", "cornsilk", "crimson", "cyan", "darkblue", "darkcyan", "darkgoldenrod", "darkgray", "darkgreen", "darkgrey", "darkkhaki", "darkmagenta", "darkolivegreen", "darkorange", "darkorchid", "darkred", "darksalmon", "darkseagreen", "darkslateindependent", "darkslateblue", "darkslategray", "darkslategrey", "darkturquoise", "darkviolet", "deeppink", "deepskyblue", "dimgray", "dimgrey", "dodgerblue", "firebrick", "floralwhite", "forestgreen", "gainsboro", "ghostwhite", "gold", "goldenrod", "greenyellow", "grey", "honeydew", "hotpink", "indianred", "indigo", "ivory", "khaki", "lavender", "lavenderblush", "lawngreen", "lemonchiffon", "lightblue", "lightcoral", "lightcyan", "lightgoldenrodyellow", "lightgray", "lightgreen", "lightgrey", "lightpink", "lightsalmon", "lightseagreen", "lightskyblue", "lightslategray", "lightslategrey", "lightsteelblue", "lightyellow", "magenta", "mediumaquamarine", "mediumblue", "mediumorchid", "mediumpurple", "mediumseagreen", "mediumslateindependent", "mediumslateblue", "mediumspringgreen", "mediumturquoise", "mediumvioletred", "midnightblue", "mintcream", "mistyrose", "moccasin", "navajowhite", "oldlace", "olivedrab", "orangered", "orchid", "palegoldenrod", "palegreen", "paleturquoise", "palevioletred", "papayawhip", "peachpuff", "peru", "pink", "plum", "powderblue", "rosybrown", "royalblue", "saddlebrown", "salmon", "sandybrown", "seagreen", "seashell", "sienna", "skyblue", "slateindependent", "slateblue", "slategray", "slategrey", "snow", "springgreen", "steelblue", "tan", "thistle", "tomato", "turquoise", "violet", "wheat", "whitesmoke", "yellowgreen"];
+  if (cssColors.includes(str.toLowerCase())) {
+    return str.toLowerCase();
+  }
+  return defaultColor;
+}
+
+function getLayouts(brandLogo, primary, secondary) {
+  const hasColors = !!primary;
+  const mainColor = hasColors ? primary : "#ffffff";
+  const accentColor = hasColors ? (secondary || primary) : "#1e293b";
+  const btnBg = hasColors ? primary : "#ffffff";
+  const btnTextColor = hasColors ? "#ffffff" : "#000000";
+
+  return [
+    {
+      id: "layout_logo_only",
+      name: "1. Logo Only (Watermark)",
+      overlays: {
+        background: { url: null, fit: "cover", color: "#111827" },
+        overlay_text: [],
+        overlay_image: [
+          {
+            id: "logo_watermark",
+            url: brandLogo || "/logo-mpp.png",
+            x: 80,
+            y: 83,
+            w: 12,
+            h: 12,
+            imgAr: 1.0,
+            rotation: 0,
+            opacity: 0.8,
+            z: 1,
+            isLogo: true
+          }
+        ]
+      }
+    },
+    {
+      id: "layout_minimal_cta",
+      name: "2. Minimal Logo & CTA Button",
+      overlays: {
+        background: { url: null, fit: "cover", color: "#111827" },
+        overlay_text: [
+          {
+            id: "cta_text",
+            text: "Elevate Your Business",
+            x: 20,
+            y: 82,
+            w: 42,
+            rotation: 0,
+            fontSize: 4.5,
+            fontFamily: "Inter",
+            color: "#ffffff",
+            opacity: 1,
+            align: "left",
+            bold: true,
+            italic: false,
+            z: 2
+          },
+          {
+            id: "cta_btn",
+            text: "Get Started",
+            x: 68,
+            y: 80,
+            w: 22,
+            rotation: 0,
+            fontSize: 4,
+            fontFamily: "Inter",
+            color: btnTextColor,
+            opacity: 1,
+            align: "center",
+            bold: true,
+            italic: false,
+            z: 3,
+            isCTA: true,
+            ctaBgColor: btnBg,
+            ctaBorderRadius: 8,
+            ctaPadding: 8
+          }
+        ],
+        overlay_image: [
+          {
+            id: "cta_bg_strip",
+            isShape: true,
+            shapeType: "rectangle",
+            x: 5,
+            y: 76,
+            w: 90,
+            h: 18,
+            rotation: 0,
+            opacity: 0.85,
+            color: "#0f172a",
+            z: 1
+          },
+          {
+            id: "cta_logo",
+            url: brandLogo || "/logo-mpp.png",
+            x: 8,
+            y: 80,
+            w: 10,
+            h: 10,
+            imgAr: 1.0,
+            rotation: 0,
+            opacity: 1,
+            z: 4,
+            isLogo: true
+          }
+        ]
+      }
+    },
+    {
+      id: "layout_header_footer",
+      name: "3. Header & Footer Banners",
+      overlays: {
+        background: { url: null, fit: "cover", color: "#111827" },
+        overlay_text: [
+          {
+            id: "header_title",
+            text: "WEEKLY SPOTLIGHT",
+            x: 10,
+            y: 6,
+            w: 80,
+            rotation: 0,
+            fontSize: 5,
+            fontFamily: "Outfit",
+            color: "#ffffff",
+            opacity: 1,
+            align: "center",
+            bold: true,
+            italic: false,
+            z: 3
+          },
+          {
+            id: "footer_cta",
+            text: "Visit website for details",
+            x: 15,
+            y: 91,
+            w: 70,
+            rotation: 0,
+            fontSize: 3.5,
+            fontFamily: "Inter",
+            color: "#ffffff",
+            opacity: 0.9,
+            align: "center",
+            bold: false,
+            italic: true,
+            z: 4
+          }
+        ],
+        overlay_image: [
+          {
+            id: "header_banner",
+            isShape: true,
+            shapeType: "rectangle",
+            x: 0,
+            y: 0,
+            w: 100,
+            h: 14,
+            rotation: 0,
+            opacity: 0.9,
+            color: mainColor,
+            z: 1
+          },
+          {
+            id: "footer_banner",
+            isShape: true,
+            shapeType: "rectangle",
+            x: 0,
+            y: 86,
+            w: 100,
+            h: 14,
+            rotation: 0,
+            opacity: 0.95,
+            color: "#0f172a",
+            z: 2
+          }
+        ]
+      }
+    },
+    {
+      id: "layout_framed_border",
+      name: "4. Frame / Border Accent",
+      overlays: {
+        background: { url: null, fit: "cover", color: "#111827" },
+        overlay_text: [],
+        overlay_image: [
+          { id: "frame_left", isShape: true, shapeType: "rectangle", x: 0, y: 0, w: 2.5, h: 100, rotation: 0, opacity: 0.95, color: mainColor, z: 1 },
+          { id: "frame_right", isShape: true, shapeType: "rectangle", x: 97.5, y: 0, w: 2.5, h: 100, rotation: 0, opacity: 0.95, color: mainColor, z: 2 },
+          { id: "frame_top", isShape: true, shapeType: "rectangle", x: 0, y: 0, w: 100, h: 2.5, rotation: 0, opacity: 0.95, color: mainColor, z: 3 },
+          { id: "frame_bottom", isShape: true, shapeType: "rectangle", x: 0, y: 97.5, w: 100, h: 2.5, rotation: 0, opacity: 0.95, color: mainColor, z: 4 },
+          {
+            id: "frame_logo",
+            url: brandLogo || "/logo-mpp.png",
+            x: 82,
+            y: 85,
+            w: 11,
+            h: 11,
+            imgAr: 1.0,
+            rotation: 0,
+            opacity: 0.9,
+            z: 5,
+            isLogo: true
+          }
+        ]
+      }
+    }
+  ];
+}
 
 const DEFAULT_TEMPLATES = [
   {
@@ -77,10 +298,66 @@ export default function OverlayEditor({ value, onChange, aspectKey = "1:1", heig
   const stageRef = useRef(null);
   const drag = useRef(null); // active gesture
 
+  const { activeBrand } = useBrand();
+  const { data: brandDnaData } = useApi(activeBrand?.id ? "/api/customer/brand-dna" : null, [activeBrand?.id]);
+
+  const brandLogo = activeBrand?.logo_url || null;
+  const vi = brandDnaData?.visual || {};
+  const primaryColor = resolveColor(vi.primary_color, null);
+  const secondaryColor = resolveColor(vi.secondary_color, null);
+
+  const layoutList = getLayouts(brandLogo, primaryColor, secondaryColor);
+
   // Keep internal state in sync if the parent swaps the asset
   useEffect(() => {
     setState(normalize(value));
   }, [value?.__assetId]);
+
+  // Auto detect aspect ratio when media background changes
+  useEffect(() => {
+    const bgUrl = state.background.url;
+    if (!bgUrl) return;
+
+    const isVideo = bgUrl.endsWith(".mp4") ||
+                    bgUrl.endsWith(".mov") ||
+                    bgUrl.endsWith(".webm") ||
+                    bgUrl.includes("video") ||
+                    bgUrl.startsWith("blob:") ||
+                    bgUrl.includes("mpp-video");
+
+    if (isVideo) {
+      const video = document.createElement("video");
+      video.src = bgUrl;
+      video.onloadedmetadata = () => {
+        if (video.videoWidth && video.videoHeight) {
+          const ar = video.videoWidth / video.videoHeight;
+          matchAspect(ar);
+        }
+      };
+    } else {
+      const img = new Image();
+      img.src = bgUrl;
+      img.onload = () => {
+        if (img.width && img.height) {
+          const ar = img.width / img.height;
+          matchAspect(ar);
+        }
+      };
+    }
+
+    function matchAspect(ar) {
+      let bestKey = "1:1";
+      let minDiff = Infinity;
+      for (const [k, v] of Object.entries(ASPECTS)) {
+        const diff = Math.abs(ar - v);
+        if (diff < minDiff) {
+          minDiff = diff;
+          bestKey = k;
+        }
+      }
+      setAspect(bestKey);
+    }
+  }, [state.background.url]);
 
   // Load templates from localStorage
   useEffect(() => {
@@ -174,15 +451,26 @@ export default function OverlayEditor({ value, onChange, aspectKey = "1:1", heig
     reader.onload = () => {
       const img = new Image();
       img.onload = () => {
-        const ar = img.width / img.height;
-        const w = isLogo ? 20 : 40;
-        const h = clamp(w / ar / (ASPECTS[aspect]), 5, 90);
-        const o = {
-          id: uid("i"), url: reader.result, x: isLogo ? 70 : 30, y: isLogo ? 10 : 30, w, h, rotation: 0,
-          opacity: 1, crop: { t: 0, r: 0, b: 0, l: 0 }, z: nextZ(), isLogo
-        };
-        normalizeAndEmit(s => { s.overlay_image.push(o); return s; });
-        setSelected({ kind: "image", id: o.id });
+        const imgAr = img.width / img.height;
+        normalizeAndEmit(s => {
+          if (isLogo) {
+            const existingLogo = s.overlay_image.find(x => x.isLogo);
+            if (existingLogo) {
+              existingLogo.url = reader.result;
+              existingLogo.imgAr = imgAr;
+              setTimeout(() => setSelected({ kind: "image", id: existingLogo.id }), 50);
+              return s;
+            }
+          }
+          const w = isLogo ? 20 : 40;
+          const o = {
+            id: uid("i"), url: reader.result, x: isLogo ? 70 : 30, y: isLogo ? 10 : 30, w, imgAr, rotation: 0,
+            opacity: 1, crop: { t: 0, r: 0, b: 0, l: 0 }, z: nextZ(), isLogo
+          };
+          s.overlay_image.push(o);
+          setTimeout(() => setSelected({ kind: "image", id: o.id }), 50);
+          return s;
+        });
       };
       img.src = reader.result;
     };
@@ -278,7 +566,9 @@ export default function OverlayEditor({ value, onChange, aspectKey = "1:1", heig
         o.y = clamp(g.orig.y + dyPct, -20, 100);
       } else if (g.mode === "resize") {
         o.w = clamp(g.orig.w + dxPct, 3, 120);
-        if (g.kind === "image") o.h = clamp((g.orig.h ?? g.orig.w) + dyPct, 3, 120);
+        if (g.kind === "image" && o.isShape) {
+          o.h = clamp((g.orig.h ?? g.orig.w) + dyPct, 3, 120);
+        }
       } else if (g.mode === "rotate") {
         const ang = Math.atan2(e.clientY - g.cy, e.clientX - g.cx) * 180 / Math.PI + 90;
         o.rotation = Math.round(ang);
@@ -350,7 +640,10 @@ export default function OverlayEditor({ value, onChange, aspectKey = "1:1", heig
         } else {
           try {
             const img = await loadImg(o.url);
-            const w = o.w / 100 * W, h = (o.h ?? o.w) / 100 * H;
+            const imgAr = o.imgAr || (img.width / img.height);
+            const hPct = o.w * ar / imgAr;
+            const w = o.w / 100 * W;
+            const h = hPct / 100 * H;
             ctx.drawImage(img, -w / 2, -h / 2, w, h);
           } catch (e) {
             console.error("Failed to load overlay image for export", e);
@@ -487,10 +780,12 @@ export default function OverlayEditor({ value, onChange, aspectKey = "1:1", heig
             const isSel = selected && selected.id === o.id;
             const widthVal = aspect === "9:16" ? 240 : 320;
             const heightVal = aspect === "9:16" ? 426 : Math.round(320 / arPct);
+            const isImg = o.kind === "image";
+            const imgHeightPct = isImg ? (o.isShape ? (o.h ?? o.w) : (o.w * arPct / (o.imgAr || 1))) : null;
             
             const common = {
               position: "absolute", left: `${o.x}%`, top: `${o.y}%`, width: `${o.w}%`,
-              height: o.kind === "image" ? `${o.h}%` : "auto",
+              height: isImg ? `${imgHeightPct}%` : "auto",
               transform: `rotate(${o.rotation || 0}deg)`, transformOrigin: "center",
               opacity: o.opacity ?? 1, cursor: "move",
               outline: isSel ? "2px solid #3b82f6" : "none", zIndex: (o.z ?? 0) + 1,
@@ -594,16 +889,53 @@ export default function OverlayEditor({ value, onChange, aspectKey = "1:1", heig
       {/* ── RIGHT PANEL: PROPERTIES & CONTROLS (30%) ── */}
       <div style={{ width: 290, background: "#0f172a", borderLeft: "1px solid #1e293b", padding: 16, display: "flex", flexDirection: "column", overflowY: "auto" }}>
         
+        {/* Professional Brand Layouts */}
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 8 }}>Professional Layouts</label>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {layoutList.map(layout => (
+              <button
+                key={layout.id}
+                onClick={() => loadTemplate(layout)}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "12px 6px",
+                  background: "#1e293b",
+                  border: "1px solid #334155",
+                  borderRadius: 8,
+                  cursor: "pointer",
+                  color: "#cbd5e1",
+                  transition: "all 0.2s",
+                  textAlign: "center"
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "#3b82f6"; e.currentTarget.style.background = "#0f172a"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "#334155"; e.currentTarget.style.background = "#1e293b"; }}
+              >
+                <div style={{ fontSize: 16, marginBottom: 4 }}>
+                  {layout.id === "layout_logo_only" && "🎯"}
+                  {layout.id === "layout_minimal_cta" && "🔘"}
+                  {layout.id === "layout_header_footer" && "📰"}
+                  {layout.id === "layout_framed_border" && "🖼️"}
+                </div>
+                <div style={{ fontSize: 10, fontWeight: 700, lineHeight: 1.2 }}>{layout.name.split(". ")[1]}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Templates selector section */}
         <div style={{ marginBottom: 14 }}>
-          <label className="extra-small fw-bold text-muted text-uppercase mb-1" style={{ display: "block" }}>Overlay Templates</label>
+          <label className="extra-small fw-bold text-muted text-uppercase mb-1" style={{ display: "block" }}>Custom Templates</label>
           <div style={{ display: "flex", gap: 6 }}>
             <select
               onChange={e => loadTemplate(templates[parseInt(e.target.value, 10)])}
               defaultValue=""
               style={{ ...inp, flex: 1 }}
             >
-              <option value="" disabled>Load layout template...</option>
+              <option value="" disabled>Load saved layout...</option>
               {templates.map((t, idx) => <option key={t.name} value={idx}>{t.name}</option>)}
             </select>
             <button onClick={saveAsTemplate} style={{ ...btnTool, padding: "5px 10px" }} title="Save current layout as template">

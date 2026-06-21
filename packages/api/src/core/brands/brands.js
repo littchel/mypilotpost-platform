@@ -23,7 +23,8 @@ export async function createBrand(request, env, session) {
     return error("Invalid JSON body", "INVALID_JSON", null, 400);
   }
 
-  const { name, industry, tone, goals } = body || {};
+  const { name, industry, tone, goals, logo, logo_url } = body || {};
+  const activeLogo = logo_url || logo || null;
 
   if (!name || !name.trim()) return error("Brand name is required", "BAD_REQUEST", null, 400);
   if (!industry || !industry.trim()) return error("Industry is required", "BAD_REQUEST", null, 400);
@@ -52,9 +53,10 @@ export async function createBrand(request, env, session) {
           industry,
           tone,
           goals,
+          logo_url,
           created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
         `
       ).bind(
         brandId,
@@ -62,7 +64,8 @@ export async function createBrand(request, env, session) {
         name.trim(),
         industry.trim(),
         tone ? String(tone).trim() : null,
-        goals ? String(goals).trim() : null
+        goals ? String(goals).trim() : null,
+        activeLogo ? String(activeLogo).trim() : null
       ),
       db.prepare(
         `
@@ -90,6 +93,7 @@ export async function createBrand(request, env, session) {
       id: brandId,
       name: name.trim(),
       industry: industry.trim(),
+      logo_url: activeLogo ? String(activeLogo).trim() : null,
       requires_token_refresh: true,
     },
     201
@@ -141,6 +145,7 @@ export async function listBrands(_request, env, session) {
           b.industry,
           b.tone,
           b.goals,
+          b.logo_url,
           b.created_at
         FROM brands b
         JOIN brand_users bu ON bu.brand_id = b.id
@@ -157,6 +162,7 @@ export async function listBrands(_request, env, session) {
       industry: b.industry,
       tone: b.tone,
       goals: b.goals,
+      logo_url: b.logo_url,
       created_at: b.created_at,
     }));
 
@@ -280,6 +286,7 @@ export async function updateBrandSettings(request, env, session) {
           industry = COALESCE(?, industry),
           tone = COALESCE(?, tone),
           goals = COALESCE(?, goals),
+          logo_url = COALESCE(?, logo_url),
           updated_at = datetime('now')
       WHERE id = ?
         AND id IN (SELECT brand_id FROM brand_users WHERE user_id = ?)
@@ -290,6 +297,7 @@ export async function updateBrandSettings(request, env, session) {
       body.industry || null,
       body.tone || null,
       body.goals || null,
+      body.logo_url || null,
       brandId,
       session.user_id
     )
