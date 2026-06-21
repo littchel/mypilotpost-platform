@@ -43,7 +43,9 @@ export async function requireAuth(request, env) {
     url.pathname.includes("/register") ||
     url.pathname.includes("/login") ||
     url.pathname.includes("/auth/logout") ||
-    url.pathname.includes("/auth/refresh");
+    url.pathname.includes("/auth/refresh") ||
+    url.pathname.includes("/onboarding") ||
+    url.pathname.includes("/brands/create");
 
   if (!is_email_exempt_route) {
     const verified = await db.prepare(

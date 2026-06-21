@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { X, Building2, Globe, Target, Smile } from "lucide-react";
 import PilotButton from "../shared/PilotButton";
 import { useBrand } from "../../contexts/BrandContext";
+import IndustryAutoSuggest from "../shared/IndustryAutoSuggest";
 
 const BrandOnboardingModal = ({ isOpen, onClose }) => {
   const { createBrand, switchBrand } = useBrand();
@@ -53,12 +54,11 @@ const BrandOnboardingModal = ({ isOpen, onClose }) => {
           <div className="form-row">
             <div className="form-group">
               <label><Target size={16} /> Industry</label>
-              <input 
-                type="text" 
-                required 
-                placeholder="e.g. Technology"
+              <IndustryAutoSuggest
                 value={formData.industry}
-                onChange={(e) => setFormData({...formData, industry: e.target.value})}
+                onChange={val => setFormData({...formData, industry: val})}
+                placeholder="Search or select industry..."
+                required={true}
               />
             </div>
             <div className="form-group">

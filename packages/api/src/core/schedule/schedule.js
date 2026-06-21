@@ -265,7 +265,7 @@ export async function createSchedule(request, env, auth) {
         success: true,
         job_id: jobId
       },
-      201
+      200
     );
 
   } catch (err) {

@@ -111,14 +111,15 @@ export async function register(request, env) {
     const trialEnd = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
     const periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     const now = new Date().toISOString();
+    const verifiedAt = (env.ENVIRONMENT === "development" || env.ENVIRONMENT === "test") ? now : null;
 
     await db.prepare(
       `INSERT INTO users
        (id, email, password_hash, verified_at, country, region, first_name, last_name, company_name, signup_source,
         plan_id, subscription_status, trial_ends_at, current_period_start, current_period_end)
-       VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, 'starter', 'trial', ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'starter', 'trial', ?, ?, ?)`
     )
-    .bind(userId, email, `${bytesToHex(salt)}:${hash}`, country, region, first_name || null, last_name || null, company || null, resolvedSource, trialEnd, now, periodEnd)
+    .bind(userId, email, `${bytesToHex(salt)}:${hash}`, verifiedAt, country, region, first_name || null, last_name || null, company || null, resolvedSource, trialEnd, now, periodEnd)
     .run();
 
     let brandId = null;

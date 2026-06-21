@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useOnboarding } from '../../../contexts/OnboardingContext';
 import { useBrand } from '../../../contexts/BrandContext';
+import IndustryAutoSuggest from '../../shared/IndustryAutoSuggest';
 
 const BrandStep = ({ isReview = false }) => {
   const { data, nextStep } = useOnboarding();
@@ -133,34 +134,13 @@ const BrandStep = ({ isReview = false }) => {
 
         <div className="mb-3">
           <label className="form-label small fw-bold text-uppercase">{isReview ? "Detected Industry" : "Industry"}</label>
-          <select 
-            name="industry"
-            className="form-select border-2" 
+          <IndustryAutoSuggest
+            className="form-control border-2"
             value={formData.industry}
-            onChange={handleChange}
+            onChange={val => setFormData(prev => ({ ...prev, industry: val }))}
             disabled={loading}
-            required
-          >
-            <option value="">Select Industry...</option>
-            <optgroup label="Technology">
-                <option value="SaaS">SaaS / Software</option>
-                <option value="Fintech">Fintech</option>
-                <option value="AI">AI & Machine Learning</option>
-                <option value="E-commerce">E-commerce</option>
-            </optgroup>
-            <optgroup label="Services">
-                <option value="Real Estate">Real Estate</option>
-                <option value="Consulting">Consulting / B2B</option>
-                <option value="Healthcare">Healthcare</option>
-                <option value="Education">Education</option>
-            </optgroup>
-            <optgroup label="Lifestyle">
-                <option value="Retail">Retail / Fashion</option>
-                <option value="Food">Food & Beverage</option>
-                <option value="Travel">Travel & Hospitality</option>
-                <option value="Fitness">Fitness & Wellness</option>
-            </optgroup>
-          </select>
+            required={true}
+          />
         </div>
 
         <div className="mb-4">

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { apiRequest } from "../lib/api/client";
 import PlatformIcon from "../components/shared/PlatformIcon";
 import { fetchMediaSuggestions, trackImageImported } from "../services/mediaSuggestions";
+import IndustryAutoSuggest from "../components/shared/IndustryAutoSuggest";
 
 const CSS = `
 @keyframes cs-spin    { to { transform:rotate(360deg) } }
@@ -15,16 +16,6 @@ const CSS = `
 .cs-card { animation:cs-in 0.3s ease both; }
 .cs-card:hover { transform:translateY(-2px)!important; box-shadow:0 12px 32px rgba(15,23,42,0.12)!important; }
 `;
-
-// ── 30 supported industries ───────────────────────────────────────────────────
-const INDUSTRY_LIST = [
-  "SaaS", "Real Estate", "Moving Services", "Insurance", "Healthcare", "Dental",
-  "Legal", "Construction", "Travel", "Hotels", "Restaurants", "Retail",
-  "Ecommerce", "Fashion", "Education", "Finance", "Accounting", "Consulting",
-  "Marketing Agency", "Beauty", "Fitness", "Automotive", "Property Management",
-  "Recruitment", "Events", "Nonprofit", "Manufacturing", "Technology",
-  "Professional Services", "Home Services",
-];
 
 // ── Calendar events ───────────────────────────────────────────────────────────
 const ANNUAL_EVENTS = [
@@ -802,15 +793,13 @@ function PlaybookWizard({ playbook, activeBrand, switchTab, onClose }) {
           <div>
             <div style={{ fontSize:16, fontWeight:700, color:"var(--text-main)", marginBottom:6 }}>What industry are you in?</div>
             <div style={{ fontSize:13, color:"var(--text-muted)", marginBottom:16 }}>We'll tailor the playbook to your specific market context.</div>
-            <select
+            <IndustryAutoSuggest
               value={industry}
-              onChange={e => setIndustry(e.target.value)}
-              style={{ width:"100%", padding:"12px 14px", borderRadius:"var(--radius-md)", border:"1px solid var(--border-subtle)", fontSize:14, color: industry ? "var(--text-main)" : "var(--text-muted)", boxSizing:"border-box", outline:"none", background:"var(--surface-primary)", cursor:"pointer" }}
-            >
-              <option value="">Select industry…</option>
-              {INDUSTRY_LIST.map(ind => <option key={ind} value={ind}>{ind}</option>)}
-              <option value="General Business">General Business</option>
-            </select>
+              onChange={val => setIndustry(val)}
+              placeholder="Search or select industry..."
+              style={{ width:"100%", padding:"12px 14px", borderRadius:"var(--radius-md)", border:"1px solid var(--border-subtle)", fontSize:14, color: "var(--text-main)", boxSizing:"border-box", outline:"none", background:"var(--surface-primary)" }}
+              required={true}
+            />
             <div style={{ marginTop:20, display:"flex", justifyContent:"flex-end" }}>
               <button type="button" onClick={() => setStep(2)} disabled={!industry.trim()}
                 style={{ padding:"10px 24px", borderRadius:"var(--radius-md)", border:"none", background: industry.trim() ? playbook.accent : "var(--border-subtle)", color: industry.trim() ? "#fff" : "var(--text-muted)", fontWeight:700, fontSize:14, cursor: industry.trim() ? "pointer" : "default" }}>

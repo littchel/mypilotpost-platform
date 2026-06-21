@@ -7,7 +7,7 @@ export async function getReadiness(request, env, auth) {
   const db = getDB(env);
 
   const user = await db
-    .prepare(`SELECT email_verified FROM users WHERE id = ?`)
+    .prepare(`SELECT verified_at FROM users WHERE id = ?`)
     .bind(auth.user_id)
     .first();
 
@@ -31,15 +31,16 @@ export async function getReadiness(request, env, auth) {
     .first();
 
   const completed = !!onboarding?.completed_at;
+  const isEmailVerified = !!user?.verified_at;
 
   return json({
-    email_verified: user?.email_verified === 1,
+    email_verified: isEmailVerified,
     onboarding: {
       exists: !!onboarding,
       completed,
       current_step: onboarding?.current_step || 0,
       platforms_connected: platformRow?.count || 0
     },
-    can_schedule: user?.email_verified === 1 && completed
+    can_schedule: isEmailVerified && completed
   });
 }

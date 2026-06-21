@@ -17,7 +17,14 @@ export async function getOnboarding(request, env, auth) {
     const signupSource = user?.signup_source || 'direct';
 
     if (progress) {
-      return json({ progress, signup_source: signupSource });
+      return json({
+        progress,
+        signup_source: signupSource,
+        current_step: progress.current_step,
+        completed_at: progress.completed_at,
+        completed: !!progress.completed_at,
+        data: progress.data
+      });
     }
 
     // No progress row yet — build minimal initial state from user table
@@ -26,9 +33,15 @@ export async function getOnboarding(request, env, auth) {
       websiteURL: user?.audit_website || ""
     };
 
+    const initialProgress = { current_step: 1, data: JSON.stringify(initialData) };
+
     return json({
-      progress: { current_step: 1, data: JSON.stringify(initialData) },
-      signup_source: signupSource
+      progress: initialProgress,
+      signup_source: signupSource,
+      current_step: 1,
+      completed_at: null,
+      completed: false,
+      data: initialProgress.data
     });
   } catch (err) {
     return error("Failed to fetch onboarding progress", "SERVER_ERROR", String(err), 500);
@@ -73,7 +86,8 @@ export async function saveMarketContext(request, env, auth) {
   const db = getDB(env);
   try {
     const body = await request.json();
-    const { brand_id, country, language, industry } = body;
+    let { brand_id, country, language, industry } = body;
+    if (!brand_id) brand_id = auth.brand_id;
 
     if (!brand_id) return error("Brand ID is required", "BAD_REQUEST", null, 400);
 

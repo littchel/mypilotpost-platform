@@ -47,8 +47,6 @@ const PLATFORM_META = {
   pinterest: { label: "Pinterest", icon: "fab fa-pinterest", color: "#e60023" },
   threads:   { label: "Threads",   icon: "fab fa-threads",   color: "#000"    },
   youtube:   { label: "YouTube",   icon: "fab fa-youtube",   color: "#ff0000" },
-  wordpress: { label: "WordPress Blog", icon: "fab fa-wordpress", color: "#21759b" },
-  wordpress_ecommerce: { label: "WooCommerce", icon: "fab fa-wordpress", color: "#96588A" },
 };
 
 const TIMEZONES = [
