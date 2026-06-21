@@ -24,10 +24,10 @@ export async function apiRequest(endpoint, options = {}) {
   const data = await res.json();
 
   if (!res.ok) {
-    const message = data.error || "An unknown error occurred";
+    const message = data.message || data.error || "An unknown error occurred";
     const err = new Error(message);
-    err.error = message;
-    err.code = data.code || "UNKNOWN_ERROR";
+    err.error = data.error || "UNKNOWN_ERROR";
+    err.code = data.code || data.error || "UNKNOWN_ERROR";
     err.detail = data.detail || null;
     err.status = res.status;
     throw err;
