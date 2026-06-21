@@ -26,7 +26,18 @@ export async function generateBlogArticle(request, env, auth) {
     return error("Invalid JSON body", "INVALID_JSON", null, 400);
   }
 
-  const { context_id, draft_id, goal, audience, primary_keyword, secondary_keywords, domain } = body || {};
+  const {
+    context_id,
+    draft_id,
+    goal,
+    audience,
+    primary_keyword,
+    secondary_keywords,
+    domain,
+    length_depth,
+    include_stats,
+    include_examples
+  } = body || {};
 
   if (!goal || !audience || !primary_keyword) {
     return error(
@@ -70,7 +81,32 @@ export async function generateBlogArticle(request, env, auth) {
     : "";
 
   // Phase 6 — context hash
-  const ctxHash = await contextHash(auth.brand_id, 'blog', `${primary_keyword}|${goal}|${secondary_keywords || ""}|${domain || ""}`);
+  const ctxHash = await contextHash(
+    auth.brand_id,
+    'blog',
+    `${primary_keyword}|${goal}|${secondary_keywords || ""}|${domain || ""}|${length_depth || ""}|${include_stats || ""}|${include_examples || ""}`
+  );
+
+  let lengthRequirement = "Body must be at least 600 words with ## subheadings.";
+  if (length_depth === "short") {
+    lengthRequirement = "Body word count must be between 300 and 500 words, utilizing concise sections with ## subheadings.";
+  } else if (length_depth === "medium") {
+    lengthRequirement = "Body word count must be between 800 and 1200 words, utilizing well-developed paragraphs and ## subheadings.";
+  } else if (length_depth === "long") {
+    lengthRequirement = "Body word count must be between 1500 and 2000 words, going into significant detail with descriptive ## subheadings.";
+  } else if (length_depth === "comprehensive") {
+    lengthRequirement = "Body word count must be at least 2500 words, providing an exhaustive, deep-dive guide with extensive ## subheadings.";
+  }
+
+  let statsReq = "";
+  if (include_stats) {
+    statsReq = "\n- Incorporate relevant, realistic statistics, industry data points, and credibility signals to back up key assertions.";
+  }
+
+  let examplesReq = "";
+  if (include_examples) {
+    examplesReq = "\n- Include specific, illustrative real-world examples, case studies, or scenarios to ground core concepts.";
+  }
 
   /* ---------------- AI GENERATION ---------------- */
   const prompt = `Write a structured, brand-aligned blog article.
@@ -83,15 +119,15 @@ ${secondary_keywords ? `Secondary keywords to include: ${secondary_keywords}\n` 
 REQUIREMENTS:
 - Write in the brand's voice and style as defined above — not generic
 - Title must contain the primary keyword and be under 70 chars
-- Body must be at least 600 words with ## subheadings
+- ${lengthRequirement}
 - Every section should be useful to "${audience}" — not generic advice
-- Do not use the primary keyword more than once per 100 words${forbiddenLine}
+- Do not use the primary keyword more than once per 100 words${statsReq}${examplesReq}${forbiddenLine}
 
 Respond in strict JSON:
 {
   "title": "SEO-optimised title (max 70 chars, include primary keyword)",
   "summary": "Meta description (max 160 chars)",
-  "body": "Full markdown article with ## subheadings, min 600 words",
+  "body": "Full markdown article with ## subheadings, meeting word count requirements",
   "seoMeta": {
     "title": "SEO title",
     "description": "Meta description"
@@ -108,12 +144,28 @@ Respond in strict JSON:
     context_hash: ctxHash,
   };
 
-  const result = await trackedRunLLM(env, llmParams);
+  let result = await trackedRunLLM(env, llmParams);
 
-  const rawTitle   = result?.title    || `${primary_keyword}: A Guide to ${goal}`;
-  const rawSummary = result?.summary  || "";
-  const rawBody    = result?.body     || "";
-  const seoMeta    = result?.seoMeta  || { title: rawTitle, description: rawSummary };
+  // If the first run produced no body, retry immediately once
+  if (!result?.body) {
+    await checkAndIncrement(db, auth.user_id, "ai");
+    result = await trackedRunLLM(env, llmParams);
+  }
+
+  // If we still have no body, fail explicitly
+  if (!result?.body) {
+    return error(
+      "AI generation failed to produce article content. Please verify your Groq API key configuration and rate limits.",
+      "AI_FAILED",
+      null,
+      500
+    );
+  }
+
+  const rawTitle   = result.title    || `${primary_keyword}: A Guide to ${goal}`;
+  const rawSummary = result.summary  || "";
+  const rawBody    = result.body     || "";
+  const seoMeta    = result.seoMeta  || { title: rawTitle, description: rawSummary };
 
   // Quality score before post-processing
   const rawQuality = scoreBlogArticle({ title: rawTitle, body: rawBody, primary_keyword });
@@ -125,7 +177,8 @@ Respond in strict JSON:
   // Quality score after post-processing
   let quality = scoreBlogArticle({ title, body: bodyText, primary_keyword });
 
-  // Phase 1 — Quality Loop: retry once if score < 70, keep higher score
+  // Phase 1 — Quality Loop: retry once if score < 70, keep higher score (only if we didn't retry already on total empty)
+  // Check if we didn't already do a retry in the above block to save API cost
   if (quality.score < 70) {
     await checkAndIncrement(db, auth.user_id, "ai");
     const retryResult = await trackedRunLLM(env, llmParams);

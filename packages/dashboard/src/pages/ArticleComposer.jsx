@@ -576,6 +576,9 @@ export default function ArticleComposer({ campaigns = [] }) {
           secondary_keywords: data.secondaryKeywords,
           domain:             data.domain,
           brand_id:           activeBrand?.id,
+          length_depth:       data.lengthDepth,
+          include_stats:      data.includeStats,
+          include_examples:   data.includeExamples,
         }),
       });
       if (res?.title) setTitle(res.title);

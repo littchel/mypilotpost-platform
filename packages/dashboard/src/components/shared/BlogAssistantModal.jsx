@@ -6,7 +6,7 @@ import React, { useState } from 'react';
  * Matches the style and layout of SocialAssistantModal.jsx exactly.
  */
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 6;
 
 const BLUE      = "#2563eb";
 const BLUE_BG   = "#eff6ff";
@@ -15,6 +15,13 @@ const MUTED     = "#64748b";
 const LIGHT     = "#f8fafc";
 const SIDEBAR   = "#0f172a";
 const SIDEBAR_B = "#1e293b";
+
+const LENGTH_OPTIONS = [
+  { value: "short", label: "Short (300-500 words)" },
+  { value: "medium", label: "Medium (800-1200 words)" },
+  { value: "long", label: "Long (1500-2000 words)" },
+  { value: "comprehensive", label: "Comprehensive (2500+ words)" }
+];
 
 // ── Step data ─────────────────────────────────────────────────────────────────
 const ARTICLE_GOALS = [
@@ -182,16 +189,18 @@ const STEP_LABELS = [
   "Target Audience",
   "Focus Keywords",
   "Localization",
+  "Length & Options",
   "Review & Generate"
 ];
 
 // ── Left sidebar step nav ──────────────────────────────────────────────────────
-function StepNav({ step, goal, audience, primaryKeyword, domain }) {
+function StepNav({ step, goal, audience, primaryKeyword, domain, lengthDepth }) {
   const summaries = [
     goal || null,
     audience || null,
     primaryKeyword || null,
     GOOGLE_DOMAINS.find(d => d.value === domain)?.label || domain || null,
+    lengthDepth ? (LENGTH_OPTIONS.find(l => l.value === lengthDepth)?.label || lengthDepth) : null,
     null
   ];
 
@@ -327,8 +336,59 @@ function Step4({ data, setData }) {
   );
 }
 
-function Step5({ data, onGenerate }) {
+function Step5({ data, setData }) {
+  const toggleCheckbox = (field) => {
+    setData(d => ({ ...d, [field]: !d[field] }));
+  };
+
+  return (
+    <div>
+      <h5 className="fw-bold mb-1">Article Length & Depth</h5>
+      <p className="text-muted small mb-4">Choose the length and depth for your article.</p>
+      
+      <div className="assistant-option-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
+        {LENGTH_OPTIONS.map(opt => (
+          <button
+            key={opt.value}
+            className={`assistant-option-btn${data.lengthDepth === opt.value ? ' selected' : ''}`}
+            onClick={() => setData(d => ({ ...d, lengthDepth: opt.value }))}
+            style={{
+              padding: "16px",
+              borderRadius: 10,
+              border: data.lengthDepth === opt.value ? "2px solid #2563eb" : "1px solid #cbd5e1",
+              background: data.lengthDepth === opt.value ? "#eff6ff" : "#fff",
+              color: data.lengthDepth === opt.value ? "#2563eb" : "#475569",
+              fontWeight: data.lengthDepth === opt.value ? 700 : 500,
+              cursor: "pointer",
+              transition: "all 0.15s",
+              textAlign: "left"
+            }}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      <h5 className="fw-bold mb-1">Additional Options</h5>
+      <p className="text-muted small mb-3">Refine content inclusions.</p>
+      
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, cursor: "pointer", userSelect: "none" }}>
+          <input type="checkbox" checked={!!data.includeStats} onChange={() => toggleCheckbox("includeStats")} style={{ width: 16, height: 16 }} />
+          <span>Include statistics and data</span>
+        </label>
+        <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, cursor: "pointer", userSelect: "none" }}>
+          <input type="checkbox" checked={!!data.includeExamples} onChange={() => toggleCheckbox("includeExamples")} style={{ width: 16, height: 16 }} />
+          <span>Include real-world examples</span>
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function Step6({ data, onGenerate }) {
   const domainLabel = GOOGLE_DOMAINS.find(d => d.value === data.domain)?.label || data.domain;
+  const lengthLabel = LENGTH_OPTIONS.find(l => l.value === data.lengthDepth)?.label || data.lengthDepth;
 
   return (
     <div>
@@ -352,6 +412,18 @@ function Step5({ data, onGenerate }) {
           <div className="col-6">
             <div className="extra-small text-muted text-uppercase fw-bold mb-1">Target Domain</div>
             <div className="small fw-bold text-dark">{domainLabel}</div>
+          </div>
+          <div className="col-6">
+            <div className="extra-small text-muted text-uppercase fw-bold mb-1">Length & Depth</div>
+            <div className="small fw-bold text-dark">{lengthLabel}</div>
+          </div>
+          <div className="col-6">
+            <div className="extra-small text-muted text-uppercase fw-bold mb-1">Additional Options</div>
+            <div className="small fw-bold text-dark">
+              {data.includeStats && "✓ Stats/Data "}
+              {data.includeExamples && "✓ Examples "}
+              {!data.includeStats && !data.includeExamples && "None"}
+            </div>
           </div>
           {data.secondaryKeywords && (
             <div className="col-12 border-top pt-2">
@@ -386,6 +458,9 @@ export default function BlogAssistantModal({ isOpen, onClose, onGenerate }) {
     primaryKeyword: '',
     secondaryKeywords: '',
     domain: 'google.com',
+    lengthDepth: 'medium',
+    includeStats: false,
+    includeExamples: false
   });
 
   // "Improve my idea" state
@@ -394,6 +469,9 @@ export default function BlogAssistantModal({ isOpen, onClose, onGenerate }) {
   const [improvePrimaryKeyword, setImprovePrimaryKeyword] = useState('');
   const [improveSecondaryKeywords, setImproveSecondaryKeywords] = useState('');
   const [improveDomain, setImproveDomain] = useState('google.com');
+  const [improveLengthDepth, setImproveLengthDepth] = useState('medium');
+  const [improveIncludeStats, setImproveIncludeStats] = useState(false);
+  const [improveIncludeExamples, setImproveIncludeExamples] = useState(false);
 
   if (!isOpen) return null;
 
@@ -418,7 +496,10 @@ export default function BlogAssistantModal({ isOpen, onClose, onGenerate }) {
         audience: improveAudience,
         primaryKeyword: improvePrimaryKeyword,
         secondaryKeywords: improveSecondaryKeywords,
-        domain: improveDomain
+        domain: improveDomain,
+        lengthDepth: improveLengthDepth,
+        includeStats: improveIncludeStats,
+        includeExamples: improveIncludeExamples
       });
     }
     handleClose();
@@ -432,6 +513,9 @@ export default function BlogAssistantModal({ isOpen, onClose, onGenerate }) {
     setImprovePrimaryKeyword('');
     setImproveSecondaryKeywords('');
     setImproveDomain('google.com');
+    setImproveLengthDepth('medium');
+    setImproveIncludeStats(false);
+    setImproveIncludeExamples(false);
     onClose();
   };
 
@@ -463,7 +547,7 @@ export default function BlogAssistantModal({ isOpen, onClose, onGenerate }) {
             {/* Step navigation / Brief */}
             <div style={{ flex: 1, overflowY: "auto" }}>
               {mode === "generate" && (
-                <StepNav step={step} goal={data.goal} audience={data.audience} primaryKeyword={data.primaryKeyword} domain={data.domain} />
+                <StepNav step={step} goal={data.goal} audience={data.audience} primaryKeyword={data.primaryKeyword} domain={data.domain} lengthDepth={data.lengthDepth} />
               )}
               {mode === "improve" && (
                 <div style={{ padding: "28px 20px", color: "rgba(255,255,255,0.5)", fontSize: 12 }}>
@@ -558,7 +642,8 @@ export default function BlogAssistantModal({ isOpen, onClose, onGenerate }) {
                   {step === 2 && <Step2 data={data} setData={setData} />}
                   {step === 3 && <Step3 data={data} setData={setData} />}
                   {step === 4 && <Step4 data={data} setData={setData} />}
-                  {step === 5 && <Step5 data={data} onGenerate={handleGenerate} />}
+                  {step === 5 && <Step5 data={data} setData={setData} />}
+                  {step === 6 && <Step6 data={data} onGenerate={handleGenerate} />}
                 </div>
               )}
 
@@ -630,10 +715,39 @@ export default function BlogAssistantModal({ isOpen, onClose, onGenerate }) {
                     </div>
                   </div>
 
+                  <div className="row g-2">
+                    <div className="col-md-6">
+                      <label className="extra-small fw-bold text-muted text-uppercase mb-2 d-block">Article Length & Depth</label>
+                      <select
+                        className="form-select form-select-sm"
+                        value={improveLengthDepth}
+                        onChange={e => setImproveLengthDepth(e.target.value)}
+                        style={{ borderRadius: 10, padding: "10px 14px", height: 44, fontSize: 13 }}
+                      >
+                        {LENGTH_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="extra-small fw-bold text-muted text-uppercase mb-2 d-block">Additional Options</label>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "4px 8px" }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, cursor: "pointer", userSelect: "none" }}>
+                          <input type="checkbox" checked={improveIncludeStats} onChange={() => setImproveIncludeStats(!improveIncludeStats)} style={{ width: 14, height: 14 }} />
+                          <span>Include statistics and data</span>
+                        </label>
+                        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, cursor: "pointer", userSelect: "none" }}>
+                          <input type="checkbox" checked={improveIncludeExamples} onChange={() => setImproveIncludeExamples(!improveIncludeExamples)} style={{ width: 14, height: 14 }} />
+                          <span>Include real-world examples</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="mt-3">
                     <button
                       className="btn-pilot w-100 d-flex align-items-center justify-content-center gap-2"
-                      style={{ padding: "14px 24px", fontSize: "0.95rem", borderRadius: 10 }}
                       onClick={handleImproveGenerate}
                       disabled={!improveIdea.trim() || !improveAudience || !improvePrimaryKeyword.trim()}
                       style={{
