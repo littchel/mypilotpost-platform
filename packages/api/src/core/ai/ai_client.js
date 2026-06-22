@@ -67,6 +67,8 @@ export async function hardenedRunLLM(env, brand, prompt, options = {}) {
         confidence: usedModel.includes('70b') || usedModel.includes('3.3') ? "high" : "medium",
         _performance: { model: usedModel, path, latency: result.latency, tokens_used: result.tokens || 0 }
       };
+    } else {
+      console.error(`[LLM PARSE FAIL] Model: ${usedModel}. Raw Output:\n${result.output}`);
     }
   }
 

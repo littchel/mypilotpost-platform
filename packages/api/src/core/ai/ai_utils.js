@@ -3,16 +3,53 @@
  * Production Pro-Elite Recovery & Quality Guards
  */
 
+export function escapeRawJSONStrings(str) {
+  let result = "";
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < str.length; i++) {
+    const char = str[i];
+    if (char === '"' && !escaped) {
+      inString = !inString;
+    }
+    if (inString) {
+      if (char === '\n') {
+        result += '\\n';
+      } else if (char === '\r') {
+        result += '\\r';
+      } else if (char === '\t') {
+        result += '\\t';
+      } else if (char === '\b') {
+        result += '\\b';
+      } else if (char === '\f') {
+        result += '\\f';
+      } else {
+        result += char;
+      }
+    } else {
+      result += char;
+    }
+    if (char === '\\' && !escaped) {
+      escaped = true;
+    } else {
+      escaped = false;
+    }
+  }
+  return result;
+}
+
 /**
  * healJSON(str)
  * Implements a regex-based recovery engine for truncated or invalid AI JSON.
  */
 export function healJSON(str) {
+  if (!str) return null;
+  const preprocessed = escapeRawJSONStrings(str);
   try {
-    return JSON.parse(str);
+    return JSON.parse(preprocessed);
   } catch (e) {
     // 1. Attempt to extract the first { ... } block
-    const match = str.match(/\{[\s\S]*\}/);
+    const match = preprocessed.match(/\{[\s\S]*\}/);
     if (!match) return null;
     
     let healed = match[0];
