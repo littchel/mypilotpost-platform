@@ -32,7 +32,12 @@ export async function publish({ content, connection, env }) {
   // Determine media format
   const isVideo = primaryMedia.mime_type?.startsWith("video/") || primaryMedia.preview_url?.endsWith(".mp4");
 
+  if (isVideo) {
+    throw new Error("Videos are not supported on Pinterest Pins. Please use images.");
+  }
+
   let createPayload = {
+
     title: (content.title || text || "New Pin").slice(0, 100),
     description: text || "",
     board_id: boardId,

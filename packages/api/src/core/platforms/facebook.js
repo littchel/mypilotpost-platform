@@ -63,8 +63,13 @@ export async function publish({ content, connection, env }) {
   const primaryMedia = media.find(m => m.role === "primary" || m.position === 1);
   const isVideo = primaryMedia && (primaryMedia.mime_type?.startsWith("video/") || primaryMedia.preview_url?.includes(".mp4") || primaryMedia.preview_url?.includes(".mov"));
 
+  if (content.platform === "facebook" && isVideo) {
+    throw new Error("Videos are not supported on standard Facebook posts. Please use Facebook Reels or Facebook Stories to publish videos.");
+  }
+
   // ── FACEBOOK STORY PUBLISHING ─────────────────────────────────────────
   if (content.platform === "facebook_story") {
+
     if (!primaryMedia) {
       throw new Error("FACEBOOK_STORY_REQUIRES_MEDIA");
     }

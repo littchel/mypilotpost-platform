@@ -82,6 +82,7 @@ export async function executeDeliveryJob(env, job) {
 
   if (lock.meta.changes === 0) return;
 
+  let resolvedConnection = null;
   try {
     // 3️⃣ Idempotency: if already published (external_post_id set), skip adapter call
     const jobState = await db.prepare('SELECT external_post_id FROM delivery_jobs WHERE id = ?').bind(job.id).first();
@@ -93,6 +94,7 @@ export async function executeDeliveryJob(env, job) {
 
     // 4️⃣ Resolve Unified Data (LOCKED CONTRACT)
     const { content, connection } = await resolveDeliveryData(env, job);
+    resolvedConnection = connection;
 
     // 5️⃣ Execute via Standardized Adapter
     const adapter = ADAPTERS[job.platform];
@@ -178,7 +180,19 @@ export async function executeDeliveryJob(env, job) {
       errorCode = "TIMEOUT";
     }
 
+    if (resolvedConnection?.id && (errorCode === "PERMISSION_DENIED" || errorCode === "TOKEN_EXPIRED")) {
+      console.warn(`POSTER: Connection ${resolvedConnection.id} failed with ${errorCode} — marking status as expired`);
+      await db.prepare(`
+        UPDATE social_connections
+        SET status = 'expired', updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).bind(resolvedConnection.id).run().catch(e => {
+        console.error("POSTER: Failed to update social connection status to expired", e);
+      });
+    }
+
     console.error(`POSTER: ${job.platform} delivery failed`, { job_id: job.id, error: err.message });
+
 
     // Log failed delivery
     db.prepare(`

@@ -670,7 +670,7 @@ const IntegrationsManager = () => {
               const providerMeta   = PROVIDERS.find(x => x.id === p.id);
 
               return (
-                <WorkspaceCard key={p.id} className={`integration-card${connected ? " integration-card--connected" : ""}${needsResource ? (p.id === 'pinterest' ? " integration-card--error" : " integration-card--needs-resource") : ""}`}>
+                <WorkspaceCard key={p.id} className={`integration-card${connected ? (isExpired ? " integration-card--error" : " integration-card--connected") : ""}${needsResource ? (p.id === 'pinterest' ? " integration-card--error" : " integration-card--needs-resource") : ""}`}>
                   <div className="card-top">
                     <div className="platform-icon" style={{ background: p.bgColor }}>
                       <PlatformIcon id={p.id} />

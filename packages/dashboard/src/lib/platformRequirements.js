@@ -149,6 +149,17 @@ export const validateContent = (platform, content, mediaType, mediaMeta) => {
     results.messages.push(`Pinterest Pins require an image or video.`);
   }
 
+  if (platform === "facebook" && mediaType === "video") {
+    results.state = "BLOCKED";
+    results.messages.push("Videos are not supported on standard Facebook posts. Please use Facebook Reels or Facebook Stories to publish videos.");
+  }
+
+  if (platform === "pinterest" && mediaType === "video") {
+    results.state = "BLOCKED";
+    results.messages.push("Videos are not supported on Pinterest Pins. Please use images instead.");
+  }
+
+
   // 4. Media Metadata check (Aspect ratio, Duration, Size)
   if (mediaType && mediaMeta) {
     // Video duration checks

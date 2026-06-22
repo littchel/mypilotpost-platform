@@ -336,16 +336,12 @@ async function runTests() {
   };
 
   try {
-    const result = await publish({ content: contentVideo, connection: mockConnection, env: mockEnv });
-    assert(mediaRegisterCalled, "Called media registration endpoint");
-    assert(awsUploadCalled, "Called AWS S3 multipart upload endpoint");
-    assert(mediaPollCount >= 2, "Polled media status multiple times until success");
-    assert(result.external_id === "pin_video_555", "Successfully publishes video pin");
-    assert(pinCreationBody.media_source.source_type === "video_id", "Payload has correct video source type");
-    assert(pinCreationBody.media_source.media_id === "vid-media-888", "Payload references uploaded media ID");
+    await publish({ content: contentVideo, connection: mockConnection, env: mockEnv });
+    assert(false, "Video pin publish should have failed early");
   } catch (err) {
-    assert(false, `Video pin publish failed: ${err.message}`);
+    assert(err.message === "Videos are not supported on Pinterest Pins. Please use images.", `Expected video blocker error, got: ${err.message}`);
   }
+
 
   // =========================================================================
   // TEST 7: Preemptive Token Refresh & Fallback Env Resolution
