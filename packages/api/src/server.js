@@ -211,6 +211,8 @@ import {
   attachMedia,
   detachMedia,
   registerPexelsMedia,
+  registerFreepikMedia,
+  searchMedia,
   getAttachedMedia,
   uploadMedia,
   serveMediaFile,
@@ -227,6 +229,11 @@ import {
   listGoogleDriveFiles,
   listDropboxFiles
 } from "./core/media/providers/cloud_browsing.js";
+
+import {
+  listWordPressCategories,
+  createWordPressCategory
+} from "./core/platforms/wordpress.js";
 
 /* ======================================================
    SCHEDULE
@@ -2627,11 +2634,24 @@ export default {
         if (method === "POST" && path === "/api/customer/media/suggestions")
           return withCors(request, getMediaSuggestions(request, env, auth));
 
+        if (method === "POST" && path === "/api/customer/media/search")
+          return withCors(request, searchMedia(request, env, auth));
+
         if (method === "POST" && path === "/api/customer/media/from-pexels")
           return withCors(request, registerPexelsMedia(request, env, auth));
 
+        if (method === "POST" && path === "/api/customer/media/from-freepik")
+          return withCors(request, registerFreepikMedia(request, env, auth));
+
         if (method === "POST" && path === "/api/customer/media/attach")
           return withCors(request, attachMedia(request, env, auth));
+
+        /* ---------- WORDPRESS CATEGORIES ---------- */
+        if (method === "GET" && path === "/api/customer/wordpress/categories")
+          return withCors(request, listWordPressCategories(request, env, auth));
+
+        if (method === "POST" && path === "/api/customer/wordpress/categories")
+          return withCors(request, createWordPressCategory(request, env, auth));
 
         if (method === "POST" && path === "/api/customer/media/detach")
           return withCors(request, detachMedia(request, env, auth));

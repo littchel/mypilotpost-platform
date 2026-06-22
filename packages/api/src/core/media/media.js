@@ -1,6 +1,10 @@
 import { json, error } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
 import { buildR2Key } from "./r2.js";
+import { searchPexels } from "./intelligence/pexels.js";
+import { adaptPexelsResults } from "./intelligence/adapters/pexels_adapter.js";
+import { searchFreepik } from "./intelligence/freepik.js";
+import { adaptFreepikResults } from "./intelligence/adapters/freepik_adapter.js";
 
 /**
  * myPilotPost — Media Engine (Core Phase 1)
@@ -20,7 +24,7 @@ async function checkMediaLock(db, brandId, contentType, contentId) {
 
 /* ======================================================
    INTERNAL — ATOMIC MEDIA REGISTRATION
- ====================================================== */
+   ====================================================== */
 export async function registerMedia({
   env,
   brandId,
@@ -61,7 +65,7 @@ export async function registerMedia({
 
 /* ======================================================
    POST /api/customer/media/from-pexels
- ====================================================== */
+   ====================================================== */
 export async function registerPexelsMedia(req, env, auth) {
   if (!auth?.brand_id) return error("Unauthorized", 401);
 
@@ -81,6 +85,58 @@ export async function registerPexelsMedia(req, env, auth) {
   });
 
   return json({ media_id: id });
+}
+
+/* ======================================================
+   POST /api/customer/media/from-freepik
+   ====================================================== */
+export async function registerFreepikMedia(req, env, auth) {
+  if (!auth?.brand_id) return error("Unauthorized", 401);
+
+  const { external_id, preview_url, type = "image" } = await req.json().catch(() => ({}));
+
+  if (!external_id || !preview_url) {
+    return error("external_id and preview_url required", 400);
+  }
+
+  const { id } = await registerMedia({
+    env,
+    brandId: auth.brand_id,
+    provider: "freepik",
+    externalId: external_id,
+    previewUrl: preview_url,
+    mimeType: type,
+  });
+
+  return json({ media_id: id });
+}
+
+/* ======================================================
+   POST /api/customer/media/search
+   ====================================================== */
+export async function searchMedia(req, env, auth) {
+  if (!auth?.brand_id) return error("Unauthorized", 401);
+
+  const { query, provider = "pexels" } = await req.json().catch(() => ({}));
+
+  if (!query) {
+    return error("query required", 400);
+  }
+
+  try {
+    if (provider === "freepik") {
+      const raw = await searchFreepik({ query, limit: 40 }, env);
+      const items = adaptFreepikResults(raw);
+      return json({ provider: "freepik", items });
+    } else {
+      const raw = await searchPexels({ query, limit: 40 }, env);
+      const items = adaptPexelsResults(raw);
+      return json({ provider: "pexels", items });
+    }
+  } catch (err) {
+    console.error(`[MEDIA SEARCH FAILED] provider=${provider}`, err);
+    return json({ provider, items: [], error: err.message || "Search failed" }, 500);
+  }
 }
 
 /* ======================================================

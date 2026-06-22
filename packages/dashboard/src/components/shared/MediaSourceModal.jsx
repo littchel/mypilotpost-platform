@@ -3,25 +3,25 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const MediaSourceModal = ({ isOpen, onClose, onSelect, activeBrand, socialContent }) => {
   const { apiUrl } = useAuth();
-  const [activeSource, setActiveSource] = useState('library'); // library, freepik, drive, dropbox
+  const [activeSource, setActiveSource] = useState('library'); // library, pexels, freepik, drive, dropbox
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
+  const [errorStatus, setErrorStatus] = useState(null);
 
   useEffect(() => {
     if (isOpen) {
       if (activeSource === 'library') {
         fetchLibrary();
-      } else if (activeSource === 'freepik') {
+      } else if (activeSource === 'pexels' || activeSource === 'freepik') {
         const query = socialContent ? socialContent.split(' ').slice(0, 3).join(' ') : (activeBrand?.name || '');
         setSearchQuery(query);
+        setResults([]);
       } else if (activeSource === 'drive' || activeSource === 'dropbox') {
         fetchCloudFiles(activeSource === 'drive' ? 'google-drive' : 'dropbox');
       }
     }
   }, [isOpen, activeSource]);
-
-  const [errorStatus, setErrorStatus] = useState(null);
 
   const fetchLibrary = async () => {
     setLoading(true);
@@ -68,13 +68,13 @@ const MediaSourceModal = ({ isOpen, onClose, onSelect, activeBrand, socialConten
     setLoading(true);
     setErrorStatus(null);
     try {
-      const res = await fetch(`${apiUrl}/api/customer/media/suggestions`, {
+      const res = await fetch(`${apiUrl}/api/customer/media/search`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}` 
         },
-        body: JSON.stringify({ query: searchQuery })
+        body: JSON.stringify({ query: searchQuery, provider: activeSource })
       });
       const data = await res.json();
       setResults(data.items || []);
@@ -92,9 +92,8 @@ const MediaSourceModal = ({ isOpen, onClose, onSelect, activeBrand, socialConten
       return;
     }
 
-    // If result is from search or cloud, import it first
     setLoading(true);
-    const provider = activeSource === 'drive' ? 'google-drive' : (activeSource === 'dropbox' ? 'dropbox' : 'freepik');
+    const provider = activeSource === 'drive' ? 'google-drive' : (activeSource === 'dropbox' ? 'dropbox' : activeSource);
     const endpoint = `/api/customer/media/from-${provider}`;
 
     try {
@@ -116,7 +115,6 @@ const MediaSourceModal = ({ isOpen, onClose, onSelect, activeBrand, socialConten
       
       if (!res.ok) throw new Error(data.error || "Import failed");
 
-      // Return the full media asset metadata
       onSelect({ 
         id: data.media_id, 
         preview_url: item.preview_url,
@@ -144,29 +142,52 @@ const MediaSourceModal = ({ isOpen, onClose, onSelect, activeBrand, socialConten
             <div className="d-flex gap-2 mb-4 border-bottom pb-3 mt-3 overflow-auto">
               <button 
                 className={`btn-grey px-3 whitespace-nowrap ${activeSource === 'library' ? 'active' : ''}`}
-                onClick={() => setActiveSource('library')}
+                onClick={() => { setActiveSource('library'); setResults([]); }}
               >
                 <i className="fas fa-images me-2 text-primary"></i> Brand Library
               </button>
               <button 
-                className={`btn-grey px-3 whitespace-nowrap ${activeSource === 'freepik' ? 'active' : ''}`}
-                onClick={() => setActiveSource('freepik')}
+                className={`btn-grey px-3 whitespace-nowrap ${activeSource === 'pexels' ? 'active' : ''}`}
+                onClick={() => { setActiveSource('pexels'); setResults([]); }}
               >
-                <i className="fas fa-search me-2 text-warning"></i> Freepik Search
+                <i className="fas fa-camera me-2 text-info"></i> Pexels Search
+              </button>
+              <button 
+                className={`btn-grey px-3 whitespace-nowrap ${activeSource === 'freepik' ? 'active' : ''}`}
+                onClick={() => { setActiveSource('freepik'); setResults([]); }}
+              >
+                <i className="fas fa-palette me-2 text-warning"></i> Freepik Search
               </button>
               <button 
                 className={`btn-grey px-3 whitespace-nowrap ${activeSource === 'drive' ? 'active' : ''}`}
-                onClick={() => setActiveSource('drive')}
+                onClick={() => { setActiveSource('drive'); setResults([]); }}
               >
                 <i className="fab fa-google-drive me-2 text-success"></i> Google Drive
               </button>
               <button 
                 className={`btn-grey px-3 whitespace-nowrap ${activeSource === 'dropbox' ? 'active' : ''}`}
-                onClick={() => setActiveSource('dropbox')}
+                onClick={() => { setActiveSource('dropbox'); setResults([]); }}
               >
                 <i className="fab fa-dropbox me-2 text-info"></i> Dropbox
               </button>
             </div>
+
+            {/* Persistent Search Bar for Pexels and Freepik */}
+            {!loading && !errorStatus && (activeSource === 'pexels' || activeSource === 'freepik') && (
+              <div className="d-flex gap-2 mb-4">
+                <input 
+                  type="text" 
+                  className="premium-input-pill flex-grow-1" 
+                  placeholder={`Search millions of ${activeSource === 'freepik' ? 'Freepik' : 'Pexels'} stock images...`}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                />
+                <button className="btn-pilot px-4" onClick={handleSearch}>
+                  <i className="fas fa-search"></i>
+                </button>
+              </div>
+            )}
 
             {loading && (
               <div className="text-center py-5">
@@ -194,39 +215,31 @@ const MediaSourceModal = ({ isOpen, onClose, onSelect, activeBrand, socialConten
               </div>
             )}
 
+            {!loading && !errorStatus && results.length === 0 && (activeSource === 'pexels' || activeSource === 'freepik') && (
+              <div className="text-center py-5 text-muted small">
+                <p>Enter a query above to search millions of high-quality stock photos.</p>
+              </div>
+            )}
+
             {!loading && !errorStatus && results.length > 0 && (
-              <div className="row g-3">
+              <div className="row g-3 overflow-auto" style={{ maxHeight: '380px' }}>
                 {results.map((item) => (
                   <div key={item.id || item.external_id} className="col-md-3">
                     <div className="position-relative hover-lift" onClick={() => handleSelectResult(item)}>
-                      <img src={item.preview_url} className="img-fluid rounded-3 border" style={{ height: '100px', width: '100%', objectFit: 'cover', cursor: 'pointer' }} alt="Asset" />
+                      <img 
+                        src={item.thumbnail_url || item.preview_url} 
+                        className="img-fluid rounded-3 border" 
+                        style={{ height: '100px', width: '100%', objectFit: 'cover', cursor: 'pointer' }} 
+                        alt="Asset" 
+                      />
                       <div className="position-absolute top-0 start-0 p-1">
-                          <span className="badge bg-dark opacity-75 x-small uppercase">{item.provider || activeSource}</span>
+                        <span className="badge bg-dark opacity-75 x-small uppercase" style={{ fontSize: '9px' }}>
+                          {item.provider || activeSource}
+                        </span>
                       </div>
                     </div>
                   </div>
                 ))}
-              </div>
-            )}
-
-            {!loading && !errorStatus && activeSource === 'freepik' && results.length === 0 && (
-              <div>
-                <div className="d-flex gap-2 mb-4">
-                  <input 
-                    type="text" 
-                    className="input-pill flex-grow-1" 
-                    placeholder="Search smart images..." 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                  />
-                  <button className="btn-pilot px-4" onClick={handleSearch}>
-                    <i className="fas fa-search"></i>
-                  </button>
-                </div>
-                <div className="text-center py-5 text-muted small">
-                  <p>Search for millions of high-quality stock images from Freepik.</p>
-                </div>
               </div>
             )}
           </div>

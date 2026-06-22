@@ -534,6 +534,103 @@ export default function ArticleComposer({ campaigns = [] }) {
   const [publishPhase, setPublishPhase] = useState("idle"); // idle|creating|linking|scheduling|queued|failed
   const [publishResult, setPublishResult] = useState(null);
 
+  // WordPress Categories and Editor Ref
+  const [categories, setCategories] = useState([]);
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [isWordPressConnected, setIsWordPressConnected] = useState(false);
+  const editorRef = useRef(null);
+
+  const fetchCategories = useCallback(async () => {
+    if (!activeBrand?.id) return;
+    try {
+      const res = await apiRequest("/api/customer/wordpress/categories");
+      if (res?.categories) {
+        setCategories(res.categories);
+        setIsWordPressConnected(true);
+      } else {
+        setIsWordPressConnected(false);
+      }
+    } catch {
+      setIsWordPressConnected(false);
+    }
+  }, [activeBrand]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    setCreatingCategory(true);
+    try {
+      const res = await apiRequest("/api/customer/wordpress/categories", {
+        method: "POST",
+        body: JSON.stringify({ name: newCategoryName.trim() }),
+      });
+      if (res?.success && res.category) {
+        setCategories(prev => [...prev, res.category]);
+        setSelectedCategories(prev => [...prev, res.category.id]);
+        setNewCategoryName("");
+      } else {
+        alert(res?.error || "Failed to create category");
+      }
+    } catch (err) {
+      alert(err.message || "Failed to create WordPress category");
+    } finally {
+      setCreatingCategory(false);
+    }
+  };
+
+  const insertFormatting = (type) => {
+    const textarea = editorRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    const selected = text.substring(start, end);
+
+    let replacement = "";
+    let cursorOffset = 0;
+
+    switch (type) {
+      case "bold":
+        replacement = `**${selected || "bold text"}**`;
+        cursorOffset = selected ? replacement.length : 2;
+        break;
+      case "italic":
+        replacement = `*${selected || "italic text"}*`;
+        cursorOffset = selected ? replacement.length : 1;
+        break;
+      case "h2":
+        const needsNewlineBeforeH2 = start > 0 && text[start - 1] !== "\n";
+        replacement = `${needsNewlineBeforeH2 ? "\n" : ""}## ${selected || "Heading 2"}\n`;
+        cursorOffset = replacement.length;
+        break;
+      case "h3":
+        const needsNewlineBeforeH3 = start > 0 && text[start - 1] !== "\n";
+        replacement = `${needsNewlineBeforeH3 ? "\n" : ""}### ${selected || "Heading 3"}\n`;
+        cursorOffset = replacement.length;
+        break;
+      default:
+        return;
+    }
+
+    const newBody = text.substring(0, start) + replacement + text.substring(end);
+    setBody(newBody);
+
+    setTimeout(() => {
+      textarea.focus();
+      const newCursorPos = start + cursorOffset;
+      textarea.setSelectionRange(
+        selected ? start : newCursorPos,
+        selected ? start + replacement.length : newCursorPos
+      );
+    }, 0);
+  };
+
   const wordCount = countWords(body);
   const seoScore = computeSEO({ title, body, primaryKeyword, secondaryKeywords });
   const readability = computeReadability(body);
@@ -642,6 +739,7 @@ export default function ArticleComposer({ campaigns = [] }) {
     }
     setPrimaryKeyword(metadataObj.keyword || "");
     setSecondaryKeywords(metadataObj.secondaryKeywords || "");
+    setSelectedCategories(metadataObj.wordpress_categories || []);
     
     const selectedDomain = GOOGLE_DOMAINS.find(d => d.domain === metadataObj.domain) || GOOGLE_DOMAINS[0];
     setDomain(selectedDomain);
@@ -687,6 +785,7 @@ export default function ArticleComposer({ campaigns = [] }) {
     setDomain(GOOGLE_DOMAINS[0]);
     setAttachedImage(null);
     setScheduledAt("");
+    setSelectedCategories([]);
     try {
       sessionStorage.removeItem('mpp_article_id');
       sessionStorage.removeItem('mpp_article_image');
@@ -709,7 +808,12 @@ export default function ArticleComposer({ campaigns = [] }) {
           platforms:        ["wordpress"],
           campaign_id:      campaignId || null,
           lifecycle_status: "draft",
-          metadata:         JSON.stringify({ keyword: primaryKeyword, secondaryKeywords, domain: domain?.domain }),
+          metadata:         JSON.stringify({ 
+            keyword: primaryKeyword, 
+            secondaryKeywords, 
+            domain: domain?.domain,
+            wordpress_categories: selectedCategories
+          }),
         }),
       });
       const newId = resp?.content_id;
@@ -744,7 +848,12 @@ export default function ArticleComposer({ campaigns = [] }) {
           platforms:        ["wordpress"],
           campaign_id:      campaignId || null,
           lifecycle_status: "draft",
-          metadata:         JSON.stringify({ keyword: primaryKeyword, secondaryKeywords, domain: domain?.domain }),
+          metadata:         JSON.stringify({ 
+            keyword: primaryKeyword, 
+            secondaryKeywords, 
+            domain: domain?.domain,
+            wordpress_categories: selectedCategories
+          }),
         }),
       });
       const newId = resp?.content_id || articleId;
@@ -925,49 +1034,203 @@ export default function ArticleComposer({ campaigns = [] }) {
 
       {contentSubTab === "compose" ? (
         <>
-          <div className="d-flex align-items-center gap-2 border-bottom pb-2 mb-3">
-            <input className="article-title-field" placeholder="Article Title..." type="text" value={title} onChange={(e) => setTitle(e.target.value)} />
-          </div>
           <div className="row g-3">
             <div className="col-md-9">
-              {attachedImage && (
-                <div className="mb-2 d-flex align-items-center gap-2" style={{ padding: '6px 10px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                  <img src={attachedImage.url} alt="" style={{ width: 56, height: 40, objectFit: 'cover', borderRadius: 5, flexShrink: 0 }} />
-                  <span className="extra-small text-muted flex-fill" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Featured image attached</span>
-                  <button onClick={() => { setAttachedImage(null); try { sessionStorage.removeItem('mpp_article_image'); } catch { /* ignore */ } }} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
+              {/* Premium Notion-style Document Container */}
+              <div className="premium-editor-container">
+                {/* Title Input */}
+                <div className="premium-title-container">
+                  <input 
+                    className="premium-title-input" 
+                    placeholder="Untitled Article..." 
+                    type="text" 
+                    value={title} 
+                    onChange={(e) => setTitle(e.target.value)} 
+                  />
                 </div>
-              )}
-              <textarea className="card-workspace p-3 border-0 shadow-sm min-h-500 small line-height-1-6 w-100 res-none" id="art-editor" placeholder={generating ? "Generating content…" : "Start writing your masterpiece or generate content with the Assistant."} value={generating ? "" : body} onChange={(e) => !generating && setBody(e.target.value)} disabled={generating} style={{ outline: 'none', fontFamily: 'inherit', opacity: generating ? 0.5 : 1, cursor: generating ? 'wait' : 'auto' }} />
+                
+                {/* Formatting Toolbar */}
+                <div className="premium-toolbar">
+                  <button
+                    type="button"
+                    className="premium-toolbar-btn fw-bold font-monospace"
+                    onClick={() => insertFormatting("h2")}
+                    title="Heading 2 (H2)"
+                  >
+                    H2
+                  </button>
+                  <button
+                    type="button"
+                    className="premium-toolbar-btn fw-bold font-monospace"
+                    onClick={() => insertFormatting("h3")}
+                    title="Heading 3 (H3)"
+                  >
+                    H3
+                  </button>
+                  <div style={{ width: 1, height: 16, background: '#cbd5e1', margin: '0 4px' }}></div>
+                  <button
+                    type="button"
+                    className="premium-toolbar-btn"
+                    onClick={() => insertFormatting("bold")}
+                    title="Bold"
+                  >
+                    <i className="fas fa-bold"></i>
+                  </button>
+                  <button
+                    type="button"
+                    className="premium-toolbar-btn fst-italic"
+                    onClick={() => insertFormatting("italic")}
+                    title="Italic"
+                  >
+                    <i className="fas fa-italic"></i>
+                  </button>
+                </div>
+
+                {attachedImage && (
+                  <div className="m-3 d-flex align-items-center gap-2" style={{ padding: '6px 12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                    <img src={attachedImage.url} alt="" style={{ width: 56, height: 40, objectFit: 'cover', borderRadius: 5, flexShrink: 0 }} />
+                    <span className="extra-small text-muted flex-fill" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Featured image attached</span>
+                    <button onClick={() => { setAttachedImage(null); try { sessionStorage.removeItem('mpp_article_image'); } catch { /* ignore */ } }} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
+                  </div>
+                )}
+
+                <textarea 
+                  ref={editorRef}
+                  className="premium-textarea" 
+                  id="art-editor" 
+                  placeholder={generating ? "Generating content…" : "Start writing your masterpiece or generate content with the Assistant."} 
+                  value={generating ? "" : body} 
+                  onChange={(e) => !generating && setBody(e.target.value)} 
+                  disabled={generating} 
+                  style={{ opacity: generating ? 0.5 : 1, cursor: generating ? 'wait' : 'auto' }} 
+                />
+              </div>
             </div>
+            
             <div className="col-md-3">
-              <div className="card-workspace health-sidebar-card">
-                <h6 className="small fw-bold mb-2">Article Health</h6>
-                <div className="small mb-1"><span className={`indicator-dot ${wordCount >= 300 ? 'dot-green' : wordCount >= 100 ? 'dot-yellow' : 'dot-red'}`}></span>Word Count: <strong>{wordCount.toLocaleString()}</strong></div>
-                <div className="small mb-1"><span className={`indicator-dot ${seoColor(seoScore)}`}></span>SEO Score: <strong>{seoScore}/100</strong></div>
-                {primaryKeyword && <div className="small mb-1"><span className={`indicator-dot ${kwWords > 0 ? 'dot-green' : 'dot-red'}`}></span>Keyword: <strong>"{primaryKeyword}"</strong>{kwDensity && <span className="text-muted"> ({kwDensity}%)</span>}</div>}
-                <div className="small mb-1"><span className={`indicator-dot ${readabilityColor(readability.level)}`}></span>Readability: <strong>{readability.label}</strong></div>
-                <div className="small mb-2"><span className={`indicator-dot ${eeatColor(eeatScore)}`}></span>Credibility: <strong>{eeatScore}/100</strong></div>
-                <hr className="my-1" />
-                <label className="extra-small fw-bold text-muted mb-1 text-uppercase">Keywords</label>
-                <input className="input-pill mb-1 w-100 extra-small" placeholder="Primary keyword" type="text" value={primaryKeyword} onChange={(e) => setPrimaryKeyword(e.target.value)} />
-                <input className="input-pill mb-2 w-100 extra-small" placeholder="Secondary keywords" type="text" value={secondaryKeywords} onChange={(e) => setSecondaryKeywords(e.target.value)} />
-                <hr className="my-1" />
-                <label className="extra-small fw-bold text-muted mb-1 text-uppercase">Localization</label>
+              {/* Premium Article Health Card */}
+              <div className="premium-sidebar-card">
+                <div className="premium-sidebar-heading">
+                  <i className="fas fa-heartbeat text-danger"></i> Article Health
+                </div>
+                
+                <div className={`premium-health-badge ${wordCount >= 300 ? 'success' : wordCount >= 100 ? 'warning' : 'danger'}`}>
+                  <span>Word Count</span>
+                  <strong>{wordCount.toLocaleString()}</strong>
+                </div>
+
+                <div className={`premium-health-badge ${seoScore >= 75 ? 'success' : seoScore >= 50 ? 'warning' : 'danger'}`}>
+                  <span>SEO Score</span>
+                  <strong>{seoScore}/100</strong>
+                </div>
+
+                {primaryKeyword && (
+                  <div className={`premium-health-badge ${kwWords > 0 ? 'success' : 'danger'}`}>
+                    <span className="text-truncate mr-1" style={{ maxWidth: '100px' }} title={`"${primaryKeyword}"`}>Keyword</span>
+                    <strong>{kwDensity ? `${kwDensity}%` : '0%'}</strong>
+                  </div>
+                )}
+
+                <div className={`premium-health-badge ${readability.level === 'easy' ? 'success' : readability.level === 'moderate' ? 'warning' : 'danger'}`}>
+                  <span>Readability</span>
+                  <strong>{readability.label}</strong>
+                </div>
+
+                <div className={`premium-health-badge ${eeatScore >= 70 ? 'success' : eeatScore >= 40 ? 'warning' : 'danger'}`}>
+                  <span>Credibility</span>
+                  <strong>{eeatScore}/100</strong>
+                </div>
+
+                <hr style={{ margin: '12px 0', borderTop: '1px solid #cbd5e1' }} />
+                
+                <label className="extra-small fw-bold text-muted mb-1 text-uppercase">SEO Setup</label>
+                <input className="premium-input-pill mb-1 extra-small" placeholder="Primary keyword..." type="text" value={primaryKeyword} onChange={(e) => setPrimaryKeyword(e.target.value)} />
+                <input className="premium-input-pill mb-2 extra-small" placeholder="Secondary keywords..." type="text" value={secondaryKeywords} onChange={(e) => setSecondaryKeywords(e.target.value)} />
+                
+                <hr style={{ margin: '12px 0', borderTop: '1px solid #cbd5e1' }} />
+                
+                <label className="extra-small fw-bold text-muted mb-1 text-uppercase">Google Localization</label>
                 <DomainAutosuggest value={domain} onChange={setDomain} />
-                <hr className="my-1" />
-                <button className="btn-grey btn-sm w-100 mb-1" onClick={handleGrammarCheck} disabled={checkingGrammar}>
-                  {checkingGrammar ? "Checking..." : "Grammar Check"}
+                
+                <hr style={{ margin: '12px 0', borderTop: '1px solid #cbd5e1' }} />
+                
+                <button className="premium-btn-action secondary extra-small py-2" onClick={handleGrammarCheck} disabled={checkingGrammar}>
+                  {checkingGrammar ? "Checking..." : <><i className="fas fa-spell-check text-primary"></i> Grammar Check</>}
                 </button>
               </div>
-              <div className="card-workspace health-sidebar-card mt-2">
-                <label className="extra-small fw-bold text-muted mb-1 text-uppercase">Schedule Publish Date</label>
-                <input className="form-control form-control-sm extra-small mb-1" type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} min={new Date(Date.now() + 60000).toISOString().slice(0, 16)} style={{ borderRadius: 6, border: '1px solid #cbd5e1', padding: '4px 8px', fontSize: 12, outline: 'none' }} />
+
+              {isWordPressConnected && (
+                <div className="premium-sidebar-card mt-2">
+                  <div className="premium-sidebar-heading">
+                    <i className="fab fa-wordpress text-primary"></i> Blog Categories
+                  </div>
+                  <div className="d-flex flex-column gap-1 overflow-auto border rounded p-2 bg-light mb-2" style={{ maxHeight: '140px' }}>
+                    {categories.length === 0 ? (
+                      <span className="extra-small text-muted">No categories defined.</span>
+                    ) : (
+                      categories.map(cat => {
+                        const isChecked = selectedCategories.includes(cat.id);
+                        return (
+                          <label key={cat.id} className="d-flex align-items-center gap-2 extra-small cursor-pointer mb-0">
+                            <input 
+                              type="checkbox" 
+                              checked={isChecked} 
+                              onChange={() => {
+                                if (isChecked) {
+                                  setSelectedCategories(prev => prev.filter(id => id !== cat.id));
+                                } else {
+                                  setSelectedCategories(prev => [...prev, cat.id]);
+                                }
+                              }} 
+                            />
+                            <span className="text-truncate" title={cat.name}>{cat.name}</span>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
+                  
+                  {/* Create New WordPress Category Inline */}
+                  <div className="d-flex gap-1">
+                    <input 
+                      type="text" 
+                      className="premium-input-pill extra-small py-1" 
+                      placeholder="Add category..." 
+                      value={newCategoryName}
+                      onChange={e => setNewCategoryName(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleCreateCategory())}
+                      style={{ height: '28px' }}
+                    />
+                    <button 
+                      className="btn btn-sm btn-outline-primary py-0 px-2" 
+                      onClick={handleCreateCategory}
+                      disabled={creatingCategory || !newCategoryName.trim()}
+                      style={{ height: '28px', borderRadius: '8px' }}
+                    >
+                      {creatingCategory ? "..." : <i className="fas fa-plus" />}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="premium-sidebar-card mt-2">
+                <div className="premium-sidebar-heading">
+                  <i className="fas fa-calendar-alt text-success"></i> Scheduling
+                </div>
+                <input className="form-control form-control-sm extra-small mb-1" type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} min={new Date(Date.now() + 60000).toISOString().slice(0, 16)} style={{ borderRadius: 8, border: '1px solid #cbd5e1', padding: '4px 8px', fontSize: 12, outline: 'none' }} />
               </div>
+
               <div className="d-grid gap-2 mt-2">
-                <button className="btn-grey" onClick={handleOpenScheduleVerification}>Schedule Article</button>
+                <button className="premium-btn-action secondary" onClick={handleOpenScheduleVerification}>
+                  <i className="fas fa-clock text-warning"></i> Schedule Article
+                </button>
                 <div className="d-flex gap-2">
-                  <button className="btn-pilot flex-fill" onClick={handleOpenPostVerification}>Post Now</button>
-                  <button className="btn-grey flex-fill" onClick={() => { navigator.clipboard.writeText(`${title}\n\n${body}`); alert('Copied'); }}>Copy</button>
+                  <button className="premium-btn-action primary flex-fill" onClick={handleOpenPostVerification}>
+                    <i className="fas fa-paper-plane"></i> Post Now
+                  </button>
+                  <button className="premium-btn-action secondary flex-fill" onClick={() => { navigator.clipboard.writeText(`${title}\n\n${body}`); alert('Copied'); }}>
+                    <i className="fas fa-copy"></i> Copy
+                  </button>
                 </div>
               </div>
             </div>

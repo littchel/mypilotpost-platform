@@ -171,17 +171,32 @@ export async function resolveDeliveryData(env, job) {
   // Validate media URLs are publicly accessible before handing to adapters
   const validatedMedia = await validateAndLogMedia(db, job.brand_id, resolvedMedia, env);
 
+  // Retrieve post metadata from content_vault
+  const vaultItem = await db.prepare(
+    `SELECT metadata FROM content_vault WHERE id = ? AND brand_id = ?`
+  ).bind(job.content_id, job.brand_id).first();
+
+  let metadataObj = {};
+  if (vaultItem?.metadata) {
+    try {
+      metadataObj = JSON.parse(vaultItem.metadata);
+    } catch (e) {
+      metadataObj = {};
+    }
+  }
+
   return {
     content: {
       id: asset.id,
       job_id: job.id,
-      text: asset.caption || asset.text, // Platform variant takes priority
+      text: asset.caption || asset.text || asset.body, // Platform variant or body fallback
       title: asset.title,
       hashtags: asset.hashtags,
       media: validatedMedia,
       type: job.content_type,
       link: asset.link || asset.url || asset.destination_url || null,
-      platform: job.platform
+      platform: job.platform,
+      metadata: metadataObj
     },
     connection: {
       id: connection.id,
