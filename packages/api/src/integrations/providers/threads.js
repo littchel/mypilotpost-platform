@@ -26,7 +26,7 @@ export async function normalize(tokenData, env) {
   }
 
   const profileRes = await fetch(
-    `https://graph.threads.net/v1.0/me?fields=id,username,name&access_token=${access_token}`
+    `https://graph.threads.net/v1.0/me?fields=id,username&access_token=${access_token}`
   );
 
   if (!profileRes.ok) {
@@ -36,13 +36,13 @@ export async function normalize(tokenData, env) {
   const profile = await profileRes.json();
 
   tokenData.account_id = profile.id;
-  tokenData.account_name = profile.username || profile.name;
+  tokenData.account_name = profile.username;
 
   return {
     account_id: profile.id,
-    platform_username: profile.username || profile.name,
+    platform_username: profile.username,
     meta: {
-      name: profile.name,
+      name: profile.username,
       link: `https://www.threads.net/@${profile.username}`,
     },
   };

@@ -562,6 +562,8 @@ export default function CreatePost({
   brandName = "Your Brand",
   brandIndustry = "",
   brandTimezone = null,
+  editContentId,
+  setEditContentId,
 }) {
   const [content, setContent]               = useState("");
   const [overrides, setOverrides]           = useState({});
@@ -610,6 +612,22 @@ export default function CreatePost({
       setScheduledTimeOnly("");
     }
   }, [scheduledTime]);
+
+  useEffect(() => {
+    if (editContentId) {
+      apiFetch(`/api/customer/vault/${editContentId}`)
+        .then(res => {
+          const item = res?.data || res;
+          if (item && item.content_type === 'social') {
+            handleVaultEdit(item);
+          }
+        })
+        .catch(err => console.error("Failed to load edit social post", err))
+        .finally(() => {
+          if (setEditContentId) setEditContentId(null);
+        });
+    }
+  }, [editContentId, setEditContentId]);
 
   const handleDateChange = (dateVal) => {
     setScheduledDate(dateVal);
@@ -1106,6 +1124,7 @@ export default function CreatePost({
   // ── Save draft ──────────────────────────────────────────────────────────
   const saveDraft = async () => {
     const data = await apiJSON("/api/customer/vault", "POST", {
+      content_id: selectedVaultItem?.id || undefined,
       body: content,
       platforms: selectedPlatforms,
       platform_variants: overrides,
@@ -1156,6 +1175,7 @@ export default function CreatePost({
     try {
       // Step 1: write to vault (single source of truth)
       const asset = await apiJSON("/api/customer/vault", "POST", {
+        content_id: selectedVaultItem?.id || undefined,
         body: content,
         platforms: selectedPlatforms,
         platform_variants: overrides,
@@ -1316,6 +1336,28 @@ export default function CreatePost({
             {/* LEFT COLUMN (Composer) — ~60% width */}
         <div style={{ width: "60%", display: "flex", flexDirection: "column", minHeight: 0, gap: 12 }}>
           <div className="card-workspace" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden", padding: 14, gap: 12 }}>
+            {selectedVaultItem && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "8px 12px", marginBottom: 4 }}>
+                <div style={{ fontSize: 12, color: "#475569" }}>
+                  <i className="fas fa-edit" style={{ marginRight: 6, color: "#3b82f6" }} />
+                  Editing Draft: <strong style={{ color: "#0f172a" }}>{selectedVaultItem.title || (selectedVaultItem.body || "").slice(0, 30) || "Untitled"}</strong>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setSelectedVaultItem(null);
+                    setContent("");
+                    setOverrides({});
+                    setSelectedPlatforms([]);
+                    setMediaItems([]);
+                    setOverlays(null);
+                  }}
+                  style={{ background: "none", border: "none", color: "#ef4444", fontSize: 11, fontWeight: 600, cursor: "pointer", padding: 0 }}
+                >
+                  Discard & Start New Post
+                </button>
+              </div>
+            )}
             {/* Campaign Selector + Edit Brand Overlay row */}
             <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
               <div style={{ flex: 1 }}>
@@ -1398,9 +1440,40 @@ export default function CreatePost({
                   <button onClick={handleCanvaImport} style={mediaBtn}>
                     <i className="fas fa-palette"></i> Canva
                   </button>
-                  <button onClick={() => showToast("Adobe Express integration loading...", "info")} style={mediaBtn}>
-                    <i className="fas fa-edit"></i> Adobe Express
-                  </button>
+                  <AdobeExpress
+                    style={mediaBtn}
+                    onImport={async (dataUrl) => {
+                      try {
+                        const res = await fetch(dataUrl);
+                        const blob = await res.blob();
+                        const file = new File([blob], `adobe-design-${Date.now()}.png`, { type: "image/png" });
+                        
+                        const item = {
+                          id: crypto.randomUUID(),
+                          url: dataUrl,
+                          file,
+                          type: "image",
+                          label: "Adobe Design",
+                          uploading: true,
+                        };
+                        setMediaItems(prev => [...prev, item]);
+                        
+                        const token = localStorage.getItem("mpp_token");
+                        const form = new FormData();
+                        form.append("file", file);
+                        const uploadRes = await fetch(`${API_BASE}/api/customer/media/upload`, {
+                          method: "POST",
+                          headers: { Authorization: token ? `Bearer ${token}` : "" },
+                          body: form
+                        });
+                        if (!uploadRes.ok) throw new Error("Upload failed");
+                        const uploaded = await uploadRes.json();
+                        setMediaItems(prev => prev.map(m => m.id === item.id ? { ...m, url: uploaded.url, uploading: false } : m));
+                      } catch (err) {
+                        showToast("Failed to upload Adobe design: " + err.message, "error");
+                      }
+                    }}
+                  />
                   <button
                     onClick={handleSuggestedToggle}
                     style={{

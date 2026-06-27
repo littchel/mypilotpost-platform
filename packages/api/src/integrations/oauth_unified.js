@@ -59,9 +59,9 @@ export async function startUnifiedOAuth(request, env, userContext) {
     timestamp: Date.now()
   };
 
-  // PKCE Handling — Canva requires PKCE; X (Twitter) requires it too
+  // PKCE Handling — Canva, X (Twitter), and TikTok require PKCE
   // code_verifier stored in KV state; code_challenge appended to auth URL
-  const PKCE_PLATFORMS = ['x', 'canva'];
+  const PKCE_PLATFORMS = ['x', 'canva', 'tiktok'];
   let pkceChallenge = null;
   if (PKCE_PLATFORMS.includes(platform)) {
     const pkce = await generatePKCE();
@@ -76,6 +76,9 @@ export async function startUnifiedOAuth(request, env, userContext) {
   const credKey = provider.credential_key || platform.toUpperCase();
   let client_id = env[`${platform.toUpperCase()}_CLIENT_ID`] || env[`${credKey}_CLIENT_ID`];
   let client_secret = env[`${platform.toUpperCase()}_CLIENT_SECRET`] || env[`${credKey}_CLIENT_SECRET`];
+  if (platform === 'tiktok') {
+    client_id = client_id || env.TIKTOK_CLIENT_KEY;
+  }
   if (platform === 'pinterest') {
     client_id = client_id || env.PINTEREST_APP_ID;
     client_secret = client_secret || env.PINTEREST_APP_SECRET;
@@ -187,6 +190,9 @@ export async function handleUnifiedCallback(request, env) {
   const credKey = provider.credential_key || platform.toUpperCase();
   let client_id = env[`${platform.toUpperCase()}_CLIENT_ID`] || env[`${credKey}_CLIENT_ID`];
   let client_secret = env[`${platform.toUpperCase()}_CLIENT_SECRET`] || env[`${credKey}_CLIENT_SECRET`];
+  if (platform === 'tiktok') {
+    client_id = client_id || env.TIKTOK_CLIENT_KEY;
+  }
   if (platform === 'pinterest') {
     client_id = client_id || env.PINTEREST_APP_ID;
     client_secret = client_secret || env.PINTEREST_APP_SECRET;
@@ -197,8 +203,8 @@ export async function handleUnifiedCallback(request, env) {
     throw new Error(`OAuth credentials not configured for ${platform} (${platform.toUpperCase()}_CLIENT_ID or _SECRET or ${credKey}_CLIENT_ID or _SECRET missing)`);
   }
 
-  // Canva and X require PKCE — a missing verifier means state was written without PKCE, which is a bug
-  const PKCE_PLATFORMS = ['x', 'canva'];
+  // Canva, X, and TikTok require PKCE — a missing verifier means state was written without PKCE, which is a bug
+  const PKCE_PLATFORMS = ['x', 'canva', 'tiktok'];
   if (PKCE_PLATFORMS.includes(platform) && !code_verifier) {
     console.error(`[OAUTH_PKCE_MISSING] platform=${platform} code_verifier absent from KV state — this request will fail token exchange`);
     throw new Error(`PKCE code_verifier missing for ${platform}. Clear browser cookies and retry.`);

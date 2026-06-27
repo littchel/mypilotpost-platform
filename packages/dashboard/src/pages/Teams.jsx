@@ -200,6 +200,127 @@ function ActivityTab({ brandId }) {
   );
 }
 
+// ── Clients tab ───────────────────────────────────────────────────────────────
+function ClientsTab({ brandId }) {
+  const [clients, setClients] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [company, setCompany] = useState('');
+  const [notes, setNotes] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!brandId) return;
+    setLoading(true);
+    try {
+      const d = await apiRequest('/api/customer/clients');
+      setClients(d?.data || []);
+    } catch (err) {
+      console.error('Failed to load clients', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [brandId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function handleAddClient(e) {
+    e.preventDefault();
+    if (!name) return;
+    setAdding(true);
+    try {
+      await apiRequest('/api/customer/clients', {
+        method: 'POST',
+        body: JSON.stringify({ name, email, phone, company, notes }),
+      });
+      setName('');
+      setEmail('');
+      setPhone('');
+      setCompany('');
+      setNotes('');
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 2500);
+      await load();
+    } catch (err) {
+      alert(err.message || 'Failed to add client');
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  async function handleRemove(clientId) {
+    if (!confirm('Archive this client? They will no longer receive reviews.')) return;
+    try {
+      await apiRequest(`/api/customer/clients/${clientId}`, { method: 'DELETE' });
+      await load();
+    } catch (err) {
+      alert(err.message || 'Failed to archive client');
+    }
+  }
+
+  return (
+    <div style={{ padding: 20 }}>
+      <form onSubmit={handleAddClient} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24, background: 'var(--surface-secondary)', padding: 16, borderRadius: 12, border: '1px solid var(--border-subtle)' }}>
+        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: 4 }}>Add Client Reviewer</div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Full Name *" required
+            style={{ flex: 1, minWidth: 150, padding: '8px 12px', border: '1.5px solid var(--border-subtle)', borderRadius: 8, fontSize: '0.82rem', outline: 'none', background: 'var(--surface-primary)', color: 'var(--text-main)' }} />
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address"
+            style={{ flex: 1, minWidth: 150, padding: '8px 12px', border: '1.5px solid var(--border-subtle)', borderRadius: 8, fontSize: '0.82rem', outline: 'none', background: 'var(--surface-primary)', color: 'var(--text-main)' }} />
+          <input type="text" value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone"
+            style={{ flex: 1, minWidth: 120, padding: '8px 12px', border: '1.5px solid var(--border-subtle)', borderRadius: 8, fontSize: '0.82rem', outline: 'none', background: 'var(--surface-primary)', color: 'var(--text-main)' }} />
+          <input type="text" value={company} onChange={e => setCompany(e.target.value)} placeholder="Company"
+            style={{ flex: 1, minWidth: 120, padding: '8px 12px', border: '1.5px solid var(--border-subtle)', borderRadius: 8, fontSize: '0.82rem', outline: 'none', background: 'var(--surface-primary)', color: 'var(--text-main)' }} />
+        </div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <input type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notes (e.g. client role, project name...)"
+            style={{ flex: 1, padding: '8px 12px', border: '1.5px solid var(--border-subtle)', borderRadius: 8, fontSize: '0.82rem', outline: 'none', background: 'var(--surface-primary)', color: 'var(--text-main)' }} />
+          <button type="submit" disabled={adding || !name}
+            style={{ padding: '9px 20px', background: 'var(--pilot-blue)', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: '0.82rem', cursor: adding ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}>
+            {adding ? 'Adding…' : success ? '✓ Added' : 'Add Client'}
+          </button>
+        </div>
+      </form>
+
+      {loading ? <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 20, fontSize: '0.85rem' }}>Loading…</div>
+      : clients.length === 0 ? <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 20, fontSize: '0.85rem' }}>No clients added yet.</div>
+      : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+            <thead><tr style={{ background: 'var(--surface-secondary)' }}>
+              {['Name', 'Company', 'Contact', 'Shared Links', ''].map(h => <th key={h} style={{ padding: '10px 16px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: h === '' ? 'right' : 'left', borderBottom: '1px solid var(--border-subtle)' }}>{h}</th>)}
+            </tr></thead>
+            <tbody>
+              {clients.map(c => (
+                <tr key={c.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                  <td style={{ padding: '12px 16px' }}>
+                    <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{c.name}</div>
+                    {c.notes && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{c.notes}</div>}
+                  </td>
+                  <td style={{ padding: '12px 16px', color: 'var(--text-main)' }}>{c.company || '—'}</td>
+                  <td style={{ padding: '12px 16px' }}>
+                    {c.email && <div style={{ color: 'var(--text-main)' }}>{c.email}</div>}
+                    {c.phone && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{c.phone}</div>}
+                  </td>
+                  <td style={{ padding: '12px 16px', color: 'var(--text-muted)' }}>{c.link_count || 0} shares</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                    <button onClick={() => handleRemove(c.id)} style={{ background: 'none', border: '1px solid var(--border-subtle)', borderRadius: 7, padding: '4px 10px', fontSize: '0.72rem', cursor: 'pointer', color: '#dc2626' }}>Archive</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 const TABS = [
   { id: 'members', label: 'Members', icon: '👤' },
@@ -231,13 +352,7 @@ const Teams = ({ brandId }) => {
 
       <div style={{ background: 'var(--surface-primary)', border: '1px solid var(--border-subtle)', borderTop: 'none', borderRadius: '0 0 12px 12px', minHeight: 300 }}>
         {tab === 'members'  && <MembersTab brandId={brandId} />}
-        {tab === 'clients'  && (
-          <div style={{ padding: 12 }}>
-            <a href="/clients" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--pilot-blue-light)', color: 'var(--pilot-blue)', border: '1.5px solid var(--pilot-blue)', borderRadius: 8, fontSize: '0.82rem', fontWeight: 700, textDecoration: 'none', marginBottom: 16 }}>
-              Open Clients Page →
-            </a>
-          </div>
-        )}
+        {tab === 'clients'  && <ClientsTab brandId={brandId} />}
         {tab === 'activity' && <ActivityTab brandId={brandId} />}
         {tab === 'invites'  && <InvitesTab brandId={brandId} />}
       </div>

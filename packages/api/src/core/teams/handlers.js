@@ -7,6 +7,8 @@ import { json, error } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
 import { emitEvent } from "../../lib/bus.js";
 import { notify } from "../communication/notify.js";
+import { can } from "../team/permissions.js";
+import { getCurrentPlan } from "../billing/billing.js";
 
 /**
  * POST /api/customer/invites
@@ -23,8 +25,26 @@ export async function createInvite(request, env, auth) {
 
   // Check permissions via brand_users (canonical membership)
   const member = await db.prepare(`SELECT role FROM brand_users WHERE brand_id = ? AND user_id = ?`).bind(brand_id, user_id).first();
-  if (!member || member.role !== 'owner') {
+  if (!member || !can(member.role, 'invite')) {
     return error("Insufficient permissions", "FORBIDDEN", null, 403);
+  }
+
+  const brand = await db.prepare('SELECT owner_user_id, name FROM brands WHERE id = ?').bind(brand_id).first().catch(() => null);
+  if (!brand) return error("Brand not found", "NOT_FOUND", null, 404);
+  const owner_id = brand.owner_user_id;
+
+  // Enforce pricing plan seats limits
+  const plan = await getCurrentPlan(db, owner_id);
+  const usersRow = await db.prepare(`
+    SELECT COUNT(DISTINCT bu.user_id) as count
+    FROM brand_users bu
+    JOIN brands b ON bu.brand_id = b.id
+    WHERE b.owner_user_id = ?
+  `).bind(owner_id).first();
+  const currentCount = usersRow?.count || 0;
+
+  if (currentCount >= plan.user_limit) {
+    return error(`User limit reached. Your ${plan.name} plan supports up to ${plan.user_limit} user seats.`, "FORBIDDEN", null, 403);
   }
 
   const id = crypto.randomUUID();
@@ -109,6 +129,24 @@ export async function acceptInvite(request, env) {
   if (new Date(invite.expires_at) < new Date()) {
     await db.prepare(`UPDATE invites SET status = 'expired' WHERE id = ?`).bind(invite.id).run();
     return error("Invite has expired", "GONE", null, 410);
+  }
+
+  // Check seat limits before accepting
+  const brand = await db.prepare('SELECT owner_user_id FROM brands WHERE id = ?').bind(invite.brand_id).first().catch(() => null);
+  if (brand) {
+    const owner_id = brand.owner_user_id;
+    const plan = await getCurrentPlan(db, owner_id);
+    const usersRow = await db.prepare(`
+      SELECT COUNT(DISTINCT bu.user_id) as count
+      FROM brand_users bu
+      JOIN brands b ON bu.brand_id = b.id
+      WHERE b.owner_user_id = ?
+    `).bind(owner_id).first();
+    const currentCount = usersRow?.count || 0;
+
+    if (currentCount >= plan.user_limit) {
+      return error(`The brand has reached its user seat limit (${plan.user_limit}). Contact the owner to upgrade.`, "FORBIDDEN", null, 403);
+    }
   }
 
   // Verify the accepting user's email matches the invite's target email.

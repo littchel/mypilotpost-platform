@@ -101,7 +101,16 @@ async function applyPriceResolution(db, userId, planRow) {
  */
 export async function checkFeatureAccess(request, env, auth, feature) {
   const db = getDB(env);
-  const plan = await getCurrentPlan(db, auth.user_id);
+  let planOwnerId = auth?.user_id;
+
+  if (auth?.brand_id) {
+    const brand = await db.prepare("SELECT owner_user_id FROM brands WHERE id = ?").bind(auth.brand_id).first().catch(() => null);
+    if (brand?.owner_user_id) {
+      planOwnerId = brand.owner_user_id;
+    }
+  }
+
+  const plan = await getCurrentPlan(db, planOwnerId);
 
   // 1. plan_entitlements (new authoritative source)
   const ent = await db.prepare(

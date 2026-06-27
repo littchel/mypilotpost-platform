@@ -25,8 +25,8 @@ const PLATFORM_EMOJI = {
 const PREVIEW_PLATFORMS = ["facebook", "instagram", "linkedin", "x", "pinterest", "youtube"];
 
 const TABS = [
-  { id: "drafts-social", label: "Draft Content" },
-  { id: "drafts-blog",   label: "Draft Articles" },
+  { id: "drafts-social", label: "Draft Social Posts" },
+  { id: "drafts-blog",   label: "Draft Blog Articles" },
   { id: "approvals",     label: "Content Approval" },
 ];
 
@@ -189,8 +189,13 @@ function ApprovalTable({ items, onReview }) {
               onMouseLeave={e => e.currentTarget.style.background = C.white}
             >
               <td style={{ padding: "12px 14px", maxWidth: 220 }}>
-                <div style={{ fontWeight: 600, color: C.slate, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {item.title || (item.body || "").slice(0, 60) || "Untitled"}
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 4, textTransform: "uppercase", background: item.content_type === "blog" ? "#eff6ff" : "#f0fdf4", color: item.content_type === "blog" ? C.blue : C.green, flexShrink: 0 }}>
+                    {item.content_type === "blog" ? "Article" : "Social"}
+                  </span>
+                  <div style={{ fontWeight: 600, color: C.slate, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
+                    {item.title || (item.body || "").slice(0, 60) || "Untitled"}
+                  </div>
                 </div>
               </td>
               <td style={{ padding: "12px 14px", fontSize: 12, color: C.muted }}>
@@ -310,6 +315,15 @@ function ShareModal({ item, onClose, onSubmit, submitting }) {
   const [expiry, setExpiry]           = useState("7d");
   const [shareUrl, setShareUrl]       = useState(null);
   const [copied, setCopied]           = useState(false);
+  const [teamMembers, setTeamMembers] = useState([]);
+
+  useEffect(() => {
+    apiRequest("/api/customer/team")
+      .then(res => {
+        setTeamMembers(res?.data || []);
+      })
+      .catch(err => console.error("Failed to load team for approvals", err));
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -385,7 +399,11 @@ function ShareModal({ item, onClose, onSubmit, submitting }) {
                 <label style={LBL}>Review Type</label>
                 <div style={{ display: "flex", gap: 8 }}>
                   {[["internal", "Internal Review"], ["client", "Client Review"]].map(([v, l]) => (
-                    <button key={v} type="button" onClick={() => setReviewType(v)}
+                    <button key={v} type="button" onClick={() => {
+                      setReviewType(v);
+                      setName("");
+                      setEmail("");
+                    }}
                       style={{ flex: 1, padding: "9px 0", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", border: `2px solid ${reviewType === v ? C.blue : C.border}`, background: reviewType === v ? "#eff6ff" : C.white, color: reviewType === v ? C.blue : C.muted }}>
                       {l}
                     </button>
@@ -410,19 +428,44 @@ function ShareModal({ item, onClose, onSubmit, submitting }) {
                 </div>
               </div>
 
-              {/* Reviewer */}
-              <div style={{ marginBottom: 12 }}>
-                <label style={LBL}>Reviewer Name</label>
-                <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Jane Smith" style={INP} />
-              </div>
-              <div style={{ marginBottom: 12 }}>
-                <label style={LBL}>Email {byEmail && <span style={{ color: C.red }}>*</span>}</label>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="reviewer@company.com" required={byEmail} style={INP} />
-              </div>
-              <div style={{ marginBottom: 12 }}>
-                <label style={LBL}>Phone <span style={{ fontWeight: 400, textTransform: "none", color: "#94a3b8" }}>(optional)</span></label>
-                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+1 555 000 0000" style={INP} />
-              </div>
+              {/* Reviewer Section */}
+              {reviewType === "internal" ? (
+                <div style={{ marginBottom: 12 }}>
+                  <label style={LBL}>Select Internal Reviewer <span style={{ color: C.red }}>*</span></label>
+                  <select
+                    style={INP}
+                    required
+                    value={email}
+                    onChange={e => {
+                      const m = teamMembers.find(member => member.email === e.target.value);
+                      setEmail(e.target.value);
+                      setName(m ? m.full_name : "");
+                    }}
+                  >
+                    <option value="">-- Choose team member --</option>
+                    {teamMembers.map(m => (
+                      <option key={m.id} value={m.email}>
+                        {m.full_name} ({m.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <>
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={LBL}>Reviewer Name</label>
+                    <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Jane Smith" style={INP} />
+                  </div>
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={LBL}>Email {byEmail && <span style={{ color: C.red }}>*</span>}</label>
+                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="reviewer@company.com" required={byEmail} style={INP} />
+                  </div>
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={LBL}>Phone <span style={{ fontWeight: 400, textTransform: "none", color: "#94a3b8" }}>(optional)</span></label>
+                    <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+1 555 000 0000" style={INP} />
+                  </div>
+                </>
+              )}
               <div style={{ marginBottom: 18 }}>
                 <label style={LBL}>Message</label>
                 <textarea value={message} onChange={e => setMessage(e.target.value)}

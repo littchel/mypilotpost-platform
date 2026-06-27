@@ -26,7 +26,7 @@ function loadSDK() {
   return _sdkPromise;
 }
 
-export default function AdobeExpress({ onImport, seedImage }) {
+export default function AdobeExpress({ onImport, seedImage, style }) {
   const [status, setStatus] = useState("idle"); // idle | loading | ready | error | unavailable
   const [error, setError] = useState(null);
   const ccRef = useRef(null);
@@ -102,9 +102,9 @@ export default function AdobeExpress({ onImport, seedImage }) {
   }
 
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-      <button className="btn-grey btn-sm" onClick={launch} disabled={status === "loading"}>
-        <i className="fas fa-bezier-curve me-1" style={{ color: "#fa0f00" }}></i>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flex: style ? 1 : undefined }}>
+      <button style={style} className={style ? "" : "btn-grey btn-sm"} onClick={launch} disabled={status === "loading"}>
+        <i className={style ? "fas fa-edit me-1" : "fas fa-bezier-curve me-1"} style={{ color: style ? undefined : "#fa0f00" }}></i>
         {status === "loading" ? "Loading Adobe…" : "Adobe Express"}
       </button>
       {error && <span className="extra-small" style={{ color: "#f87171" }} title={error}>Adobe error — hover</span>}

@@ -505,7 +505,7 @@ const sectionLabel = { fontSize: 10, fontWeight: 700, color: "#94a3b8", textTran
 const ghostBtn = { flex: 1, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "9px", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#475569" };
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function ArticleComposer({ campaigns = [] }) {
+export default function ArticleComposer({ campaigns = [], editContentId, setEditContentId }) {
   const { activeBrand } = useBrand();
 
   const [title, setTitle] = useState('');
@@ -528,6 +528,22 @@ export default function ArticleComposer({ campaigns = [] }) {
 
   const [tabCounts, setTabCounts] = useState({ drafts: 0, scheduled: 0, approvals: 0 });
   const [checkingGrammar, setCheckingGrammar] = useState(false);
+
+  useEffect(() => {
+    if (editContentId) {
+      apiRequest(`/api/customer/vault/${editContentId}`)
+        .then(res => {
+          const item = res?.data || res;
+          if (item && item.content_type === 'blog') {
+            loadArticle(item);
+          }
+        })
+        .catch(err => console.error("Failed to load edit article", err))
+        .finally(() => {
+          if (setEditContentId) setEditContentId(null);
+        });
+    }
+  }, [editContentId, setEditContentId]);
 
   // VerificationPanel States
   const [verificationOpen, setVerificationOpen] = useState(false);
@@ -1038,6 +1054,21 @@ export default function ArticleComposer({ campaigns = [] }) {
             <div className="col-md-9">
               {/* Premium Notion-style Document Container */}
               <div className="premium-editor-container">
+                {articleId && (
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "8px 12px", marginBottom: 12 }}>
+                    <div style={{ fontSize: 12, color: "#475569" }}>
+                      <i className="fas fa-edit" style={{ marginRight: 6, color: "#3b82f6" }} />
+                      Editing Draft: <strong style={{ color: "#0f172a" }}>{title || "Untitled Article"}</strong>
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={handleNewArticle}
+                      style={{ background: "none", border: "none", color: "#ef4444", fontSize: 11, fontWeight: 600, cursor: "pointer", padding: 0 }}
+                    >
+                      Discard & Start New Article
+                    </button>
+                  </div>
+                )}
                 {/* Title Input */}
                 <div className="premium-title-container">
                   <input 

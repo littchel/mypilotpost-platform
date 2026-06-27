@@ -492,8 +492,8 @@ export async function vaultApproval(request, env, auth) {
 
   if (action === "request_changes") {
     await db.batch([
-      db.prepare(`UPDATE content_vault SET lifecycle_status = 'draft', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
-      db.prepare(`UPDATE social_assets SET lifecycle_status = 'draft', status = 'draft', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
+      db.prepare(`UPDATE content_vault SET lifecycle_status = 'changes_requested', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
+      db.prepare(`UPDATE social_assets SET lifecycle_status = 'changes_requested', status = 'draft', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND brand_id = ?`).bind(id, brand_id),
       db.prepare(`UPDATE approval_requests SET rejection_reason = ? WHERE content_id = ? AND brand_id = ? AND approved_at IS NULL`).bind(notes || null, id, brand_id),
     ]);
 

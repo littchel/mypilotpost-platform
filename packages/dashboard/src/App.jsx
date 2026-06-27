@@ -925,10 +925,17 @@ function App() {
   };
 
 
-  const switchTab = (tabId) => {
+  const [editContentId, setEditContentId] = useState(null);
+
+  const switchTab = (tabId, opts = {}) => {
     setActiveTab(tabId);
     setSelectedCampaignId(null);
     if (tabId === 'content') setContentSubTab('draft-content');
+    if (opts && opts.openContentId) {
+      setEditContentId(opts.openContentId);
+    } else {
+      setEditContentId(null);
+    }
   };
 
 
@@ -1339,12 +1346,18 @@ function App() {
             brandName={activeBrand?.name || companyName || "Your Brand"}
             brandIndustry={activeBrand?.industry || ""}
             brandTimezone={activeBrand?.timezone || null}
+            editContentId={editContentId}
+            setEditContentId={setEditContentId}
           />
         </TabContent>
 
         {/* Blog Tab */}
         <TabContent id="blog" activeTab={activeTab}>
-          <ArticleComposer campaigns={campaignsList} />
+          <ArticleComposer 
+            campaigns={campaignsList} 
+            editContentId={editContentId}
+            setEditContentId={setEditContentId}
+          />
         </TabContent>
 
         {/* Campaigns Tab */}
