@@ -3,7 +3,8 @@ import {
   Globe, Search, ShieldCheck, Zap, TrendingUp, 
   AlertCircle, CheckCircle2, ChevronRight, Plus,
   ArrowUpRight, Award, Info, Trash2, Link, Link2, 
-  RefreshCw, Check, X, ExternalLink
+  RefreshCw, Check, X, ExternalLink, Lightbulb,
+  ArrowUp, ArrowDown, ListFilter, HelpCircle, Eye, Edit
 } from "lucide-react";
 import { 
   ResponsiveContainer, LineChart, Line, 
@@ -12,7 +13,7 @@ import {
 import { apiRequest, apiSafeFetch } from "../lib/api/client";
 
 /**
- * Production-Hardened SEO Engine
+ * Production-Hardened SEO & GSC Intelligence Engine
  * Implements strict status modeling: loading | empty | error | success
  */
 
@@ -38,8 +39,8 @@ const LoadingIndicator = ({ message = "Analyzing search data..." }) => (
 );
 
 const EmptyState = ({ message = "No analysis data yet" }) => (
-  <div className="d-flex flex-column align-items-center justify-content-center p-5 text-muted animate__animated animate__fadeIn">
-    <Search size={32} strokeWidth={1} className="mb-3 opacity-20" />
+  <div className="d-flex flex-column align-items-center justify-content-center p-4 text-muted text-center animate__animated animate__fadeIn">
+    <Search size={28} strokeWidth={1} className="mb-2 opacity-20" />
     <span className="extra-small fw-medium">{message}</span>
   </div>
 );
@@ -158,6 +159,28 @@ const SEOCentre = ({ activeBrand }) => {
     if (keywords.status !== 'success') return null;
     return keywords.data.find(k => k.id === selectedKeywordId) || keywords.data[0];
   }, [keywords, selectedKeywordId]);
+
+  // Default SEO Advice if no brand insights exist
+  const defaultAdvice = useMemo(() => {
+    const advice = [
+      {
+        title: "Integrate Search Console",
+        message: "Connect your website under Settings to track query rankings, click-through rates, and organic traffic curves in real-time.",
+        priority: "high",
+        type: "gsc"
+      },
+      {
+        title: "Add Primary Keywords",
+        message: "Track important niche terms to check search volume, discover competitor sites, and see content optimization warnings.",
+        priority: "medium",
+        type: "keyword"
+      }
+    ];
+    if (keywords.data && keywords.data.length > 0) {
+      advice.pop();
+    }
+    return advice;
+  }, [keywords]);
 
   // Handle Sync GSC
   const handleSyncGsc = async () => {
@@ -321,7 +344,51 @@ const SEOCentre = ({ activeBrand }) => {
         </div>
       </div>
 
-      {/* 2. SEO Overview System */}
+      {/* 2. SEO Brand Intelligence & Advice Feed (Alerts & Tips) */}
+      <div className="card-workspace mb-4 p-4">
+        <h6 className="fw-bold mb-3 d-flex align-items-center gap-2">
+          <Lightbulb size={18} className="text-warning" /> SEO Recommendations & Strategy
+        </h6>
+        <div className="row g-3">
+          {summary.status === 'success' && summary.data?.seoInsights && summary.data.seoInsights.length > 0 ? (
+            summary.data.seoInsights.map((insight, idx) => {
+              const bgClass = insight.priority === 'high' ? 'bg-danger-light' : insight.priority === 'medium' ? 'bg-warning-light' : 'bg-primary-light';
+              const textClass = insight.priority === 'high' ? 'text-danger' : insight.priority === 'medium' ? 'text-warning' : 'text-primary';
+              return (
+                <div key={idx} className="col-md-6 animate__animated animate__fadeIn">
+                  <div className={`p-3 rounded-lg border h-100 ${bgClass}`}>
+                    <div className="d-flex align-items-start gap-2">
+                      <AlertCircle size={16} className={`${textClass} mt-1`} />
+                      <div>
+                        <div className={`extra-small fw-bold text-uppercase ${textClass} mb-1`}>{insight.title}</div>
+                        <div className="extra-small text-muted">{insight.message}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            defaultAdvice.map((advice, idx) => (
+              <div key={idx} className="col-md-6">
+                <div className={`p-3 rounded-lg border h-100 ${advice.priority === 'high' ? 'bg-danger-light' : 'bg-warning-light'}`}>
+                  <div className="d-flex align-items-start gap-2">
+                    <Info size={16} className={`${advice.priority === 'high' ? 'text-danger' : 'text-warning'} mt-1`} />
+                    <div>
+                      <div className={`extra-small fw-bold text-uppercase ${advice.priority === 'high' ? 'text-danger' : 'text-warning'} mb-1`}>
+                        {advice.title}
+                      </div>
+                      <div className="extra-small text-muted">{advice.message}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* 3. SEO Overview System */}
       <div className="row g-4 mb-4">
         <div className="col-lg-4">
           <div className="card-workspace h-100 p-4">
@@ -376,7 +443,7 @@ const SEOCentre = ({ activeBrand }) => {
         </div>
       </div>
 
-      {/* 3. Search Console Integration (Connected / Disconnected Status) */}
+      {/* 4. Search Console Performance Section */}
       <div className="card-workspace mb-4 p-4">
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h6 className="fw-bold mb-0 d-flex align-items-center gap-2">
@@ -465,7 +532,162 @@ const SEOCentre = ({ activeBrand }) => {
          )}
       </div>
 
-      {/* 4. Keyword Intelligence System */}
+      {/* 5. Queries Monitoring & Top Performing Pages (Side-by-Side) */}
+      <div className="row g-4 mb-4">
+        <div className="col-lg-7">
+          <div className="card-workspace p-0 overflow-hidden h-100">
+            <div className="p-4 border-bottom">
+              <h6 className="fw-bold mb-0 d-flex align-items-center gap-2">
+                <Search size={18} className="text-primary" /> Keyword Monitoring (Queries Leading to Site)
+              </h6>
+            </div>
+            {gscOverview.status === 'loading' ? <LoadingIndicator /> :
+             !gscOverview.data?.connected || !gscOverview.data?.has_data || !gscOverview.data.top_queries?.length ? (
+               <EmptyState message="No query tracking data. Make sure Search Console is fully synced." />
+             ) : (
+               <div className="table-responsive" style={{ maxHeight: '350px' }}>
+                 <table className="table mb-0">
+                   <thead className="bg-light sticky-top">
+                     <tr>
+                       <th className="px-4 py-2">Search Query</th>
+                       <th>Clicks</th>
+                       <th>Impressions</th>
+                       <th>CTR</th>
+                       <th className="text-end px-4">Position</th>
+                     </tr>
+                   </thead>
+                   <tbody>
+                     {gscOverview.data.top_queries.map((q, i) => (
+                       <tr key={i}>
+                         <td className="px-4 py-3 small fw-bold">{q.query}</td>
+                         <td className="small">{q.clicks}</td>
+                         <td className="small">{q.impressions}</td>
+                         <td className="small">{Number(q.ctr * 100).toFixed(1)}%</td>
+                         <td className="text-end px-4 small font-monospace">{Number(q.position).toFixed(1)}</td>
+                       </tr>
+                     ))}
+                   </tbody>
+                 </table>
+               </div>
+             )}
+          </div>
+        </div>
+
+        <div className="col-lg-5">
+          <div className="card-workspace p-0 overflow-hidden h-100">
+            <div className="p-4 border-bottom">
+              <h6 className="fw-bold mb-0 d-flex align-items-center gap-2">
+                <TrendingUp size={18} className="text-success" /> Organic Traffic by Pages
+              </h6>
+            </div>
+            {gscOverview.status === 'loading' ? <LoadingIndicator /> :
+             !gscOverview.data?.connected || !gscOverview.data?.has_data || !gscOverview.data.top_pages?.length ? (
+               <EmptyState message="No organic page traffic recorded yet." />
+             ) : (
+               <div className="list-group list-group-flush" style={{ maxHeight: '350px', overflowY: 'auto' }}>
+                 {gscOverview.data.top_pages.map((p, i) => (
+                   <div key={i} className="list-group-item px-4 py-3 border-0 border-bottom">
+                     <div className="d-flex justify-content-between align-items-start gap-2 mb-1">
+                       <span className="extra-small fw-bold text-truncate text-main" style={{ maxWidth: '75%' }}>
+                         {p.page}
+                       </span>
+                       <span className="badge bg-success bg-opacity-10 text-success extra-small fw-bold">
+                         {p.clicks} clicks
+                       </span>
+                     </div>
+                     <div className="d-flex gap-3 text-muted extra-small">
+                       <span>Imps: <strong>{p.impressions}</strong></span>
+                       <span>CTR: <strong>{Number(p.ctr * 100).toFixed(1)}%</strong></span>
+                       <span>Rank: <strong>#{Number(p.position).toFixed(1)}</strong></span>
+                     </div>
+                   </div>
+                 ))}
+               </div>
+             )}
+          </div>
+        </div>
+      </div>
+
+      {/* 6. Page Health & Optimization Audits (Pages doing well or bad) */}
+      <div className="row g-4 mb-4">
+        <div className="col-lg-6">
+          <div className="card-workspace p-0 overflow-hidden h-100">
+            <div className="p-4 border-bottom bg-danger bg-opacity-10 bg-opacity-5">
+              <h6 className="fw-bold mb-0 text-danger d-flex align-items-center gap-2">
+                <AlertCircle size={18} /> Pages Needing Optimization (Low SEO Scores)
+              </h6>
+            </div>
+            {summary.status === 'loading' ? <LoadingIndicator /> :
+             !summary.data?.lowScorePages || summary.data.lowScorePages.length === 0 ? (
+               <div className="p-4 text-center text-muted extra-small">
+                 <CheckCircle2 className="text-success mb-2" size={24} />
+                 <div>All analyzed content has excellent SEO scores!</div>
+               </div>
+             ) : (
+               <div className="list-group list-group-flush">
+                 {summary.data.lowScorePages.map(page => (
+                   <div 
+                     key={page.id} 
+                     className="list-group-item px-4 py-3 border-0 border-bottom d-flex justify-content-between align-items-center cursor-pointer hover-bg-light"
+                     onClick={() => window.dispatchEvent(new CustomEvent('switch-tab', { detail: 'content' }))}
+                   >
+                     <div className="flex-1 min-w-0 pr-3">
+                       <div className="small fw-bold text-truncate mb-1">{page.title}</div>
+                       <div className="extra-small text-muted d-flex gap-2">
+                         {page.keyword_primary && (
+                           <span className="badge bg-light text-muted">Keyword: {page.keyword_primary}</span>
+                         )}
+                         <span>Readability: {page.readability_score}/100</span>
+                       </div>
+                     </div>
+                     <span className="badge bg-danger text-white fw-bold extra-small">
+                       Score: {page.seo_score}
+                     </span>
+                   </div>
+                 ))}
+               </div>
+             )}
+          </div>
+        </div>
+
+        <div className="col-lg-6">
+          <div className="card-workspace p-0 overflow-hidden h-100">
+            <div className="p-4 border-bottom bg-success bg-opacity-10 bg-opacity-5">
+              <h6 className="fw-bold mb-0 text-success d-flex align-items-center gap-2">
+                <CheckCircle2 size={18} /> High Performing SEO Pages
+              </h6>
+            </div>
+            {summary.status === 'loading' ? <LoadingIndicator /> :
+             !summary.data?.topScorePages || summary.data.topScorePages.length === 0 ? (
+               <EmptyState message="Write blog posts and check their SEO scores to populate." />
+             ) : (
+               <div className="list-group list-group-flush">
+                 {summary.data.topScorePages.map(page => (
+                   <div 
+                     key={page.id} 
+                     className="list-group-item px-4 py-3 border-0 border-bottom d-flex justify-content-between align-items-center"
+                   >
+                     <div className="flex-1 min-w-0 pr-3">
+                       <div className="small fw-bold text-truncate mb-1">{page.title}</div>
+                       <div className="extra-small text-muted d-flex gap-2">
+                         {page.keyword_primary && (
+                           <span className="badge bg-light text-muted">Keyword: {page.keyword_primary}</span>
+                         )}
+                         <span>Readability: {page.readability_score}/100</span>
+                       </div>
+                     </div>
+                     <span className="badge bg-success text-white fw-bold extra-small">
+                       Score: {page.seo_score}
+                     </span>
+                   </div>
+                 ))}
+               </div>
+             )}
+          </div>
+        </div>
+      </div>
+
+      {/* 7. Keyword Opportunities System */}
       <div className="row g-4 mb-4">
         <div className="col-lg-8">
           <div className="card-workspace p-0 overflow-hidden h-100">
@@ -612,7 +834,7 @@ const SEOCentre = ({ activeBrand }) => {
         </div>
       </div>
 
-      {/* ── 5. Modals ──────────────────────────────────────────────────────── */}
+      {/* ── 8. Modals ──────────────────────────────────────────────────────── */}
 
       {/* Add Keyword Modal */}
       {showAddModal && (
@@ -745,6 +967,7 @@ const SEOCentre = ({ activeBrand }) => {
         .bg-danger-light { background: #fef2f2; }
         .bg-warning-light { background: #fffbeb; }
         .table th { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; }
+        .hover-bg-light:hover { background-color: #f8fafc !important; }
         
         .modal-overlay {
           position: fixed;

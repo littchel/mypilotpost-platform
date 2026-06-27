@@ -265,7 +265,49 @@ export async function getSEOSummary(request, env, auth) {
     { name: 'Trustworthiness', score: readabilityIndex,                     desc: 'Content readability and structural clarity',     color: '#6366f1' },
   ];
 
-  return json({ globalScore, keywordCoverage, readabilityIndex, eeatMaturity, topRecommendation, eeatFactors, targetDomain: domain });
+  // Query low-scoring pages needing optimization
+  const { results: lowScorePages } = await db.prepare(`
+    SELECT id, content_id, content_type, keyword_primary, title, seo_score, readability_score
+    FROM seo_pages
+    WHERE brand_id = ? AND seo_score < 70
+    ORDER BY seo_score ASC
+    LIMIT 5
+  `).bind(brandId).all();
+
+  // Query top-scoring pages
+  const { results: topScorePages } = await db.prepare(`
+    SELECT id, content_id, content_type, keyword_primary, title, seo_score, readability_score
+    FROM seo_pages
+    WHERE brand_id = ? AND seo_score >= 70
+    ORDER BY seo_score DESC
+    LIMIT 5
+  `).bind(brandId).all();
+
+  // Query SEO-related brand insights
+  const { results: seoInsights } = await db.prepare(`
+    SELECT type, title, message, priority, created_at
+    FROM brand_insights
+    WHERE brand_id = ?
+      AND (expires_at > DATETIME('now') OR expires_at IS NULL)
+      AND (type LIKE '%seo%' OR title LIKE '%SEO%' OR message LIKE '%SEO%')
+    ORDER BY 
+      CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END ASC,
+      created_at DESC
+    LIMIT 5
+  `).bind(brandId).all();
+
+  return json({ 
+    globalScore, 
+    keywordCoverage, 
+    readabilityIndex, 
+    eeatMaturity, 
+    topRecommendation, 
+    eeatFactors, 
+    targetDomain: domain,
+    lowScorePages: lowScorePages || [],
+    topScorePages: topScorePages || [],
+    seoInsights: seoInsights || []
+  });
 }
 
 export async function getSEOKeywords(request, env, auth) {
