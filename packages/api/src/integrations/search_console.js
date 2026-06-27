@@ -170,19 +170,30 @@ export async function syncSearchConsoleData(request, env, auth) {
     return json({ success: true, properties_found: 0, message: "No verified properties found in Search Console." }, 200);
   }
 
+  // Get the selected resource from social_connections first
+  const connRow = await db.prepare(`
+    SELECT selected_resource_id FROM social_connections
+    WHERE brand_id = ? AND platform = 'google_search_console' AND status = 'active'
+    LIMIT 1
+  `).bind(auth.brand_id).first();
+
+  const selectedSite = connRow?.selected_resource_id;
+
   // 2. Upsert properties
   for (const site of sites) {
     const id = crypto.randomUUID();
+    const isDefault = selectedSite ? (selectedSite === site.siteUrl ? 1 : 0) : 0;
     await db.prepare(`
-      INSERT INTO search_console_properties (id, brand_id, property_url, permission_level, synced_at)
-      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+      INSERT INTO search_console_properties (id, brand_id, property_url, permission_level, is_default, synced_at)
+      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       ON CONFLICT(brand_id, property_url) DO UPDATE SET
         permission_level = excluded.permission_level,
+        is_default = excluded.is_default,
         synced_at = CURRENT_TIMESTAMP
-    `).bind(id, auth.brand_id, site.siteUrl, site.permissionLevel).run();
+    `).bind(id, auth.brand_id, site.siteUrl, site.permissionLevel, isDefault).run();
   }
 
-  // Use first site (or previously marked default) as primary
+  // Use selectedSite (or first site / previously marked default) as primary
   const { results: props } = await db.prepare(`
     SELECT property_url FROM search_console_properties
     WHERE brand_id = ?
@@ -190,7 +201,7 @@ export async function syncSearchConsoleData(request, env, auth) {
     LIMIT 1
   `).bind(auth.brand_id).all();
 
-  const primaryProperty = props?.[0]?.property_url || sites[0].siteUrl;
+  const primaryProperty = selectedSite || props?.[0]?.property_url || sites[0].siteUrl;
 
   // Date range: last 28 days
   const endDate = new Date().toISOString().slice(0, 10);

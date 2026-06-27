@@ -305,7 +305,7 @@ export async function selectResource(request, env, auth) {
   const db = env.DB || env.mypilotpost;
 
   const conn = await db.prepare(
-    `SELECT id, status FROM social_connections
+    `SELECT id, status, selected_resource_id FROM social_connections
      WHERE id = ? AND brand_id = ? AND platform = ?`
   ).bind(conn_id, auth.brand_id, platform).first();
 
@@ -314,6 +314,13 @@ export async function selectResource(request, env, auth) {
   const SELECTABLE = ["pending", "CONNECTED_NEEDS_RESOURCE", "active"];
   if (!SELECTABLE.includes(conn.status)) {
     return errorResponse("Connection is not in a state that allows resource selection", 409);
+  }
+
+  if (platform === 'google_search_console' && conn.selected_resource_id && conn.selected_resource_id !== resource_id) {
+    // Clear old cached metrics/queries/pages from other properties to prevent mixed data
+    await db.prepare("DELETE FROM seo_metrics WHERE brand_id = ? AND source = 'search_console'").bind(auth.brand_id).run();
+    await db.prepare("DELETE FROM search_console_queries WHERE brand_id = ?").bind(auth.brand_id).run();
+    await db.prepare("DELETE FROM search_console_pages WHERE brand_id = ?").bind(auth.brand_id).run();
   }
 
   await db.prepare(`
@@ -333,6 +340,15 @@ export async function selectResource(request, env, auth) {
     resource_id,
     conn_id
   ).run();
+
+  if (platform === 'google_search_console') {
+    // Update search_console_properties default flags
+    await db.prepare(`
+      UPDATE search_console_properties
+      SET is_default = CASE WHEN property_url = ? THEN 1 ELSE 0 END
+      WHERE brand_id = ?
+    `).bind(resource_id, auth.brand_id).run().catch(() => {});
+  }
 
   return new Response(JSON.stringify({ success: true }), {
     headers: { "Content-Type": "application/json" }
