@@ -59,7 +59,6 @@ export async function createInvite(request, env, auth) {
   await emitEvent(env, 'invite_created', { brand_id, user_id, metadata: { email, role, token } });
 
   // Notify invitee via communication engine
-  const brand  = await db.prepare('SELECT name FROM brands WHERE id = ?').bind(brand_id).first().catch(() => null);
   const sender = await db.prepare('SELECT full_name FROM users WHERE id = ?').bind(user_id).first().catch(() => null);
   const inviteUrl = `https://app.mypilotpost.com/register?invite=${token}`;
   notify(env, {
