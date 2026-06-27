@@ -15,6 +15,7 @@ import { sendEmail } from "../email/send-email.js";
 import { notify } from "../communication/notify.js";
 import { emit, TOOLS, EVENTS } from "../events/emit.js";
 import { writeVersion } from "./versions.js";
+import { syncSEOForContent } from "../seo/seo.js";
 
 const LOCKED_STATUSES = new Set(['scheduled', 'queued', 'publishing', 'published']);
 
@@ -269,6 +270,14 @@ export async function saveToVault(request, env, auth) {
 
   // Memory: fire-and-forget
   emit(env, { tool: TOOLS.CREATE_POST, event: EVENTS.CONTENT_SAVED, brandId: brand_id, userId: user_id, metadata: { content_type, platform: platforms?.[0] } });
+
+  // Automatic SEO sync for content vault item (non-blocking)
+  if (content_type === 'blog' || content_type === 'social') {
+    const primary = metadataObj?.keyword || metadataObj?.primaryKeyword;
+    const secondary = metadataObj?.secondaryKeywords || [];
+    syncSEOForContent(db, brand_id, id, content_type, derivedTitle, bodyText, primary, secondary)
+      .catch(err => console.error("[VAULT_SEO_SYNC_FAILED]", err.message));
+  }
 
   return json({ success: true, content_id: id, version, lifecycle_status });
 }

@@ -12,25 +12,7 @@ import { checkFeatureAccess } from "../billing/billing.js";
  * Main entry point for content analysis.
  * Weights: Placement (40%), Readability (25%), Length (20%), Quality (15%)
  */
-export async function analyzeContentSEO(request, env, auth) {
-  if (!auth?.brand_id) return error("Unauthorized", 401);
-
-  const access = await checkFeatureAccess(request, env, auth, 'seo');
-  if (!access.allowed) return access.response;
-
-  let body;
-  try {
-    body = await request.json();
-  } catch (err) {
-    return error("Invalid JSON body", "BAD_REQUEST", null, 400);
-  }
-
-  const { content, text, title, keywords = {}, type = 'social' } = body || {};
-  const finalContent = content || text;
-  
-  const primary = keywords.primary?.trim();
-  const secondary = Array.isArray(keywords.secondary) ? keywords.secondary : [];
-
+export function computeSEOStats(contentText, title, primaryKeyword, secondaryKeywords, contentType) {
   const results = {
     score: 0,
     readability_score: 0,
@@ -42,7 +24,9 @@ export async function analyzeContentSEO(request, env, auth) {
     suggestions: []
   };
 
-  if (!finalContent) return json(results);
+  const finalContent = contentText || "";
+  const primary = primaryKeyword?.trim();
+  const secondary = Array.isArray(secondaryKeywords) ? secondaryKeywords : [];
 
   // 1. Metrics Gathering
   const words = finalContent.split(/\s+/).filter(w => w.length > 0);
@@ -65,7 +49,7 @@ export async function analyzeContentSEO(request, env, auth) {
 
   // 3. Length Analysis (20%)
   let lengthScore = 0;
-  if (type === 'blog') {
+  if (contentType === 'blog') {
     if (results.metrics.word_count >= 600) lengthScore = 100;
     else if (results.metrics.word_count >= 300) lengthScore = 60;
     else lengthScore = 20;
@@ -84,7 +68,6 @@ export async function analyzeContentSEO(request, env, auth) {
   let qualityScore = 100;
 
   if (primary) {
-    let hits = 0;
     const searchBody = finalContent.toLowerCase();
     const searchTitle = (title || "").toLowerCase();
     const searchPrimary = primary.toLowerCase();
@@ -93,7 +76,7 @@ export async function analyzeContentSEO(request, env, auth) {
     const inTitle = searchTitle.includes(searchPrimary);
     const inFirst100 = searchBody.slice(0, 500).includes(searchPrimary);
     
-    if (!inTitle && type === 'blog') {
+    if (!inTitle && contentType === 'blog') {
       placementScore -= 50;
       results.suggestions.push(`Add your primary keyword "${primary}" to the title.`);
     }
@@ -104,7 +87,7 @@ export async function analyzeContentSEO(request, env, auth) {
 
     // Quality / Density
     const count = (searchBody.match(new RegExp(searchPrimary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
-    results.metrics.keyword_density = (count / results.metrics.word_count) * 100;
+    results.metrics.keyword_density = results.metrics.word_count > 0 ? (count / results.metrics.word_count) * 100 : 0;
     
     if (results.metrics.keyword_density > 5) {
       qualityScore = 40;
@@ -114,7 +97,6 @@ export async function analyzeContentSEO(request, env, auth) {
       results.suggestions.push(`Use your primary keyword "${primary}" at least once or twice in the body.`);
     }
   } else {
-    // ADAPTIVE FALLBACK: If no keyword, ignore placement/quality and scale others
     placementScore = 0;
     qualityScore = 0;
     results.suggestions.push("Add a target keyword to unlock advanced SEO placement scoring.");
@@ -129,14 +111,79 @@ export async function analyzeContentSEO(request, env, auth) {
       (qualityScore * 0.15)
     );
   } else {
-    // SCALE Readability (50%) and Length (50%) when no keyword exists
     results.score = Math.round(
       (readScore * 0.60) + 
       (lengthScore * 0.40)
     );
   }
 
+  return results;
+}
+
+export async function analyzeContentSEO(request, env, auth) {
+  if (!auth?.brand_id) return error("Unauthorized", 401);
+
+  const access = await checkFeatureAccess(request, env, auth, 'seo');
+  if (!access.allowed) return access.response;
+
+  let body;
+  try {
+    body = await request.json();
+  } catch (err) {
+    return error("Invalid JSON body", "BAD_REQUEST", null, 400);
+  }
+
+  const { content, text, title, keywords = {}, type = 'social' } = body || {};
+  const finalContent = content || text;
+  const primary = keywords.primary || keywords.keyword;
+  const secondary = keywords.secondary || keywords.secondaryKeywords;
+
+  const results = computeSEOStats(finalContent, title, primary, secondary, type);
   return json(results);
+}
+
+/**
+ * syncSEOForContent
+ * Helper to update or insert single page SEO analytics in seo_pages table.
+ */
+export async function syncSEOForContent(db, brandId, contentId, contentType, title, contentText, primaryKeyword, secondaryKeywords) {
+  const stats = computeSEOStats(contentText, title, primaryKeyword, secondaryKeywords, contentType);
+  
+  const existing = await db.prepare(`
+    SELECT id FROM seo_pages WHERE brand_id = ? AND content_id = ? LIMIT 1
+  `).bind(brandId, contentId).first();
+
+  if (existing) {
+    await db.prepare(`
+      UPDATE seo_pages SET
+        keyword_primary = ?,
+        keyword_secondary = ?,
+        title = ?,
+        seo_score = ?,
+        readability_score = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(
+      primaryKeyword || null,
+      JSON.stringify(secondaryKeywords || []),
+      title || null,
+      stats.score,
+      stats.readability_score,
+      existing.id
+    ).run();
+    return existing.id;
+  } else {
+    const id = crypto.randomUUID();
+    await db.prepare(`
+      INSERT INTO seo_pages (id, brand_id, content_id, content_type, keyword_primary, keyword_secondary, title, seo_score, readability_score)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      id, brandId, contentId, contentType,
+      primaryKeyword || null, JSON.stringify(secondaryKeywords || []),
+      title || null, stats.score, stats.readability_score
+    ).run();
+    return id;
+  }
 }
 
 /**
@@ -150,25 +197,24 @@ export async function saveSEOData(request, env, auth) {
   if (!access.allowed) return access.response;
 
   const db = getDB(env);
-  const data = await request.json();
-  const { content_id, content_type, keywords, title, seo_score, readability_score } = data;
+  let data;
+  try { data = await request.json(); }
+  catch { return error("Invalid JSON body", "BAD_REQUEST", null, 400); }
 
-  const id = crypto.randomUUID();
-  await db.prepare(`
-    INSERT INTO seo_pages (id, brand_id, content_id, content_type, keyword_primary, keyword_secondary, title, seo_score, readability_score)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET
-      keyword_primary = EXCLUDED.keyword_primary,
-      keyword_secondary = EXCLUDED.keyword_secondary,
-      title = EXCLUDED.title,
-      seo_score = EXCLUDED.seo_score,
-      readability_score = EXCLUDED.readability_score,
-      updated_at = CURRENT_TIMESTAMP
-  `).bind(
-    id, auth.brand_id, content_id, content_type, 
-    keywords?.primary, JSON.stringify(keywords?.secondary || []), 
-    title, seo_score, readability_score
-  ).run();
+  const { content_id, content_type, keywords, title } = data;
+  const primary = keywords?.primary || keywords?.keyword;
+  const secondary = keywords?.secondary || keywords?.secondaryKeywords;
+
+  const id = await syncSEOForContent(
+    db,
+    auth.brand_id,
+    content_id,
+    content_type,
+    title,
+    data.content || data.bodyText || "",
+    primary,
+    secondary
+  );
 
   return json({ success: true, id });
 }
@@ -180,8 +226,13 @@ export async function saveSEOData(request, env, auth) {
 export async function getSEOSummary(request, env, auth) {
   if (!auth?.brand_id) return error("Unauthorized", 401);
 
+  const access = await checkFeatureAccess(request, env, auth, 'seo');
+  if (!access.allowed) return access.response;
+
   const db = getDB(env);
   const brandId = auth.brand_id;
+  const url = new URL(request.url);
+  const domain = url.searchParams.get("domain") || "google.com";
 
   const pageStats = await db.prepare(`
     SELECT COUNT(*) as page_count, AVG(seo_score) as avg_seo, AVG(readability_score) as avg_read
@@ -214,20 +265,26 @@ export async function getSEOSummary(request, env, auth) {
     { name: 'Trustworthiness', score: readabilityIndex,                     desc: 'Content readability and structural clarity',     color: '#6366f1' },
   ];
 
-  return json({ globalScore, keywordCoverage, readabilityIndex, eeatMaturity, topRecommendation, eeatFactors });
+  return json({ globalScore, keywordCoverage, readabilityIndex, eeatMaturity, topRecommendation, eeatFactors, targetDomain: domain });
 }
 
 export async function getSEOKeywords(request, env, auth) {
   if (!auth?.brand_id) return error("Unauthorized", 401);
+
+  const access = await checkFeatureAccess(request, env, auth, 'seo');
+  if (!access.allowed) return access.response;
 
   const db = getDB(env);
   const brandId = auth.brand_id;
 
   const { results } = await db.prepare(`
     SELECT sk.id, sk.keyword AS term, sk.intent, sk.priority, sk.created_at,
-      COUNT(skt.id) AS target_count
+      COUNT(skt.id) AS target_count,
+      GROUP_CONCAT(cv.title) AS target_titles,
+      GROUP_CONCAT(cv.id) AS target_ids
     FROM seo_keywords sk
     LEFT JOIN seo_keyword_targets skt ON skt.keyword_id = sk.id AND skt.brand_id = sk.brand_id
+    LEFT JOIN content_vault cv ON cv.id = skt.blog_post_id AND cv.brand_id = sk.brand_id
     WHERE sk.brand_id = ?
     GROUP BY sk.id
     ORDER BY sk.priority DESC, sk.created_at DESC
@@ -248,6 +305,8 @@ export async function getSEOKeywords(request, env, auth) {
     avgWords: 900,
     wordScore: 60,
     competitors: [],
+    target_titles: kw.target_titles ? kw.target_titles.split(",") : [],
+    target_ids: kw.target_ids ? kw.target_ids.split(",") : [],
     recommendations: [
       `Include "${kw.term}" in your next article headline.`,
       'Create a dedicated landing page targeting this keyword.'
@@ -255,4 +314,136 @@ export async function getSEOKeywords(request, env, auth) {
   }));
 
   return json(mapped);
+}
+
+/**
+ * addSEOKeyword
+ * Adds a new target keyword for the brand.
+ */
+export async function addSEOKeyword(request, env, auth) {
+  if (!auth?.brand_id) return error("Unauthorized", 401);
+
+  const access = await checkFeatureAccess(request, env, auth, 'seo');
+  if (!access.allowed) return access.response;
+
+  const db = getDB(env);
+  let body;
+  try { body = await request.json(); }
+  catch { return error("Invalid JSON body", "BAD_REQUEST", null, 400); }
+
+  const { keyword, intent = 'commercial', priority = 0 } = body;
+  if (!keyword || typeof keyword !== 'string' || !keyword.trim()) {
+    return error("Keyword is required", "BAD_REQUEST", null, 400);
+  }
+
+  const cleanKeyword = keyword.trim();
+
+  // Check if keyword already exists for this brand
+  const existing = await db.prepare(`
+    SELECT id FROM seo_keywords WHERE brand_id = ? AND LOWER(keyword) = ? LIMIT 1
+  `).bind(auth.brand_id, cleanKeyword.toLowerCase()).first();
+
+  if (existing) {
+    return error("Keyword is already being tracked", "CONFLICT", null, 409);
+  }
+
+  const id = crypto.randomUUID();
+  const now = new Date().toISOString();
+  await db.prepare(`
+    INSERT INTO seo_keywords (id, brand_id, keyword, intent, priority, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).bind(id, auth.brand_id, cleanKeyword, intent, priority, now).run();
+
+  return json({ success: true, id });
+}
+
+/**
+ * deleteSEOKeyword
+ * Deletes a tracked keyword and cleanup its target links.
+ */
+export async function deleteSEOKeyword(request, env, auth) {
+  if (!auth?.brand_id) return error("Unauthorized", 401);
+
+  const access = await checkFeatureAccess(request, env, auth, 'seo');
+  if (!access.allowed) return access.response;
+
+  const id = request.params?.id;
+  if (!id) return error("Missing keyword id", "BAD_REQUEST", null, 400);
+
+  const db = getDB(env);
+
+  // Verify ownership
+  const keyword = await db.prepare(`
+    SELECT id FROM seo_keywords WHERE id = ? AND brand_id = ? LIMIT 1
+  `).bind(id, auth.brand_id).first();
+
+  if (!keyword) {
+    return error("Keyword not found", "NOT_FOUND", null, 404);
+  }
+
+  await db.batch([
+    db.prepare(`DELETE FROM seo_keywords WHERE id = ? AND brand_id = ?`).bind(id, auth.brand_id),
+    db.prepare(`DELETE FROM seo_keyword_targets WHERE keyword_id = ? AND brand_id = ?`).bind(id, auth.brand_id)
+  ]);
+
+  return json({ success: true });
+}
+
+/**
+ * targetSEOKeyword
+ * Links or unlinks a keyword to/from a blog post.
+ */
+export async function targetSEOKeyword(request, env, auth) {
+  if (!auth?.brand_id) return error("Unauthorized", 401);
+
+  const access = await checkFeatureAccess(request, env, auth, 'seo');
+  if (!access.allowed) return access.response;
+
+  const db = getDB(env);
+  let body;
+  try { body = await request.json(); }
+  catch { return error("Invalid JSON body", "BAD_REQUEST", null, 400); }
+
+  const { keyword_id, blog_post_id, remove = false } = body;
+  if (!keyword_id || !blog_post_id) {
+    return error("keyword_id and blog_post_id are required", "BAD_REQUEST", null, 400);
+  }
+
+  // Verify keyword belongs to this brand
+  const keyword = await db.prepare(`
+    SELECT id FROM seo_keywords WHERE id = ? AND brand_id = ? LIMIT 1
+  `).bind(keyword_id, auth.brand_id).first();
+
+  if (!keyword) return error("Keyword not found", "NOT_FOUND", null, 404);
+
+  // Verify blog post exists and belongs to this brand
+  const blog = await db.prepare(`
+    SELECT id FROM content_vault WHERE id = ? AND brand_id = ? AND content_type = 'blog' LIMIT 1
+  `).bind(blog_post_id, auth.brand_id).first();
+
+  if (!blog) return error("Blog post not found", "NOT_FOUND", null, 404);
+
+  if (remove) {
+    await db.prepare(`
+      DELETE FROM seo_keyword_targets
+      WHERE keyword_id = ? AND blog_post_id = ? AND brand_id = ?
+    `).bind(keyword_id, blog_post_id, auth.brand_id).run();
+  } else {
+    // Check if target link already exists
+    const existing = await db.prepare(`
+      SELECT id FROM seo_keyword_targets
+      WHERE keyword_id = ? AND blog_post_id = ? AND brand_id = ? LIMIT 1
+    `).bind(keyword_id, blog_post_id, auth.brand_id).first();
+
+    if (!existing) {
+      const id = crypto.randomUUID();
+      const now = new Date().toISOString();
+      await db.prepare(`
+        INSERT INTO seo_keyword_targets (id, brand_id, keyword_id, blog_post_id, created_at)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(id, auth.brand_id, keyword_id, blog_post_id, now).run();
+    }
+  }
+
+  return json({ success: true });
 }

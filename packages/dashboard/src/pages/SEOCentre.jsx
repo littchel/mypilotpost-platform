@@ -2,9 +2,14 @@ import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { 
   Globe, Search, ShieldCheck, Zap, TrendingUp, 
   AlertCircle, CheckCircle2, ChevronRight, Plus,
-  ArrowUpRight, Award, Info
+  ArrowUpRight, Award, Info, Trash2, Link, Link2, 
+  RefreshCw, Check, X, ExternalLink
 } from "lucide-react";
-import { apiSafeFetch } from "../lib/api/client";
+import { 
+  ResponsiveContainer, LineChart, Line, 
+  XAxis, YAxis, CartesianGrid, Tooltip 
+} from "recharts";
+import { apiRequest, apiSafeFetch } from "../lib/api/client";
 
 /**
  * Production-Hardened SEO Engine
@@ -79,6 +84,7 @@ const KeywordIntentBadge = ({ intent }) => {
     Commercial: "bg-primary-light text-primary",
     Transactional: "bg-success-light text-success",
     Informational: "bg-info-light text-info",
+    Local: "bg-warning-light text-warning"
   };
   return (
     <span className={`badge ${colors[intent] || 'bg-light'} extra-small fw-bold`}>
@@ -90,7 +96,7 @@ const KeywordIntentBadge = ({ intent }) => {
 // ── Main Page Component ──────────────────────────────────────────────────────
 
 const SEOCentre = ({ activeBrand }) => {
-  const [searchDomain, setSearchDomain] = useState("google.com.ng");
+  const [searchDomain, setSearchDomain] = useState("google.com");
   const [domainSearch, setDomainSearch] = useState("");
   const [showDomainSuggest, setShowDomainSuggest] = useState(false);
   
@@ -98,24 +104,44 @@ const SEOCentre = ({ activeBrand }) => {
   const [summary, setSummary] = useState({ status: 'loading', data: null });
   const [keywords, setKeywords] = useState({ status: 'loading', data: [] });
   const [selectedKeywordId, setSelectedKeywordId] = useState(null);
+  
+  // Search Console State
+  const [gscOverview, setGscOverview] = useState({ status: 'loading', data: null });
+  const [isSyncingGsc, setIsSyncingGsc] = useState(false);
+
+  // Modal States
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [isSavingKeyword, setIsSavingKeyword] = useState(false);
+  const [newKeywordText, setNewKeywordText] = useState("");
+  const [newKeywordIntent, setNewKeywordIntent] = useState("commercial");
+  const [newKeywordPriority, setNewKeywordPriority] = useState("0");
+
+  const [showTargetModal, setShowTargetModal] = useState(false);
+  const [targetingKeyword, setTargetingKeyword] = useState(null);
+  const [blogPosts, setBlogPosts] = useState({ status: 'loading', data: [] });
+  const [isLinkingTarget, setIsLinkingTarget] = useState(false);
 
   const fetchSEOData = useCallback(async () => {
     if (!activeBrand?.id) {
       setSummary({ status: 'empty', data: null });
       setKeywords({ status: 'empty', data: [] });
+      setGscOverview({ status: 'empty', data: null });
       return;
     }
 
     setSummary(prev => ({ ...prev, status: 'loading' }));
     setKeywords(prev => ({ ...prev, status: 'loading' }));
+    setGscOverview(prev => ({ ...prev, status: 'loading' }));
 
-    const [sumRes, kwRes] = await Promise.all([
+    const [sumRes, kwRes, gscRes] = await Promise.all([
       apiSafeFetch(`/api/customer/seo/summary?brandId=${activeBrand.id}&domain=${searchDomain}`),
-      apiSafeFetch(`/api/customer/seo/keywords?brandId=${activeBrand.id}&domain=${searchDomain}`)
+      apiSafeFetch(`/api/customer/seo/keywords?brandId=${activeBrand.id}&domain=${searchDomain}`),
+      apiSafeFetch(`/api/customer/analytics/search-console/overview`)
     ]);
 
     setSummary(sumRes);
     setKeywords(kwRes);
+    setGscOverview(gscRes);
   }, [activeBrand, searchDomain]);
 
   useEffect(() => {
@@ -132,6 +158,123 @@ const SEOCentre = ({ activeBrand }) => {
     if (keywords.status !== 'success') return null;
     return keywords.data.find(k => k.id === selectedKeywordId) || keywords.data[0];
   }, [keywords, selectedKeywordId]);
+
+  // Handle Sync GSC
+  const handleSyncGsc = async () => {
+    setIsSyncingGsc(true);
+    try {
+      const res = await apiRequest(`/api/customer/analytics/search-console/sync`, { method: "POST" });
+      if (res?.success) {
+        alert("Search Console sync completed! 🚀");
+        fetchSEOData();
+      } else {
+        alert(res?.message || "Sync failed. Verify your Search Console property.");
+      }
+    } catch (err) {
+      alert("Search Console sync error: " + err.message);
+    } finally {
+      setIsSyncingGsc(false);
+    }
+  };
+
+  // Add Keyword
+  const handleAddKeyword = async (e) => {
+    e.preventDefault();
+    if (!newKeywordText.trim()) return;
+
+    setIsSavingKeyword(true);
+    try {
+      const res = await apiRequest(`/api/customer/seo/keywords`, {
+        method: "POST",
+        body: JSON.stringify({
+          keyword: newKeywordText,
+          intent: newKeywordIntent,
+          priority: parseInt(newKeywordPriority, 10)
+        })
+      });
+      if (res.success) {
+        setShowAddModal(false);
+        setNewKeywordText("");
+        setNewKeywordIntent("commercial");
+        setNewKeywordPriority("0");
+        fetchSEOData();
+      }
+    } catch (err) {
+      alert("Failed to add keyword: " + err.message);
+    } finally {
+      setIsSavingKeyword(false);
+    }
+  };
+
+  // Delete Keyword
+  const handleDeleteKeyword = async (e, id, keyword) => {
+    e.stopPropagation();
+    if (!window.confirm(`Are you sure you want to stop tracking "${keyword}"?`)) return;
+
+    try {
+      await apiRequest(`/api/customer/seo/keywords/${id}`, { method: "DELETE" });
+      fetchSEOData();
+      if (selectedKeywordId === id) setSelectedKeywordId(null);
+    } catch (err) {
+      alert("Failed to delete keyword: " + err.message);
+    }
+  };
+
+  // Open Target Selection Modal
+  const openTargetModal = async (e, kw) => {
+    e.stopPropagation();
+    setTargetingKeyword(kw);
+    setShowTargetModal(true);
+    setBlogPosts({ status: 'loading', data: [] });
+
+    try {
+      const res = await apiSafeFetch(`/api/customer/vault?type=blog`);
+      setBlogPosts(res);
+    } catch (err) {
+      setBlogPosts({ status: 'error', data: [] });
+    }
+  };
+
+  // Link Target Post
+  const handleLinkTarget = async (postId) => {
+    if (!targetingKeyword) return;
+    setIsLinkingTarget(true);
+    try {
+      await apiRequest(`/api/customer/seo/keywords/target`, {
+        method: "POST",
+        body: JSON.stringify({
+          keyword_id: targetingKeyword.id,
+          blog_post_id: postId,
+          remove: false
+        })
+      });
+      setShowTargetModal(false);
+      fetchSEOData();
+    } catch (err) {
+      alert("Failed to link keyword to post: " + err.message);
+    } finally {
+      setIsLinkingTarget(false);
+    }
+  };
+
+  // Unlink Target Post
+  const handleUnlinkTarget = async (e, keywordId, postId) => {
+    e.stopPropagation();
+    if (!window.confirm("Remove this target link?")) return;
+    try {
+      await apiRequest(`/api/customer/seo/keywords/target`, {
+        method: "POST",
+        body: JSON.stringify({
+          keyword_id: keywordId,
+          blog_post_id: postId,
+          remove: true
+        })
+      });
+      fetchSEOData();
+    } catch (err) {
+      alert("Failed to remove target link: " + err.message);
+    }
+  };
 
   return (
     <div className="seo-engine animate__animated animate__fadeIn p-2">
@@ -205,7 +348,7 @@ const SEOCentre = ({ activeBrand }) => {
             <div className="d-flex justify-content-between align-items-center mb-4">
               <h6 className="fw-bold mb-0">E-E-A-T Scorecard (Agency Grade)</h6>
               <div className="extra-small text-muted d-flex align-items-center gap-2">
-                < Award size={14} /> Trust Certified
+                <Award size={14} /> Trust Certified
               </div>
             </div>
             
@@ -233,7 +376,96 @@ const SEOCentre = ({ activeBrand }) => {
         </div>
       </div>
 
-      {/* 3. Keyword Intelligence System */}
+      {/* 3. Search Console Integration (Connected / Disconnected Status) */}
+      <div className="card-workspace mb-4 p-4">
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h6 className="fw-bold mb-0 d-flex align-items-center gap-2">
+            <TrendingUp size={18} className="text-success" /> Search Console Performance
+          </h6>
+          {gscOverview.data?.connected && (
+            <button 
+              className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1 extra-small fw-bold px-3 py-2 rounded-pill" 
+              onClick={handleSyncGsc}
+              disabled={isSyncingGsc}
+            >
+              <RefreshCw size={12} className={isSyncingGsc ? "animate-spin" : ""} />
+              {isSyncingGsc ? "Syncing..." : "Sync performance"}
+            </button>
+          )}
+        </div>
+
+        {gscOverview.status === 'loading' ? <LoadingIndicator message="Fetching Search Console status..." /> :
+         gscOverview.status === 'error' ? <ErrorState message="Could not sync Search Console data" /> :
+         !gscOverview.data?.connected ? (
+           <div className="d-flex flex-column align-items-center text-center p-4">
+             <AlertCircle size={28} className="text-warning mb-2" />
+             <p className="extra-small text-muted mb-3">Google Search Console is not connected. Connect your property under settings to track real organic CTR, clicks, and impressions.</p>
+             <button 
+               className="btn btn-sm btn-outline-primary px-4 py-2 rounded-pill extra-small fw-bold"
+               onClick={() => window.dispatchEvent(new CustomEvent('switch-tab', { detail: 'integrations' }))}
+             >
+               Go to Integrations
+             </button>
+           </div>
+         ) : !gscOverview.data?.has_data ? (
+           <div className="d-flex flex-column align-items-center text-center p-4">
+             <Info size={28} className="text-primary mb-2" />
+             <p className="extra-small text-muted mb-3">Your property is connected, but search performance metrics are not synchronized yet.</p>
+             <button 
+               className="btn btn-sm btn-primary px-4 py-2 rounded-pill extra-small fw-bold text-white"
+               onClick={handleSyncGsc}
+               disabled={isSyncingGsc}
+             >
+               Sync Search Console
+             </button>
+           </div>
+         ) : (
+           <div>
+             {/* GSC Analytics Cards */}
+             <div className="row g-3 mb-4">
+               <div className="col-md-3">
+                 <div className="p-3 border rounded-lg bg-white text-center">
+                   <div className="h3 fw-bold text-primary mb-1">{gscOverview.data.summary.clicks}</div>
+                   <div className="extra-small text-muted fw-medium uppercase">Clicks</div>
+                 </div>
+               </div>
+               <div className="col-md-3">
+                 <div className="p-3 border rounded-lg bg-white text-center">
+                   <div className="h3 fw-bold text-success mb-1">{gscOverview.data.summary.impressions}</div>
+                   <div className="extra-small text-muted fw-medium uppercase">Impressions</div>
+                 </div>
+               </div>
+               <div className="col-md-3">
+                 <div className="p-3 border rounded-lg bg-white text-center">
+                   <div className="h3 fw-bold text-info mb-1">{gscOverview.data.summary.ctr}</div>
+                   <div className="extra-small text-muted fw-medium uppercase">Average CTR</div>
+                 </div>
+               </div>
+               <div className="col-md-3">
+                 <div className="p-3 border rounded-lg bg-white text-center">
+                   <div className="h3 fw-bold text-warning mb-1">{gscOverview.data.summary.position}</div>
+                   <div className="extra-small text-muted fw-medium uppercase">Avg. Position</div>
+                 </div>
+               </div>
+             </div>
+
+             {/* Chart */}
+             <div style={{ width: '100%', height: 220 }}>
+               <ResponsiveContainer width="100%" height="100%">
+                 <LineChart data={gscOverview.data.trends || []}>
+                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                   <XAxis dataKey="date" tick={{ fontSize: 9 }} stroke="#94a3b8" />
+                   <Tooltip />
+                   <Line type="monotone" dataKey="clicks" stroke="#2563eb" strokeWidth={2} name="Clicks" />
+                   <Line type="monotone" dataKey="impressions" stroke="#10b981" strokeWidth={1.5} name="Impressions" />
+                 </LineChart>
+               </ResponsiveContainer>
+             </div>
+           </div>
+         )}
+      </div>
+
+      {/* 4. Keyword Intelligence System */}
       <div className="row g-4 mb-4">
         <div className="col-lg-8">
           <div className="card-workspace p-0 overflow-hidden h-100">
@@ -241,10 +473,16 @@ const SEOCentre = ({ activeBrand }) => {
               <h6 className="fw-bold mb-0 d-flex align-items-center gap-2">
                 <Search size={18} className="text-primary" /> Keyword Opportunities
               </h6>
+              <button 
+                className="btn btn-sm btn-primary d-flex align-items-center gap-1 extra-small fw-bold px-3 py-2 rounded-pill text-white" 
+                onClick={() => setShowAddModal(true)}
+              >
+                <Plus size={14} /> Add Keyword
+              </button>
             </div>
             
             {keywords.status === 'loading' ? <LoadingIndicator /> :
-             keywords.status === 'empty' ? <EmptyState /> :
+             keywords.status === 'empty' ? <EmptyState message="No tracked keywords yet. Add some keywords to start monitoring." /> :
              keywords.status === 'error' ? <ErrorState onRetry={fetchSEOData} /> : (
               <div className="table-responsive">
                 <table className="table table-hover mb-0">
@@ -267,7 +505,26 @@ const SEOCentre = ({ activeBrand }) => {
                       >
                         <td className="px-4 py-3">
                           <div className="fw-bold small">{kw.term}</div>
-                          <div className="extra-small text-muted">{kw.status}</div>
+                          {kw.target_titles && kw.target_titles.length > 0 ? (
+                            <div className="d-flex flex-wrap gap-1 mt-1">
+                              {kw.target_titles.map((title, index) => (
+                                <span 
+                                  key={index}
+                                  className="badge bg-primary bg-opacity-10 text-primary extra-small fw-medium d-flex align-items-center gap-1 px-2 py-1 rounded"
+                                >
+                                  <Link size={10} />
+                                  <span className="text-truncate" style={{ maxWidth: '140px' }}>{title}</span>
+                                  <X 
+                                    size={10} 
+                                    className="cursor-pointer text-muted hover-text-danger" 
+                                    onClick={(e) => handleUnlinkTarget(e, kw.id, kw.target_ids[index])} 
+                                  />
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="extra-small text-muted">{kw.status}</div>
+                          )}
                         </td>
                         <td className="small fw-bold">{kw.volume}</td>
                         <td>
@@ -277,7 +534,22 @@ const SEOCentre = ({ activeBrand }) => {
                         </td>
                         <td><KeywordIntentBadge intent={kw.intent} /></td>
                         <td className="text-end px-4">
-                           <button className="btn btn-link btn-sm p-0 text-primary"><Plus size={16} /></button>
+                           <div className="d-flex justify-content-end gap-2" onClick={e => e.stopPropagation()}>
+                             <button 
+                               className="btn btn-link btn-sm p-0 text-primary" 
+                               title="Target a Blog Post" 
+                               onClick={(e) => openTargetModal(e, kw)}
+                             >
+                               <Plus size={16} />
+                             </button>
+                             <button 
+                               className="btn btn-link btn-sm p-0 text-muted hover-text-danger" 
+                               title="Delete Keyword"
+                               onClick={(e) => handleDeleteKeyword(e, kw.id, kw.term)}
+                             >
+                               <Trash2 size={16} />
+                             </button>
+                           </div>
                         </td>
                       </tr>
                     ))}
@@ -308,14 +580,18 @@ const SEOCentre = ({ activeBrand }) => {
                   </div>
 
                   <div className="top-results">
-                    {(selectedKeyword.competitors || []).map((comp, i) => (
-                      <div key={i} className="p-2 border-bottom d-flex align-items-center justify-content-between gap-2">
-                        <div className="text-truncate extra-small fw-medium" style={{ maxWidth: '200px' }}>
-                          {i + 1}. {comp.title}
+                    {(selectedKeyword.competitors || []).length > 0 ? (
+                      (selectedKeyword.competitors || []).map((comp, i) => (
+                        <div key={i} className="p-2 border-bottom d-flex align-items-center justify-content-between gap-2">
+                          <div className="text-truncate extra-small fw-medium" style={{ maxWidth: '200px' }}>
+                            {i + 1}. {comp.title}
+                          </div>
+                          <ArrowUpRight size={12} className="text-muted" />
                         </div>
-                        <ArrowUpRight size={12} className="text-muted" />
-                      </div>
-                    ))}
+                      ))
+                    ) : (
+                      <div className="extra-small text-muted italic p-2 border rounded text-center bg-light">No Search Console targets matched yet. Link to a post to start ranking checks.</div>
+                    )}
                   </div>
                 </div>
 
@@ -324,7 +600,7 @@ const SEOCentre = ({ activeBrand }) => {
                   <div className="d-flex flex-column gap-2">
                     {(selectedKeyword.recommendations || ['Analyzing content optimization opportunities...']).map((rec, i) => (
                       <div key={i} className="d-flex align-items-start gap-2 bg-warning-light bg-opacity-10 p-2 rounded">
-                        <AlertCircle size={14} className="text-warning mt-1" />
+                        <AlertCircle size={14} className="text-warning mt-1 font-shrink-0" />
                         <span className="extra-small fw-medium text-warning">{rec}</span>
                       </div>
                     ))}
@@ -335,6 +611,127 @@ const SEOCentre = ({ activeBrand }) => {
           </div>
         </div>
       </div>
+
+      {/* ── 5. Modals ──────────────────────────────────────────────────────── */}
+
+      {/* Add Keyword Modal */}
+      {showAddModal && (
+        <div className="modal-overlay">
+          <div className="modal-container p-4 animate__animated animate__fadeInUp animate__faster">
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <h6 className="fw-bold mb-0">Track New Keyword</h6>
+              <button className="btn btn-link p-0 text-muted" onClick={() => setShowAddModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleAddKeyword}>
+              <div className="mb-3">
+                <label className="extra-small fw-bold text-muted text-uppercase mb-1">Keyword / Phrase</label>
+                <input 
+                  type="text" 
+                  className="form-control form-control-sm premium-input"
+                  placeholder="e.g. flight log tracker"
+                  value={newKeywordText}
+                  onChange={(e) => setNewKeywordText(e.target.value)}
+                  required
+                  autoFocus
+                />
+              </div>
+              <div className="mb-3">
+                <label className="extra-small fw-bold text-muted text-uppercase mb-1">Search Intent</label>
+                <select 
+                  className="form-select form-select-sm premium-input"
+                  value={newKeywordIntent}
+                  onChange={(e) => setNewKeywordIntent(e.target.value)}
+                >
+                  <option value="commercial">Commercial (Buyer Research)</option>
+                  <option value="transactional">Transactional (Ready to Buy)</option>
+                  <option value="informational">Informational (Answers / Guides)</option>
+                  <option value="local">Local (Near Me Searches)</option>
+                </select>
+              </div>
+              <div className="mb-4">
+                <label className="extra-small fw-bold text-muted text-uppercase mb-1">Est. Search Volume Priority</label>
+                <select 
+                  className="form-select form-select-sm premium-input"
+                  value={newKeywordPriority}
+                  onChange={(e) => setNewKeywordPriority(e.target.value)}
+                >
+                  <option value="0">Low (up to 1K/mo)</option>
+                  <option value="1">Medium (1K - 5K/mo)</option>
+                  <option value="2">High (5K - 10K/mo)</option>
+                  <option value="3">Very High (50K+/mo)</option>
+                </select>
+              </div>
+              <div className="d-flex justify-content-end gap-2">
+                <button type="button" className="btn btn-sm btn-outline-secondary px-3 rounded-pill extra-small fw-bold" onClick={() => setShowAddModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-sm btn-primary px-3 rounded-pill extra-small fw-bold text-white" disabled={isSavingKeyword || !newKeywordText.trim()}>
+                  {isSavingKeyword ? "Saving..." : "Start tracking"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Target Blog Post Selection Modal */}
+      {showTargetModal && (
+        <div className="modal-overlay">
+          <div className="modal-container p-4 animate__animated animate__fadeInUp animate__faster">
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <h6 className="fw-bold mb-0">Link target post for "{targetingKeyword?.term}"</h6>
+              <button className="btn btn-link p-0 text-muted" onClick={() => setShowTargetModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            
+            {blogPosts.status === 'loading' ? <LoadingIndicator message="Loading blog articles..." /> :
+             blogPosts.status === 'error' ? <ErrorState message="Could not fetch content list" /> :
+             blogPosts.data.length === 0 ? (
+               <div className="text-center py-4">
+                 <p className="extra-small text-muted mb-3">No blog posts found. Create an article first.</p>
+                 <button 
+                   className="btn btn-sm btn-primary px-4 py-2 rounded-pill extra-small fw-bold text-white"
+                   onClick={() => {
+                     setShowTargetModal(false);
+                     window.dispatchEvent(new CustomEvent('switch-tab', { detail: 'compose' }));
+                   }}
+                 >
+                   Write Article
+                 </button>
+               </div>
+             ) : (
+               <div className="mb-4 overflow-auto" style={{ maxHeight: '240px' }}>
+                 <div className="list-group list-group-flush">
+                   {blogPosts.data.map(post => {
+                     const isAlreadyLinked = (targetingKeyword?.target_ids || []).includes(post.id);
+                     return (
+                       <button
+                         key={post.id}
+                         type="button"
+                         className={`list-group-item list-group-item-action border-0 px-2 py-3 rounded d-flex justify-content-between align-items-center extra-small fw-bold mb-1 ${isAlreadyLinked ? 'bg-light text-muted opacity-50' : ''}`}
+                         onClick={() => !isAlreadyLinked && handleLinkTarget(post.id)}
+                         disabled={isLinkingTarget || isAlreadyLinked}
+                       >
+                         <span className="text-truncate" style={{ maxWidth: '320px' }}>{post.title}</span>
+                         {isAlreadyLinked ? <Check size={14} className="text-success" /> : <ChevronRight size={14} />}
+                       </button>
+                     );
+                   })}
+                 </div>
+               </div>
+             )}
+
+            <div className="d-flex justify-content-end">
+              <button type="button" className="btn btn-sm btn-outline-secondary px-3 rounded-pill extra-small fw-bold" onClick={() => setShowTargetModal(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         .seo-engine { max-width: 1300px; margin: 0 auto; }
@@ -348,6 +745,48 @@ const SEOCentre = ({ activeBrand }) => {
         .bg-danger-light { background: #fef2f2; }
         .bg-warning-light { background: #fffbeb; }
         .table th { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; }
+        
+        .modal-overlay {
+          position: fixed;
+          top: 0; left: 0; right: 0; bottom: 0;
+          background: rgba(15, 23, 42, 0.4);
+          backdrop-filter: blur(8px);
+          z-index: 1050;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .modal-container {
+          background: white;
+          border-radius: 16px;
+          width: 100%;
+          max-width: 440px;
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+          border: 1px solid #f1f5f9;
+        }
+        .premium-input {
+          border-radius: 10px;
+          border: 1px solid #cbd5e1;
+          padding: 8px 12px;
+          font-size: 0.75rem;
+          font-weight: 600;
+        }
+        .premium-input:focus {
+          border-color: #2563eb;
+          box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+        }
+        .cursor-pointer { cursor: pointer; }
+        .hover-text-danger:hover { color: #ef4444 !important; }
+        .font-shrink-0 { flex-shrink: 0; }
+        .uppercase { text-transform: uppercase; }
+        
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .animate-spin {
+          animation: spin 1s linear infinite;
+        }
       `}</style>
     </div>
   );

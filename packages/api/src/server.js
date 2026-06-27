@@ -372,7 +372,15 @@ import {
   getContentAnalytics
 } from "./core/analytics/analytics.js";
 import { getExecutiveAnalytics } from "./core/analytics/executive.js";
-import { analyzeContentSEO, getSEOSummary, getSEOKeywords } from "./core/seo/seo.js";
+import {
+  analyzeContentSEO,
+  getSEOSummary,
+  getSEOKeywords,
+  addSEOKeyword,
+  deleteSEOKeyword,
+  targetSEOKeyword,
+  saveSEOData
+} from "./core/seo/seo.js";
 import {
   syncSearchConsoleData,
   getSearchConsoleProperties,
@@ -2789,6 +2797,21 @@ export default {
 
         if (method === "GET" && path === "/api/customer/seo/keywords")
           return withCors(request, getSEOKeywords(request, env, auth));
+
+        if (method === "POST" && path === "/api/customer/seo/keywords")
+          return withCors(request, addSEOKeyword(request, env, auth));
+
+        if (method === "POST" && path === "/api/customer/seo/keywords/target")
+          return withCors(request, targetSEOKeyword(request, env, auth));
+
+        if (method === "POST" && path === "/api/customer/seo/save")
+          return withCors(request, saveSEOData(request, env, auth));
+
+        if (method === "DELETE" && path.startsWith("/api/customer/seo/keywords/")) {
+          const keywordId = path.split("/")[5];
+          request.params = { id: keywordId };
+          return withCors(request, deleteSEOKeyword(request, env, auth));
+        }
 
         if (method === "GET" && path === "/api/customer/campaigns/patterns")
           return withCors(request, detectCampaignPatterns(request, env, auth));
