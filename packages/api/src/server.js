@@ -245,7 +245,7 @@ import {
   deleteSchedule
 } from "./core/schedule/schedule.js";
 
-import { getCalendarItems } from "./core/schedule/calendar.js";
+import { getCalendarItems, getBestTime } from "./core/schedule/calendar.js";
 
 /* ======================================================
    CAMPAIGNS V2
@@ -2050,6 +2050,9 @@ export default {
         }
          if (method === "GET" && path === "/api/customer/calendar")
            return withCors(request, getCalendarItems(request, env, auth));
+
+         if (method === "GET" && path === "/api/customer/best-time")
+           return withCors(request, getBestTime(request, env, auth));
 
          if (method === "GET" && path === "/api/customer/schedule")
            return withCors(request, getSchedule(request, env, auth));

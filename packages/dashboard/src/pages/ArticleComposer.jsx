@@ -321,7 +321,7 @@ function DomainAutosuggest({ value, onChange }) {
 }
 
 // ── Slide-over Verification Drawer ─────────────────────────────────────────────
-function VerificationPanel({ open, onClose, data, onPublish, onSchedule, onDraft, isPublishing, publishPhase, publishResult, onReset }) {
+function VerificationPanel({ open, onClose, data, onPublish, onSchedule, onDraft, isPublishing, publishPhase, publishResult, onReset, bestTimeData, onApplyBestTime }) {
   const { title, body, primaryKeyword, attachedImage, scheduledAt, timezone } = data;
   const validationResult = validateBlogArticle(title, body, primaryKeyword, attachedImage);
   
@@ -408,9 +408,25 @@ function VerificationPanel({ open, onClose, data, onPublish, onSchedule, onDraft
           </div>
 
           {scheduledAt && (
-            <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 7, padding: "10px 14px" }}>
+            <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 7, padding: "10px 14px", marginBottom: 12 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#1d4ed8", marginBottom: 2 }}>Scheduled for</div>
-              <div style={{ fontSize: 12, color: "#1e40af" }}>{new Date(scheduledAt).toLocaleString()} · {timezone}</div>
+              <div style={{ fontSize: 12, color: "#1e40af", marginBottom: bestTimeData?.proposedTime ? 6 : 0 }}>{new Date(scheduledAt).toLocaleString()} · {timezone}</div>
+              
+              {bestTimeData?.proposedTime && (
+                <button
+                  type="button"
+                  onClick={onApplyBestTime}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 5, width: "100%", justifyItems: "center", justifyContent: "center",
+                    background: "linear-gradient(135deg, #eff6ff, #f0fdf4)",
+                    border: "1px solid #bfdbfe", borderRadius: 6, padding: "6px 8px",
+                    fontSize: "11px", fontWeight: 700, color: "#1e3a8a", cursor: "pointer", transition: "all 0.15s"
+                  }}
+                  title="Align scheduled time with peak audience engagement window"
+                >
+                  💡 Snap to Recommended Best Time ({bestTimeData.proposedTime})
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -532,6 +548,27 @@ export default function ArticleComposer({ campaigns = [], editContentId, setEdit
 
   const [feedbackItem, setFeedbackItem] = useState(null);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [bestTimeData, setBestTimeData] = useState(null);
+
+  useEffect(() => {
+    apiRequest("/api/customer/best-time")
+      .then(res => setBestTimeData(res))
+      .catch(() => {});
+  }, []);
+
+  const handleApplyBestTime = () => {
+    if (!bestTimeData?.proposedTime) return;
+    const [h, m] = bestTimeData.proposedTime.split(":");
+    const baseDate = scheduledAt ? new Date(scheduledAt) : new Date();
+    if (isNaN(baseDate.getTime())) {
+      const today = new Date();
+      today.setHours(parseInt(h), parseInt(m), 0, 0);
+      setScheduledAt(today.toISOString().slice(0, 16));
+    } else {
+      baseDate.setHours(parseInt(h), parseInt(m), 0, 0);
+      setScheduledAt(baseDate.toISOString().slice(0, 16));
+    }
+  };
 
   const handleViewFeedback = async (item) => {
     setFeedbackItem(item);
@@ -1313,6 +1350,17 @@ export default function ArticleComposer({ campaigns = [], editContentId, setEdit
                   <i className="fas fa-calendar-alt text-success"></i> Scheduling
                 </div>
                 <input className="form-control form-control-sm extra-small mb-1" type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} min={new Date(Date.now() + 60000).toISOString().slice(0, 16)} style={{ borderRadius: 8, border: '1px solid #cbd5e1', padding: '4px 8px', fontSize: 12, outline: 'none' }} />
+                {bestTimeData?.proposedTime && (
+                  <button
+                    type="button"
+                    onClick={handleApplyBestTime}
+                    className="btn btn-sm btn-outline-success w-100 mt-1"
+                    style={{ fontSize: "10px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, borderRadius: 8 }}
+                    title={`Recommended peak engagement time: ${bestTimeData.proposedTime}`}
+                  >
+                    💡 Apply Best Time ({bestTimeData.proposedTime})
+                  </button>
+                )}
               </div>
 
               <div className="d-grid gap-2 mt-2">
@@ -1458,6 +1506,8 @@ export default function ArticleComposer({ campaigns = [], editContentId, setEdit
           handleNewArticle();
           loadTabCounts();
         }}
+        bestTimeData={bestTimeData}
+        onApplyBestTime={handleApplyBestTime}
       />
 
       {feedbackItem && (

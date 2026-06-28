@@ -49,7 +49,9 @@ const INTL_HOLIDAYS = [
   { md:"06-01", name:"Pride Month Begins",         color:"#a855f7", score:85 },
   { md:"06-21", name:"Father's Day",               color:"#3b82f6", score:88 },
   { md:"07-04", name:"US Independence Day",        color:"#ef4444", score:85, countries:["US","ZW"] },
+  { md:"07-07", name:"World Chocolate Day",        color:"#b45309", score:90 },
   { md:"09-22", name:"First Day of Fall",          color:"#f97316", score:70 },
+  { md:"10-01", name:"World Coffee Day",           color:"#8b5cf6", score:87 },
   { md:"10-10", name:"World Mental Health Day",    color:"#06b6d4", score:75 },
   { md:"10-31", name:"Halloween",                  color:"#f97316", score:90 },
   { md:"11-28", name:"Thanksgiving",               color:"#b45309", score:88, countries:["US"] },
@@ -57,7 +59,163 @@ const INTL_HOLIDAYS = [
   { md:"12-02", name:"Cyber Monday",               color:"#7c3aed", score:96 },
   { md:"12-25", name:"Christmas Day",              color:"#dc2626", score:92 },
   { md:"12-31", name:"New Year's Eve",             color:"#6366f1", score:85 },
+  { md:"03-20", name:"International Day of Happiness", color:"#e1306c", score:84 },
+  { md:"04-07", name:"World Health Day",           color:"#10b981", score:78 },
+  { md:"06-05", name:"World Environment Day",      color:"#16a34a", score:81 },
+  { md:"06-30", name:"World Social Media Day",     color:"#2563eb", score:93 },
+  { md:"07-01", name:"International Joke Day",     color:"#ec4899", score:70 },
+  { md:"08-19", name:"World Photography Day",      color:"#0ea5e9", score:77 },
+  { md:"09-05", name:"International Day of Charity", color:"#a855f7", score:74 },
+  { md:"10-16", name:"World Food Day",             color:"#f59e0b", score:80 },
 ];
+
+const HOLIDAY_IDEAS = {
+  "New Year's Day": [
+    "Share your brand's key strategic resolutions for the coming year.",
+    "Show gratitude to your clients and community for their trust last year.",
+    "Offer a New Year kick-off promo code or incentive."
+  ],
+  "Valentine's Day": [
+    "Run a 'Share the Love' customer appreciation story spotlight.",
+    "Offer a limited-time BOGO or partner-themed discount code.",
+    "Share a behind-the-scenes video showing what your team loves about their work."
+  ],
+  "International Women's Day": [
+    "Profile and celebrate female leaders or team members within your organization.",
+    "Highlight female-founded businesses or clients you support.",
+    "Share a quote or story of an influential woman who shaped your industry."
+  ],
+  "St. Patrick's Day": [
+    "Share a post about 'lucky breaks' or milestones your brand has had.",
+    "Run a themed discount code using 'LUCKY' or 'GREEN'.",
+    "Post a green-themed photo of your team or office workspace."
+  ],
+  "First Day of Spring": [
+    "Share tips on 'spring cleaning' processes relevant to your business.",
+    "Announce fresh updates, feature additions, or service packages.",
+    "Post about renewal, growth, and team energy matching the new season."
+  ],
+  "April Fools' Day": [
+    "Share a lighthearted joke or a humorous product concept (keep it safe!).",
+    "Post a list of funny customer/client myths vs. realities in your industry.",
+    "Run a 'no joke, just deals' flash discount campaign."
+  ],
+  "Earth Day": [
+    "Share your brand's green practices, recycling efforts, or sustainability targets.",
+    "Highlight tips on how your audience can reduce waste or energy in their daily lives.",
+    "Commit to planting a tree or donating a portion of today's sales to green charities."
+  ],
+  "Mother's Day": [
+    "Wish all the moms in your community and team a wonderful day.",
+    "Offer a special Mother's Day gift-guide or discount options.",
+    "Share stories of working moms balancing careers and family."
+  ],
+  "Pride Month Begins": [
+    "Express your brand's commitment to diversity, equity, and inclusion.",
+    "Highlight LGBTQ+ creators, businesses, or partners you support.",
+    "Share educational resources or support messages for pride initiatives."
+  ],
+  "Father's Day": [
+    "Wish all the dads on your team and in your audience a Happy Father's Day.",
+    "Share dad jokes related to your business or industry.",
+    "Offer a Father's Day discount or special bundle."
+  ],
+  "US Independence Day": [
+    "Wish your audience a happy 4th of July.",
+    "Announce holiday hours or special sales events.",
+    "Share photos of community celebrations or team gatherings."
+  ],
+  "World Chocolate Day": [
+    "Do a chocolate tasting or share a recipe relevant to your team.",
+    "Give away a premium box of local chocolates to a lucky follower.",
+    "Post about how small sweet treats help boost team morale."
+  ],
+  "First Day of Fall": [
+    "Share fall preparation checklists for your industry.",
+    "Announce autumn seasonal discounts or bundle offers.",
+    "Post cozy fall-themed design concepts or product mockups."
+  ],
+  "World Coffee Day": [
+    "Share a photo or reel of the team's morning coffee setup.",
+    "Ask a fun poll: 'Espresso or Filter coffee? Let us know in the comments!'",
+    "Partner with a local coffee shop to give away coffee vouchers."
+  ],
+  "World Mental Health Day": [
+    "Share steps your brand takes to prevent employee burnout.",
+    "Provide self-care tips or stress-management resources for your audience.",
+    "Normalize wellness discussions and post mental health support contacts."
+  ],
+  "Halloween": [
+    "Post photos of your team members in their Halloween costumes.",
+    "Share industry-themed 'horror stories' or mistakes to avoid.",
+    "Offer a spooky discount code like 'TREAT' for a limited time."
+  ],
+  "Thanksgiving": [
+    "Post a heartfelt thank-you letter to your audience, clients, and partners.",
+    "Highlight team members sharing what they are most grateful for this year.",
+    "Announce holiday hours and family time closures."
+  ],
+  "Black Friday": [
+    "Launch your biggest sale of the year with clear time-limits.",
+    "Highlight top products or packages that are heavily discounted.",
+    "Post real-time stock/availability count warnings."
+  ],
+  "Cyber Monday": [
+    "Highlight digital product or service packages with special rates.",
+    "Run a flash discount extending from Black Friday weekend.",
+    "Offer free setup, onboarding, or bonus content with purchase."
+  ],
+  "Christmas Day": [
+    "Wish your entire community, customers, and partners a Merry Christmas.",
+    "Post a warm, festive greeting photo from your team/family.",
+    "Highlight charitable giving or community support during the holidays."
+  ],
+  "New Year's Eve": [
+    "Share a countdown checklist or top achievements list from the past year.",
+    "Tease new designs, projects, or launches coming up in the next year.",
+    "Wish everyone a safe and exciting celebration night."
+  ],
+  "International Day of Happiness": [
+    "Ask your audience: 'What made you smile today?' and offer a freebie to the best answer.",
+    "Share a checklist of simple habits that boost workplace happiness.",
+    "Share positive feedback or wins from happy clients."
+  ],
+  "World Health Day": [
+    "Share healthy workspace tips (ergonomics, walking breaks, hydration).",
+    "Highlight health and safety standards in your operations.",
+    "Share links to reliable wellness check resources."
+  ],
+  "World Environment Day": [
+    "Share how your brand is working to reduce carbon footprint.",
+    "Highlight simple tips for paperless workflows or energy savings.",
+    "Encourage followers to do a community cleanup."
+  ],
+  "World Social Media Day": [
+    "Ask followers to share their favorite social media memory with your brand.",
+    "Share a checklist of social media best practices or tips.",
+    "Run a live Q&A session answering audience questions."
+  ],
+  "International Joke Day": [
+    "Share a clean, industry-relevant joke or funny meme.",
+    "Run a contest: 'Best business joke wins a custom audit report!'",
+    "Post a lighthearted blooper reel or funny behind-the-scenes moments."
+  ],
+  "World Photography Day": [
+    "Post a beautiful, high-quality photograph of your product or workspace.",
+    "Run a photo contest for your users, featuring prizes for the best shot.",
+    "Highlight the photographers, designers, or creators behind your brand visuals."
+  ],
+  "International Day of Charity": [
+    "Highlight a local charity or cause your team recently volunteered for.",
+    "Announce a profit-sharing campaign where 10% of today's sales go to charity.",
+    "Encourage community support and raise awareness for a social cause."
+  ],
+  "World Food Day": [
+    "Share the team's favorite lunch spots or recipes.",
+    "Raise awareness or support for local food banks or community gardens.",
+    "Offer a themed food-industry promotion or highlight local eateries."
+  ]
+};
 
 const COUNTRY_HOLIDAYS = {
   ZW: [
@@ -229,18 +387,20 @@ function PlatformPreview({ platform, caption, brandName, hasMedia }) {
     </div>
   );
 }
-
-// ─── Post Preview Cell (inside month/week cells) ──────────────────────────────
 function PostChip({ item, onSelect, isDragging, onDragStart, onDragEnd }) {
   const color = STATUS_COLOR[item.status] || "#94a3b8";
   const canDrag = item.status === "scheduled";
+  const displayLabel = (item.content_type === 'blog' || item.content_type === 'article')
+    ? (item.title || "Untitled Article")
+    : (item.caption || item.title || "Untitled Post");
+
   return (
     <div
       draggable={canDrag}
       onDragStart={canDrag ? (e) => { e.dataTransfer.setData("scheduler_item", JSON.stringify(item)); onDragStart?.(item); } : undefined}
       onDragEnd={onDragEnd}
       onClick={() => onSelect(item)}
-      title={item.title || "Untitled"}
+      title={item.caption || item.title || "Untitled"}
       style={{
         height: "26px", display: "flex", alignItems: "center", gap: "5px",
         padding: "0 6px", borderRadius: "5px", marginBottom: "3px",
@@ -260,7 +420,7 @@ function PostChip({ item, onSelect, isDragging, onDragStart, onDragEnd }) {
         <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: color, flexShrink: 0 }} />
       )}
       <span style={{ flex: 1, fontSize: "0.7rem", fontWeight: 600, color: "var(--text-main)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {item.title || "Untitled"}
+        {displayLabel}
       </span>
       <span style={{ fontSize: "0.6rem", flexShrink: 0 }}>{PLATFORM_ICON[item.platform] || "📌"}</span>
       <span style={{ fontSize: "0.6rem", color: "#94a3b8", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{fmtTime(item.date)}</span>
@@ -272,7 +432,7 @@ function PostChip({ item, onSelect, isDragging, onDragStart, onDragEnd }) {
 const CELL_H = 160;
 const MAX_PER_CELL = 3;
 
-function MonthGrid({ pivot, items, holidays, onSelect, onDayStack, dragItem, onDropCell }) {
+function MonthGrid({ pivot, items, holidays, onSelect, onDayStack, dragItem, onDropCell, onDragStart, onDragEnd, setSelectedHoliday }) {
   const days = useMemo(() => monthDays(pivot), [pivot]);
   const today = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d; }, []);
   const curMonth = pivot.getMonth();
@@ -359,7 +519,14 @@ function MonthGrid({ pivot, items, holidays, onSelect, onDayStack, dragItem, onD
                 {date.getDate()}
               </div>
               {dayHolidays.length > 0 && (
-                <div style={{ fontSize: "0.55rem", fontWeight: 800, color: dayHolidays[0].color, background: dayHolidays[0].color + "18", padding: "1px 5px", borderRadius: "4px", maxWidth: "80px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedHoliday?.(dayHolidays[0]);
+                  }}
+                  style={{ fontSize: "0.55rem", fontWeight: 800, color: dayHolidays[0].color, background: dayHolidays[0].color + "18", padding: "1px 5px", borderRadius: "4px", maxWidth: "80px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", border: `1px solid ${dayHolidays[0].color}30` }}
+                  title={`Click to view ideas for ${dayHolidays[0].name}`}
+                >
                   🎉 {dayHolidays[0].name}
                 </div>
               )}
@@ -373,8 +540,8 @@ function MonthGrid({ pivot, items, holidays, onSelect, onDayStack, dragItem, onD
                   item={item}
                   onSelect={onSelect}
                   isDragging={dragItem?.id === item.id}
-                  onDragStart={() => {}}
-                  onDragEnd={() => {}}
+                  onDragStart={onDragStart}
+                  onDragEnd={onDragEnd}
                 />
               ))}
             </div>
@@ -397,7 +564,7 @@ function MonthGrid({ pivot, items, holidays, onSelect, onDayStack, dragItem, onD
 }
 
 // ─── Week Grid ────────────────────────────────────────────────────────────────
-function WeekGrid({ pivot, items, holidays, onSelect, onSlotClick, dragItem, onDropCell }) {
+function WeekGrid({ pivot, items, holidays, onSelect, onSlotClick, dragItem, onDropCell, onDragStart, onDragEnd, setSelectedHoliday }) {
   const ws = useMemo(() => weekStart(pivot), [pivot]);
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(ws, i)), [ws]);
   const today = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d; }, []);
@@ -462,7 +629,15 @@ function WeekGrid({ pivot, items, holidays, onSelect, onSlotClick, dragItem, onD
               </div>
             </div>
             {dayHolidays.map(h => (
-              <div key={h.name} style={{ fontSize: "0.65rem", fontWeight: 800, color: h.color, background: h.color + "15", padding: "2px 6px", borderRadius: "4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <div
+                key={h.name}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedHoliday?.(h);
+                }}
+                style={{ fontSize: "0.65rem", fontWeight: 800, color: h.color, background: h.color + "15", padding: "2px 6px", borderRadius: "4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", border: `1px solid ${h.color}30` }}
+                title={`Click to view ideas for ${h.name}`}
+              >
                 🎉 {h.name}
               </div>
             ))}
@@ -472,8 +647,8 @@ function WeekGrid({ pivot, items, holidays, onSelect, onSlotClick, dragItem, onD
                 item={item}
                 onSelect={onSelect}
                 isDragging={dragItem?.id === item.id}
-                onDragStart={() => {}}
-                onDragEnd={() => {}}
+                onDragStart={onDragStart}
+                onDragEnd={onDragEnd}
               />
             ))}
             {dayItems.length === 0 && dayHolidays.length === 0 && (
@@ -882,6 +1057,17 @@ const CalendarSchedule = ({ activeBrand, onScheduleNew }) => {
   const [stackHolidays, setStackHolidays] = useState([]);
   const [dragItem, setDragItem]     = useState(null);
   const [conflictMsg, setConflictMsg] = useState(null);
+  const [selectedHoliday, setSelectedHoliday] = useState(null);
+  const [bestTimeData, setBestTimeData] = useState(null);
+  const [clashData, setClashData] = useState(null);
+
+  useEffect(() => {
+    if (activeBrand?.id) {
+      apiRequest("/api/customer/best-time")
+        .then(res => setBestTimeData(res))
+        .catch(() => {});
+    }
+  }, [activeBrand?.id]);
 
   const countryCode = activeBrand?.country || activeBrand?.country_code || null;
   const brandName   = activeBrand?.name || "Your Brand";
@@ -938,6 +1124,27 @@ const CalendarSchedule = ({ activeBrand, onScheduleNew }) => {
     const orig = new Date(droppedItem.date);
     const newDt = new Date(targetDate);
     newDt.setHours(orig.getHours(), orig.getMinutes(), 0, 0);
+
+    // Check for clash
+    const clash = items.find(item => {
+      if (item.id === droppedItem.id) return false;
+      const itemDt = new Date(item.date);
+      return itemDt.toDateString() === newDt.toDateString() &&
+             itemDt.getHours() === newDt.getHours() &&
+             itemDt.getMinutes() === newDt.getMinutes();
+    });
+
+    if (clash) {
+      const hours = String(orig.getHours()).padStart(2, '0');
+      const minutes = String(orig.getMinutes()).padStart(2, '0');
+      setClashData({
+        item: droppedItem,
+        targetDate,
+        proposedTime: `${hours}:${minutes}`
+      });
+      return;
+    }
+
     try {
       await apiRequest(`/api/customer/schedule/${droppedItem.id}`, {
         method: "PUT",
@@ -953,7 +1160,7 @@ const CalendarSchedule = ({ activeBrand, onScheduleNew }) => {
       );
       setTimeout(() => setConflictMsg(null), 4000);
     }
-  }, [fetchItems]);
+  }, [items, fetchItems]);
 
   const handleReschedule = useCallback(async (jobId, newIso) => {
     await apiRequest(`/api/customer/schedule/${jobId}`, {
@@ -1053,15 +1260,44 @@ const CalendarSchedule = ({ activeBrand, onScheduleNew }) => {
             {upcomingHolidays.map(h => {
               const days = Math.ceil((new Date(h.date) - new Date()) / 86400000);
               return (
-                <div key={h.date + h.name} style={{
-                  display: "flex", alignItems: "center", gap: "5px", padding: "4px 10px",
-                  background: h.color + "12", border: `1px solid ${h.color}30`,
-                  borderRadius: "6px", fontSize: "0.7rem", fontWeight: 700, color: h.color,
-                }}>
-                  <Zap size={10} /> {h.name} <span style={{ opacity: 0.7 }}>· {days}d</span>
+                <div
+                  key={h.date + h.name}
+                  onClick={() => setSelectedHoliday?.(h)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: "5px", padding: "4px 10px",
+                    background: h.color + "12", border: `1px solid ${h.color}30`,
+                    borderRadius: "6px", fontSize: "0.7rem", fontWeight: 700, color: h.color,
+                    cursor: "pointer"
+                  }}
+                  title={`Click to view ideas for ${h.name}`}
+                >
+                  <Zap size={10} /> {h.name} <span style={{ opacity: 0.7 }}>· {days}d ↗</span>
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Best time advisory banner */}
+        {bestTimeData && (
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            background: "linear-gradient(135deg, #eff6ff, #f0fdf4)",
+            border: "1px solid #dbeafe",
+            borderRadius: "10px",
+            padding: "10px 14px",
+            marginTop: "12px",
+            fontSize: "0.8rem",
+            color: "#1e3a8a",
+            fontWeight: 500,
+            boxShadow: "0 1px 2px rgba(0,0,0,0.02)"
+          }}>
+            <span style={{ fontSize: "1.1rem" }}>💡</span>
+            <div>
+              <strong>Best Time to Post:</strong> {bestTimeData.proposedTime} on {bestTimeData.bestDays.slice(0, 2).join(" & ")}. {bestTimeData.explanation}
+            </div>
           </div>
         )}
       </div>
@@ -1105,6 +1341,9 @@ const CalendarSchedule = ({ activeBrand, onScheduleNew }) => {
               }}
               dragItem={dragItem}
               onDropCell={handleDropCell}
+              onDragStart={setDragItem}
+              onDragEnd={() => setDragItem(null)}
+              setSelectedHoliday={setSelectedHoliday}
             />
           )}
           {view === "week" && (
@@ -1114,6 +1353,9 @@ const CalendarSchedule = ({ activeBrand, onScheduleNew }) => {
               onSlotClick={onScheduleNew}
               dragItem={dragItem}
               onDropCell={handleDropCell}
+              onDragStart={setDragItem}
+              onDragEnd={() => setDragItem(null)}
+              setSelectedHoliday={setSelectedHoliday}
             />
           )}
           {view === "day" && (
@@ -1162,6 +1404,25 @@ const CalendarSchedule = ({ activeBrand, onScheduleNew }) => {
         />
       )}
 
+      {/* ── Holiday Ideas Modal ── */}
+      {selectedHoliday && (
+        <HolidayIdeasModal
+          holiday={selectedHoliday}
+          onClose={() => setSelectedHoliday(null)}
+          onScheduleNew={onScheduleNew}
+        />
+      )}
+
+      {/* ── Reschedule Conflict Modal ── */}
+      {clashData && (
+        <ScheduleConflictModal
+          clashData={clashData}
+          onClose={() => setClashData(null)}
+          onReschedule={handleReschedule}
+          bestTime={bestTimeData?.proposedTime}
+        />
+      )}
+
       <style>{`
         .spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -1169,5 +1430,147 @@ const CalendarSchedule = ({ activeBrand, onScheduleNew }) => {
     </>
   );
 };
+
+// ─── Holiday Content Ideas Modal ──────────────────────────────────────────────
+function HolidayIdeasModal({ holiday, onClose, onScheduleNew }) {
+  const ideas = HOLIDAY_IDEAS[holiday.name] || [
+    `Share how your brand connects with ${holiday.name}.`,
+    `Provide tips or special content for ${holiday.name}.`,
+    `Engage your community with a thematic poll or contest.`
+  ];
+
+  const handleCreatePost = () => {
+    sessionStorage.setItem("studio_idea_prefill", JSON.stringify({
+      hook: `Celebrating ${holiday.name}! 🎉`,
+      caption: `Write a post celebrating ${holiday.name} and sharing how our brand values connect to this day.`
+    }));
+    onClose();
+    onScheduleNew(); // Switch to composer
+  };
+
+  return (
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Holiday Content Ideas">
+      <div className="notif-prefs-panel" style={{ maxWidth: 450, width: "90%" }}>
+        <div className="notif-prefs-header" style={{ borderBottom: `2px solid ${holiday.color}` }}>
+          <h3 className="notif-prefs-title" style={{ color: holiday.color }}>
+            🎉 {holiday.name} Content Ideas
+          </h3>
+          <button className="verify-modal__close" onClick={onClose} aria-label="Close">
+            ✕
+          </button>
+        </div>
+
+        <div style={{ padding: "16px 20px 20px" }}>
+          <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginBottom: 12, fontWeight: 700 }}>
+            DATE: {new Date(holiday.date).toLocaleDateString("en-US", { month: "long", day: "numeric", weekday: "long" })}
+          </div>
+
+          <div style={{ background: holiday.color + "08", border: `1px dashed ${holiday.color}40`, borderRadius: 8, padding: 12, marginBottom: 16 }}>
+            <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-main)", display: "block", marginBottom: 8 }}>
+              💡 Brand Content Ideas:
+            </span>
+            <ul style={{ margin: 0, paddingLeft: 18, fontSize: "0.8rem", color: "var(--text-main)", lineHeight: 1.6 }}>
+              {ideas.map((idea, idx) => (
+                <li key={idx} style={{ marginBottom: 6 }}>{idea}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+            Clicking "Create Post with AI" will pre-fill the Social Post Composer with a holiday theme prompt to build your content instantly.
+          </div>
+        </div>
+
+        <div className="notif-prefs-footer" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          <button className="auth-btn-secondary" onClick={onClose} style={{ margin: 0, padding: "8px 16px" }}>
+            Close
+          </button>
+          <button
+            className="auth-btn-primary"
+            onClick={handleCreatePost}
+            style={{ margin: 0, padding: "8px 16px", background: holiday.color, borderColor: holiday.color }}
+          >
+            Create Post with AI →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Reschedule Conflict Modal ────────────────────────────────────────────────
+function ScheduleConflictModal({ clashData, onClose, onReschedule, bestTime }) {
+  const { item, targetDate, proposedTime } = clashData;
+  const [selectedTime, setSelectedTime] = useState(proposedTime);
+
+  const handleSave = () => {
+    const [h, m] = selectedTime.split(":");
+    const finalDt = new Date(targetDate);
+    finalDt.setHours(parseInt(h), parseInt(m), 0, 0);
+    onReschedule(item.id, finalDt.toISOString());
+    onClose();
+  };
+
+  return (
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Reschedule Conflict">
+      <div className="notif-prefs-panel" style={{ maxWidth: 420, width: "90%" }}>
+        <div className="notif-prefs-header">
+          <h3 className="notif-prefs-title" style={{ color: "var(--status-warning)" }}>
+            ⚠️ Scheduling Conflict
+          </h3>
+          <button className="verify-modal__close" onClick={onClose} aria-label="Close">
+            ✕
+          </button>
+        </div>
+
+        <div style={{ padding: "16px 20px 20px" }}>
+          <div style={{ fontSize: "0.85rem", color: "var(--text-main)", marginBottom: 12 }}>
+            There is already a post scheduled at <strong>{proposedTime}</strong> on <strong>{targetDate.toLocaleDateString("en-GB", { day: 'numeric', month: 'short' })}</strong>.
+          </div>
+
+          <div style={{ background: "var(--bg-body)", border: "1px solid var(--border-subtle)", borderRadius: 8, padding: 12, marginBottom: 14 }}>
+            <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "var(--text-muted)", marginBottom: 6 }}>
+              CHOOSE A NEW SLOT:
+            </label>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <input
+                type="time"
+                className="form-control form-control-sm border-subtle"
+                style={{ fontSize: 13, padding: "5px 8px", borderRadius: 6, width: 120, background: "#fff" }}
+                value={selectedTime}
+                onChange={e => setSelectedTime(e.target.value)}
+              />
+              {bestTime && (
+                <button
+                  onClick={() => setSelectedTime(bestTime)}
+                  style={{
+                    background: "linear-gradient(135deg, #eff6ff, #f0fdf4)",
+                    border: "1px solid #bfdbfe", borderRadius: 6, padding: "4px 8px",
+                    fontSize: "0.7rem", fontWeight: 700, color: "#1e3a8a", cursor: "pointer"
+                  }}
+                >
+                  💡 Use Best Time ({bestTime})
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="notif-prefs-footer" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          <button className="auth-btn-secondary" onClick={onClose} style={{ margin: 0, padding: "8px 16px" }}>
+            Cancel
+          </button>
+          <button
+            className="auth-btn-primary"
+            onClick={handleSave}
+            style={{ margin: 0, padding: "8px 16px" }}
+          >
+            Reschedule
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default CalendarSchedule;

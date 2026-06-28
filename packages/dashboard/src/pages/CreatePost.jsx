@@ -331,7 +331,7 @@ const PUBLISH_PHASES = {
   failed:     { label: "Publish failed",       icon: "fas fa-times-circle", color: "#ef4444" },
 };
 
-function VerificationPanel({ open, onClose, data, onPublish, onSchedule, onDraft, isPublishing, publishPhase, publishResult, onReset }) {
+function VerificationPanel({ open, onClose, data, onPublish, onSchedule, onDraft, isPublishing, publishPhase, publishResult, onReset, bestTimeData, onApplyBestTime }) {
   const { platforms, content, overrides, media, scheduledTime, timezone } = data;
   const mainMedia = media?.[0];
   const mediaType = mainMedia?.type || (mainMedia?.mime_type?.startsWith("video/") ? "video" : (mainMedia?.url ? "image" : null));
@@ -440,9 +440,25 @@ function VerificationPanel({ open, onClose, data, onPublish, onSchedule, onDraft
           </div>
 
           {scheduledTime && (
-            <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 7, padding: "10px 14px" }}>
+            <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 7, padding: "10px 14px", marginBottom: 12 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#1d4ed8", marginBottom: 2 }}>Scheduled for</div>
-              <div style={{ fontSize: 12, color: "#1e40af" }}>{new Date(scheduledTime).toLocaleString()} · {timezone}</div>
+              <div style={{ fontSize: 12, color: "#1e40af", marginBottom: bestTimeData?.proposedTime ? 6 : 0 }}>{new Date(scheduledTime).toLocaleString()} · {timezone}</div>
+              
+              {bestTimeData?.proposedTime && (
+                <button
+                  type="button"
+                  onClick={onApplyBestTime}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 5, width: "100%", justifyItems: "center", justifyContent: "center",
+                    background: "linear-gradient(135deg, #eff6ff, #f0fdf4)",
+                    border: "1px solid #bfdbfe", borderRadius: 6, padding: "6px 8px",
+                    fontSize: "11px", fontWeight: 700, color: "#1e3a8a", cursor: "pointer", transition: "all 0.15s"
+                  }}
+                  title="Align scheduled time with peak audience engagement window"
+                >
+                  💡 Snap to Recommended Best Time ({bestTimeData.proposedTime})
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -598,6 +614,27 @@ export default function CreatePost({
   const [toast, setToast]                   = useState(null);
   const [overlays, setOverlays]             = useState(null);
   const [brandOverlayOpen, setBrandOverlayOpen] = useState(false);
+  const [bestTimeData, setBestTimeData] = useState(null);
+
+  useEffect(() => {
+    apiRequest("/api/customer/best-time")
+      .then(res => setBestTimeData(res))
+      .catch(() => {});
+  }, []);
+
+  const handleApplyBestTime = () => {
+    if (!bestTimeData?.proposedTime) return;
+    const [h, m] = bestTimeData.proposedTime.split(":");
+    const baseDate = scheduledTime ? new Date(scheduledTime) : new Date();
+    if (isNaN(baseDate.getTime())) {
+      const today = new Date();
+      today.setHours(parseInt(h), parseInt(m), 0, 0);
+      setScheduledTime(today.toISOString().slice(0, 16));
+    } else {
+      baseDate.setHours(parseInt(h), parseInt(m), 0, 0);
+      setScheduledTime(baseDate.toISOString().slice(0, 16));
+    }
+  };
   const [applyOverlay, setApplyOverlay]     = useState(true);
   const [saveState, setSaveState]           = useState("idle");
 
@@ -1838,6 +1875,20 @@ export default function CreatePost({
               value={scheduledTime}
               onChange={e => setScheduledTime(e.target.value)}
             />
+            {bestTimeData?.proposedTime && (
+              <button
+                type="button"
+                onClick={handleApplyBestTime}
+                style={{
+                  background: "linear-gradient(135deg, #eff6ff, #f0fdf4)",
+                  border: "1px solid #bfdbfe", borderRadius: 6, padding: "4px 8px",
+                  fontSize: "10px", fontWeight: 700, color: "#1e3a8a", cursor: "pointer", marginLeft: 4
+                }}
+                title={`Recommended peak engagement time: ${bestTimeData.proposedTime}`}
+              >
+                💡 Best Time ({bestTimeData.proposedTime})
+              </button>
+            )}
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -2098,6 +2149,8 @@ export default function CreatePost({
         publishPhase={publishPhase}
         publishResult={publishResult}
         onReset={resetAfterPublish}
+        bestTimeData={bestTimeData}
+        onApplyBestTime={handleApplyBestTime}
       />
 
       {feedbackItem && (
