@@ -1069,7 +1069,14 @@ const CalendarSchedule = ({ activeBrand, onScheduleNew }) => {
     }
   }, [activeBrand?.id]);
 
-  const countryCode = activeBrand?.country || activeBrand?.country_code || null;
+  const [selectedCountry, setSelectedCountry] = useState(activeBrand?.country || activeBrand?.country_code || "US");
+
+  useEffect(() => {
+    if (activeBrand) {
+      setSelectedCountry(activeBrand.country || activeBrand.country_code || "US");
+    }
+  }, [activeBrand]);
+
   const brandName   = activeBrand?.name || "Your Brand";
 
   const range = useMemo(() => rangeForView(view, pivot), [view, pivot]);
@@ -1082,7 +1089,7 @@ const CalendarSchedule = ({ activeBrand, onScheduleNew }) => {
     return range;
   }, [view, pivot, range]);
 
-  const holidays = useMemo(() => getHolidaysInRange(fetchFrom.from, fetchFrom.to, countryCode), [fetchFrom.from, fetchFrom.to, countryCode]);
+  const holidays = useMemo(() => getHolidaysInRange(fetchFrom.from, fetchFrom.to, selectedCountry), [fetchFrom.from, fetchFrom.to, selectedCountry]);
 
   const fetchItems = useCallback(async () => {
     if (!token || !activeBrand?.id) return;
@@ -1194,7 +1201,7 @@ const CalendarSchedule = ({ activeBrand, onScheduleNew }) => {
     published:  items.filter(i => i.status === "published").length,
   }), [items]);
 
-  const upcomingHolidays = useMemo(() => getHolidaysInRange(new Date(), addDays(new Date(), 14), countryCode).slice(0, 4), [countryCode]);
+  const upcomingHolidays = useMemo(() => getHolidaysInRange(new Date(), addDays(new Date(), 14), selectedCountry).slice(0, 4), [selectedCountry]);
 
   return (
     <>
@@ -1238,6 +1245,29 @@ const CalendarSchedule = ({ activeBrand, onScheduleNew }) => {
           <button onClick={goToday} style={{ padding: "7px 14px", border: "1px solid var(--border-subtle)", borderRadius: "8px", background: "var(--surface-secondary)", fontSize: "0.75rem", fontWeight: 800, color: "var(--text-muted)", cursor: "pointer" }}>
             Today
           </button>
+          <select 
+            value={selectedCountry} 
+            onChange={(e) => setSelectedCountry(e.target.value)}
+            style={{
+              padding: "7px 14px",
+              border: "1px solid var(--border-subtle)",
+              borderRadius: "8px",
+              background: "var(--surface-secondary)",
+              fontSize: "0.75rem",
+              fontWeight: 800,
+              color: "var(--text-muted)",
+              cursor: "pointer",
+              outline: "none"
+            }}
+          >
+            <option value="US">🇺🇸 United States</option>
+            <option value="GB">🇬🇧 United Kingdom</option>
+            <option value="CA">🇨🇦 Canada</option>
+            <option value="AU">🇦🇺 Australia</option>
+            <option value="ZA">🇿🇦 South Africa</option>
+            <option value="ZW">🇿🇼 Zimbabwe</option>
+            <option value="NG">🇳🇬 Nigeria</option>
+          </select>
           <div style={{ marginLeft: "auto", display: "flex", background: "var(--surface-secondary)", border: "1px solid var(--border-subtle)", borderRadius: "8px", padding: "2px", gap: "2px" }}>
             {VIEWS.map(v => (
               <button key={v.id} onClick={() => setView(v.id)} style={{
@@ -1440,58 +1470,60 @@ function HolidayIdeasModal({ holiday, onClose, onScheduleNew }) {
   ];
 
   const handleCreatePost = () => {
-    sessionStorage.setItem("studio_idea_prefill", JSON.stringify({
-      hook: `Celebrating ${holiday.name}! 🎉`,
-      caption: `Write a post celebrating ${holiday.name} and sharing how our brand values connect to this day.`
-    }));
     onClose();
-    onScheduleNew(); // Switch to composer
+    window.dispatchEvent(new CustomEvent('open-assistant', {
+      detail: {
+        additionalContext: `Write a social post celebrating ${holiday.name} on ${new Date(holiday.date).toLocaleDateString("en-US", { month: "long", day: "numeric" })} and sharing how our brand connects to this day.`
+      }
+    }));
   };
 
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Holiday Content Ideas">
-      <div className="notif-prefs-panel" style={{ maxWidth: 450, width: "90%" }}>
-        <div className="notif-prefs-header" style={{ borderBottom: `2px solid ${holiday.color}` }}>
-          <h3 className="notif-prefs-title" style={{ color: holiday.color }}>
-            🎉 {holiday.name} Content Ideas
-          </h3>
-          <button className="verify-modal__close" onClick={onClose} aria-label="Close">
-            ✕
-          </button>
-        </div>
-
-        <div style={{ padding: "16px 20px 20px" }}>
-          <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginBottom: 12, fontWeight: 700 }}>
-            DATE: {new Date(holiday.date).toLocaleDateString("en-US", { month: "long", day: "numeric", weekday: "long" })}
+    <div className="modal fade show d-block" role="dialog" aria-modal="true" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1100 }}>
+      <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: '480px' }}>
+        <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '16px', overflow: 'hidden' }}>
+          
+          <div className="modal-header border-bottom px-4 py-3" style={{ borderLeft: `5px solid ${holiday.color}` }}>
+            <h5 className="modal-title fw-bold" style={{ color: 'var(--text-main)' }}>
+              🎉 {holiday.name} Content Ideas
+            </h5>
+            <button type="button" className="btn-close" onClick={onClose} aria-label="Close"></button>
           </div>
 
-          <div style={{ background: holiday.color + "08", border: `1px dashed ${holiday.color}40`, borderRadius: 8, padding: 12, marginBottom: 16 }}>
-            <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-main)", display: "block", marginBottom: 8 }}>
-              💡 Brand Content Ideas:
-            </span>
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: "0.8rem", color: "var(--text-main)", lineHeight: 1.6 }}>
-              {ideas.map((idea, idx) => (
-                <li key={idx} style={{ marginBottom: 6 }}>{idea}</li>
-              ))}
-            </ul>
+          <div className="modal-body p-4">
+            <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginBottom: 16, fontWeight: 700 }}>
+              DATE: {new Date(holiday.date).toLocaleDateString("en-US", { month: "long", day: "numeric", weekday: "long" })}
+            </div>
+
+            <div style={{ background: holiday.color + "08", border: `1px dashed ${holiday.color}40`, borderRadius: 12, padding: 16, marginBottom: 20 }}>
+              <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-main)", display: "block", marginBottom: 10 }}>
+                💡 Brand Content Ideas:
+              </span>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: "0.82rem", color: "var(--text-main)", lineHeight: 1.6 }}>
+                {ideas.map((idea, idx) => (
+                  <li key={idx} style={{ marginBottom: 8 }}>{idea}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
+              Clicking "Create Post with AI" will launch the myPilotPost Assistant pre-filled with this holiday prompt to build your content instantly.
+            </div>
           </div>
 
-          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-            Clicking "Create Post with AI" will pre-fill the Social Post Composer with a holiday theme prompt to build your content instantly.
+          <div className="modal-footer border-top px-4 py-3 d-flex gap-2 justify-content-end bg-light">
+            <button className="btn btn-secondary px-3 py-2" onClick={onClose} style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+              Close
+            </button>
+            <button
+              className="btn btn-primary px-4 py-2"
+              onClick={handleCreatePost}
+              style={{ fontSize: '0.85rem', fontWeight: 700, background: holiday.color, borderColor: holiday.color }}
+            >
+              Create Post with AI →
+            </button>
           </div>
-        </div>
 
-        <div className="notif-prefs-footer" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-          <button className="auth-btn-secondary" onClick={onClose} style={{ margin: 0, padding: "8px 16px" }}>
-            Close
-          </button>
-          <button
-            className="auth-btn-primary"
-            onClick={handleCreatePost}
-            style={{ margin: 0, padding: "8px 16px", background: holiday.color, borderColor: holiday.color }}
-          >
-            Create Post with AI →
-          </button>
         </div>
       </div>
     </div>
@@ -1512,61 +1544,63 @@ function ScheduleConflictModal({ clashData, onClose, onReschedule, bestTime }) {
   };
 
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Reschedule Conflict">
-      <div className="notif-prefs-panel" style={{ maxWidth: 420, width: "90%" }}>
-        <div className="notif-prefs-header">
-          <h3 className="notif-prefs-title" style={{ color: "var(--status-warning)" }}>
-            ⚠️ Scheduling Conflict
-          </h3>
-          <button className="verify-modal__close" onClick={onClose} aria-label="Close">
-            ✕
-          </button>
-        </div>
-
-        <div style={{ padding: "16px 20px 20px" }}>
-          <div style={{ fontSize: "0.85rem", color: "var(--text-main)", marginBottom: 12 }}>
-            There is already a post scheduled at <strong>{proposedTime}</strong> on <strong>{targetDate.toLocaleDateString("en-GB", { day: 'numeric', month: 'short' })}</strong>.
+    <div className="modal fade show d-block" role="dialog" aria-modal="true" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1100 }}>
+      <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: '420px' }}>
+        <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '16px', overflow: 'hidden' }}>
+          
+          <div className="modal-header border-bottom px-4 py-3">
+            <h5 className="modal-title fw-bold text-warning">
+              ⚠️ Scheduling Conflict
+            </h5>
+            <button type="button" className="btn-close" onClick={onClose} aria-label="Close"></button>
           </div>
 
-          <div style={{ background: "var(--bg-body)", border: "1px solid var(--border-subtle)", borderRadius: 8, padding: 12, marginBottom: 14 }}>
-            <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "var(--text-muted)", marginBottom: 6 }}>
-              CHOOSE A NEW SLOT:
-            </label>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <input
-                type="time"
-                className="form-control form-control-sm border-subtle"
-                style={{ fontSize: 13, padding: "5px 8px", borderRadius: 6, width: 120, background: "#fff" }}
-                value={selectedTime}
-                onChange={e => setSelectedTime(e.target.value)}
-              />
-              {bestTime && (
-                <button
-                  onClick={() => setSelectedTime(bestTime)}
-                  style={{
-                    background: "linear-gradient(135deg, #eff6ff, #f0fdf4)",
-                    border: "1px solid #bfdbfe", borderRadius: 6, padding: "4px 8px",
-                    fontSize: "0.7rem", fontWeight: 700, color: "#1e3a8a", cursor: "pointer"
-                  }}
-                >
-                  💡 Use Best Time ({bestTime})
-                </button>
-              )}
+          <div className="modal-body p-4">
+            <div style={{ fontSize: "0.85rem", color: "var(--text-main)", marginBottom: 16, lineHeight: 1.5 }}>
+              There is already a post scheduled at <strong>{proposedTime}</strong> on <strong>{targetDate.toLocaleDateString("en-GB", { day: 'numeric', month: 'short' })}</strong>.
+            </div>
+
+            <div style={{ background: "var(--bg-body)", border: "1px solid var(--border-subtle)", borderRadius: 12, padding: 16, marginBottom: 14 }}>
+              <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "var(--text-muted)", marginBottom: 10 }}>
+                CHOOSE A NEW SLOT:
+              </label>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <input
+                  type="time"
+                  className="form-control form-control-sm border-subtle"
+                  style={{ fontSize: 13, padding: "6px 10px", borderRadius: 8, width: 120, background: "#fff", border: '1px solid var(--border-subtle)' }}
+                  value={selectedTime}
+                  onChange={e => setSelectedTime(e.target.value)}
+                />
+                {bestTime && (
+                  <button
+                    onClick={() => setSelectedTime(bestTime)}
+                    style={{
+                      background: "linear-gradient(135deg, #eff6ff, #f0fdf4)",
+                      border: "1px solid #bfdbfe", borderRadius: 8, padding: "6px 12px",
+                      fontSize: "0.75rem", fontWeight: 700, color: "#1e3a8a", cursor: "pointer", transition: 'all 0.15s'
+                    }}
+                  >
+                    💡 Use Best Time ({bestTime})
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="notif-prefs-footer" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-          <button className="auth-btn-secondary" onClick={onClose} style={{ margin: 0, padding: "8px 16px" }}>
-            Cancel
-          </button>
-          <button
-            className="auth-btn-primary"
-            onClick={handleSave}
-            style={{ margin: 0, padding: "8px 16px" }}
-          >
-            Reschedule
-          </button>
+          <div className="modal-footer border-top px-4 py-3 d-flex gap-2 justify-content-end bg-light">
+            <button className="btn btn-secondary px-3 py-2" onClick={onClose} style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+              Cancel
+            </button>
+            <button
+              className="btn btn-primary px-4 py-2"
+              onClick={handleSave}
+              style={{ fontSize: '0.85rem', fontWeight: 700 }}
+            >
+              Reschedule
+            </button>
+          </div>
+
         </div>
       </div>
     </div>

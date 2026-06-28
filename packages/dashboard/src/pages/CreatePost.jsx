@@ -607,6 +607,16 @@ export default function CreatePost({
   const [selectedVaultItem, setSelectedVaultItem] = useState(null);
   const [tabCounts, setTabCounts]           = useState({ drafts: 0, scheduled: 0, approvals: 0 });
   const [assistantOpen, setAssistantOpen]   = useState(false);
+  const [assistantPrefill, setAssistantPrefill] = useState("");
+
+  useEffect(() => {
+    const handleTrigger = (e) => {
+      setAssistantPrefill(e.detail || "");
+      setAssistantOpen(true);
+    };
+    window.addEventListener('trigger-social-assistant', handleTrigger);
+    return () => window.removeEventListener('trigger-social-assistant', handleTrigger);
+  }, []);
   const [verificationOpen, setVerificationOpen] = useState(false);
   const [publishPhase, setPublishPhase]     = useState("idle"); // idle|creating|linking|scheduling|queued|failed
   const [publishResult, setPublishResult]   = useState(null);  // { content_id, platforms }
@@ -617,7 +627,7 @@ export default function CreatePost({
   const [bestTimeData, setBestTimeData] = useState(null);
 
   useEffect(() => {
-    apiRequest("/api/customer/best-time")
+    apiFetch("/api/customer/best-time")
       .then(res => setBestTimeData(res))
       .catch(() => {});
   }, []);
@@ -1013,7 +1023,7 @@ export default function CreatePost({
     setFeedbackItem(item);
     setFeedbackLoading(true);
     try {
-      const details = await apiRequest(`/api/customer/vault/${item.id || item.content_id}`);
+      const details = await apiFetch(`/api/customer/vault/${item.id || item.content_id}`);
       setFeedbackItem(prev => prev && prev.id === item.id ? { ...prev, approval_history: details.approval_history } : prev);
     } catch (e) {
       console.error("Failed to load feedback details", e);
@@ -2126,9 +2136,10 @@ export default function CreatePost({
       {assistantOpen && (
         <SocialAssistantModal
           isOpen={assistantOpen}
-          onClose={() => setAssistantOpen(false)}
+          onClose={() => { setAssistantOpen(false); setAssistantPrefill(""); }}
           onComplete={handleAssistantGenerate}
           connections={filteredConnections}
+          prefillIdea={assistantPrefill}
         />
       )}
 

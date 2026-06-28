@@ -82,7 +82,7 @@ export async function getInvites(request, env, auth) {
   const db = getDB(env);
 
   const { results } = await db.prepare(`
-    SELECT id, email, role, status, created_at, expires_at
+    SELECT id, email, role, status, token, created_at, expires_at
     FROM invites
     WHERE brand_id = ? AND status = 'pending'
     ORDER BY created_at DESC

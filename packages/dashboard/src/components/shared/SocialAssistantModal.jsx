@@ -228,7 +228,7 @@ function GeneratingScreen({ platforms }) {
 }
 
 // ── Main modal ─────────────────────────────────────────────────────────────────
-export default function SocialAssistantModal({ isOpen, onClose, onComplete, connections = [] }) {
+export default function SocialAssistantModal({ isOpen, onClose, onComplete, connections = [], prefillIdea = "" }) {
   const [step,       setStep]       = useState(1);
   const [generating, setGenerating] = useState(false);
   const [genError,   setGenError]   = useState(null);
@@ -240,6 +240,13 @@ export default function SocialAssistantModal({ isOpen, onClose, onComplete, conn
   const [mode,       setMode]       = useState(null);   // null=choose, "generate"|"improve"
   const [postIdea,   setPostIdea]   = useState("");
   const [result,     setResult]     = useState(null);
+
+  useEffect(() => {
+    if (isOpen && prefillIdea) {
+      setPostIdea(prefillIdea);
+      setMode("improve");
+    }
+  }, [isOpen, prefillIdea]);
 
   if (!isOpen) return null;
 

@@ -335,11 +335,19 @@ function App() {
     const handleRefresh = () => {
       setListVersion(v => v + 1);
     };
+    const handleOpenAssistant = (e) => {
+      setActiveTab('social');
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('trigger-social-assistant', { detail: e.detail?.additionalContext || "" }));
+      }, 50);
+    };
     window.addEventListener('switch-tab', handleSwitch);
     window.addEventListener('refresh-data', handleRefresh);
+    window.addEventListener('open-assistant', handleOpenAssistant);
     return () => {
       window.removeEventListener('switch-tab', handleSwitch);
       window.removeEventListener('refresh-data', handleRefresh);
+      window.removeEventListener('open-assistant', handleOpenAssistant);
     };
   }, []);
 

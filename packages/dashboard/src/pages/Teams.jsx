@@ -46,6 +46,10 @@ function MembersTab({ brandId }) {
 
   return (
     <div>
+      <div style={{ background: 'var(--surface-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 10, padding: '12px 16px', marginBottom: 16, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+        <i className="fas fa-info-circle" style={{ color: 'var(--pilot-blue)', marginRight: 8 }}></i>
+        <strong>Team Members</strong> have active dashboard accounts. They can log in to collaborate, compose posts, review calendars, and manage integrations according to their roles.
+      </div>
       {loading ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Loading…</div>
       : members.length === 0 ? <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No team members yet.</div>
       : (
@@ -132,6 +136,11 @@ function InvitesTab({ brandId }) {
 
   return (
     <div style={{ padding: 20 }}>
+      <div style={{ background: 'var(--surface-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 10, padding: '12px 16px', marginBottom: 16, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+        <i className="fas fa-info-circle" style={{ color: 'var(--pilot-blue)', marginRight: 8 }}></i>
+        <strong>Pending Invites</strong> sent to new collaborators. Once they register, they will appear in the <strong>Members</strong> tab. If they don't receive the email, you can copy their invite link directly from this list and share it manually!
+      </div>
+
       <form onSubmit={invite} style={{ display: 'flex', gap: 10, marginBottom: 24, flexWrap: 'wrap', background: 'var(--surface-secondary)', padding: 16, borderRadius: 12, border: '1px solid var(--border-subtle)' }}>
         <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address" required
           style={{ flex: 1, minWidth: 200, padding: '9px 12px', border: '1.5px solid var(--border-subtle)', borderRadius: 8, fontSize: '0.875rem', outline: 'none' }} />
@@ -155,6 +164,18 @@ function InvitesTab({ brandId }) {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <RolePill role={inv.role} />
+            {inv.token && (
+              <button 
+                onClick={() => {
+                  const url = `${window.location.origin}/register?invite=${inv.token}`;
+                  navigator.clipboard.writeText(url);
+                  alert('Invite link copied to clipboard!');
+                }}
+                style={{ background: 'none', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: '3px 10px', fontSize: '0.72rem', cursor: 'pointer', color: 'var(--pilot-blue)' }}
+              >
+                Copy Link
+              </button>
+            )}
             <button onClick={() => revoke(inv.id)} style={{ background: 'none', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: '3px 10px', fontSize: '0.72rem', cursor: 'pointer', color: '#dc2626' }}>Revoke</button>
           </div>
         </div>
@@ -265,6 +286,11 @@ function ClientsTab({ brandId }) {
 
   return (
     <div style={{ padding: 20 }}>
+      <div style={{ background: 'var(--surface-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 10, padding: '12px 16px', marginBottom: 16, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+        <i className="fas fa-info-circle" style={{ color: 'var(--pilot-blue)', marginRight: 8 }}></i>
+        <strong>Clients</strong> are external stakeholders (reviewers/decision-makers) who do not need a dashboard account. After registering them below, you can share draft posts or analytics reports directly to their email/WhatsApp as private, secure review links.
+      </div>
+
       <form onSubmit={handleAddClient} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24, background: 'var(--surface-secondary)', padding: 16, borderRadius: 12, border: '1px solid var(--border-subtle)' }}>
         <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: 4 }}>Add Client Reviewer</div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
