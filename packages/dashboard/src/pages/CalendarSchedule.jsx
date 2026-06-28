@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { apiRequest } from "../lib/api/client";
+import { COUNTRY_NAMES, ADDITIONAL_COUNTRY_HOLIDAYS } from "../data/countriesHolidays";
 
 // ─── Analytics ───────────────────────────────────────────────────────────────
 function track(event, props = {}) {
@@ -217,27 +218,7 @@ const HOLIDAY_IDEAS = {
   ]
 };
 
-const COUNTRY_HOLIDAYS = {
-  ZW: [
-    { md:"04-18", name:"Zimbabwe Independence Day", color:"#22c55e", score:78 },
-    { md:"05-25", name:"Africa Day",                color:"#f59e0b", score:60 },
-    { md:"08-11", name:"Heroes Day (ZW)",           color:"#22c55e", score:65 },
-    { md:"08-12", name:"Defence Forces Day (ZW)",   color:"#22c55e", score:58 },
-  ],
-  ZA: [
-    { md:"09-24", name:"Heritage Day (SA)",         color:"#22c55e", score:72 },
-    { md:"06-16", name:"Youth Day (SA)",            color:"#f59e0b", score:68 },
-    { md:"04-27", name:"Freedom Day (SA)",          color:"#22c55e", score:70 },
-  ],
-  GB: [
-    { md:"08-26", name:"Late Summer Bank Holiday",  color:"#0ea5e9", score:58 },
-    { md:"05-06", name:"Early May Bank Holiday",    color:"#0ea5e9", score:55 },
-  ],
-  NG: [
-    { md:"10-01", name:"Nigeria Independence Day",  color:"#22c55e", score:78 },
-    { md:"06-12", name:"Democracy Day (NG)",        color:"#22c55e", score:65 },
-  ],
-};
+const COUNTRY_HOLIDAYS = ADDITIONAL_COUNTRY_HOLIDAYS;
 
 function getHolidaysInRange(from, to, countryCode = null) {
   const start = new Date(from); start.setHours(0,0,0,0);
@@ -1260,13 +1241,14 @@ const CalendarSchedule = ({ activeBrand, onScheduleNew }) => {
               outline: "none"
             }}
           >
-            <option value="US">🇺🇸 United States</option>
-            <option value="GB">🇬🇧 United Kingdom</option>
-            <option value="CA">🇨🇦 Canada</option>
-            <option value="AU">🇦🇺 Australia</option>
-            <option value="ZA">🇿🇦 South Africa</option>
-            <option value="ZW">🇿🇼 Zimbabwe</option>
-            <option value="NG">🇳🇬 Nigeria</option>
+            {Object.entries(COUNTRY_NAMES)
+              .filter(([code]) => COUNTRY_HOLIDAYS[code] && COUNTRY_HOLIDAYS[code].length > 0)
+              .map(([code, info]) => (
+                <option key={code} value={code}>
+                  {info.flag} {info.name}
+                </option>
+              ))
+            }
           </select>
           <div style={{ marginLeft: "auto", display: "flex", background: "var(--surface-secondary)", border: "1px solid var(--border-subtle)", borderRadius: "8px", padding: "2px", gap: "2px" }}>
             {VIEWS.map(v => (
