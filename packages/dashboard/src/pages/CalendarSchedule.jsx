@@ -383,34 +383,64 @@ function PostChip({ item, onSelect, isDragging, onDragStart, onDragEnd }) {
       onClick={() => onSelect(item)}
       title={item.caption || item.title || "Untitled"}
       style={{
-        height: "26px", display: "flex", alignItems: "center", gap: "5px",
-        padding: "0 6px", borderRadius: "5px", marginBottom: "3px",
-        background: color + "14", borderLeft: `3px solid ${color}`,
+        display: "flex",
+        flexDirection: "column",
+        gap: "4px",
+        padding: "6px 8px",
+        borderRadius: "6px",
+        marginBottom: "4px",
+        background: color + "14",
+        border: `1px solid ${color}20`,
+        borderLeft: `3.5px solid ${color}`,
         cursor: canDrag ? "grab" : "pointer",
         opacity: isDragging ? 0.4 : 1,
-        transition: "opacity 0.15s",
+        transition: "opacity 0.15s, transform 0.15s, box-shadow 0.15s",
         overflow: "hidden",
         userSelect: "none",
       }}
+      onMouseEnter={e => {
+        e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.05)";
+        e.currentTarget.style.transform = "translateY(-1px)";
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.boxShadow = "none";
+        e.currentTarget.style.transform = "none";
+      }}
     >
-      {item.has_media ? (
-        <span style={{ width: "14px", height: "14px", borderRadius: "2px", background: color + "40", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <ImageIcon size={8} style={{ color }} />
-        </span>
-      ) : (
-        <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: color, flexShrink: 0 }} />
-      )}
-      <span style={{ flex: 1, fontSize: "0.7rem", fontWeight: 600, color: "var(--text-main)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      <div style={{
+        fontSize: "0.75rem",
+        fontWeight: 700,
+        color: "var(--text-main)",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        display: "-webkit-box",
+        WebkitLineClamp: 2,
+        WebkitBoxOrient: "vertical",
+        lineHeight: "1.25",
+        maxHeight: "2.5em",
+        whiteSpace: "normal",
+        wordBreak: "break-word"
+      }}>
         {displayLabel}
-      </span>
-      <span style={{ fontSize: "0.6rem", flexShrink: 0 }}>{PLATFORM_ICON[item.platform] || "📌"}</span>
-      <span style={{ fontSize: "0.6rem", color: "#94a3b8", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{fmtTime(item.date)}</span>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "1px", fontSize: "0.62rem", color: "var(--text-muted)", fontWeight: 600 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+          <span>{PLATFORM_ICON[item.platform] || "📌"}</span>
+          <span>{fmtTime(item.date)}</span>
+        </div>
+        {item.has_media && (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "2px", color: color }}>
+            <ImageIcon size={9} /> Media
+          </span>
+        )}
+      </div>
     </div>
   );
 }
 
 // ─── Month Grid ───────────────────────────────────────────────────────────────
-const CELL_H = 160;
+const CELL_H = 180;
 const MAX_PER_CELL = 3;
 
 function MonthGrid({ pivot, items, holidays, onSelect, onDayStack, dragItem, onDropCell, onDragStart, onDragEnd, setSelectedHoliday }) {
