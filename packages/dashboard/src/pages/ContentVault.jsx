@@ -200,7 +200,7 @@ function ApprovalTable({ items, onReview }) {
               </td>
               <td style={{ padding: "12px 14px", fontSize: 12, color: C.muted }}>
                 <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 140 }}>
-                  {ap.requested_by || item.created_by || "—"}
+                  {ap.requested_by_name || ap.requested_by_email || ap.requested_by || item.created_by || "—"}
                 </div>
               </td>
               <td style={{ padding: "12px 14px", fontSize: 12 }}>
@@ -502,7 +502,22 @@ function ShareModal({ item, onClose, onSubmit, submitting }) {
 function ReviewModal({ item, brandName, onClose, onAction, submitting }) {
   const [pendingAction, setPending]   = useState(null);
   const [actionNote, setActionNote]   = useState("");
+  const [history, setHistory]         = useState([]);
+  const [loadingHistory, setLoading]   = useState(false);
   const ap = item._approval || {};
+
+  useEffect(() => {
+    if (!item?.id) return;
+    setLoading(true);
+    apiRequest(`/api/customer/vault/${item.id}`)
+      .then(res => {
+        if (res?.data?.approval_history) {
+          setHistory(res.data.approval_history);
+        }
+      })
+      .catch(err => console.error("Failed to load approval history", err))
+      .finally(() => setLoading(false));
+  }, [item?.id]);
 
   const activity = [
     item.content_created_at && { icon: "fa-plus-circle", color: "#94a3b8", label: "Created",              date: item.content_created_at },
@@ -518,6 +533,23 @@ function ReviewModal({ item, brandName, onClose, onAction, submitting }) {
     setActionNote("");
   }
 
+  // Fallback initial history entry from current item if history is empty
+  const initialHistory = [];
+  if (ap.review_notes || ap.rejection_reason || ap.approved_at) {
+    initialHistory.push({
+      id: ap.id || "current",
+      review_notes: ap.review_notes,
+      rejection_reason: ap.rejection_reason,
+      approved_at: ap.approved_at,
+      created_at: ap.submitted_at,
+      updated_at: ap.approved_at || ap.submitted_at,
+      requester_name: ap.requested_by_name || ap.requested_by || "Shared by",
+      reviewer_name: ap.reviewer_name || ap.reviewer_email || "Reviewer"
+    });
+  }
+
+  const displayHistory = history.length > 0 ? history : initialHistory;
+
   return (
     <>
       <Backdrop onClose={onClose} />
@@ -528,7 +560,7 @@ function ReviewModal({ item, brandName, onClose, onAction, submitting }) {
         zIndex: 401, display: "flex", flexDirection: "column", overflow: "hidden",
       }}>
         {/* Header */}
-        <div style={{ padding: "14px 20px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+        <div style={{ padding: "14px 20px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifycontent: "space-between", flexShrink: 0 }}>
           <div>
             <div style={{ fontSize: 15, fontWeight: 700, color: C.slate }}>{item.title || "Untitled Content"}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4 }}>
@@ -558,36 +590,68 @@ function ReviewModal({ item, brandName, onClose, onAction, submitting }) {
               {/* Comments */}
               <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>Approval Thread</div>
 
-              {ap.review_notes && (
-                <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-                  <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <i className="fas fa-user" style={{ color: C.blue, fontSize: 11 }} />
-                  </div>
-                  <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: "0 8px 8px 8px", padding: "10px 12px", flex: 1 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, marginBottom: 4 }}>
-                      {ap.requested_by || "Shared by"} · {fmtDate(ap.submitted_at)}
-                    </div>
-                    <div style={{ fontSize: 13, color: C.slate, lineHeight: 1.55 }}>{ap.review_notes}</div>
-                  </div>
+              {loadingHistory && history.length === 0 ? (
+                <div style={{ color: C.muted, fontSize: 12, fontStyle: "italic", padding: "6px 0" }}>
+                  <i className="fas fa-spinner fa-spin" style={{ marginRight: 6 }} /> Loading comments...
                 </div>
-              )}
-
-              {ap.rejection_reason && (
-                <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-                  <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <i className="fas fa-user-tie" style={{ color: C.red, fontSize: 11 }} />
-                  </div>
-                  <div style={{ background: "#fef2f2", border: `1px solid #fecaca`, borderRadius: "0 8px 8px 8px", padding: "10px 12px", flex: 1 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: "#b91c1c", marginBottom: 4 }}>
-                      {ap.reviewer_name || ap.reviewer_email || "Reviewer"} — Feedback
-                    </div>
-                    <div style={{ fontSize: 13, color: C.slate, lineHeight: 1.55 }}>{ap.rejection_reason}</div>
-                  </div>
-                </div>
-              )}
-
-              {!ap.review_notes && !ap.rejection_reason && (
+              ) : displayHistory.length === 0 ? (
                 <div style={{ color: C.muted, fontSize: 13, fontStyle: "italic", marginBottom: 12 }}>No comments yet.</div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {[...displayHistory].reverse().map((apReq, idx) => {
+                    const reqUser = apReq.requester_name || apReq.requester_email || apReq.requested_by || "Shared by";
+                    const reviewerUser = apReq.reviewer_name || apReq.reviewer_email || apReq.approver_name || apReq.rejecter_name || "Reviewer";
+
+                    return (
+                      <div key={apReq.id || idx} style={{ display: "flex", flexDirection: "column", gap: 10, borderBottom: idx < displayHistory.length - 1 ? `1px dashed ${C.border}` : "none", paddingBottom: idx < displayHistory.length - 1 ? 14 : 0 }}>
+                        {/* 1. Submission Comment */}
+                        <div style={{ display: "flex", gap: 10 }}>
+                          <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <i className="fas fa-paper-plane" style={{ color: C.blue, fontSize: 11 }} />
+                          </div>
+                          <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: "0 8px 8px 8px", padding: "10px 12px", flex: 1 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, marginBottom: 4 }}>
+                              {reqUser} · Submitted · {fmtDate(apReq.created_at || apReq.submitted_at)}
+                            </div>
+                            <div style={{ fontSize: 13, color: C.slate, lineHeight: 1.55 }}>
+                              {apReq.review_notes || "Submitted for review without notes."}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 2. Reviewer Feedback */}
+                        {apReq.rejection_reason && (
+                          <div style={{ display: "flex", gap: 10, marginLeft: 20 }}>
+                            <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                              <i className="fas fa-exclamation-circle" style={{ color: C.red, fontSize: 11 }} />
+                            </div>
+                            <div style={{ background: "#fef2f2", border: `1px solid #fecaca`, borderRadius: "0 8px 8px 8px", padding: "10px 12px", flex: 1 }}>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: "#b91c1c", marginBottom: 4 }}>
+                                {reviewerUser} · Feedback · {fmtDate(apReq.updated_at || apReq.approved_at)}
+                              </div>
+                              <div style={{ fontSize: 13, color: C.slate, lineHeight: 1.55 }}>{apReq.rejection_reason}</div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 3. Reviewer Approval */}
+                        {apReq.approved_at && (
+                          <div style={{ display: "flex", gap: 10, marginLeft: 20 }}>
+                            <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#ecfdf5", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                              <i className="fas fa-check-circle" style={{ color: C.green, fontSize: 11 }} />
+                            </div>
+                            <div style={{ background: "#ecfdf5", border: `1px solid #a7f3d0`, borderRadius: "0 8px 8px 8px", padding: "10px 12px", flex: 1 }}>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: "#065f46", marginBottom: 4 }}>
+                                {reviewerUser} · Approved · {fmtDate(apReq.approved_at)}
+                              </div>
+                              <div style={{ fontSize: 13, color: "#065f46", lineHeight: 1.55, fontWeight: 600 }}>Approved! Content is ready.</div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
 
               {/* Activity */}

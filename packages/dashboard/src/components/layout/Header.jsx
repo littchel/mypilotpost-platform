@@ -2,13 +2,11 @@ import React, { useState, useRef, useEffect } from "react";
 import { Bell, Mail, CheckCircle, AlertCircle, ChevronDown, Settings, CreditCard, Trophy, Shield, Lock, LogOut } from "lucide-react";
 import { apiRequest } from "../../lib/api/client";
 
-const Header = ({ activeBrand, user, logout, switchTab, notifications = [], growth = { points: 0, level: 1 } }) => {
+const Header = ({ activeBrand, user, logout, switchTab, notifications = [], unreadCount = 0, growth = { points: 0, level: 1 } }) => {
   const [showUserMenu, setShowUserMenu]   = useState(false);
   const [showNotifMenu, setShowNotifMenu] = useState(false);
   const userMenuRef  = useRef(null);
   const notifMenuRef = useRef(null);
-
-  const unreadCount = notifications.filter(n => !n.read).length;
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -97,8 +95,9 @@ const Header = ({ activeBrand, user, logout, switchTab, notifications = [], grow
                           {n.type === 'success' ? <CheckCircle size={16} /> : n.type === 'warning' ? <AlertCircle size={16} /> : <Bell size={16} />}
                         </div>
                         <div>
-                          <div className={`small mb-1 ${!n.read ? 'fw-bold' : 'text-muted'}`}>{n.message}</div>
-                          <div className="extra-small text-muted">{new Date(n.created_at).toLocaleString()}</div>
+                          <div className={`small mb-0 ${!n.read ? 'fw-bold' : 'text-muted'}`} style={{ color: 'var(--text-main)' }}>{n.title || "System Message"}</div>
+                          <div className="extra-small text-muted mb-1">{n.message}</div>
+                          <div className="extra-small text-muted" style={{ fontSize: '0.65rem' }}>{new Date(n.created_at).toLocaleString()}</div>
                         </div>
                       </div>
                     </div>

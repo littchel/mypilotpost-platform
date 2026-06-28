@@ -1013,27 +1013,42 @@ export default function CreatePost({
     }
   }, [loadVault]);
 
-  const handleVaultEdit = (item) => {
-    setContent(item.body || item.text || "");
-    const platforms = item.platforms
-      ? (Array.isArray(item.platforms) ? item.platforms : JSON.parse(item.platforms || "[]"))
-      : [];
-    if (platforms.length) setSelectedPlatforms(platforms);
+  const handleVaultEdit = async (item) => {
+    try {
+      const res = await apiFetch(`/api/customer/vault/${item.id}`);
+      const fullItem = res?.data || item;
 
-    let itemOverlays = null;
-    if (item.metadata) {
-      try {
-        const meta = typeof item.metadata === "string" ? JSON.parse(item.metadata) : item.metadata;
-        if (meta.overlays) itemOverlays = meta.overlays;
-      } catch (e) {
-        itemOverlays = null;
+      setContent(fullItem.body || fullItem.text || "");
+      const platforms = fullItem.platforms
+        ? (Array.isArray(fullItem.platforms) ? fullItem.platforms : JSON.parse(fullItem.platforms || "[]"))
+        : [];
+      if (platforms.length) setSelectedPlatforms(platforms);
+
+      let itemOverlays = null;
+      if (fullItem.metadata) {
+        try {
+          const meta = typeof fullItem.metadata === "string" ? JSON.parse(fullItem.metadata) : fullItem.metadata;
+          if (meta.overlays) itemOverlays = meta.overlays;
+        } catch (e) {
+          itemOverlays = null;
+        }
       }
-    }
-    setOverlays(itemOverlays);
-    setApplyOverlay(!!itemOverlays);
+      setOverlays(itemOverlays);
+      setApplyOverlay(!!itemOverlays);
 
-    setSelectedVaultItem(item);
-    setActiveTopTab("editor");
+      setSelectedVaultItem(fullItem);
+      setActiveTopTab("editor");
+    } catch (e) {
+      console.error("Failed to fetch full item details", e);
+      // Fallback
+      setContent(item.body || item.text || "");
+      const platforms = item.platforms
+        ? (Array.isArray(item.platforms) ? item.platforms : JSON.parse(item.platforms || "[]"))
+        : [];
+      if (platforms.length) setSelectedPlatforms(platforms);
+      setSelectedVaultItem(item);
+      setActiveTopTab("editor");
+    }
   };
 
   const handleVaultDelete = async (item) => {
@@ -1229,6 +1244,7 @@ export default function CreatePost({
     draft:              { label: "Draft",       color: "#64748b", bg: "#f1f5f9" },
     ready:              { label: "Ready",       color: "#2563eb", bg: "#eff6ff" },
     approval_requested: { label: "In Review",   color: "#d97706", bg: "#fffbeb" },
+    changes_requested:  { label: "Changes",     color: "#d97706", bg: "#fff7ed" },
     approved:           { label: "Approved",    color: "#059669", bg: "#ecfdf5" },
     scheduled:          { label: "Scheduled",   color: "#2563eb", bg: "#eff6ff" },
     queued:             { label: "Queued",      color: "#7c3aed", bg: "#f5f3ff" },
@@ -1337,25 +1353,56 @@ export default function CreatePost({
         <div style={{ width: "60%", display: "flex", flexDirection: "column", minHeight: 0, gap: 12 }}>
           <div className="card-workspace" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden", padding: 14, gap: 12 }}>
             {selectedVaultItem && (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "8px 12px", marginBottom: 4 }}>
-                <div style={{ fontSize: 12, color: "#475569" }}>
-                  <i className="fas fa-edit" style={{ marginRight: 6, color: "#3b82f6" }} />
-                  Editing Draft: <strong style={{ color: "#0f172a" }}>{selectedVaultItem.title || (selectedVaultItem.body || "").slice(0, 30) || "Untitled"}</strong>
+              <div style={{ display: "flex", flexDirection: "column", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "8px 12px", marginBottom: 4 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ fontSize: 12, color: "#475569" }}>
+                    <i className="fas fa-edit" style={{ marginRight: 6, color: "#3b82f6" }} />
+                    Editing Draft: <strong style={{ color: "#0f172a" }}>{selectedVaultItem.title || (selectedVaultItem.body || "").slice(0, 30) || "Untitled"}</strong>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setSelectedVaultItem(null);
+                      setContent("");
+                      setOverrides({});
+                      setSelectedPlatforms([]);
+                      setMediaItems([]);
+                      setOverlays(null);
+                    }}
+                    style={{ background: "none", border: "none", color: "#ef4444", fontSize: 11, fontWeight: 600, cursor: "pointer", padding: 0 }}
+                  >
+                    Discard & Start New Post
+                  </button>
                 </div>
-                <button 
-                  type="button" 
-                  onClick={() => {
-                    setSelectedVaultItem(null);
-                    setContent("");
-                    setOverrides({});
-                    setSelectedPlatforms([]);
-                    setMediaItems([]);
-                    setOverlays(null);
-                  }}
-                  style={{ background: "none", border: "none", color: "#ef4444", fontSize: 11, fontWeight: 600, cursor: "pointer", padding: 0 }}
-                >
-                  Discard & Start New Post
-                </button>
+                {selectedVaultItem.approval_history && selectedVaultItem.approval_history.length > 0 && (
+                  <div style={{ marginTop: 8, borderTop: "1px solid #e2e8f0", paddingTop: 8 }}>
+                    <details>
+                      <summary style={{ fontSize: 11, fontWeight: 700, color: "#2563eb", cursor: "pointer", outline: "none" }}>
+                        View Feedback History ({selectedVaultItem.approval_history.filter(h => h.rejection_reason).length} comments)
+                      </summary>
+                      <div style={{ marginTop: 6, maxHeight: 180, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, paddingRight: 4 }}>
+                        {selectedVaultItem.approval_history.map((h, idx) => {
+                          const user = h.reviewer_name || h.reviewer_email || h.rejecter_name || h.approver_name || "Reviewer";
+                          return (
+                            <div key={h.id || idx} style={{ fontSize: 11, padding: "6px 8px", borderRadius: 6, background: h.rejection_reason ? "#fef2f2" : "#ecfdf5", border: `1px solid ${h.rejection_reason ? "#fecaca" : "#a7f3d0"}` }}>
+                              <div style={{ fontWeight: 600, color: h.rejection_reason ? "#b91c1c" : "#065f46", marginBottom: 2 }}>
+                                {user} · {h.rejection_reason ? "Requested Changes" : "Approved"} · {new Date(h.approved_at || h.updated_at || h.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                              </div>
+                              <div style={{ color: "#334155" }}>
+                                {h.rejection_reason || "Approved!"}
+                              </div>
+                              {h.review_notes && (
+                                <div style={{ fontSize: 10, color: "#64748b", marginTop: 4, borderTop: "1px dashed #e2e8f0", paddingTop: 4 }}>
+                                  Submitted with note: "{h.review_notes}"
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </details>
+                  </div>
+                )}
               </div>
             )}
             {/* Campaign Selector + Edit Brand Overlay row */}
@@ -1931,7 +1978,17 @@ export default function CreatePost({
                         <div style={{ fontSize: 13, color: "#0f172a", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {preview.slice(0, 120)}
                         </div>
-                        <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>{date}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>
+                          <span style={{ fontSize: 11, color: "#94a3b8" }}>{date}</span>
+                          {(item.lifecycle_status === 'changes_requested' || item.lifecycle_status === 'approval_requested') && (() => {
+                            const meta = VAULT_STATUS_META[item.lifecycle_status] || { label: item.lifecycle_status, color: "#64748b", bg: "#f1f5f9" };
+                            return (
+                              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: meta.color, background: meta.bg, padding: "1px 6px", borderRadius: 99 }}>
+                                {meta.label}
+                              </span>
+                            );
+                          })()}
+                        </div>
                       </div>
                       <div style={{ display: "flex", gap: 5, flexShrink: 0, alignItems: "center" }}>
                         {activeTopTab === "drafts" && (<>

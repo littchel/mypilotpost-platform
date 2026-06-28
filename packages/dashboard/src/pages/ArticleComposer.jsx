@@ -522,6 +522,7 @@ export default function ArticleComposer({ campaigns = [], editContentId, setEdit
     try { return JSON.parse(sessionStorage.getItem('mpp_article_image') || 'null'); } catch { return null; }
   });
   const [articleId, setArticleId] = useState(() => sessionStorage.getItem('mpp_article_id') || null);
+  const [activeArticleItem, setActiveArticleItem] = useState(null);
   const [listItems, setListItems] = useState([]);
   const [listLoading, setListLoading] = useState(false);
   const [scheduledAt, setScheduledAt] = useState("");
@@ -741,52 +742,67 @@ export default function ArticleComposer({ campaigns = [], editContentId, setEdit
       });
   }, [contentSubTab]);
 
-  const loadArticle = (item) => {
-    setArticleId(item.id);
-    setTitle(item.title || "");
-    setBody(item.body || "");
-    try { sessionStorage.setItem('mpp_article_id', item.id); } catch { /* ignore */ }
-    
-    let metadataObj = {};
+  const loadArticle = async (item) => {
     try {
-      metadataObj = typeof item.metadata === "string" ? JSON.parse(item.metadata) : (item.metadata || {});
-    } catch {
-      metadataObj = {};
-    }
-    setPrimaryKeyword(metadataObj.keyword || "");
-    setSecondaryKeywords(metadataObj.secondaryKeywords || "");
-    setSelectedCategories(metadataObj.wordpress_categories || []);
-    
-    const selectedDomain = GOOGLE_DOMAINS.find(d => d.domain === metadataObj.domain) || GOOGLE_DOMAINS[0];
-    setDomain(selectedDomain);
+      const res = await apiRequest(`/api/customer/vault/${item.id}`);
+      const fullItem = res?.data || item;
 
-    let mediaIds = [];
-    try {
-      mediaIds = typeof item.media_ids === "string" ? JSON.parse(item.media_ids) : (item.media_ids || []);
-    } catch {
-      mediaIds = [];
-    }
-    
-    if (mediaIds.length > 0) {
-      apiRequest(`/api/customer/vault/${item.id}`)
-        .then(res => {
-          const firstMedia = res?.media?.[0] || res?.data?.media?.[0];
-          if (firstMedia) {
-            const entry = { url: firstMedia.preview_url || firstMedia.url || "", assetId: firstMedia.id };
-            setAttachedImage(entry);
-            try { sessionStorage.setItem('mpp_article_image', JSON.stringify(entry)); } catch { /* ignore */ }
-          } else {
-            setAttachedImage(null);
-            try { sessionStorage.removeItem('mpp_article_image'); } catch { /* ignore */ }
-          }
-        })
-        .catch(() => {
+      setArticleId(fullItem.id);
+      setActiveArticleItem(fullItem);
+      setTitle(fullItem.title || "");
+      setBody(fullItem.body || "");
+      try { sessionStorage.setItem('mpp_article_id', fullItem.id); } catch { /* ignore */ }
+      
+      let metadataObj = {};
+      try {
+        metadataObj = typeof fullItem.metadata === "string" ? JSON.parse(fullItem.metadata) : (fullItem.metadata || {});
+      } catch {
+        metadataObj = {};
+      }
+      setPrimaryKeyword(metadataObj.keyword || "");
+      setSecondaryKeywords(metadataObj.secondaryKeywords || "");
+      setSelectedCategories(metadataObj.wordpress_categories || []);
+      
+      const selectedDomain = GOOGLE_DOMAINS.find(d => d.domain === metadataObj.domain) || GOOGLE_DOMAINS[0];
+      setDomain(selectedDomain);
+
+      let mediaIds = [];
+      try {
+        mediaIds = typeof fullItem.media_ids === "string" ? JSON.parse(fullItem.media_ids) : (fullItem.media_ids || []);
+      } catch {
+        mediaIds = [];
+      }
+      
+      if (mediaIds.length > 0) {
+        const firstMedia = res?.media?.[0] || res?.data?.media?.[0];
+        if (firstMedia) {
+          const entry = { url: firstMedia.preview_url || firstMedia.url || "", assetId: firstMedia.id };
+          setAttachedImage(entry);
+          try { sessionStorage.setItem('mpp_article_image', JSON.stringify(entry)); } catch { /* ignore */ }
+        } else {
           setAttachedImage(null);
           try { sessionStorage.removeItem('mpp_article_image'); } catch { /* ignore */ }
-        });
-    } else {
+        }
+      } else {
+        setAttachedImage(null);
+        try { sessionStorage.removeItem('mpp_article_image'); } catch { /* ignore */ }
+      }
+    } catch (e) {
+      console.error("Failed to load article details", e);
+      setArticleId(item.id);
+      setActiveArticleItem(item);
+      setTitle(item.title || "");
+      setBody(item.body || "");
+      let metadataObj = {};
+      try {
+        metadataObj = typeof item.metadata === "string" ? JSON.parse(item.metadata) : (item.metadata || {});
+      } catch {
+        metadataObj = {};
+      }
+      setPrimaryKeyword(metadataObj.keyword || "");
+      setSecondaryKeywords(metadataObj.secondaryKeywords || "");
+      setSelectedCategories(metadataObj.wordpress_categories || []);
       setAttachedImage(null);
-      try { sessionStorage.removeItem('mpp_article_image'); } catch { /* ignore */ }
     }
 
     setContentSubTab("compose");
@@ -794,6 +810,7 @@ export default function ArticleComposer({ campaigns = [], editContentId, setEdit
 
   const handleNewArticle = () => {
     setArticleId(null);
+    setActiveArticleItem(null);
     setTitle("");
     setBody("");
     setPrimaryKeyword("");
@@ -1055,18 +1072,49 @@ export default function ArticleComposer({ campaigns = [], editContentId, setEdit
               {/* Premium Notion-style Document Container */}
               <div className="premium-editor-container">
                 {articleId && (
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "8px 12px", marginBottom: 12 }}>
-                    <div style={{ fontSize: 12, color: "#475569" }}>
-                      <i className="fas fa-edit" style={{ marginRight: 6, color: "#3b82f6" }} />
-                      Editing Draft: <strong style={{ color: "#0f172a" }}>{title || "Untitled Article"}</strong>
+                  <div style={{ display: "flex", flexDirection: "column", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "8px 12px", marginBottom: 12 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div style={{ fontSize: 12, color: "#475569" }}>
+                        <i className="fas fa-edit" style={{ marginRight: 6, color: "#3b82f6" }} />
+                        Editing Draft: <strong style={{ color: "#0f172a" }}>{title || "Untitled Article"}</strong>
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={handleNewArticle}
+                        style={{ background: "none", border: "none", color: "#ef4444", fontSize: 11, fontWeight: 600, cursor: "pointer", padding: 0 }}
+                      >
+                        Discard & Start New Article
+                      </button>
                     </div>
-                    <button 
-                      type="button" 
-                      onClick={handleNewArticle}
-                      style={{ background: "none", border: "none", color: "#ef4444", fontSize: 11, fontWeight: 600, cursor: "pointer", padding: 0 }}
-                    >
-                      Discard & Start New Article
-                    </button>
+                    {activeArticleItem && activeArticleItem.approval_history && activeArticleItem.approval_history.length > 0 && (
+                      <div style={{ marginTop: 8, borderTop: "1px solid #e2e8f0", paddingTop: 8 }}>
+                        <details>
+                          <summary style={{ fontSize: 11, fontWeight: 700, color: "#2563eb", cursor: "pointer", outline: "none" }}>
+                            View Feedback History ({activeArticleItem.approval_history.filter(h => h.rejection_reason).length} comments)
+                          </summary>
+                          <div style={{ marginTop: 6, maxHeight: 180, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, paddingRight: 4 }}>
+                            {activeArticleItem.approval_history.map((h, idx) => {
+                              const user = h.reviewer_name || h.reviewer_email || h.rejecter_name || h.approver_name || "Reviewer";
+                              return (
+                                <div key={h.id || idx} style={{ fontSize: 11, padding: "6px 8px", borderRadius: 6, background: h.rejection_reason ? "#fef2f2" : "#ecfdf5", border: `1px solid ${h.rejection_reason ? "#fecaca" : "#a7f3d0"}` }}>
+                                  <div style={{ fontWeight: 600, color: h.rejection_reason ? "#b91c1c" : "#065f46", marginBottom: 2 }}>
+                                    {user} · {h.rejection_reason ? "Requested Changes" : "Approved"} · {new Date(h.approved_at || h.updated_at || h.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                                  </div>
+                                  <div style={{ color: "#334155" }}>
+                                    {h.rejection_reason || "Approved!"}
+                                  </div>
+                                  {h.review_notes && (
+                                    <div style={{ fontSize: 10, color: "#64748b", marginTop: 4, borderTop: "1px dashed #e2e8f0", paddingTop: 4 }}>
+                                      Submitted with note: "{h.review_notes}"
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </details>
+                      </div>
+                    )}
                   </div>
                 )}
                 {/* Title Input */}
@@ -1286,7 +1334,19 @@ export default function ArticleComposer({ campaigns = [], editContentId, setEdit
               {listItems.map(item => (
                 <div key={item.id} className="d-flex justify-content-between align-items-center p-3 border rounded-3 bg-light hover-shadow" style={{ transition: "all 0.2s" }}>
                   <div style={{ flex: 1, minWidth: 0, marginRight: 16 }}>
-                    <div className="fw-bold text-dark text-truncate" style={{ fontSize: 14 }}>{item.title || "Untitled Article"}</div>
+                    <div className="d-flex align-items-center gap-2 flex-wrap">
+                      <div className="fw-bold text-dark text-truncate" style={{ fontSize: 14 }}>{item.title || "Untitled Article"}</div>
+                      {item.lifecycle_status === 'changes_requested' && (
+                        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: "#d97706", background: "#fff7ed", padding: "1px 6px", borderRadius: 99 }}>
+                          Changes
+                        </span>
+                      )}
+                      {item.lifecycle_status === 'approval_requested' && (
+                        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: "#d97706", background: "#fffbeb", padding: "1px 6px", borderRadius: 99 }}>
+                          In Review
+                        </span>
+                      )}
+                    </div>
                     <div className="text-muted extra-small mt-1 text-truncate">
                       {item.body ? item.body.replace(/[#*`]/g, "").slice(0, 120) : "No content..."}
                     </div>

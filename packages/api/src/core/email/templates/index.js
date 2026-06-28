@@ -390,12 +390,13 @@ export function supportReplyEmail({ first_name, message_preview, thread_url = BR
   };
 }
 
-export function ticketResolvedEmail({ first_name, subject_line, thread_url = BRAND.app_url, unsubscribe_url = DEFAULT_UNSUB }) {
+export function ticketResolvedEmail({ first_name, subject_line, thread_url = BRAND.app_url, unsubscribe_url = DEFAULT_UNSUB, transcriptHtml = "" }) {
   return {
     subject: `Your support request has been resolved`,
     html: baseLayout(
       h1("Your request is resolved ✓") +
       p(`Hi ${first_name || "there"}, we've marked your support request${subject_line ? ` "<strong>${subject_line}</strong>"` : ""} as resolved.`) +
+      transcriptHtml +
       highlight("If you still need help, just reply and we'll reopen the conversation.") +
       primaryButton("View Conversation →", thread_url),
       "Your support request has been resolved.",

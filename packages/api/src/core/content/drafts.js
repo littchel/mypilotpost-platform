@@ -19,7 +19,7 @@ export async function listContent(request, env, auth) {
 
   // 2. Fetch Blog Posts
   const blogPromise = db.prepare(`
-    SELECT id, 'blog' as type, title, body as content, lifecycle_status, updated_at 
+    SELECT id, 'article' as type, title, body as content, lifecycle_status, updated_at 
     FROM blog_posts 
     WHERE brand_id = ? AND user_id = ?
   `).bind(brand_id, user_id).all();

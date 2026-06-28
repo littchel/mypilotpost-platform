@@ -236,53 +236,23 @@ const BrandIntelligencePreview = ({ brandId, switchTab }) => {
 
   // ── Empty / Loading states ────────────────────────────────────────────────
 
-  if (loading) {
-    return (
-      <div style={{ padding: "20px 0", textAlign: "center" }}>
-        <div style={{ fontSize: 11, color: "#94a3b8" }}>Loading intelligence…</div>
-      </div>
-    );
-  }
-
-  if (!item) {
-    return (
-      <div style={{
-        background: "linear-gradient(135deg, #f8fafc, #eff6ff)",
-        border: "1px solid #e2e8f0", borderRadius: 12,
-        padding: "18px 14px", textAlign: "center",
-      }}>
-        <div style={{
-          width: 40, height: 40, borderRadius: "50%",
-          background: "linear-gradient(135deg, #eff6ff, #dbeafe)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          margin: "0 auto 10px",
-          boxShadow: "0 0 0 8px rgba(37,99,235,0.05)",
-        }}>
-          <i className="fas fa-brain" style={{ fontSize: 16, color: "#2563eb" }} />
-        </div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 5 }}>
-          Brand Intelligence
-        </div>
-        <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.55, marginBottom: 12 }}>
-          Connect at least 2 platforms to unlock daily intelligence.
-        </div>
-        <button
-          onClick={() => switchTab?.("brand-intelligence")}
-          style={{
-            display: "block", width: "100%",
-            background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
-            border: "none", borderRadius: 8, padding: "10px 0",
-            fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer",
-          }}
-        >
-          Run Intelligence →
-        </button>
-      </div>
-    );
+  if (loading || !item) {
+    return null;
   }
 
   return (
     <div>
+      {/* Intelligence header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1, color: "#64748b" }}>
+          Brand Intelligence
+        </div>
+        <span style={{
+          fontSize: 8, fontWeight: 800, color: "#fff", letterSpacing: 0.6,
+          background: "#2563eb", borderRadius: 99, padding: "2px 6px",
+        }}>LIVE</span>
+      </div>
+
       <AnimatePresence mode="wait">
         <IntelPreviewCard
           key={item.id}
@@ -330,6 +300,7 @@ const LayoutShell = ({
   logout,
   onAssistantOpen,
   notifications = [],
+  unreadCount = 0,
   growth = { points: 0, level: 1, streak_days: 0 },
   stats,
 }) => {
@@ -351,6 +322,7 @@ const LayoutShell = ({
           onAssistantOpen={onAssistantOpen}
           switchTab={switchTab}
           notifications={notifications}
+          unreadCount={unreadCount}
           growth={growth}
         />
         <EmailVerificationBanner onVerified={() => {}} />
@@ -377,17 +349,6 @@ const LayoutShell = ({
                     <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.9, color: "#94a3b8" }}>{label}</div>
                   </div>
                 ))}
-              </div>
-
-              {/* Intelligence header */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1, color: "#64748b" }}>
-                  Brand Intelligence
-                </div>
-                <span style={{
-                  fontSize: 8, fontWeight: 800, color: "#fff", letterSpacing: 0.6,
-                  background: "#2563eb", borderRadius: 99, padding: "2px 6px",
-                }}>LIVE</span>
               </div>
 
               <BrandIntelligencePreview

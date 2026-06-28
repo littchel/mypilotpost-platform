@@ -28,6 +28,49 @@ function relativeTime(iso) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
+function getContextualExplanation(title, type) {
+  const t = (title || "").toLowerCase();
+  if (t.includes("approved")) {
+    return "This content has passed review and is ready. You can now schedule it or publish it immediately from the drafts vault.";
+  }
+  if (t.includes("changes") || t.includes("rejected")) {
+    return "The reviewer requested changes. Open this draft in the editor to view the specific comments, make the requested fixes, and submit it for review again.";
+  }
+  if (t.includes("failed") || t.includes("delivery failed")) {
+    return "The post could not be published. This is usually caused by an expired social account connection or API rate limiting. Go to Settings -> Integrations to re-connect.";
+  }
+  if (t.includes("disconnected") || t.includes("expired")) {
+    return "Your platform connection has been lost. Go to Settings -> Integrations to authenticate and restore the connection so scheduling works.";
+  }
+  if (t.includes("invite")) {
+    return "An invitation has been sent to a new team member. They will receive an email to join your workspace.";
+  }
+  if (t.includes("joined") || t.includes("member")) {
+    return "A new team member has successfully joined your brand workspace. You can manage roles in the Teams tab.";
+  }
+  if (t.includes("trial") || t.includes("ending")) {
+    return "Your trial period is ending. Please review your subscription in Billing & Plan to prevent any interruption to your social publishing.";
+  }
+  if (t.includes("milestone") || t.includes("streak") || t.includes("points")) {
+    return "Congratulations on your progress! Check the Rewards tab to view your current level and explore new ways to earn points.";
+  }
+  if (t.includes("insight")) {
+    return "We analyzed your brand profile and generated a new optimization suggestion. Go to Brand Intelligence to view the recommendation.";
+  }
+  if (t.includes("review") || t.includes("approvals")) {
+    return "A draft is waiting for your evaluation. Head over to Content Management -> Content Approval to approve it or request changes.";
+  }
+  
+  // Generic fallbacks based on type
+  if (type === "warning") {
+    return "This notification is a warning message. Please check the details above and take appropriate action.";
+  }
+  if (type === "alert") {
+    return "An alert has been raised. Please check the integrations or billing settings to resolve the issue.";
+  }
+  return "You received a system update. No further action is required.";
+}
+
 const CATEGORIES = [
   { id: "all",        label: "All",          icon: "fas fa-bell" },
   { id: "success",    label: "Success",      icon: "fas fa-check-circle" },
@@ -91,6 +134,14 @@ export default function NotificationsTab() {
     return () => clearTimeout(timer);
   }, [fetchNotifications]);
 
+  useEffect(() => {
+    const handleRefresh = () => {
+      fetchNotifications();
+    };
+    window.addEventListener("refresh-data", handleRefresh);
+    return () => window.removeEventListener("refresh-data", handleRefresh);
+  }, [fetchNotifications]);
+
   const loadPrefs = useCallback(async () => {
     setPrefsLoading(true);
     try {
@@ -112,6 +163,7 @@ export default function NotificationsTab() {
       await apiRequest("/api/customer/notifications/read-all", { method: "POST" });
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       setPagination(prev => ({ ...prev, unread_count: 0 }));
+      window.dispatchEvent(new CustomEvent("refresh-data"));
     } catch { /* noop */ }
   }
 
@@ -123,6 +175,7 @@ export default function NotificationsTab() {
       });
       setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, read: true } : n));
       setPagination(prev => ({ ...prev, unread_count: Math.max(0, (prev.unread_count || 1) - 1) }));
+      window.dispatchEvent(new CustomEvent("refresh-data"));
     } catch { /* noop */ }
   }
 
@@ -239,7 +292,12 @@ export default function NotificationsTab() {
                 aria-hidden="true"
               ></span>
               <span className="notif-item__body">
-                <span className="notif-item__msg">{n.message}</span>
+                <span className="notif-item__title" style={{ fontWeight: !n.read ? 700 : 600, color: "var(--text-main)", fontSize: "0.85rem", display: "block", marginBottom: 2, textAlign: "left" }}>
+                  {n.title || "System Message"}
+                </span>
+                <span className="notif-item__msg text-truncate" style={{ fontSize: "0.78rem", color: "var(--text-muted)", display: "block", marginBottom: 4, textAlign: "left" }}>
+                  {n.message}
+                </span>
                 <span className="notif-item__meta">
                   <span className="notif-item__type">{n.type}</span>
                   <span className="notif-item__time">{relativeTime(n.created_at)}</span>
@@ -275,9 +333,21 @@ export default function NotificationsTab() {
 
             <div className="notif-detail-body">
               <div className="notif-detail-card">
-                <span className="notif-detail-badge">System Message</span>
-                <p className="notif-detail-message">{activeNotif.message}</p>
-                <p className="notif-detail-ts">Received {relativeTime(activeNotif.created_at)}</p>
+                <span className="notif-detail-badge" style={{ background: TYPE_COLOR[activeNotif.type] + "22", color: TYPE_COLOR[activeNotif.type] }}>
+                  {activeNotif.title || "System Message"}
+                </span>
+                <p className="notif-detail-message" style={{ fontWeight: 600, fontSize: "1.1rem", color: "var(--text-main)", margin: "16px 0 8px" }}>
+                  {activeNotif.message}
+                </p>
+                <div style={{ background: "var(--bg-body, #f8fafc)", borderRadius: 10, padding: "14px", border: "1.5px solid var(--border-subtle)", margin: "16px 0" }}>
+                  <div style={{ fontSize: "0.72rem", fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>
+                    What this means / Actions
+                  </div>
+                  <p style={{ fontSize: "0.85rem", color: "var(--text-main)", margin: 0, lineHeight: 1.6, textAlign: "left" }}>
+                    {getContextualExplanation(activeNotif.title || activeNotif.message, activeNotif.type)}
+                  </p>
+                </div>
+                <p className="notif-detail-ts">Received {new Date(activeNotif.created_at).toLocaleString()}</p>
               </div>
             </div>
           </>

@@ -165,12 +165,48 @@ export async function adminUpdateThread(req, env, auth, threadId) {
   // Ticket-resolved email (real send)
   if (body.status === "resolved" && thread.user_email) {
     try {
+      // Fetch thread chat history
+      const { results: messages } = await db.prepare(`
+        SELECT sender_type, message, created_at FROM support_messages
+        WHERE thread_id = ?
+        ORDER BY created_at ASC
+      `).bind(threadId).all().catch(() => ({ results: [] }));
+
+      let transcriptHtml = "";
+      let transcriptText = "";
+
+      if (messages && messages.length > 0) {
+        transcriptHtml = `
+          <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin: 20px 0; font-family: monospace; font-size: 13px; line-height: 1.5; color: #334155; text-align: left;">
+            <div style="font-weight: bold; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 10px; text-transform: uppercase; font-size: 11px; color: #64748b;">Conversation Transcript</div>
+            ${messages.map(m => {
+              const sender = m.sender_type === "admin" ? "Support Agent" : "You";
+              const time = new Date(m.created_at).toLocaleString();
+              return `<div style="margin-bottom: 10px;"><strong>[${time}] ${sender}:</strong><br/>${m.message}</div>`;
+            }).join("")}
+          </div>
+        `;
+        transcriptText = `\n\nCONVERSATION TRANSCRIPT:\n` + messages.map(m => {
+          const sender = m.sender_type === "admin" ? "Support Agent" : "You";
+          const time = new Date(m.created_at).toLocaleString();
+          return `[${time}] ${sender}: ${m.message}`;
+        }).join("\n");
+      }
+
       const tpl = ticketResolvedEmail({
         first_name: thread.first_name,
         subject_line: thread.brand_name ? `${thread.brand_name} support` : "",
         thread_url: APP_URL,
+        transcriptHtml,
       });
-      await sendEmail({ to: thread.user_email, subject: tpl.subject, html: tpl.html, text: tpl.text, env });
+
+      await sendEmail({ 
+        to: thread.user_email, 
+        subject: tpl.subject, 
+        html: tpl.html, 
+        text: tpl.text + transcriptText, 
+        env 
+      });
     } catch (err) {
       console.error("[SUPPORT] resolved email failed", err);
     }
@@ -209,23 +245,6 @@ export async function adminSendMessage(req, env, auth) {
   await logAdminAction(env, auth, "send_support_message", "support_thread", thread.id, {
     receiver_id, message_id: payload.id,
   });
-
-  // Support-reply email (real send)
-  try {
-    const customer = await db.prepare(
-      "SELECT email, first_name FROM users WHERE id = ?"
-    ).bind(receiver_id).first().catch(() => null);
-    if (customer?.email) {
-      const tpl = supportReplyEmail({
-        first_name: customer.first_name,
-        message_preview: message.trim(),
-        thread_url: APP_URL,
-      });
-      await sendEmail({ to: customer.email, subject: tpl.subject, html: tpl.html, text: tpl.text, env });
-    }
-  } catch (err) {
-    console.error("[SUPPORT] reply email failed", err);
-  }
 
   return json({ success: true, id: payload.id, thread_id: thread.id, message: payload });
 }

@@ -132,7 +132,7 @@ const FloatingChat = () => {
       id: `temp-${Date.now()}`,
       sender_id: userId,
       receiver_id: SUPPORT_ID,
-      content: messageText,
+      message: messageText,
       created_at: new Date().toISOString(),
       isTemp: true
     };
@@ -152,7 +152,14 @@ const FloatingChat = () => {
   };
 
   const formatTime = (dateStr) => {
-    return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (!dateStr) return "";
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return "";
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return "";
+    }
   };
 
   return (
@@ -212,7 +219,7 @@ const FloatingChat = () => {
                   </div>
                 )}
                 <div className={`chat-bubble ${msg.sender_id === userId ? 'bubble-out' : 'bubble-in'} ${msg.isTemp ? 'opacity-75' : ''}`}>
-                  <div className="bubble-text">{msg.content}</div>
+                  <div className="bubble-text">{msg.message}</div>
                   <div className="bubble-time">{formatTime(msg.created_at)}</div>
                 </div>
               </div>

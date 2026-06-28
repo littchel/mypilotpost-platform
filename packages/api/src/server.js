@@ -2548,7 +2548,10 @@ export default {
           return withCors(request, postNow(request, env, auth));
 
         /* ---------- CONTENT ---------- */
-        if (method === "GET" && (path === "/api/customer/content" || path === "/api/customer/content/social"))
+        if (method === "GET" && path === "/api/customer/content")
+          return withCors(request, listContent(request, env, auth));
+
+        if (method === "GET" && path === "/api/customer/content/social")
           return withCors(request, listDrafts(request, env, auth));
 
         if (method === "POST" && path === "/api/customer/content/blog")

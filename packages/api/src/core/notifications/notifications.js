@@ -23,8 +23,10 @@ export async function getNotifications(request, env, auth) {
 
   // 1. Total count
   const countRow = await db.prepare(`
-    SELECT COUNT(*) as total FROM notifications WHERE brand_id = ?
-  `).bind(auth.brand_id).first();
+    SELECT COUNT(*) as total FROM notifications
+    WHERE brand_id = ?
+      AND (recipient_id = ? OR recipient_id = 'brand')
+  `).bind(auth.brand_id, auth.user_id).first();
   const total = countRow?.total || 0;
 
   // 2. Fetch results
@@ -45,23 +47,27 @@ export async function getNotifications(request, env, auth) {
         ON nr.notification_id = n.id
        AND nr.user_id = ?
       WHERE n.brand_id = ?
+        AND (n.recipient_id = ? OR n.recipient_id = 'brand')
       ORDER BY n.created_at DESC
       LIMIT ? OFFSET ?
     `)
-    .bind(auth.user_id, auth.brand_id, limit, offset)
+    .bind(auth.user_id, auth.brand_id, auth.user_id, limit, offset)
     .all();
 
   // 3. Unread count
   const unreadRow = await db.prepare(`
     SELECT COUNT(*) as unread FROM notifications n
     LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = ?
-    WHERE n.brand_id = ? AND nr.notification_id IS NULL
-  `).bind(auth.user_id, auth.brand_id).first();
+    WHERE n.brand_id = ?
+      AND (n.recipient_id = ? OR n.recipient_id = 'brand')
+      AND nr.notification_id IS NULL
+  `).bind(auth.user_id, auth.brand_id, auth.user_id).first();
 
   return json({
     data: (results || []).map(n => ({
       id: n.id,
       type: mapNotificationType(n.type),
+      title: n.title,
       message: n.message || n.title,
       read: Boolean(n.is_read),
       created_at: n.created_at
@@ -174,8 +180,10 @@ export async function getUnreadCount(request, env, auth) {
     SELECT COUNT(*) as unread
     FROM notifications n
     LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = ?
-    WHERE n.brand_id = ? AND nr.notification_id IS NULL
-  `).bind(auth.user_id, auth.brand_id).first();
+    WHERE n.brand_id = ?
+      AND (n.recipient_id = ? OR n.recipient_id = 'brand')
+      AND nr.notification_id IS NULL
+  `).bind(auth.user_id, auth.brand_id, auth.user_id).first();
 
   return json({ unread_count: row?.unread || 0 });
 }
@@ -198,10 +206,11 @@ export async function handleNotificationEvent({ env, eventType, payload }) {
   const type = mapEventTypeToNotificationType(eventType);
 
   await db.prepare(`
-    INSERT INTO notifications (id, brand_id, type, title, message)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO notifications (id, recipient_type, recipient_id, brand_id, type, title, message)
+    VALUES (?, 'user', ?, ?, ?, ?, ?)
   `).bind(
     crypto.randomUUID(),
+    user_id || 'brand',
     brand_id,
     type,
     resolvedTitle,

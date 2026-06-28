@@ -99,7 +99,7 @@ export async function persistAndBroadcast(db, env, { threadId, senderId, receive
     sender_type: senderType,
     receiver_id: receiverId,
     message,
-    timestamp,
+    created_at: timestamp,
   };
 
   // Live broadcast via ChatRoom DO (room keyed by user pair)

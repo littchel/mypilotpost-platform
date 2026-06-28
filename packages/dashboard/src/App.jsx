@@ -164,6 +164,7 @@ function App() {
 
   // Notification & Growth Global State
   const [notifications, setNotifications] = useState([]);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [growth, setGrowth] = useState({ points: 0, level: 'Starter', streak_days: 0, progress_percentage: 0 });
   const [_intelligence, setIntelligence] = useState([]);
   const [_isLoadingGlobal, setIsLoadingGlobal] = useState(false);
@@ -188,6 +189,7 @@ function App() {
       ]);
       
       setNotifications(notifRes.data || []);
+      setUnreadNotifCount(notifRes.pagination?.unread_count || 0);
       setGrowth(growthRes.status === 'success' ? growthRes.data : growthRes);
       setIntelligence(intelRes.data || []);
     } catch (err) {
@@ -1313,6 +1315,7 @@ function App() {
         logout={logout}
         onAssistantOpen={() => setAssistantOpen(true)}
         notifications={notifications}
+        unreadCount={unreadNotifCount}
         growth={growth}
         stats={{
           socials: (allContent || []).filter(c => c.type === 'social').length,

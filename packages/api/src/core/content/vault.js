@@ -64,8 +64,8 @@ export async function listVault(request, env, auth) {
   if (status === "scheduled") {
     q += ` AND lifecycle_status IN ('scheduled','queued','publishing')`;
   } else if (status === "pending") {
-    // Only show items actively waiting for review — not approved ones
-    q += ` AND lifecycle_status = 'approval_requested'`;
+    // Show items actively waiting for review AND those that need changes
+    q += ` AND lifecycle_status IN ('approval_requested', 'changes_requested')`;
   } else if (status === "draft") {
     // Include approved items so creators can schedule them after approval
     q += ` AND lifecycle_status IN ('draft','approved')`;
@@ -304,7 +304,25 @@ export async function getVaultItem(request, env, auth) {
     `SELECT * FROM approval_requests WHERE content_id = ? AND brand_id = ? ORDER BY created_at DESC LIMIT 1`
   ).bind(id, brand_id).first();
 
-  return json({ success: true, data: { ...item, delivery_jobs: jobs || [], approval: approval || null } });
+  // Attach full approval history
+  const { results: approvalHistory } = await db.prepare(`
+    SELECT
+      ar.*,
+      u_req.full_name AS requester_name,
+      u_req.email AS requester_email,
+      u_app.full_name AS approver_name,
+      u_app.email AS approver_email,
+      u_rej.full_name AS rejecter_name,
+      u_rej.email AS rejecter_email
+    FROM approval_requests ar
+    LEFT JOIN users u_req ON u_req.id = ar.requested_by
+    LEFT JOIN users u_app ON u_app.id = ar.approved_by
+    LEFT JOIN users u_rej ON u_rej.id = ar.rejected_by
+    WHERE ar.content_id = ? AND ar.brand_id = ?
+    ORDER BY ar.created_at DESC
+  `).bind(id, brand_id).all();
+
+  return json({ success: true, data: { ...item, delivery_jobs: jobs || [], approval: approval || null, approval_history: approvalHistory || [] } });
 }
 
 /* ============================================================
@@ -531,13 +549,16 @@ export async function getApprovalItems(request, env, auth) {
       ar.expires_at,
       ar.approved_at, ar.approved_by,
       ar.rejected_by, ar.rejection_reason,
-      ar.email_sent_at
+      ar.email_sent_at,
+      u.full_name     AS requested_by_name,
+      u.email         AS requested_by_email
     FROM content_vault cv
     LEFT JOIN approval_requests ar ON ar.id = (
       SELECT id FROM approval_requests
       WHERE content_id = cv.id
       ORDER BY created_at DESC LIMIT 1
     )
+    LEFT JOIN users u ON u.id = ar.requested_by
     WHERE cv.brand_id = ?
       AND cv.share_for_approval = 1
       AND cv.lifecycle_status IN ('approval_requested', 'changes_requested', 'approved')
@@ -559,6 +580,8 @@ export async function getApprovalItems(request, env, auth) {
     _approval: {
       id: row.ar_id,
       requested_by: row.requested_by,
+      requested_by_name: row.requested_by_name,
+      requested_by_email: row.requested_by_email,
       reviewer_type: row.reviewer_type,
       review_notes: row.review_notes,
       reviewer_email: row.reviewer_email,
