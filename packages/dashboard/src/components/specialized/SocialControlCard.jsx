@@ -37,7 +37,7 @@ const SocialControlCard = ({
   const fetchStrategicGuidance = useCallback(async () => {
     try {
       const res = await fetch(`${apiUrl}/api/customer/intelligence`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('mpp_token') || localStorage.getItem('token') || ''}` }
       });
       const data = await res.json();
 
@@ -61,7 +61,7 @@ const SocialControlCard = ({
     setLoadingMedia(true);
     try {
       const res = await fetch(`${apiUrl}/api/customer/media/attached/social/${draft.id}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('mpp_token') || localStorage.getItem('token') || ''}` }
       });
       const data = await res.json();
       setAttachedMedia(data.items || []);
@@ -86,7 +86,7 @@ const SocialControlCard = ({
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}` 
+          'Authorization': `Bearer ${localStorage.getItem('mpp_token') || localStorage.getItem('token') || ''}` 
         },
         body: JSON.stringify({
           content_type: 'social',
@@ -106,7 +106,7 @@ const SocialControlCard = ({
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}` 
+          'Authorization': `Bearer ${localStorage.getItem('mpp_token') || localStorage.getItem('token') || ''}` 
         },
         body: JSON.stringify({
           content_id: draft.id,

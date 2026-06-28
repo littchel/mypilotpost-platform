@@ -201,7 +201,7 @@ function App() {
 
   useEffect(() => {
     fetchGlobalData();
-  }, [activeBrand?.id]);
+  }, [activeBrand?.id, listVersion]);
 
   // Forgot Password state
   const [showForgotPassword, setShowForgotPassword] = useState(false);

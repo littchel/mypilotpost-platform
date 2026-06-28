@@ -24,8 +24,9 @@ const MediaSourceModal = ({ isOpen, onClose, onSelect, activeBrand, socialConten
     setLoading(true);
     setErrorStatus(null);
     try {
+      const token = localStorage.getItem('mpp_token') || localStorage.getItem('token');
       const res = await fetch(`${apiUrl}/api/customer/media/library`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
       setResults(data.items || []);
@@ -41,11 +42,12 @@ const MediaSourceModal = ({ isOpen, onClose, onSelect, activeBrand, socialConten
     setErrorStatus(null);
     setResults([]);
     try {
+      const token = localStorage.getItem('mpp_token') || localStorage.getItem('token');
       const res = await fetch(`${apiUrl}/api/customer/media/suggestions`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}` 
+          'Authorization': `Bearer ${token}` 
         },
         body: JSON.stringify({
           platform: activeBrand?.primary_platform || 'instagram',
@@ -74,8 +76,9 @@ const MediaSourceModal = ({ isOpen, onClose, onSelect, activeBrand, socialConten
     setErrorStatus(null);
     setResults([]);
     try {
+      const token = localStorage.getItem('mpp_token') || localStorage.getItem('token');
       const res = await fetch(`${apiUrl}/api/customer/media/${provider}/list`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
       
@@ -99,7 +102,7 @@ const MediaSourceModal = ({ isOpen, onClose, onSelect, activeBrand, socialConten
     try {
       const form = new FormData();
       form.append("file", file);
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('mpp_token') || localStorage.getItem('token');
       const res = await fetch(`${apiUrl}/api/customer/media/upload`, {
         method: 'POST',
         headers: { 
@@ -136,7 +139,7 @@ const MediaSourceModal = ({ isOpen, onClose, onSelect, activeBrand, socialConten
     const endpoint = `/api/customer/media/from-${provider}`;
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('mpp_token') || localStorage.getItem('token');
       const res = await fetch(`${apiUrl}${endpoint}`, {
         method: 'POST',
         headers: { 
