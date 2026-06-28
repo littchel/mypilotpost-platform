@@ -102,7 +102,7 @@ export async function runMediaEngine(
   { platform, contentType, format, text = '', title = '', brand = '', industry = '', goal = '', brandDna = null },
   env
 ) {
-  const brief = generateBrief({ platform, contentType, format, text, title, brand, industry, goal });
+  const brief = generateBrief({ platform, contentType, format, text, title, brand, industry, goal, brandDna });
 
   // Build visual_context ONCE — single source of truth for guardrails + match scoring (Step 3)
   const visualContext = buildVisualContext({ industry, title, goal, format, brandDna });

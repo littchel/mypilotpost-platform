@@ -110,6 +110,7 @@ export function generateBrief({
   brand = '',
   industry = '',
   goal = '',
+  brandDna = null,
 } = {}) {
   const platformRules = PLATFORM_RULES[platform] || PLATFORM_RULES.instagram;
   const effectiveFormat = format || contentType;
@@ -117,22 +118,28 @@ export function generateBrief({
 
   // Title keywords are the strongest signal
   const titleWords = extractKeywords(title).slice(0, 3);
-  // Content text keywords (noisy — use fewer)
-  const contentWords = extractKeywords(text).slice(0, 2);
-  // Industry anchor
-  const indMod = industryModifier(industry);
+  // Content text keywords (noisy — use fewer, but more if title is empty)
+  const contentWords = extractKeywords(text).slice(0, titleWords.length > 0 ? 2 : 4);
+  // Industry anchor (fallback to raw industry string if modifier dictionary doesn't map it)
+  const indMod = industryModifier(industry) || (industry ? { subject: industry, words: industry } : null);
   // Goal modifier
   const goalMod = goalModifier(goal);
 
-  // Build query: title → industry subject → goal → format subject → platform style
+  // Extract keywords from brand DNA positioning
+  const brandDnaWords = brandDna?.positioning 
+    ? extractKeywords(brandDna.positioning).slice(0, 2) 
+    : (brandDna?.industry ? extractKeywords(brandDna.industry).slice(0, 2) : []);
+
+  // Build query: title → industry subject → brand DNA positioning → goal → format subject → platform style
   const queryParts = [
     ...titleWords,
     indMod ? indMod.subject.split(' ')[0] : null,
+    ...brandDnaWords,
     goalMod ? goalMod.split(' ')[0] : null,
     formatRules.subjects[0],
     !titleWords.length ? platformRules.style.split(' ')[0] : null,
     // content keywords only if no title
-    ...(!titleWords.length ? contentWords.slice(0, 2) : []),
+    ...(!titleWords.length ? contentWords.slice(0, 4) : []),
   ].filter(Boolean);
 
   // Deduplicate and cap

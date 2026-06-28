@@ -3,8 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const MediaSourceModal = ({ isOpen, onClose, onSelect, activeBrand, socialContent }) => {
   const { apiUrl } = useAuth();
-  const [activeSource, setActiveSource] = useState('library'); // library, pexels, freepik, drive, dropbox
-  const [searchQuery, setSearchQuery] = useState('');
+  const [activeSource, setActiveSource] = useState('library'); // library, suggestions, upload, drive, dropbox
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
   const [errorStatus, setErrorStatus] = useState(null);
@@ -13,10 +12,8 @@ const MediaSourceModal = ({ isOpen, onClose, onSelect, activeBrand, socialConten
     if (isOpen) {
       if (activeSource === 'library') {
         fetchLibrary();
-      } else if (activeSource === 'pexels' || activeSource === 'freepik') {
-        const query = socialContent ? socialContent.split(' ').slice(0, 3).join(' ') : (activeBrand?.name || '');
-        setSearchQuery(query);
-        setResults([]);
+      } else if (activeSource === 'suggestions') {
+        fetchSuggestions();
       } else if (activeSource === 'drive' || activeSource === 'dropbox') {
         fetchCloudFiles(activeSource === 'drive' ? 'google-drive' : 'dropbox');
       }
@@ -34,6 +31,39 @@ const MediaSourceModal = ({ isOpen, onClose, onSelect, activeBrand, socialConten
       setResults(data.items || []);
     } catch (err) {
       console.error("Failed to fetch media library", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSuggestions = async () => {
+    setLoading(true);
+    setErrorStatus(null);
+    setResults([]);
+    try {
+      const res = await fetch(`${apiUrl}/api/customer/media/suggestions`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}` 
+        },
+        body: JSON.stringify({
+          platform: activeBrand?.primary_platform || 'instagram',
+          contentType: 'blog',
+          title: socialContent || '',
+          brand: activeBrand?.name || '',
+          industry: activeBrand?.industry || '',
+        })
+      });
+      const data = await res.json();
+      const all = [
+        ...(data.featured || []),
+        ...(data.recommended || []),
+        ...(data.more || [])
+      ];
+      setResults(all);
+    } catch (err) {
+      console.error("Failed to fetch suggestions", err);
     } finally {
       setLoading(false);
     }
@@ -63,23 +93,32 @@ const MediaSourceModal = ({ isOpen, onClose, onSelect, activeBrand, socialConten
     }
   };
 
-  const handleSearch = async () => {
-    if (!searchQuery) return;
+  const handleUpload = async (file) => {
     setLoading(true);
     setErrorStatus(null);
     try {
-      const res = await fetch(`${apiUrl}/api/customer/media/search`, {
+      const form = new FormData();
+      form.append("file", file);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${apiUrl}/api/customer/media/upload`, {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}` 
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({ query: searchQuery, provider: activeSource })
+        body: form
       });
       const data = await res.json();
-      setResults(data.items || []);
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+      
+      onSelect({
+        id: data.id,
+        preview_url: data.preview_url,
+        provider: 'direct'
+      });
+      onClose();
     } catch (err) {
-      console.error("Failed to search media", err);
+      console.error("Failed to upload image", err);
+      alert("Failed to upload image: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -93,21 +132,22 @@ const MediaSourceModal = ({ isOpen, onClose, onSelect, activeBrand, socialConten
     }
 
     setLoading(true);
-    const provider = activeSource === 'drive' ? 'google-drive' : (activeSource === 'dropbox' ? 'dropbox' : activeSource);
+    const provider = activeSource === 'suggestions' ? 'pexels' : (activeSource === 'drive' ? 'google-drive' : (activeSource === 'dropbox' ? 'dropbox' : activeSource));
     const endpoint = `/api/customer/media/from-${provider}`;
 
     try {
+      const token = localStorage.getItem('token');
       const res = await fetch(`${apiUrl}${endpoint}`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}` 
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
-          external_id: item.external_id,
-          file_id: item.external_id, // For Drive backward compat
-          path: item.external_id,    // For Dropbox backward compat
-          preview_url: item.preview_url,
+          external_id: item.external_id || item.id,
+          file_id: item.external_id || item.id,
+          path: item.external_id || item.id,
+          preview_url: item.preview_url || item.url,
           type: item.mime_type?.startsWith('video') ? 'video' : 'image'
         })
       });
@@ -117,7 +157,7 @@ const MediaSourceModal = ({ isOpen, onClose, onSelect, activeBrand, socialConten
 
       onSelect({ 
         id: data.media_id, 
-        preview_url: item.preview_url,
+        preview_url: item.preview_url || item.url,
         provider: item.provider || activeSource 
       });
       onClose();
@@ -147,16 +187,16 @@ const MediaSourceModal = ({ isOpen, onClose, onSelect, activeBrand, socialConten
                 <i className="fas fa-images me-2 text-primary"></i> Brand Library
               </button>
               <button 
-                className={`btn-grey px-3 whitespace-nowrap ${activeSource === 'pexels' ? 'active' : ''}`}
-                onClick={() => { setActiveSource('pexels'); setResults([]); }}
+                className={`btn-grey px-3 whitespace-nowrap ${activeSource === 'suggestions' ? 'active' : ''}`}
+                onClick={() => { setActiveSource('suggestions'); setResults([]); }}
               >
-                <i className="fas fa-camera me-2 text-info"></i> Pexels Search
+                <i className="fas fa-magic me-2 text-info"></i> AI Suggestions
               </button>
               <button 
-                className={`btn-grey px-3 whitespace-nowrap ${activeSource === 'freepik' ? 'active' : ''}`}
-                onClick={() => { setActiveSource('freepik'); setResults([]); }}
+                className={`btn-grey px-3 whitespace-nowrap ${activeSource === 'upload' ? 'active' : ''}`}
+                onClick={() => { setActiveSource('upload'); setResults([]); }}
               >
-                <i className="fas fa-palette me-2 text-warning"></i> Freepik Search
+                <i className="fas fa-cloud-upload-alt me-2 text-success"></i> Upload Image
               </button>
               <button 
                 className={`btn-grey px-3 whitespace-nowrap ${activeSource === 'drive' ? 'active' : ''}`}
@@ -172,20 +212,31 @@ const MediaSourceModal = ({ isOpen, onClose, onSelect, activeBrand, socialConten
               </button>
             </div>
 
-            {/* Persistent Search Bar for Pexels and Freepik */}
-            {!loading && !errorStatus && (activeSource === 'pexels' || activeSource === 'freepik') && (
-              <div className="d-flex gap-2 mb-4">
+            {activeSource === 'upload' && !loading && (
+              <div 
+                style={{
+                  border: '2px dashed var(--border-subtle)',
+                  borderRadius: '12px',
+                  padding: '40px 20px',
+                  textAlign: 'center',
+                  background: '#f8fafc',
+                  cursor: 'pointer'
+                }}
+                onClick={() => document.getElementById('media-modal-upload-input').click()}
+              >
+                <i className="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
+                <h5 className="fw-bold">Drag & Drop Image Here</h5>
+                <p className="small text-muted mb-3">Or click to browse files from your computer</p>
                 <input 
-                  type="text" 
-                  className="premium-input-pill flex-grow-1" 
-                  placeholder={`Search millions of ${activeSource === 'freepik' ? 'Freepik' : 'Pexels'} stock images...`}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                  id="media-modal-upload-input"
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleUpload(file);
+                  }}
                 />
-                <button className="btn-pilot px-4" onClick={handleSearch}>
-                  <i className="fas fa-search"></i>
-                </button>
               </div>
             )}
 
@@ -205,19 +256,15 @@ const MediaSourceModal = ({ isOpen, onClose, onSelect, activeBrand, socialConten
               </div>
             )}
 
-            {!loading && !errorStatus && results.length === 0 && (activeSource === 'drive' || activeSource === 'dropbox' || activeSource === 'library') && (
+            {!loading && !errorStatus && results.length === 0 && (activeSource === 'drive' || activeSource === 'dropbox' || activeSource === 'library' || activeSource === 'suggestions') && (
               <div className="text-center py-5 text-muted small">
                 {activeSource === 'library' ? (
-                   <p>Your library is empty. Import media from search or cloud sources.</p>
+                   <p>Your library is empty. Import media from suggestions or cloud sources.</p>
+                ) : activeSource === 'suggestions' ? (
+                   <p>No automatic suggestions found matching your article topic.</p>
                 ) : (
                    <p>No compatible images found in your {activeSource} folder.</p>
                 )}
-              </div>
-            )}
-
-            {!loading && !errorStatus && results.length === 0 && (activeSource === 'pexels' || activeSource === 'freepik') && (
-              <div className="text-center py-5 text-muted small">
-                <p>Enter a query above to search millions of high-quality stock photos.</p>
               </div>
             )}
 
@@ -227,7 +274,7 @@ const MediaSourceModal = ({ isOpen, onClose, onSelect, activeBrand, socialConten
                   <div key={item.id || item.external_id} className="col-md-3">
                     <div className="position-relative hover-lift" onClick={() => handleSelectResult(item)}>
                       <img 
-                        src={item.thumbnail_url || item.preview_url} 
+                        src={item.thumbnail_url || item.preview_url || item.url} 
                         className="img-fluid rounded-3 border" 
                         style={{ height: '100px', width: '100%', objectFit: 'cover', cursor: 'pointer' }} 
                         alt="Asset" 
