@@ -969,6 +969,22 @@ export default function CreatePost({
     setAssistantOpen(false);
   };
 
+  const [feedbackItem, setFeedbackItem] = useState(null);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+
+  const handleViewFeedback = async (item) => {
+    setFeedbackItem(item);
+    setFeedbackLoading(true);
+    try {
+      const details = await apiRequest(`/api/customer/vault/${item.id || item.content_id}`);
+      setFeedbackItem(prev => prev && prev.id === item.id ? { ...prev, approval_history: details.approval_history } : prev);
+    } catch (e) {
+      console.error("Failed to load feedback details", e);
+    } finally {
+      setFeedbackLoading(false);
+    }
+  };
+
   // ── Vault lifecycle panel ────────────────────────────────────────────────
   const loadVault = useCallback(async (tab) => {
     setActiveTopTab(tab);
@@ -1975,7 +1991,24 @@ export default function CreatePost({
                         </div>
                       )}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, color: "#0f172a", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <div
+                          onClick={() => {
+                            if (item.lifecycle_status === 'changes_requested') {
+                              handleViewFeedback(item);
+                            }
+                          }}
+                          style={{
+                            fontSize: 13,
+                            color: item.lifecycle_status === 'changes_requested' ? "#2563eb" : "#0f172a",
+                            fontWeight: 500,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            cursor: item.lifecycle_status === 'changes_requested' ? "pointer" : "default",
+                            textDecoration: item.lifecycle_status === 'changes_requested' ? "underline" : "none"
+                          }}
+                          title={item.lifecycle_status === 'changes_requested' ? "Click to view changes requested feedback" : undefined}
+                        >
                           {preview.slice(0, 120)}
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>
@@ -1983,8 +2016,28 @@ export default function CreatePost({
                           {(item.lifecycle_status === 'changes_requested' || item.lifecycle_status === 'approval_requested') && (() => {
                             const meta = VAULT_STATUS_META[item.lifecycle_status] || { label: item.lifecycle_status, color: "#64748b", bg: "#f1f5f9" };
                             return (
-                              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: meta.color, background: meta.bg, padding: "1px 6px", borderRadius: 99 }}>
-                                {meta.label}
+                              <span
+                                onClick={(e) => {
+                                  if (item.lifecycle_status === 'changes_requested') {
+                                    e.stopPropagation();
+                                    handleViewFeedback(item);
+                                  }
+                                }}
+                                style={{
+                                  fontSize: 9,
+                                  fontWeight: 700,
+                                  letterSpacing: "0.04em",
+                                  textTransform: "uppercase",
+                                  color: meta.color,
+                                  background: meta.bg,
+                                  padding: "1px 6px",
+                                  borderRadius: 99,
+                                  cursor: item.lifecycle_status === 'changes_requested' ? "pointer" : "default",
+                                  border: item.lifecycle_status === 'changes_requested' ? "1px solid " + meta.color : "none"
+                                }}
+                                title={item.lifecycle_status === 'changes_requested' ? "Click to view changes requested feedback" : undefined}
+                              >
+                                {meta.label} {item.lifecycle_status === 'changes_requested' ? " ↗" : ""}
                               </span>
                             );
                           })()}
@@ -2046,6 +2099,102 @@ export default function CreatePost({
         publishResult={publishResult}
         onReset={resetAfterPublish}
       />
+
+      {feedbackItem && (
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Feedback History">
+          <div className="notif-prefs-panel" style={{ maxWidth: 500, width: "90%" }}>
+            <div className="notif-prefs-header">
+              <h3 className="notif-prefs-title">Changes Requested Feedback</h3>
+              <button className="verify-modal__close" onClick={() => setFeedbackItem(null)} aria-label="Close">
+                ✕
+              </button>
+            </div>
+            
+            <div style={{ padding: "16px 20px 20px" }}>
+              <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: 16 }}>
+                Review history and feedback comments left by client/approvers.
+              </div>
+              
+              {feedbackLoading ? (
+                <div style={{ textAlign: "center", padding: "30px 0" }}>
+                  <div className="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
+                  <div style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>Loading review history…</div>
+                </div>
+              ) : (
+                <div>
+                  {!feedbackItem.approval_history || feedbackItem.approval_history.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: "20px 0", color: "var(--text-muted)", fontSize: "0.85rem" }}>
+                      No comments or feedback history recorded yet.
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12, maxHeight: 350, overflowY: "auto", paddingRight: 4 }}>
+                      {feedbackItem.approval_history.map((h, idx) => {
+                        const name = h.requested_by_name || h.requested_by_email || "User";
+                        const approverName = h.approved_by_name || h.approved_by_email || h.rejected_by_name || h.rejected_by_email || "Reviewer";
+                        return (
+                          <div key={h.id || idx} style={{ borderBottom: idx < feedbackItem.approval_history.length - 1 ? "1px solid var(--border-subtle)" : "none", paddingBottom: 12 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                              <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-main)" }}>
+                                📤 Submitted by {name}
+                              </span>
+                              <span style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>
+                                {new Date(h.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                              </span>
+                            </div>
+                            {h.submission_note && (
+                              <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", background: "var(--bg-body)", borderRadius: 6, padding: "6px 10px", margin: "4px 0 8px", borderLeft: "3px solid var(--border-subtle)" }}>
+                                💬 Note: {h.submission_note}
+                              </div>
+                            )}
+                            
+                            {h.approved_at || h.rejected_by ? (
+                              <div style={{ marginTop: 8, paddingLeft: 12, borderLeft: "2px dashed var(--border-subtle)" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                  <span style={{ fontSize: "0.8rem", fontWeight: 700, color: h.rejection_reason ? "var(--status-warning)" : "var(--status-success)" }}>
+                                    {h.rejection_reason ? "⚠️ Changes Requested" : "✅ Approved"} by {approverName}
+                                  </span>
+                                  <span style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>
+                                    {new Date(h.approved_at || h.updated_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                                  </span>
+                                </div>
+                                {h.rejection_reason && (
+                                  <div style={{ fontSize: "0.8rem", color: "var(--text-main)", fontWeight: 500, background: "#fff7ed", border: "1px solid #ffedd5", borderRadius: 6, padding: "8px 12px", marginTop: 4 }}>
+                                    <strong>Feedback:</strong> {h.rejection_reason}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div style={{ marginTop: 6, paddingLeft: 12, fontSize: "0.78rem", color: "var(--text-muted)", fontStyle: "italic" }}>
+                                ⏳ Under review...
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            <div className="notif-prefs-footer" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button className="auth-btn-secondary" onClick={() => setFeedbackItem(null)} style={{ margin: 0, padding: "8px 16px" }}>
+                Close
+              </button>
+              <button 
+                className="auth-btn-primary" 
+                onClick={() => {
+                  setFeedbackItem(null);
+                  handleVaultEdit(feedbackItem);
+                }} 
+                style={{ margin: 0, padding: "8px 16px" }}
+              >
+                Edit to Fix
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {brandOverlayOpen && (
         <BrandOverlayModal
