@@ -17,7 +17,7 @@ export async function tiktokStart(request, env, auth) {
   const state = crypto.randomUUID();
 
   const params = new URLSearchParams({
-    client_key: env.TIKTOK_CLIENT_ID,
+    client_key: env.TIKTOK_CLIENT_KEY || env.TIKTOK_CLIENT_ID,
     scope: "user.info.basic,video.upload,video.publish,video.list",
     response_type: "code",
     redirect_uri: `${env.API_BASE_URL}/api/customer/oauth/tiktok/callback`,
@@ -39,7 +39,7 @@ export async function tiktokCallback(request, env, auth) {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      client_key: env.TIKTOK_CLIENT_ID,
+      client_key: env.TIKTOK_CLIENT_KEY || env.TIKTOK_CLIENT_ID,
       client_secret: env.TIKTOK_CLIENT_SECRET,
       code,
       grant_type: "authorization_code",

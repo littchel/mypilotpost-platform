@@ -77,7 +77,12 @@ export async function startUnifiedOAuth(request, env, userContext) {
   let client_id = env[`${platform.toUpperCase()}_CLIENT_ID`] || env[`${credKey}_CLIENT_ID`];
   let client_secret = env[`${platform.toUpperCase()}_CLIENT_SECRET`] || env[`${credKey}_CLIENT_SECRET`];
   if (platform === 'tiktok') {
-    client_id = client_id || env.TIKTOK_CLIENT_KEY;
+    client_id = client_id || env.TIKTOK_CLIENT_KEY || env.TIKTOK_CLIENT_ID;
+    client_secret = client_secret || env.TIKTOK_CLIENT_SECRET;
+  }
+  if (platform === 'threads') {
+    client_id = client_id || env.THREADS_CLIENT_ID || env.THREADS_APP_ID;
+    client_secret = client_secret || env.THREADS_CLIENT_SECRET || env.THREADS_APP_SECRET;
   }
   if (platform === 'pinterest') {
     client_id = client_id || env.PINTEREST_APP_ID;
@@ -191,7 +196,12 @@ export async function handleUnifiedCallback(request, env) {
   let client_id = env[`${platform.toUpperCase()}_CLIENT_ID`] || env[`${credKey}_CLIENT_ID`];
   let client_secret = env[`${platform.toUpperCase()}_CLIENT_SECRET`] || env[`${credKey}_CLIENT_SECRET`];
   if (platform === 'tiktok') {
-    client_id = client_id || env.TIKTOK_CLIENT_KEY;
+    client_id = client_id || env.TIKTOK_CLIENT_KEY || env.TIKTOK_CLIENT_ID;
+    client_secret = client_secret || env.TIKTOK_CLIENT_SECRET;
+  }
+  if (platform === 'threads') {
+    client_id = client_id || env.THREADS_CLIENT_ID || env.THREADS_APP_ID;
+    client_secret = client_secret || env.THREADS_CLIENT_SECRET || env.THREADS_APP_SECRET;
   }
   if (platform === 'pinterest') {
     client_id = client_id || env.PINTEREST_APP_ID;
