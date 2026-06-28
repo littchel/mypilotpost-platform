@@ -162,25 +162,25 @@ const SEOCentre = ({ activeBrand }) => {
 
   // Default SEO Advice if no brand insights exist
   const defaultAdvice = useMemo(() => {
-    const advice = [
-      {
+    const advice = [];
+    if (gscOverview.data?.connected !== true) {
+      advice.push({
         title: "Integrate Search Console",
         message: "Connect your website under Settings to track query rankings, click-through rates, and organic traffic curves in real-time.",
         priority: "high",
         type: "gsc"
-      },
-      {
+      });
+    }
+    if (!keywords.data || keywords.data.length === 0) {
+      advice.push({
         title: "Add Primary Keywords",
         message: "Track important niche terms to check search volume, discover competitor sites, and see content optimization warnings.",
         priority: "medium",
         type: "keyword"
-      }
-    ];
-    if (keywords.data && keywords.data.length > 0) {
-      advice.pop();
+      });
     }
     return advice;
-  }, [keywords]);
+  }, [keywords, gscOverview]);
 
   // Handle Sync GSC
   const handleSyncGsc = async () => {
