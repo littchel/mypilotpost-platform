@@ -1463,7 +1463,14 @@ function App() {
         <TabContent id="schedule" activeTab={activeTab}>
           <CalendarSchedule
             activeBrand={activeBrand}
-            onScheduleNew={() => setActiveTab('social')}
+            onScheduleNew={(item) => {
+              if (item && item.content_id) {
+                const targetTab = (item.content_type === 'blog' || item.content_type === 'article') ? 'blog' : 'social';
+                switchTab(targetTab, { openContentId: item.content_id });
+              } else {
+                switchTab('social');
+              }
+            }}
             onJobClick={(job) => setPreviewDraft(job)}
             listVersion={listVersion}
           />
