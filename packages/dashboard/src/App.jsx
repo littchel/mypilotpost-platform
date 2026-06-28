@@ -161,6 +161,7 @@ function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [_auditFixContext, _setAuditFixContext] = useState(null);
   const [_showNewDashboard, _setShowNewDashboard] = useState(true);
+  const [listVersion, setListVersion] = useState(0);
 
   // Notification & Growth Global State
   const [notifications, setNotifications] = useState([]);
@@ -296,7 +297,6 @@ function App() {
   const [_socialSubTab, _setSocialSubTab] = useState('compose');
   const [_analyticsSubTab, _setAnalyticsSubTab] = useState('overview');
   const [_contentSubTab, setContentSubTab] = useState('draft-content');
-  const [listVersion, setListVersion] = useState(0);
   const [googlePickerState, setGooglePickerState] = useState(null); // { platform, connId, accounts, loading, error }
   const [articleTitle, setArticleTitle] = useState("");
   const [articleBody, setArticleBody] = useState("");
