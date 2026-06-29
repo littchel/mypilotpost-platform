@@ -717,6 +717,17 @@ function PlaybookWizard({ playbook, activeBrand, switchTab, onClose }) {
   const [err,           setErr]          = useState("");
   const CHANNELS = ["LinkedIn","Instagram","Facebook","TikTok","Twitter/X","YouTube","Blog"];
 
+  useEffect(() => {
+    if (!activeBrand?.id) return;
+    apiRequest('/api/customer/brand-dna')
+      .then(res => {
+        if (res.profile?.website_url) {
+          setWebsiteUrl(res.profile.website_url);
+        }
+      })
+      .catch(() => {});
+  }, [activeBrand?.id]);
+
   async function handleWebsiteImport() {
     if (!websiteUrl.trim()) return;
     setWebsiteLoading(true); setWebsiteErr("");

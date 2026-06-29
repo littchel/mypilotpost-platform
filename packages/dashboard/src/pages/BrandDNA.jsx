@@ -103,6 +103,7 @@ const TagInput = ({ label, helper, tags, onChange }) => {
 
 const BrandCorePanel = ({ data, onChange }) => (
   <div>
+    <GuidedField label="Website URL" helper="Your business or brand website URL." placeholder="https://yourwebsite.com" value={data.websiteUrl} onChange={v => onChange('websiteUrl', v)} example="https://mypilotpost.com" />
     <GuidedField label="What is your brand's mission?" helper="The core reason your brand exists — beyond making money. This shapes every piece of content you create." placeholder="We exist to..." value={data.mission} onChange={v => onChange('mission', v)} multiline example="We exist to help independent business owners build the authority they deserve in their industry." />
     <GuidedField label="What is your brand's vision?" helper="Where your brand is headed in 3–5 years. A clear vision attracts the right audience and filters the wrong opportunities." placeholder="In 5 years, our brand will..." value={data.vision} onChange={v => onChange('vision', v)} multiline example="To become the most trusted growth partner for 10,000 service businesses across the UK and Australia." />
     <GuidedField label="What is your unique positioning?" helper="What makes you different from every competitor doing the same thing. Not features — strategic position." placeholder="Unlike others, we..." value={data.positioning} onChange={v => onChange('positioning', v)} multiline example="Unlike generic marketing agencies, we build brand authority systems — not just campaigns." />
@@ -224,6 +225,7 @@ const PANEL_COMPONENTS = {
 };
 
 const EMPTY_DNA = {
+  websiteUrl: '',
   mission: '', vision: '', positioning: '', differentiators: [], authorityGoals: '',
   icp: '', painPoints: '', desires: '', objections: '', buyingTriggers: [], psychographics: '',
   tone: '', vocabulary: [], forbiddenLanguage: [], ctaStyle: '', communicationStyle: '',
@@ -242,6 +244,7 @@ function mapApiToDna(res) {
   const arr = (val) => Array.isArray(val) ? val : [];
   const txt = (arr) => arr.join('\n');
   return {
+    websiteUrl: p.website_url || '',
     mission: p.mission || '',
     vision: p.vision || '',
     positioning: p.positioning || '',
@@ -289,6 +292,7 @@ function mapDnaToApi(dna) {
   const lines = (s) => s ? s.split('\n').map(l => l.trim()).filter(Boolean) : [];
   return {
     profile: {
+      website_url: dna.websiteUrl || null,
       mission: dna.mission || null,
       vision: dna.vision || null,
       positioning: dna.positioning || null,

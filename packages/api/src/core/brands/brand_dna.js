@@ -95,8 +95,8 @@ export async function updateBrandDNA(request, env, auth) {
 
   if (profile) {
     batches.push(db.prepare(`
-      INSERT INTO brand_dna_profiles (brand_id, mission, vision, positioning, value_proposition, industry, brand_personality, differentiators, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      INSERT INTO brand_dna_profiles (brand_id, mission, vision, positioning, value_proposition, industry, brand_personality, differentiators, website_url, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
       ON CONFLICT(brand_id) DO UPDATE SET
         mission = COALESCE(?, mission),
         vision = COALESCE(?, vision),
@@ -105,15 +105,18 @@ export async function updateBrandDNA(request, env, auth) {
         industry = COALESCE(?, industry),
         brand_personality = COALESCE(?, brand_personality),
         differentiators = COALESCE(?, differentiators),
+        website_url = COALESCE(?, website_url),
         updated_at = datetime('now')
     `).bind(
       brandId,
       profile.mission || null, profile.vision || null, profile.positioning || null,
       profile.value_proposition || null, profile.industry || null,
       JSON.stringify(profile.brand_personality || []), JSON.stringify(profile.differentiators || []),
+      profile.website_url || null,
       profile.mission || null, profile.vision || null, profile.positioning || null,
       profile.value_proposition || null, profile.industry || null,
-      JSON.stringify(profile.brand_personality || []), JSON.stringify(profile.differentiators || [])
+      JSON.stringify(profile.brand_personality || []), JSON.stringify(profile.differentiators || []),
+      profile.website_url || null
     ));
   }
 
@@ -426,11 +429,13 @@ Return ONLY the JSON. No explanations, no markdown wrapper.`;
     };
   }
 
+  const websiteUrl = onboardingData?.websiteURL || onboardingData?.url || "";
+
   // Batch insert DNA tables
   await db.prepare(`
-    INSERT INTO brand_dna_profiles (brand_id, mission, vision, positioning, value_proposition, industry, brand_personality, differentiators, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-    ON CONFLICT(brand_id) DO UPDATE SET updated_at = datetime('now')
+    INSERT INTO brand_dna_profiles (brand_id, mission, vision, positioning, value_proposition, industry, brand_personality, differentiators, website_url, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    ON CONFLICT(brand_id) DO UPDATE SET website_url = COALESCE(?, website_url), updated_at = datetime('now')
   `).bind(
     brandId,
     dna.profile.mission,
@@ -439,7 +444,9 @@ Return ONLY the JSON. No explanations, no markdown wrapper.`;
     dna.profile.value_proposition,
     industry,
     JSON.stringify(dna.profile.brand_personality),
-    JSON.stringify(dna.profile.differentiators)
+    JSON.stringify(dna.profile.differentiators),
+    websiteUrl,
+    websiteUrl
   ).run();
 
   await db.prepare(`

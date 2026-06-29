@@ -10,7 +10,7 @@ import { fetchBrandContext } from "../ai/brand_context.js";
 // ── Brand context (wrapper for studio: adds active platforms) ─────────────────
 async function fetchBrandCtx(db, brand_id) {
   const [dnaCtx, connections] = await Promise.all([
-    fetchBrandContext(db, brand_id, 'standard'),
+    fetchBrandContext(db, brand_id, 'full'),
     db.prepare("SELECT platform FROM social_connections WHERE brand_id = ? AND status = 'active'").bind(brand_id).all(),
   ]);
   return {
@@ -62,6 +62,9 @@ Return ONLY this JSON object:
       "framework": "Myth vs Reality",
       "idea": "specific post concept for this brand",
       "hook": "scroll-stopping opening line — max 12 words, never generic",
+      "caption": "complete, ready-to-publish post — 80-220 words, no placeholders, structured as requested below",
+      "cta": "specific call to action",
+      "hashtags": ["#tag1", "#tag2", "#tag3"],
       "objective": "one short goal: build trust / generate leads / etc.",
       "platforms": ["platform1", "platform2"],
       "media_type": "text_only",
@@ -70,7 +73,19 @@ Return ONLY this JSON object:
   ]
 }
 
+Format Rules for the "caption" field depending on the "media_type" or platform:
+- If media_type is "short_video" (Reel, Story, TikTok): Format as a visual script. Example:
+  [SCENE 1: Visual detail]
+  Overlay: "Hook..."
+  Voiceover: "Voiceover script..."
+  [SCENE 2: Visual detail]
+  Voiceover: "Substance..."
+- If media_type/platforms indicates an Instagram Story: Format as a 3-slide sequence with text and layouts.
+- If platforms contains "blog": Format as a structured article draft with clear sections.
+- For standard feed posts: Format with a clear "HOOK", "STORY/VALUE", "CALL TO ACTION", and "HASHTAGS". Seamlessly incorporate the website URL from the BRAND CONTEXT if present.
+
 Rules:
+- Generate 20 items.
 - Use these frameworks (no repeats): Myth vs Reality, Behind the Scenes, Mistakes to Avoid, Before & After, Customer Story, FAQ, Stat + Commentary, How-To, Opinion Take, Trend Commentary, Case Study, Product Feature, Team Story, Industry News, Social Proof, Challenge, Listicle, Question, Announcement, Seasonal
 - platforms must be from: ${platforms}
 - effort values: low, medium, high  — distribute ~8/8/4
@@ -108,7 +123,7 @@ export async function generateStudioPost(request, env, auth) {
   const { brand, context, brandName } = await fetchBrandCtx(db, auth.brand_id);
   const platformList = platforms.join(", ") || "Facebook, Instagram";
 
-  const prompt = `You are a copywriter generating a complete social post for a brand.
+  const prompt = `You are an expert copywriter generating a complete content post or script.
 
 BRAND CONTEXT:
 ${context || `Brand: ${brandName}`}
@@ -120,8 +135,8 @@ PLATFORMS: ${platformList}
 
 Write the complete post. Return ONLY this JSON:
 {
-  "body": "complete post text ready to use — not a template, an actual post",
-  "hook": "refined opening line",
+  "body": "complete post text ready to use — formatted as requested",
+  "hook": "refined scroll-stopping opening line",
   "cta": "specific call to action",
   "hashtags": "#tag1 #tag2 #tag3 #tag4 #tag5",
   "platform_variants": {
@@ -130,11 +145,21 @@ Write the complete post. Return ONLY this JSON:
   }
 }
 
+Format Rules for the "body" field depending on the format type:
+- If format/platform indicates a Reel, Story, or TikTok: Format as a visual script. Example:
+  [SCENE 1: Visual detail]
+  Overlay: "Hook..."
+  Voiceover/Audio: "Script..."
+  [SCENE 2: Visual detail]
+  Voiceover/Audio: "Value..."
+- If it is a Story: Format as a slide-by-slide sequence (e.g. Slide 1, Slide 2, Slide 3).
+- If it is a Blog post or Article: Format as a complete structured article draft with clear headings.
+- For standard feed posts: Format with a clear Hook, Story/Value details, a direct Call to Action, and Hashtags. Seamlessly incorporate the website URL from the BRAND CONTEXT if present.
+
 Rules:
-- Write the actual post, not a description of what to write
-- Body should be 80-220 words
-- No [PLACEHOLDER] text — it must be complete and publishable
-- No generic openers, no "Excited to share", no "Game changer"
+- Write the actual post, not a description of what to write.
+- No [PLACEHOLDER] text — it must be complete and publishable.
+- No generic openers.
 - Respond with JSON only. No markdown.`;
 
   const result = await trackedRunLLM(env, {
@@ -288,7 +313,7 @@ Generate exactly ${cardCount} content cards for this playbook. Return ONLY this 
       "content_type": "social",
       "platform": "primary platform",
       "platforms": ["platform1", "platform2"],
-      "caption": "complete, ready-to-publish post — 80-220 words, no placeholders",
+      "caption": "complete, ready-to-publish post — formatted as requested",
       "hook": "scroll-stopping opening line — max 12 words",
       "cta": "specific call to action",
       "hashtags": ["#tag1", "#tag2", "#tag3"],
@@ -299,11 +324,22 @@ Generate exactly ${cardCount} content cards for this playbook. Return ONLY this 
   "schedule_suggestion": "1-sentence scheduling recommendation"
 }
 
-Rules:
-- Every caption must be complete and publishable — no [PLACEHOLDERS], no templates
-- Reference the brand and industry data above directly in each caption
-- Mix formats: single_image, carousel, video, text_only
-- Vary platforms across cards
+Format Rules for the "caption" field depending on the format type:
+- If format is "short_video" (Reel, Story, TikTok): Format as a visual script. Example:
+  [SCENE 1: Describe visual]
+  Text Overlay: "Hook text"
+  Voiceover: "Voiceover text"
+  [SCENE 2: Describe visual]
+  Voiceover: "Value proposition..."
+- If format is "story" (Instagram/Facebook Story): Format as a 3-slide sequence with visual ideas and text.
+- If format is "article" or content_type is "blog": Format as a structured article layout with an Introduction, Headings, and a Conclusion.
+- For standard feed posts (Social Media Post): Format with a clear "HOOK" (scroll-stopping line), followed by "STORY/VALUE" (the core message), a direct "CALL TO ACTION" (cta), and then "HASHTAGS". If a website URL exists in the BRAND CONTEXT, seamlessly include it in the call to action where appropriate.
+
+General Rules:
+- Every caption must be complete and publishable — no [PLACEHOLDERS], no templates.
+- Reference the brand and industry data above directly in each caption.
+- Mix formats: single_image, carousel, short_video, story, text_only.
+- Vary platforms across cards.
 - Respond with JSON only. No markdown.`;
 
   const result = await trackedRunLLM(env, {
