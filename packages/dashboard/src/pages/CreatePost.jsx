@@ -733,6 +733,7 @@ export default function CreatePost({
     if (body) setContent(body);
     if (Array.isArray(prefill.platforms) && prefill.platforms.length) setSelectedPlatforms(prefill.platforms);
     if (prefill.campaign_id) setCampaignId(prefill.campaign_id);
+    if (prefill.overlays) setOverlays(prefill.overlays);
 
     if (prefill.image) {
       const tempId = crypto.randomUUID();

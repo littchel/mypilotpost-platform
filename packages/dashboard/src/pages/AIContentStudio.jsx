@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { apiRequest } from "../lib/api/client";
+import { useApi } from "../lib/api/hooks";
 import PlatformIcon from "../components/shared/PlatformIcon";
 import { fetchMediaSuggestions, trackImageImported } from "../services/mediaSuggestions";
 import IndustryAutoSuggest from "../components/shared/IndustryAutoSuggest";
@@ -282,10 +283,153 @@ function PreviewModal({ opp, imageUrl, activeBrand, onClose, onUseIdea }) {
 }
 
 // ── Route Modal — enriched prefill including image ────────────────────────────
-function RouteModal({ opp, imageUrl, switchTab, onClose }) {
+function generateBrandOverlay(opp, imageUrl, activeBrand, brandDna) {
+  if (!imageUrl) return null;
+
+  const hookText = opp.hook || opp.title || opp.idea || "";
+  if (!hookText) return null;
+
+  const ctaText = opp.cta || opp._cta || "";
+  const logoUrl = activeBrand?.logo_url || null;
+
+  const vi = brandDna?.visual || {};
+  const primaryColor = vi.primary_color || "#2563eb";
+
+  const mt = (opp.media_type || opp.format || opp.type || "").toLowerCase();
+  const isVideo = mt.includes("video") || mt.includes("reel") || mt.includes("tiktok");
+  const isStory = mt.includes("story");
+  const isBlog = opp.content_type === "blog" || opp.platforms?.includes("blog");
+
+  let aspect = "1:1";
+  if (isVideo || isStory) aspect = "9:16";
+  else if (isBlog) aspect = "16:9";
+
+  const textLayers = [];
+  const imageLayers = [];
+
+  // 1. Logo Watermark Layer (bottom-right/top-middle)
+  if (logoUrl) {
+    imageLayers.push({
+      id: `logo_${Date.now()}`,
+      url: logoUrl,
+      x: aspect === "9:16" ? 44 : 80,
+      y: aspect === "9:16" ? 8 : 82,
+      w: 12,
+      h: 12,
+      imgAr: 1.0,
+      rotation: 0,
+      opacity: 0.9,
+      z: 5,
+      isLogo: true
+    });
+  }
+
+  // 2. Hook Text & Banners
+  if (aspect === "9:16") {
+    imageLayers.push({
+      id: `banner_${Date.now()}`,
+      isShape: true,
+      shapeType: "rectangle",
+      x: 10,
+      y: 40,
+      w: 80,
+      h: 16,
+      rotation: 0,
+      opacity: 0.85,
+      color: "#0f172a",
+      z: 1
+    });
+
+    textLayers.push({
+      id: `text_${Date.now()}`,
+      text: hookText.toUpperCase(),
+      x: 15,
+      y: 44,
+      w: 70,
+      rotation: 0,
+      fontSize: 5.5,
+      fontFamily: "Outfit",
+      color: "#ffffff",
+      opacity: 1,
+      align: "center",
+      bold: true,
+      italic: false,
+      z: 2
+    });
+  } else {
+    imageLayers.push({
+      id: `banner_${Date.now()}`,
+      isShape: true,
+      shapeType: "rectangle",
+      x: 0,
+      y: 75,
+      w: 100,
+      h: 25,
+      rotation: 0,
+      opacity: 0.9,
+      color: "#0f172a",
+      z: 1
+    });
+
+    textLayers.push({
+      id: `text_${Date.now()}`,
+      text: hookText,
+      x: 8,
+      y: 83,
+      w: logoUrl ? 50 : 62,
+      rotation: 0,
+      fontSize: 4.2,
+      fontFamily: "Inter",
+      color: "#ffffff",
+      opacity: 1,
+      align: "left",
+      bold: true,
+      italic: false,
+      z: 2
+    });
+
+    if (ctaText) {
+      textLayers.push({
+        id: `cta_${Date.now()}`,
+        text: ctaText.toUpperCase(),
+        x: logoUrl ? 60 : 70,
+        y: 81,
+        w: 22,
+        rotation: 0,
+        fontSize: 3.5,
+        fontFamily: "Inter",
+        color: "#ffffff",
+        opacity: 1,
+        align: "center",
+        bold: true,
+        italic: false,
+        z: 3,
+        isCTA: true,
+        ctaBgColor: primaryColor,
+        ctaBorderRadius: 8,
+        ctaPadding: 8
+      });
+    }
+  }
+
+  return {
+    background: {
+      url: imageUrl,
+      fit: "cover",
+      color: "#111827"
+    },
+    overlay_text: textLayers,
+    overlay_image: imageLayers,
+    aspectRatio: aspect
+  };
+}
+
+// ── Route Modal — enriched prefill including image ────────────────────────────
+function RouteModal({ opp, imageUrl, activeBrand, brandDna, switchTab, onClose }) {
   function route(tab) {
     try {
       if (imageUrl) trackImageImported({ url: imageUrl, provider: 'pexels' });
+      const generatedOverlays = generateBrandOverlay(opp, imageUrl, activeBrand, brandDna);
       sessionStorage.setItem("studio_idea_prefill", JSON.stringify({
         idea_id:             opp.id || opp.title,
         title:               opp.idea || opp.title || opp.framework || "",
@@ -303,6 +447,7 @@ function RouteModal({ opp, imageUrl, switchTab, onClose }) {
         calendar_context:    opp.calendar_event || null,
         brand_context:       opp.objective || opp.suggested_because || "",
         generationMeta:      { source: opp.source || "studio", playbook_type: opp.playbook_type || null },
+        overlays:            generatedOverlays || null,
         source:              "studio",
       }));
     } catch {}
@@ -435,7 +580,7 @@ function matchFilter(opp, filter) {
   return true;
 }
 
-function PostsTab({ activeBrand, connectedPlatforms, switchTab }) {
+function PostsTab({ activeBrand, brandDna: initialBrandDna, connectedPlatforms, switchTab }) {
   const [opps,       setOpps]      = useState([]);
   const [imageMap,   setImageMap]  = useState({});
   const [loading,    setLoading]   = useState(true);
@@ -444,8 +589,12 @@ function PostsTab({ activeBrand, connectedPlatforms, switchTab }) {
   const [filter,     setFilter]    = useState("for-you");
   const [preview,    setPreview]   = useState(null);
   const [routing,    setRouting]   = useState(null);
-  const [brandDna,   setBrandDna]  = useState(null);
+  const [brandDna,   setBrandDna]  = useState(initialBrandDna || null);
   const ccs = calcCCS(activeBrand, brandDna, connectedPlatforms);
+
+  useEffect(() => {
+    if (initialBrandDna) setBrandDna(initialBrandDna);
+  }, [initialBrandDna]);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
@@ -570,14 +719,14 @@ function PostsTab({ activeBrand, connectedPlatforms, switchTab }) {
           onUseIdea={o => { setPreview(null); setRouting({ opp: o, imageUrl: preview.imageUrl }); }} />
       )}
       {routing && (
-        <RouteModal opp={routing.opp} imageUrl={routing.imageUrl} switchTab={switchTab} onClose={() => setRouting(null)} />
+        <RouteModal opp={routing.opp} imageUrl={routing.imageUrl} activeBrand={activeBrand} brandDna={brandDna} switchTab={switchTab} onClose={() => setRouting(null)} />
       )}
     </div>
   );
 }
 
 // ── Asset Card Grid (Playbook + Campaign outputs) ─────────────────────────────
-function AssetCardGrid({ cards, activeBrand, switchTab, source }) {
+function AssetCardGrid({ cards, activeBrand, brandDna, switchTab, source }) {
   const [imageMap,  setImageMap]  = useState({});
   const [savedSet,  setSavedSet]  = useState(new Set());
   const [preview,   setPreview]   = useState(null);
@@ -661,7 +810,7 @@ function AssetCardGrid({ cards, activeBrand, switchTab, source }) {
           onUseIdea={o => { setPreview(null); setRouting({ opp: o, imageUrl: preview.imageUrl }); }} />
       )}
       {routing && (
-        <RouteModal opp={routing.opp} imageUrl={routing.imageUrl} switchTab={switchTab} onClose={() => setRouting(null)} />
+        <RouteModal opp={routing.opp} imageUrl={routing.imageUrl} activeBrand={activeBrand} brandDna={brandDna} switchTab={switchTab} onClose={() => setRouting(null)} />
       )}
     </div>
   );
@@ -678,11 +827,11 @@ const PLAYBOOK_TYPES = [
   { id:"seasonal-campaign",    name:"Seasonal Campaign",    icon:"fas fa-calendar-alt",  accent:"#6366f1", desc:"Align content with events, seasons, and cultural moments." },
 ];
 
-function PlaybooksTab({ activeBrand, switchTab }) {
+function PlaybooksTab({ activeBrand, brandDna, switchTab }) {
   const [search, setSearch] = useState("");
   const [wizard, setWizard] = useState(null);
   const filtered = PLAYBOOK_TYPES.filter(p => !search.trim() || p.name.toLowerCase().includes(search.toLowerCase()) || p.desc.toLowerCase().includes(search.toLowerCase()));
-  if (wizard) return <PlaybookWizard playbook={wizard} activeBrand={activeBrand} switchTab={switchTab} onClose={() => setWizard(null)} />;
+  if (wizard) return <PlaybookWizard playbook={wizard} activeBrand={activeBrand} brandDna={brandDna} switchTab={switchTab} onClose={() => setWizard(null)} />;
 
   return (
     <div>
@@ -721,7 +870,7 @@ function PlaybooksTab({ activeBrand, switchTab }) {
 }
 
 // ── Playbook Wizard ───────────────────────────────────────────────────────────
-function PlaybookWizard({ playbook, activeBrand, switchTab, onClose }) {
+function PlaybookWizard({ playbook, activeBrand, brandDna, switchTab, onClose }) {
   const [step,          setStep]         = useState(1);
   const [industry,      setIndustry]     = useState(activeBrand?.industry || "");
   const [srcType,       setSrcType]      = useState("brand-dna");
@@ -738,15 +887,10 @@ function PlaybookWizard({ playbook, activeBrand, switchTab, onClose }) {
   const CHANNELS = ["LinkedIn","Instagram","Facebook","TikTok","Twitter/X","YouTube","Blog"];
 
   useEffect(() => {
-    if (!activeBrand?.id) return;
-    apiRequest('/api/customer/brand-dna')
-      .then(res => {
-        if (res.profile?.website_url) {
-          setWebsiteUrl(res.profile.website_url);
-        }
-      })
-      .catch(() => {});
-  }, [activeBrand?.id]);
+    if (brandDna?.profile?.website_url) {
+      setWebsiteUrl(brandDna.profile.website_url);
+    }
+  }, [brandDna]);
 
   async function handleWebsiteImport() {
     if (!websiteUrl.trim()) return;
@@ -995,7 +1139,7 @@ function PlaybookWizard({ playbook, activeBrand, switchTab, onClose }) {
                 ← Regenerate
               </button>
             </div>
-            <AssetCardGrid cards={result.cards || []} activeBrand={activeBrand} switchTab={switchTab} source="playbook" />
+            <AssetCardGrid cards={result.cards || []} activeBrand={activeBrand} brandDna={brandDna} switchTab={switchTab} source="playbook" />
             {result.schedule_suggestion && (
               <div style={{ marginTop:16, background:"var(--pilot-blue-light)", border:"1px solid var(--pilot-blue)", borderRadius:"var(--radius-md)", padding:"10px 14px", fontSize:12, color:"var(--pilot-blue)" }}>
                 <i className="fas fa-calendar-alt me-2" />{result.schedule_suggestion}
@@ -1012,7 +1156,7 @@ function PlaybookWizard({ playbook, activeBrand, switchTab, onClose }) {
 }
 
 // ── Campaign Content Tab ──────────────────────────────────────────────────────
-function CampaignContentTab({ activeBrand, switchTab }) {
+function CampaignContentTab({ activeBrand, brandDna, switchTab }) {
   const [campaigns,  setCampaigns]  = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [selected,   setSelected]   = useState(null);
@@ -1066,7 +1210,7 @@ function CampaignContentTab({ activeBrand, switchTab }) {
         <button type="button" onClick={() => { setResult(null); }} style={{ padding:"8px 16px", borderRadius:"var(--radius-md)", border:"1px solid var(--border-subtle)", background:"var(--surface-primary)", color:"var(--text-main)", fontWeight:600, fontSize:12, cursor:"pointer" }}>← Back</button>
       </div>
 
-      <AssetCardGrid cards={result.cards || []} activeBrand={activeBrand} switchTab={switchTab} source="campaign" />
+      <AssetCardGrid cards={result.cards || []} activeBrand={activeBrand} brandDna={brandDna} switchTab={switchTab} source="campaign" />
 
       {result.article && (
         <div style={{ marginTop:20, border:"1px solid var(--border-subtle)", borderRadius:"var(--radius-lg)", overflow:"hidden" }}>
@@ -1283,6 +1427,7 @@ function StudioVaultTab({ activeBrand, switchTab }) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function AIContentStudio({ activeBrand, intelligenceFeed = [], connectedPlatforms = [], switchTab }) {
   const [activeTab, setActiveTab] = useState("posts");
+  const { data: brandDna } = useApi(activeBrand?.id ? "/api/customer/brand-dna" : null, [activeBrand?.id]);
 
   const TABS = [
     { id:"posts",            label:"Posts" },
@@ -1312,9 +1457,9 @@ export default function AIContentStudio({ activeBrand, intelligenceFeed = [], co
           <button key={t.id} type="button" onClick={() => setActiveTab(t.id)} style={{ flex:1, padding:"8px 0", border:"none", borderRadius:"var(--radius-md)", cursor:"pointer", fontSize:13, fontWeight: activeTab === t.id ? 700 : 500, background: activeTab === t.id ? "var(--surface-primary)" : "transparent", color: activeTab === t.id ? "var(--text-main)" : "var(--text-muted)", boxShadow: activeTab === t.id ? "0 1px 4px rgba(0,0,0,0.10)" : "none", transition:"all 0.15s" }}>{t.label}</button>
         ))}
       </div>
-      {activeTab === "posts"            && <PostsTab            activeBrand={activeBrand} connectedPlatforms={connectedPlatforms} switchTab={switchTab} />}
-      {activeTab === "playbooks"        && <PlaybooksTab        activeBrand={activeBrand} switchTab={switchTab} />}
-      {activeTab === "campaign-content" && <CampaignContentTab  activeBrand={activeBrand} switchTab={switchTab} />}
+      {activeTab === "posts"            && <PostsTab            activeBrand={activeBrand} brandDna={brandDna} connectedPlatforms={connectedPlatforms} switchTab={switchTab} />}
+      {activeTab === "playbooks"        && <PlaybooksTab        activeBrand={activeBrand} brandDna={brandDna} switchTab={switchTab} />}
+      {activeTab === "campaign-content" && <CampaignContentTab  activeBrand={activeBrand} brandDna={brandDna} switchTab={switchTab} />}
       {activeTab === "vault"            && <StudioVaultTab      activeBrand={activeBrand} switchTab={switchTab} />}
     </div>
   );
