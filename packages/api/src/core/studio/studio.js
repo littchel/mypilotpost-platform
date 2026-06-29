@@ -485,26 +485,186 @@ export async function getStudioVault(request, env, auth) {
 function buildFallbackOpps(brandName, industry, platforms) {
   const pts = platforms.length ? platforms : ["instagram", "linkedin", "facebook"];
   const SEED = [
-    { framework: "Myth vs Reality",    idea: `The biggest myth about ${industry}`,           hook: `Everyone in ${industry} believes this. They're wrong.`,     objective: "Build authority",         effort: "low",    media_type: "carousel"     },
-    { framework: "Behind the Scenes",  idea: "What happens before we deliver results",         hook: "What clients never see before the final product.",         objective: "Build trust",             effort: "low",    media_type: "single_image" },
-    { framework: "Mistakes to Avoid",  idea: `3 costly ${industry} mistakes`,                  hook: "Stop making these before they cost you.",                  objective: "Position as advisor",     effort: "low",    media_type: "carousel"     },
-    { framework: "Customer Story",     idea: "Client transformation story",                    hook: "They came with one problem. We found another.",            objective: "Social proof",            effort: "medium", media_type: "single_image" },
-    { framework: "Before & After",     idea: "Results we've delivered this quarter",           hook: "Before: reactive. After: strategic, growing.",             objective: "Show transformation",     effort: "medium", media_type: "carousel"     },
-    { framework: "FAQ",                idea: "The question clients ask but pretend they don't", hook: "The question no one wants to ask out loud.",               objective: "Reduce friction",         effort: "low",    media_type: "text_only"    },
-    { framework: "Stat + Commentary",  idea: "Industry number that changes decisions",         hook: "One number changed how we think about this entirely.",     objective: "Create urgency",          effort: "low",    media_type: "quote_card"   },
-    { framework: "How-To",             idea: `How to achieve results faster in ${industry}`,   hook: "We cut our process to 3 steps. Here's exactly how.",      objective: "Demonstrate expertise",   effort: "medium", media_type: "carousel"     },
-    { framework: "Opinion Take",       idea: `Unpopular opinion in ${industry}`,               hook: "Unpopular opinion: most advice in this space is wrong.",   objective: "Drive engagement",        effort: "low",    media_type: "text_only"    },
-    { framework: "Trend Commentary",   idea: "What a current trend means for clients",         hook: "This shift is changing everything in our space.",          objective: "Thought leadership",      effort: "medium", media_type: "single_image" },
-    { framework: "Case Study",         idea: "Deep dive on a successful client outcome",       hook: "Here's exactly how we solved a problem everyone ignores.", objective: "Build credibility",       effort: "high",   media_type: "carousel"     },
-    { framework: "Team Story",         idea: "Person behind the work",                         hook: "Meet the person clients trust most with their results.",   objective: "Humanise brand",          effort: "medium", media_type: "single_image" },
-    { framework: "Social Proof",       idea: "Collection of client results",                   hook: "5 outcomes our clients don't usually share publicly.",     objective: "Conversion",              effort: "medium", media_type: "carousel"     },
-    { framework: "Question",           idea: "Polarising question for the audience",           hook: "Which of these is your biggest challenge right now?",     objective: "Engagement + research",   effort: "low",    media_type: "text_only"    },
-    { framework: "Challenge",          idea: `7-day ${industry} improvement challenge`,        hook: "7 days. One action each day. Real results.",               objective: "Community building",      effort: "high",   media_type: "carousel"     },
-    { framework: "Listicle",           idea: `10 signs you need help with ${industry}`,        hook: "You might not notice sign number 7.",                     objective: "Awareness and leads",     effort: "medium", media_type: "carousel"     },
-    { framework: "Industry News",      idea: "What changed in your industry recently",         hook: "Something shifted this month. Most haven't noticed yet.",  objective: "Timeliness + authority",  effort: "low",    media_type: "text_only"    },
-    { framework: "Product Feature",    idea: "Specific feature or service highlight",          hook: "One thing about our service clients underestimate most.",  objective: "Drive consideration",     effort: "medium", media_type: "single_image" },
-    { framework: "Announcement",       idea: `${brandName} news or milestone`,                 hook: "Something worth sharing happened in our business.",        objective: "Brand visibility",        effort: "low",    media_type: "single_image" },
-    { framework: "Seasonal",           idea: `Seasonal content for ${new Date().toLocaleString("en", { month: "long" })}`, hook: `This time of year, one thing matters more than the rest.`, objective: "Seasonal relevance", effort: "medium", media_type: "single_image" },
+    {
+      framework: "Myth vs Reality",
+      idea: `The biggest myth about ${industry}`,
+      hook: `Everyone in ${industry} believes this. They're wrong.`,
+      objective: "Build authority",
+      effort: "low",
+      media_type: "carousel",
+      caption: `HOOK: Everyone in ${industry} believes that success happens overnight. They're wrong.\n\nSTORY: True growth takes strategy, consistency, and a deep understanding of your data. We design roadmaps that don't rely on luck.\n\nCTA: Ready to see your real roadmap? Visit us at [website] and get started today.\n\n#${industry.replace(/\s+/g, '')} #businessgrowth #strategy`
+    },
+    {
+      framework: "Behind the Scenes",
+      idea: "What happens before we deliver results",
+      hook: "What clients never see before the final product.",
+      objective: "Build trust",
+      effort: "low",
+      media_type: "single_image",
+      caption: `HOOK: What clients never see before the final product is delivered.\n\nSTORY: Behind every successful campaign is hours of deep research, auditing, and visual context refinement. We build with care.\n\nCTA: Let's build your brand together. Link in bio to learn more at [website].\n\n#behindthescenes #workculture #agencylife`
+    },
+    {
+      framework: "Mistakes to Avoid",
+      idea: `3 costly ${industry} mistakes`,
+      hook: "Stop making these before they cost you.",
+      objective: "Position as advisor",
+      effort: "low",
+      media_type: "carousel",
+      caption: `HOOK: Stop making these 3 costly ${industry} mistakes before they cost you your growth.\n\nSTORY: 1. Ignoring visual context.\n2. Lacking clear CTAs.\n3. Skipping target audience checks. Avoid these to scale cleanly.\n\nCTA: Read the full breakdown on our website: [website].\n\n#mistakestoavoid #industrytips #growth`
+    },
+    {
+      framework: "Customer Story",
+      idea: "Client transformation story",
+      hook: "They came with one problem. We found another.",
+      objective: "Social proof",
+      effort: "medium",
+      media_type: "single_image",
+      caption: `HOOK: They came to us with one minor problem. We uncovered a massive hidden bottleneck.\n\nSTORY: By realigning their brand DNA and mapping out a structured campaign, we turned a degraded workflow into an operational powerhouse.\n\nCTA: See more client success stories at [website].\n\n#casestudy #clientsuccess #results`
+    },
+    {
+      framework: "Before & After",
+      idea: "Results we've delivered this quarter",
+      hook: "Before: reactive. After: strategic, growing.",
+      objective: "Show transformation",
+      effort: "medium",
+      media_type: "carousel",
+      caption: `HOOK: Before: reactive and chaotic. After: strategic, consistent, and growing.\n\nSTORY: Our quarterly audit showed a 150% boost in audience alignment. Consistency is key when you have the right playbook.\n\nCTA: Calculate your potential growth at [website] now.\n\n#transformation #beforeandafter #metrics`
+    },
+    {
+      framework: "FAQ",
+      idea: "The question clients ask but pretend they don't",
+      hook: "The question no one wants to ask out loud.",
+      objective: "Reduce friction",
+      effort: "low",
+      media_type: "text_only",
+      caption: `HOOK: The one question about ${industry} no one wants to ask out loud.\n\nSTORY: Yes, it takes commitment. But starting with simple templates makes the onboarding process painless and fast.\n\nCTA: Find answers to all your burning questions at [website]/faq.\n\n#faq #askusanything #knowledgeshare`
+    },
+    {
+      framework: "Stat + Commentary",
+      idea: "Industry number that changes decisions",
+      hook: "One number changed how we think about this entirely.",
+      objective: "Create urgency",
+      effort: "low",
+      media_type: "quote_card",
+      caption: `HOOK: One single number changed how we think about this space entirely.\n\nSTORY: Over 70% of brands fail to align their visual style with their target audience. Fixing this one signal changes everything.\n\nCTA: Let's audit your alignment score today. Learn how: [website].\n\n#statistics #datadriven #insights`
+    },
+    {
+      framework: "How-To",
+      idea: `How to achieve results faster in ${industry}`,
+      hook: "We cut our process to 3 steps. Here's exactly how.",
+      objective: "Demonstrate expertise",
+      effort: "medium",
+      media_type: "carousel",
+      caption: `HOOK: We cut our entire process down to just 3 simple steps. Here's exactly how we did it.\n\nSTORY: 1. Setup a website URL link.\n2. Fetch raw assets.\n3. Flatten overlays. Clean, fast, and highly repeatable.\n\nCTA: Download the free playbook checklist at [website]/guide.\n\n#howto #tutorial #stepbystep`
+    },
+    {
+      framework: "Opinion Take",
+      idea: `Unpopular opinion in ${industry}`,
+      hook: "Unpopular opinion: most advice in this space is wrong.",
+      objective: "Drive engagement",
+      effort: "low",
+      media_type: "text_only",
+      caption: `HOOK: Unpopular opinion: most generic advice in this space is actually setting you back.\n\nSTORY: You don't need a massive team; you need high-fidelity brand DNA context and automation to do the heavy lifting.\n\nCTA: Agree or disagree? Let us know at [website].\n\n#opinion #contrarian #thought`
+    },
+    {
+      framework: "Trend Commentary",
+      idea: "What a current trend means for clients",
+      hook: "This shift is changing everything in our space.",
+      objective: "Thought leadership",
+      effort: "medium",
+      media_type: "single_image",
+      caption: `HOOK: This new shift is changing everything in our space. Are you prepared?\n\nSTORY: Traditional static image pools are being replaced by format-aware, structured visual brief generators. Stay ahead or get left behind.\n\nCTA: Read our latest trend report at [website]/news.\n\n#trends #industrynews #future`
+    },
+    {
+      framework: "Case Study",
+      idea: "Deep dive on a successful client outcome",
+      hook: "Here's exactly how we solved a problem everyone ignores.",
+      objective: "Build credibility",
+      effort: "high",
+      media_type: "carousel",
+      caption: `HOOK: Here's exactly how we solved a visual mismatch problem that most brands ignore.\n\nSTORY: By integrating dynamic overlays and custom CTA buttons directly into their feed, we boosted their conversion rates by 40%.\n\nCTA: View the full case study deck at [website]/case-studies.\n\n#casestudy #marketingtips #conversion`
+    },
+    {
+      framework: "Team Story",
+      idea: "Person behind the work",
+      hook: "Meet the person clients trust most with their results.",
+      objective: "Humanise brand",
+      effort: "medium",
+      media_type: "single_image",
+      caption: `HOOK: Meet the core strategist that our clients trust most with their campaign results.\n\nSTORY: We believe in human-centric solutions. Our team spends every day mapping signals to make sure your visuals stand out.\n\nCTA: Get to know our team and our values at [website]/about.\n\n#team #meettheteam #companyculture`
+    },
+    {
+      framework: "Social Proof",
+      idea: "Collection of client results",
+      hook: "5 outcomes our clients don't usually share publicly.",
+      objective: "Conversion",
+      effort: "medium",
+      media_type: "carousel",
+      caption: `HOOK: 5 outstanding outcomes our clients don't usually share publicly.\n\nSTORY: From 10% onboarding completion to 95% within the first month. These numbers speak for themselves. We deliver real results.\n\nCTA: Let us help you achieve similar outcomes. Apply today: [website].\n\n#socialproof #testimonials #reviews`
+    },
+    {
+      framework: "Question",
+      idea: "Polarising question for the audience",
+      hook: "Which of these is your biggest challenge right now?",
+      objective: "Engagement + research",
+      effort: "low",
+      media_type: "text_only",
+      caption: `HOOK: What is holding your brand back from achieving the ultimate alignment score?\n\nSTORY: Is it lack of clear brand DNA, missing website URL mapping, or duplicate visual suggestions? Tell us in the comments.\n\nCTA: Connect with us and let's find the solution: [website].\n\n#feedback #polls #engagement`
+    },
+    {
+      framework: "Challenge",
+      idea: `7-day ${industry} improvement challenge`,
+      hook: "7 days. One action each day. Real results.",
+      objective: "Community building",
+      effort: "high",
+      media_type: "carousel",
+      caption: `HOOK: 7 days. One simple daily action. Real, measurable results.\n\nSTORY: We are hosting a brand DNA design challenge starting this Monday. No fluff, just pure strategic execution to revamp your social feed.\n\nCTA: Join the challenge community for free at [website]/challenge.\n\n#challenge #7daychallenge #learning`
+    },
+    {
+      framework: "Listicle",
+      idea: `10 signs you need help with ${industry}`,
+      hook: "You might not notice sign number 7.",
+      objective: "Awareness and leads",
+      effort: "medium",
+      media_type: "carousel",
+      caption: `HOOK: 10 warning signs that you need professional help with your brand positioning.\n\nSTORY: You might not notice sign number 7—it's having a dry, uninspiring stock photo feed with no brand overlays.\n\nCTA: Check out all 10 signs on our blog: [website]/blog.\n\n#listicle #businessadvice #tips`
+    },
+    {
+      framework: "Industry News",
+      idea: "What changed in your industry recently",
+      hook: "Something shifted this month. Most haven't noticed yet.",
+      objective: "Timeliness + authority",
+      effort: "low",
+      media_type: "text_only",
+      caption: `HOOK: Something massive shifted in our industry this month. Most brands haven't noticed yet.\n\nSTORY: Edge worker visual assets are now fully customizable dynamically. This levels the playing field for small teams.\n\nCTA: Stay ahead of the curve. Learn more at [website]/updates.\n\n#news #industrytrends #updates`
+    },
+    {
+      framework: "Product Feature",
+      idea: "Specific feature or service highlight",
+      hook: "One thing about our service clients underestimate most.",
+      objective: "Drive consideration",
+      effort: "medium",
+      media_type: "single_image",
+      caption: `HOOK: The one advanced feature about our platform that clients underestimate the most.\n\nSTORY: It's our dynamic brand overlay editor. It places styled hooks and watermark logos instantly, saving hours of manual editing.\n\nCTA: Test the tool yourself today at [website]/features.\n\n#product #features #saastool`
+    },
+    {
+      framework: "Announcement",
+      idea: `${brandName} news or milestone`,
+      hook: "Something worth sharing happened in our business.",
+      objective: "Brand visibility",
+      effort: "low",
+      media_type: "single_image",
+      caption: `HOOK: Something absolutely worth sharing just happened in our business today.\n\nSTORY: We have hit our target version release! This update introduces better media intelligence deduplication and format layouts.\n\nCTA: Read the release notes at [website]/changelog.\n\n#milestone #announcement #news`
+    },
+    {
+      framework: "Seasonal",
+      idea: `Seasonal content for ${new Date().toLocaleString("en", { month: "long" })}`,
+      hook: `This time of year, one thing matters more than the rest.`,
+      objective: "Seasonal relevance",
+      effort: "medium",
+      media_type: "single_image",
+      caption: `HOOK: At this time of the year, one strategic focus matters more than all the rest combined.\n\nSTORY: As we enter the next season, auditing your content structure ensures your growth targets remain fully on track.\n\nCTA: Schedule a strategy review with us at [website]/contact.\n\n#seasonal #strategy #q3`
+    }
   ];
 
   return SEED.map((s, i) => ({

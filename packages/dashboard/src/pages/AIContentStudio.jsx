@@ -3,6 +3,7 @@ import { apiRequest } from "../lib/api/client";
 import { useApi } from "../lib/api/hooks";
 import PlatformIcon from "../components/shared/PlatformIcon";
 import { fetchMediaSuggestions, trackImageImported } from "../services/mediaSuggestions";
+import { PreviewOverlays } from "../components/publishing/PlatformPreviewPanel";
 import IndustryAutoSuggest from "../components/shared/IndustryAutoSuggest";
 
 const CSS = `
@@ -101,6 +102,16 @@ const PEXELS_POOL = [
   "https://images.pexels.com/photos/1181248/pexels-photo-1181248.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
   "https://images.pexels.com/photos/3184302/pexels-photo-3184302.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
   "https://images.pexels.com/photos/1181406/pexels-photo-1181406.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
+  "https://images.pexels.com/photos/3184306/pexels-photo-3184306.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
+  "https://images.pexels.com/photos/3184311/pexels-photo-3184311.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
+  "https://images.pexels.com/photos/3184315/pexels-photo-3184315.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
+  "https://images.pexels.com/photos/3184319/pexels-photo-3184319.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
+  "https://images.pexels.com/photos/3184323/pexels-photo-3184323.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
+  "https://images.pexels.com/photos/3184328/pexels-photo-3184328.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
+  "https://images.pexels.com/photos/3184333/pexels-photo-3184333.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
+  "https://images.pexels.com/photos/3184338/pexels-photo-3184338.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
+  "https://images.pexels.com/photos/3184343/pexels-photo-3184343.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
+  "https://images.pexels.com/photos/3184348/pexels-photo-3184348.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
 ];
 
 function preloadImg(src) {
@@ -114,7 +125,7 @@ function preloadImg(src) {
 
 // ── Discovery Card — Posts Discovery Card v1 ─────────────────────────────────
 // onSave optional — if provided renders Save button
-function DiscoveryCard({ opp, imageUrl, imgReady, onPreview, onUseIdea, onSave, saved }) {
+function DiscoveryCard({ opp, imageUrl, imgReady, activeBrand, brandDna, onPreview, onUseIdea, onSave, saved }) {
   const title     = opp.idea || opp.title || opp.framework || "Content Opportunity";
   const format    = (opp.media_type || opp.format || opp.type || "Post").replace(/_/g, " ");
   const effort    = opp.effort || "15 min";
@@ -130,6 +141,9 @@ function DiscoveryCard({ opp, imageUrl, imgReady, onPreview, onUseIdea, onSave, 
       <div style={{ position: "relative", width: "100%", height: 408, flexShrink: 0, overflow: "hidden", background: "var(--hover-bg)" }}>
         {imgReady && imageUrl && (
           <img src={imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+        )}
+        {imgReady && imageUrl && (
+          <PreviewOverlays overlays={generateBrandOverlay(opp, imageUrl, activeBrand, brandDna)} height={408} />
         )}
         <div style={{ position: "absolute", top: 10, left: 10, background: "rgba(15,23,42,0.6)", backdropFilter: "blur(6px)", borderRadius: "var(--radius-md)", padding: "4px 8px" }}>
           <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "#fff", textTransform: "uppercase", letterSpacing: "0.06em" }}>{format}</span>
@@ -197,7 +211,7 @@ function AccordionRow({ label, body, open, onToggle }) {
 }
 
 // ── Preview Modal ─────────────────────────────────────────────────────────────
-function PreviewModal({ opp, imageUrl, activeBrand, onClose, onUseIdea }) {
+function PreviewModal({ opp, imageUrl, activeBrand, brandDna, onClose, onUseIdea }) {
   const [openRow, setOpenRow] = useState(0);
   const brandName = activeBrand?.name || "Your Brand";
   const initials  = brandName.split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase();
@@ -247,8 +261,11 @@ function PreviewModal({ opp, imageUrl, activeBrand, onClose, onUseIdea }) {
                 </div>
                 <div style={{ marginLeft: "auto", color: "var(--text-muted)", fontSize: 16 }}>•••</div>
               </div>
-              <div style={{ width: "100%", aspectRatio: "1/1", overflow: "hidden", background: "var(--hover-bg)" }}>
+              <div style={{ width: "100%", aspectRatio: "1/1", overflow: "hidden", background: "var(--hover-bg)", position: "relative" }}>
                 {imageUrl && <img src={imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
+                {imageUrl && (
+                  <PreviewOverlays overlays={generateBrandOverlay(opp, imageUrl, activeBrand, brandDna)} height={340} />
+                )}
               </div>
               <div style={{ padding: "8px 12px 4px", display: "flex", gap: 14, fontSize: 20, color: "var(--text-main)" }}>
                 <i className="far fa-heart" /><i className="far fa-comment" /><i className="far fa-paper-plane" />
@@ -616,10 +633,30 @@ function PostsTab({ activeBrand, brandDna: initialBrandDna, connectedPlatforms, 
         industry:    activeBrand?.industry || '',
       })
         .then(buckets => {
-          const pool = [...(buckets.agencyPicks || []), ...(buckets.trending || [])];
+          const pool = [
+            ...(buckets.agencyPicks || []),
+            ...(buckets.trending || []),
+            ...(buckets.all || [])
+          ];
+          const uniquePool = [];
+          const seenUrls = new Set();
+          for (const img of pool) {
+            const url = img?.preview || img?.url || img?.preview_url;
+            if (url && !seenUrls.has(url)) {
+              seenUrls.add(url);
+              uniquePool.push(url);
+            }
+          }
+          // Pad to 20 unique images using PEXELS_POOL
+          for (let idx = 0; uniquePool.length < 20 && idx < PEXELS_POOL.length; idx++) {
+            const fallbackUrl = PEXELS_POOL[idx];
+            if (!seenUrls.has(fallbackUrl)) {
+              seenUrls.add(fallbackUrl);
+              uniquePool.push(fallbackUrl);
+            }
+          }
           list.forEach((_, i) => {
-            const img = pool[i % Math.max(pool.length, 1)];
-            const url = img?.preview || img?.url || PEXELS_POOL[i % PEXELS_POOL.length];
+            const url = uniquePool[i] || PEXELS_POOL[i % PEXELS_POOL.length];
             preloadImg(url)
               .then(u => setImageMap(m => ({ ...m, [i]: { url: u, ready: true } })))
               .catch(() => setImageMap(m => ({ ...m, [i]: { url, ready: true } })));
@@ -701,6 +738,7 @@ function PostsTab({ activeBrand, brandDna: initialBrandDna, connectedPlatforms, 
                 const imgData = imageMap[opp._index] || {};
                 return (
                   <DiscoveryCard key={opp.id || i} opp={opp} imageUrl={imgData.url || null} imgReady={!!imgData.ready}
+                    activeBrand={activeBrand} brandDna={brandDna}
                     onPreview={(o, u) => setPreview({ opp: o, imageUrl: u })}
                     onUseIdea={o => setRouting({ opp: o, imageUrl: imgData.url || null })} />
                 );
@@ -714,7 +752,7 @@ function PostsTab({ activeBrand, brandDna: initialBrandDna, connectedPlatforms, 
       )}
 
       {preview && (
-        <PreviewModal opp={preview.opp} imageUrl={preview.imageUrl} activeBrand={activeBrand}
+        <PreviewModal opp={preview.opp} imageUrl={preview.imageUrl} activeBrand={activeBrand} brandDna={brandDna}
           onClose={() => setPreview(null)}
           onUseIdea={o => { setPreview(null); setRouting({ opp: o, imageUrl: preview.imageUrl }); }} />
       )}
@@ -745,14 +783,33 @@ function AssetCardGrid({ cards, activeBrand, brandDna, switchTab, source }) {
       industry: activeBrand?.industry || '',
     })
       .then(buckets => {
-        const pool = [...(buckets.agencyPicks || []), ...(buckets.trending || [])];
-        if (!pool.length) throw new Error('empty');
+        const pool = [
+          ...(buckets.agencyPicks || []),
+          ...(buckets.trending || []),
+          ...(buckets.all || [])
+        ];
+        const uniquePool = [];
+        const seenUrls = new Set();
+        for (const img of pool) {
+          const url = img?.preview || img?.url || img?.preview_url;
+          if (url && !seenUrls.has(url)) {
+            seenUrls.add(url);
+            uniquePool.push(url);
+          }
+        }
+        // Pad to 20 unique images using PEXELS_POOL
+        for (let idx = 0; uniquePool.length < cards.length && idx < PEXELS_POOL.length; idx++) {
+          const fallbackUrl = PEXELS_POOL[idx];
+          if (!seenUrls.has(fallbackUrl)) {
+            seenUrls.add(fallbackUrl);
+            uniquePool.push(fallbackUrl);
+          }
+        }
         cards.forEach((_, i) => {
-          const img = pool[i % pool.length];
-          const url = img?.preview_url || img?.url || PEXELS_POOL[i % PEXELS_POOL.length];
+          const url = uniquePool[i] || PEXELS_POOL[i % PEXELS_POOL.length];
           preloadImg(url)
             .then(u => setImageMap(m => ({ ...m, [i]: { url: u, ready: true } })))
-            .catch(() => setImageMap(m => ({ ...m, [i]: { url: PEXELS_POOL[i % PEXELS_POOL.length], ready: true } })));
+            .catch(() => setImageMap(m => ({ ...m, [i]: { url, ready: true } })));
         });
       })
       .catch(() => {
@@ -760,7 +817,7 @@ function AssetCardGrid({ cards, activeBrand, brandDna, switchTab, source }) {
           const url = PEXELS_POOL[i % PEXELS_POOL.length];
           preloadImg(url)
             .then(u => setImageMap(m => ({ ...m, [i]: { url: u, ready: true } })))
-            .catch(() => setImageMap(m => ({ ...m, [i]: { url: PEXELS_POOL[0], ready: true } })));
+            .catch(() => setImageMap(m => ({ ...m, [i]: { url, ready: true } })));
         });
       });
   }, [cards]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -796,6 +853,7 @@ function AssetCardGrid({ cards, activeBrand, brandDna, switchTab, source }) {
           const imgData = imageMap[i] || {};
           return (
             <DiscoveryCard key={card.id || i} opp={opp} imageUrl={imgData.url || null} imgReady={!!imgData.ready}
+              activeBrand={activeBrand} brandDna={brandDna}
               onPreview={(o, u) => setPreview({ opp: o, imageUrl: u })}
               onUseIdea={o => setRouting({ opp: o, imageUrl: imgData.url || null })}
               onSave={(o, u) => handleSave(o, u)}
@@ -805,7 +863,7 @@ function AssetCardGrid({ cards, activeBrand, brandDna, switchTab, source }) {
       </div>
 
       {preview && (
-        <PreviewModal opp={preview.opp} imageUrl={preview.imageUrl} activeBrand={activeBrand}
+        <PreviewModal opp={preview.opp} imageUrl={preview.imageUrl} activeBrand={activeBrand} brandDna={brandDna}
           onClose={() => setPreview(null)}
           onUseIdea={o => { setPreview(null); setRouting({ opp: o, imageUrl: preview.imageUrl }); }} />
       )}
