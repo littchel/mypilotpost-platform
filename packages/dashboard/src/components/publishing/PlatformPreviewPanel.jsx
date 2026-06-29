@@ -60,7 +60,7 @@ function BrandAvatar({ brandName, size = 32, radius = "50%" }) {
   );
 }
 
-function PreviewOverlays({ overlays, height }) {
+export function PreviewOverlays({ overlays, height }) {
   if (!overlays) return null;
   const textLayers = overlays.overlay_text || [];
   const imageLayers = overlays.overlay_image || [];

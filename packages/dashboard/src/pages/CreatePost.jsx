@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import PlatformPreviewPanel from "../components/publishing/PlatformPreviewPanel";
+import PlatformPreviewPanel, { PreviewOverlays } from "../components/publishing/PlatformPreviewPanel";
 import SocialAssistantModal from "../components/shared/SocialAssistantModal";
 import PlatformIcon from "../components/shared/PlatformIcon";
 import { validateContent } from "../lib/platformRequirements";
