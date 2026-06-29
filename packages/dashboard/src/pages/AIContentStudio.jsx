@@ -46,19 +46,34 @@ function getUpcomingEvents() {
 }
 
 // ── Content Confidence Score ──────────────────────────────────────────────────
-function calcCCS(activeBrand, connectedPlatforms) {
+function calcCCS(activeBrand, brandDna, connectedPlatforms) {
   let score = 0;
   const missing = [];
   if (activeBrand?.name)     score += 5;
   if (activeBrand?.industry) score += 10;
-  if (activeBrand?.website)  score += 8; else missing.push("Website URL");
-  const hasDNA = activeBrand?.dna || activeBrand?.brand_voice || activeBrand?.target_audience;
-  if (hasDNA) score += 35;
-  else {
-    if (!activeBrand?.brand_voice)     missing.push("Brand voice (Brand DNA)");
-    if (!activeBrand?.target_audience) missing.push("Target audience (Brand DNA)");
-    if (!activeBrand?.content_pillars) missing.push("Content pillars (Brand DNA)");
+  
+  const website = brandDna?.profile?.website_url;
+  if (website) score += 8;
+  else missing.push("Website URL");
+
+  const hasVoice = brandDna?.voice?.voice_traits?.length > 0 || brandDna?.voice?.messaging_style;
+  const hasAudience = brandDna?.audience?.pain_points?.length > 0 || brandDna?.audience?.icp_name;
+  const hasPillars = brandDna?.content_pillars?.length > 0;
+
+  if (hasVoice && hasAudience && hasPillars) {
+    score += 35;
+  } else {
+    if (!hasVoice)     missing.push("Brand voice (Brand DNA)");
+    if (!hasAudience) missing.push("Target audience (Brand DNA)");
+    if (!hasPillars)  missing.push("Content pillars (Brand DNA)");
+    
+    let partial = 0;
+    if (hasVoice) partial += 11;
+    if (hasAudience) partial += 12;
+    if (hasPillars) partial += 12;
+    score += partial;
   }
+
   const pCount = connectedPlatforms?.length || 0;
   if (pCount >= 3)      score += 27;
   else if (pCount >= 1) score += 12;
@@ -429,13 +444,18 @@ function PostsTab({ activeBrand, connectedPlatforms, switchTab }) {
   const [filter,     setFilter]    = useState("for-you");
   const [preview,    setPreview]   = useState(null);
   const [routing,    setRouting]   = useState(null);
-  const ccs = calcCCS(activeBrand, connectedPlatforms);
+  const [brandDna,   setBrandDna]  = useState(null);
+  const ccs = calcCCS(activeBrand, brandDna, connectedPlatforms);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
     setError("");
     try {
-      const data = await apiRequest("/api/customer/studio/opportunities");
+      const [data, dna] = await Promise.all([
+        apiRequest("/api/customer/studio/opportunities"),
+        apiRequest("/api/customer/brand-dna").catch(() => null)
+      ]);
+      setBrandDna(dna);
       const list = (data.opportunities || []).map((o, i) => ({ ...o, _index: i }));
       setOpps(list);
       // Fetch live images from media engine based on opportunity context
