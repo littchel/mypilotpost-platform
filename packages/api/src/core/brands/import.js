@@ -1,4 +1,5 @@
 import { json } from "../../lib/json.js";
+import { runPublicAudit } from "../intelligence/public_audit.js";
 
 /**
  * Handle Brand Import from URL / Social
@@ -7,83 +8,74 @@ import { json } from "../../lib/json.js";
  */
 export async function importBrandFromUrl(request, env) {
   const { url, platform } = await request.json();
-  if (!url && !platform) return json({ error: "Input is required" }, 400);
-
-  // If social link only (no URL to scrape), return social-optimized metadata
-  if (!url && platform) {
-    return json({
-      name: platform.charAt(0).toUpperCase() + platform.slice(1) + " Channel",
-      description: `Strategy optimized for ${platform} engagement.`,
-      industry: "General",
-      logo: "",
-      colors: platform === 'instagram' ? ["#E1306C"] : ["#000000"],
-      keywords: [platform, "engagement", "social growth"],
-      tone: "bold",
-      country: "ZW",
-      language: "en",
-      audit: generateAgencyAudit({ name: platform, description: "Social-first brand" })
-    });
-  }
+  if (!url) return json({ error: "URL is required" }, 400);
 
   try {
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; myPilotBot/1.0; +https://mypilotpost.com)"
-      }
+    // Execute production audit orchestrator with a mock Request object
+    const mockRequest = new Request(request.url, {
+      method: "POST",
+      headers: request.headers,
+      body: JSON.stringify({ website_url: url, brand_name: "" })
     });
 
-    if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
+    const auditResponse = await runPublicAudit(mockRequest, env);
+    if (!auditResponse.ok) {
+      throw new Error(`Audit failed: ${auditResponse.status}`);
+    }
 
-    const html = await response.text();
-    
-    let metadata = {
-      name: "",
-      description: "",
-      industry: "General",
-      logo: "",
-      colors: ["#2563EB"],
-      keywords: [],
-      tone: "professional",
-      country: "ZW",
-      language: "en",
-      websiteURL: url
+    const auditData = await auditResponse.json();
+
+    const name = auditData.brand_name || "New Brand";
+    const description = auditData.full_report?.diagnostic_snapshot?.executive_summary || 
+                        auditData.full_report?.business_profile?.target_audience || "";
+
+    const opportunities = (auditData.full_report?.swot?.opportunities || []).map((o, idx) => ({
+      label: `Opportunity ${idx + 1}`,
+      desc: o,
+      impact: "+25% Growth"
+    }));
+
+    const result = {
+      name,
+      description,
+      industry: auditData.industry || "General",
+      logo: auditData.full_report?.brand_identity_review?.logo_url || "",
+      colors: [auditData.full_report?.brand_identity_review?.colour_consistency?.primary || "#2563EB"],
+      keywords: auditData.full_report?.content_genome_analysis?.strongest_themes || [],
+      tone: auditData.full_report?.brand_identity_review?.typography_consistency || "professional",
+      websiteURL: url,
+      audit: {
+        score: auditData.overall_score || 70,
+        snapshot: {
+          brandScore: auditData.overall_score || 70,
+          keyIssues: auditData.full_report?.diagnostic_snapshot?.strategic_weaknesses || [],
+          opportunities: opportunities.length ? opportunities : [
+            { label: "Content Authority", impact: "+22% Organic Traffic", desc: "Implementing topical clusters for your niche." },
+            { label: "Lead Velocity", impact: "+35% Growth", desc: "Optimizing funnel entry points for high-intent visitors." }
+          ]
+        },
+        strategy: {
+          marketPositioning: auditData.full_report?.diagnostic_snapshot?.brand_positioning_assessment || "",
+          competitorBenchmark: auditData.full_report?.competitive_moat_map?.competitor_overview || "",
+          revenueProjection: auditData.full_report?.strategic_roadmap?.quick_wins?.[0]?.business_impact || ""
+        }
+      }
     };
 
-    const rewriter = new HTMLRewriter()
-      .on("title", { text(text) { metadata.name += text.text; } })
-      .on('meta[name="description"]', { element(element) { metadata.description = element.getAttribute("content"); } })
-      .on('link[rel="icon"], meta[property="og:image"]', {
-        element(element) {
-          const href = element.getAttribute("href") || element.getAttribute("content");
-          if (href && !metadata.logo) metadata.logo = href.startsWith("/") ? `${new URL(url).origin}${href}` : href;
-        }
-      })
-      .on("h1, h2", {
-        text(text) {
-          const content = text.text.trim();
-          if (content && content.length > 3 && metadata.keywords.length < 5) metadata.keywords.push(content);
-        }
-      });
-
-    await rewriter.transform(new Response(html)).text();
-    metadata.name = metadata.name.trim().split("|")[0].split("-")[0].trim() || "New Brand";
-    
-    // Add Agency-Grade Audit Snapshot
-    metadata.audit = generateAgencyAudit(metadata);
-
-    return json(metadata);
+    return json(result);
 
   } catch (err) {
+    console.error("[IMPORT BRAND FAILED, FALLING BACK]", err);
     return json({
-      name: "Strategy Workspace",
-      description: "Custom growth plan initialization",
+      name: platform ? (platform.charAt(0).toUpperCase() + platform.slice(1) + " Channel") : "Strategy Workspace",
+      description: platform ? `Strategy optimized for ${platform} engagement.` : "Custom growth plan initialization",
       industry: "General",
       logo: "",
-      colors: ["#2563EB"],
-      keywords: ["growth", "strategy"],
-      tone: "professional",
+      colors: platform === 'instagram' ? ["#E1306C"] : ["#2563EB"],
+      keywords: platform ? [platform, "engagement", "social growth"] : ["growth", "strategy"],
+      tone: platform ? "bold" : "professional",
       websiteURL: url,
-      audit: generateAgencyAudit({ name: "Your Brand", description: "In-depth strategy requested" })
+      audit: generateAgencyAudit({ name: platform || "Your Brand", description: "In-depth strategy requested" })
     });
   }
 }

@@ -8,13 +8,16 @@ const ImportStep = ({ isWizard, onNext }) => {
     const updateStep = isWizard ? null : onboarding.updateStep;
 
     const [url, setUrl] = useState("");
+    const [socialUrl, setSocialUrl] = useState("");
+    const [selectedPlatform, setSelectedPlatform] = useState("instagram");
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [error, setError] = useState("");
     const [importType, setImportType] = useState('website'); // 'website' | 'social'
 
     const handleAnalyze = async (e, type = 'website', platform = null) => {
         if (e) e.preventDefault();
-        if (type === 'website' && !url) return;
+        const activeUrl = type === 'website' ? url : socialUrl;
+        if (!activeUrl) return;
         
         setIsAnalyzing(true);
         setError("");
@@ -23,8 +26,8 @@ const ImportStep = ({ isWizard, onNext }) => {
             const res = await apiRequest("/api/customer/brand/import", {
                 method: "POST",
                 body: JSON.stringify({ 
-                    url: type === 'website' ? url : null,
-                    platform: platform 
+                    url: activeUrl,
+                    platform: type === 'social' ? (platform || selectedPlatform) : null
                 })
             });
 
@@ -93,22 +96,48 @@ const ImportStep = ({ isWizard, onNext }) => {
                     </button>
                 </form>
             ) : (
-                <div className="social-import-options d-grid gap-2">
-                    {['instagram', 'tiktok', 'linkedin', 'facebook'].map(platform => (
-                        <button 
-                            key={platform}
-                            className="btn btn-light border py-3 text-start px-4 d-flex align-items-center justify-content-between"
-                            onClick={() => handleAnalyze(null, 'social', platform)}
+                <form onSubmit={(e) => handleAnalyze(e, 'social', selectedPlatform)}>
+                    <div className="mb-3">
+                        <label className="form-label fw-600 small">SELECT PLATFORM</label>
+                        <div className="d-flex gap-2 mb-3">
+                            {['instagram', 'tiktok', 'linkedin', 'facebook'].map(plat => (
+                                <button
+                                    key={plat}
+                                    type="button"
+                                    className={`btn btn-sm flex-grow-1 py-2 fw-bold d-flex align-items-center justify-content-center gap-1 ${selectedPlatform === plat ? 'btn-dark text-white' : 'btn-light border text-muted'}`}
+                                    onClick={() => setSelectedPlatform(plat)}
+                                    disabled={isAnalyzing}
+                                >
+                                    <i className={`fab fa-${plat} ${plat}-color`}></i>
+                                    <span className="text-capitalize d-none d-sm-inline">{plat}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="mb-4">
+                        <label className="form-label fw-600 small">PROFILE URL</label>
+                        <input 
+                            type="url" 
+                            className="form-control form-control-lg" 
+                            placeholder={`https://${selectedPlatform}.com/yourprofile`}
+                            value={socialUrl}
+                            onChange={(e) => setSocialUrl(e.target.value)}
+                            required
                             disabled={isAnalyzing}
-                        >
-                            <span className="d-flex align-items-center gap-3">
-                                <i className={`fab fa-${platform} ${platform}-color`} style={{ fontSize: '1.2rem' }}></i>
-                                <span className="fw-bold text-capitalize">{platform}</span>
-                            </span>
-                            <i className="fas fa-chevron-right small text-muted"></i>
-                        </button>
-                    ))}
-                </div>
+                        />
+                    </div>
+                    <button 
+                        type="submit" 
+                        className="btn btn-pilot-ob w-100 py-3" 
+                        disabled={isAnalyzing || !socialUrl}
+                    >
+                        {isAnalyzing ? (
+                            <><span className="spinner-border spinner-border-sm me-2"></span> Analyzing...</>
+                        ) : (
+                            <>Generate Strategy <i className="fas fa-magic ms-2"></i></>
+                        )}
+                    </button>
+                </form>
             )}
 
             <AnimatePresence>

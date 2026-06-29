@@ -26,7 +26,7 @@ export async function getBrandDNA(request, env, auth) {
     db.prepare("SELECT * FROM brand_business_intelligence WHERE brand_id = ?").bind(brandId).first()
   ]);
 
-  if (!profile) return migrateLegacyBrand(db, brandId);
+  if (!profile) return migrateLegacyBrand(db, env, brandId);
 
   return json({
     profile: parseJSONFields(profile, ['brand_personality', 'differentiators']),
@@ -55,10 +55,10 @@ export async function hydrateAuditIntoDNA(db, brandId, auditId) {
 
   // 1. Hydrate Profile — use primary_offer for value_proposition if available
   await db.prepare(`
-    INSERT INTO brand_dna_profiles (brand_id, brand_name, industry, value_proposition, updated_at)
-    VALUES (?, ?, ?, ?, datetime('now'))
+    INSERT INTO brand_dna_profiles (brand_id, industry, value_proposition, updated_at)
+    VALUES (?, ?, ?, datetime('now'))
     ON CONFLICT(brand_id) DO UPDATE SET updated_at = datetime('now')
-  `).bind(brandId, audit.brand_name, audit.industry || 'General', primaryOffer || audit.brand_name).run();
+  `).bind(brandId, audit.industry || 'General', primaryOffer || audit.brand_name).run();
 
   // 2. Hydrate Objectives based on gaps
   await db.prepare(`
@@ -250,17 +250,270 @@ function calculateDNACompleteness(data) {
   return Math.round(score);
 }
 
-async function migrateLegacyBrand(db, brandId) {
+async function migrateLegacyBrand(db, env, brandId) {
   const brand = await db.prepare("SELECT * FROM brands WHERE id = ?").bind(brandId).first();
   if (!brand) return error("Brand not found", "NOT_FOUND", null, 404);
 
-  await db.prepare(`
-    INSERT INTO brand_dna_profiles (brand_id, industry, brand_personality, value_proposition)
-    VALUES (?, ?, ?, ?)
-    ON CONFLICT(brand_id) DO NOTHING
-  `).bind(brandId, brand.industry, JSON.stringify([brand.tone]), brand.name).run();
+  // 1. Fetch onboarding progress for the owner
+  let onboardingData = null;
+  const progress = await db.prepare("SELECT data FROM onboarding_progress WHERE user_id = ?").bind(brand.owner_user_id).first().catch(() => null);
+  if (progress?.data) {
+    try {
+      onboardingData = JSON.parse(progress.data);
+    } catch (e) {}
+  }
 
-  return getBrandDNA({ headers: { get: () => brandId } }, { mypilotpost: db }, { brand_id: brandId });
+  // 2. Initialize Brand DNA structure
+  let dna = null;
+
+  const name = brand.name;
+  const industry = brand.industry || "General";
+  const tone = brand.tone || "professional";
+  const description = onboardingData?.description || "";
+  const goals = onboardingData?.goals || [];
+  const auditReport = onboardingData?.audit?.full_report || null;
+
+  try {
+    const apiKey = env.GROQ_API_KEY;
+    if (apiKey) {
+      const systemPrompt = "You are a world-class strategic brand consultant. Generate a complete and highly specific Brand DNA matching the exact schema in strict JSON.";
+      const userPrompt = `
+Generate a Brand DNA for:
+Name: ${name}
+Industry: ${industry}
+Tone: ${tone}
+Description: ${description}
+Goals: ${JSON.stringify(goals)}
+Audit signals: ${auditReport ? JSON.stringify(auditReport) : "None available"}
+
+Return a single JSON object with this exact structure:
+{
+  "profile": {
+    "mission": "string",
+    "vision": "string",
+    "positioning": "string",
+    "value_proposition": "string",
+    "brand_personality": ["string", "string", "string"],
+    "differentiators": ["string", "string"]
+  },
+  "audience": {
+    "demographics": {
+      "age_range": "string",
+      "occupations": ["string"],
+      "income_level": "string",
+      "locations": ["string"]
+    },
+    "psychographics": {
+      "values": ["string"],
+      "interests": ["string"],
+      "lifestyle": "string"
+    },
+    "pain_points": ["string"],
+    "desires": ["string"],
+    "objections": ["string"]
+  },
+  "voice": {
+    "voice_traits": ["string"],
+    "forbidden_language": ["string"]
+  },
+  "visual": {
+    "primary_color": "hex",
+    "secondary_color": "hex",
+    "accent_color": "hex",
+    "font_headings": "string",
+    "font_body": "string",
+    "style_notes": "string"
+  },
+  "objectives": {
+    "awareness_goal": "string",
+    "authority_goal": "string",
+    "conversion_goal": "string",
+    "growth_goal": "string"
+  },
+  "content_pillars": [
+    {"title": "string", "description": "string"}
+  ],
+  "competitors": [
+    {"name": "string", "strengths": ["string"], "weaknesses": ["string"], "strategy_notes": "string"}
+  ]
+}
+
+Return ONLY the JSON. No explanations, no markdown wrapper.`;
+
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "llama-3.1-8b-instant",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          temperature: 0.2,
+          max_tokens: 1500,
+          response_format: { type: "json_object" }
+        })
+      });
+
+      if (response.ok) {
+        const groqJson = await response.json();
+        const rawContent = groqJson.choices?.[0]?.message?.content;
+        if (rawContent) {
+          dna = JSON.parse(rawContent);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[GROQ BRAND DNA GENERATION FAILED, FALLING BACK TO PROGRAMMATIC]", err);
+  }
+
+  // Safe fallback values if AI fails or is not configured
+  if (!dna) {
+    dna = {
+      profile: {
+        mission: `To empower growth in the ${industry} space through targeted distribution.`,
+        vision: `To be the primary partner for ${name} audiences.`,
+        positioning: `A premium provider in ${industry}.`,
+        value_proposition: description || `Targeted high-quality solutions for ${industry}.`,
+        brand_personality: [tone, "innovative", "dynamic"],
+        differentiators: ["Focus on customer success", "Modern technology adoption"]
+      },
+      audience: {
+        demographics: {
+          age_range: "25-54",
+          occupations: ["Business professionals", "Owners"],
+          income_level: "Medium to high",
+          locations: ["Global"]
+        },
+        psychographics: {
+          values: ["Quality", "Innovation"],
+          interests: ["Growth", "Efficiency"],
+          lifestyle: "Professional, fast-paced"
+        },
+        pain_points: [`High competition in ${industry}`, "Managing digital reach"],
+        desires: ["Enhanced market authority", "Consistent lead generation"],
+        objections: ["High complexity", "Time constraints"]
+      },
+      voice: {
+        voice_traits: [tone, "clear", "helpful"],
+        forbidden_language: ["overhyped claims", "jargon"]
+      },
+      visual: {
+        primary_color: "#2563EB",
+        secondary_color: "#1E40AF",
+        accent_color: "#F59E0B",
+        font_headings: "Inter",
+        font_body: "Roboto",
+        style_notes: "Modern corporate aesthetic"
+      },
+      objectives: {
+        awareness_goal: "Increase brand presence in the local market",
+        authority_goal: "Position as a thought leader in this niche",
+        conversion_goal: "Drive high-intent inquiries from landing pages",
+        growth_goal: "Expand audience base by 20% quarterly"
+      },
+      content_pillars: [
+        { title: "Topical Expertise", description: `Authoritative insights on ${industry} trends.` },
+        { title: "Customer Success", description: "Sharing case studies and customer journeys." },
+        { title: "Product Value", description: "Detailed showcases of our products and services." }
+      ],
+      competitors: [
+        { name: "Direct Niche Competitor", strengths: ["Early market entry"], weaknesses: ["Legacy user interface"], strategy_notes: "Differentiate through speed and design." }
+      ]
+    };
+  }
+
+  // Batch insert DNA tables
+  await db.prepare(`
+    INSERT INTO brand_dna_profiles (brand_id, mission, vision, positioning, value_proposition, industry, brand_personality, differentiators, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    ON CONFLICT(brand_id) DO UPDATE SET updated_at = datetime('now')
+  `).bind(
+    brandId,
+    dna.profile.mission,
+    dna.profile.vision,
+    dna.profile.positioning,
+    dna.profile.value_proposition,
+    industry,
+    JSON.stringify(dna.profile.brand_personality),
+    JSON.stringify(dna.profile.differentiators)
+  ).run();
+
+  await db.prepare(`
+    INSERT INTO brand_dna_audience (brand_id, demographics, psychographics, pain_points, desires, objections, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+    ON CONFLICT(brand_id) DO UPDATE SET updated_at = datetime('now')
+  `).bind(
+    brandId,
+    JSON.stringify(dna.audience.demographics),
+    JSON.stringify(dna.audience.psychographics),
+    JSON.stringify(dna.audience.pain_points),
+    JSON.stringify(dna.audience.desires),
+    JSON.stringify(dna.audience.objections)
+  ).run();
+
+  await db.prepare(`
+    INSERT INTO brand_dna_voice (brand_id, voice_traits, forbidden_language, updated_at)
+    VALUES (?, ?, ?, datetime('now'))
+    ON CONFLICT(brand_id) DO UPDATE SET updated_at = datetime('now')
+  `).bind(
+    brandId,
+    JSON.stringify(dna.voice.voice_traits),
+    JSON.stringify(dna.voice.forbidden_language)
+  ).run();
+
+  await db.prepare(`
+    INSERT INTO brand_dna_visual_identity (brand_id, primary_color, secondary_color, accent_color, typography_heading, typography_main, visual_direction, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    ON CONFLICT(brand_id) DO UPDATE SET updated_at = datetime('now')
+  `).bind(
+    brandId,
+    dna.visual.primary_color,
+    dna.visual.secondary_color,
+    dna.visual.accent_color,
+    dna.visual.font_headings,
+    dna.visual.font_body,
+    dna.visual.style_notes
+  ).run();
+
+  await db.prepare(`
+    INSERT INTO brand_dna_objectives (brand_id, awareness_goal, authority_goal, conversions_goal, updated_at)
+    VALUES (?, ?, ?, ?, datetime('now'))
+    ON CONFLICT(brand_id) DO UPDATE SET updated_at = datetime('now')
+  `).bind(
+    brandId,
+    dna.objectives.awareness_goal,
+    dna.objectives.authority_goal,
+    dna.objectives.conversion_goal
+  ).run();
+
+  await db.prepare("DELETE FROM brand_dna_content_pillars WHERE brand_id = ?").bind(brandId).run();
+  for (const pillar of dna.content_pillars) {
+    await db.prepare(`
+      INSERT INTO brand_dna_content_pillars (id, brand_id, title, description)
+      VALUES (?, ?, ?, ?)
+    `).bind(crypto.randomUUID(), brandId, pillar.title, pillar.description).run();
+  }
+
+  await db.prepare("DELETE FROM brand_dna_competitors WHERE brand_id = ?").bind(brandId).run();
+  for (const comp of dna.competitors) {
+    await db.prepare(`
+      INSERT INTO brand_dna_competitors (id, brand_id, name, strengths, weaknesses, strategy_notes)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).bind(
+      crypto.randomUUID(),
+      brandId,
+      comp.name,
+      JSON.stringify(comp.strengths),
+      JSON.stringify(comp.weaknesses),
+      comp.strategy_notes
+    ).run();
+  }
+
+  return getBrandDNA({ headers: { get: () => brandId } }, env, { brand_id: brandId });
 }
 
 function parseJSONFields(obj, fields) {

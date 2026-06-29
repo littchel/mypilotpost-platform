@@ -76,8 +76,26 @@ const BillingTab = () => {
     ]);
 
     if (planRes.status === 'success' && planRes.data?.plan) setCurrentPlan(planRes.data.plan);
-    setHistory(histRes);
-    setUsage(usageRes);
+
+    if (histRes.status === 'success' && histRes.data?.history) {
+      const histData = histRes.data.history;
+      setHistory({
+        status: histData.length === 0 ? 'empty' : 'success',
+        data: histData
+      });
+    } else {
+      setHistory(histRes);
+    }
+
+    if (usageRes.status === 'success' && usageRes.data?.usage) {
+      const usageData = usageRes.data.usage;
+      setUsage({
+        status: usageData.length === 0 ? 'empty' : 'success',
+        data: usageData
+      });
+    } else {
+      setUsage(usageRes);
+    }
 
     if (growthRes.status === 'success' && growthRes.data) {
       const g = growthRes.data;
