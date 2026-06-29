@@ -8,6 +8,8 @@
 import { generateBrief }     from './brief.js';
 import { buildVisualContext } from './visual_context.js';
 import { fetchPexels }        from './providers/pexels.js';
+import { fetchUnsplash }      from './providers/unsplash.js';
+import { fetchPixabay }       from './providers/pixabay.js';
 import { dedupe }             from './dedupe.js';
 import { rankImages }         from './ranking.js';
 import { cacheGet, cacheSet } from './providers/cache.js';
@@ -112,8 +114,13 @@ export async function runMediaEngine(
   const cached = await cacheGet(cacheKey, platform, env).catch(() => null);
   if (cached) return cached;
 
-  // Fetch wider pool to survive stricter quality filter (1600px floor + guardrails)
-  const raw = await fetchPexels({ query: brief.query, orientation: brief.orientation, limit: 60 }, env);
+  // Fetch wider pool across Pexels, Unsplash, and Pixabay in parallel
+  const [pexelsRaw, unsplashRaw, pixabayRaw] = await Promise.all([
+    fetchPexels({ query: brief.query, orientation: brief.orientation, limit: 40 }, env).catch(() => []),
+    fetchUnsplash({ query: brief.query, orientation: brief.orientation, limit: 40 }, env).catch(() => []),
+    fetchPixabay({ query: brief.query, orientation: brief.orientation, limit: 40 }, env).catch(() => [])
+  ]);
+  const raw = [...pexelsRaw, ...unsplashRaw, ...pixabayRaw];
 
   // Deduplicate (author limit 2, URL dedup)
   const unique = dedupe(raw);

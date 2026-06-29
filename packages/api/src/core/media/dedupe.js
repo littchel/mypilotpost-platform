@@ -1,12 +1,15 @@
-/**
- * myPilotPost — Image Deduplication
- * Rejects: same URL, same author >2, same dimensions.
- * Goal: never show "office photo × 5".
- */
+function cleanAuthor(name) {
+  if (!name) return 'unknown';
+  return name.toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/(on pexels|on unsplash|on pixabay|on adobe|pexels|unsplash|pixabay)/gi, '')
+    .trim();
+}
 
 export function dedupe(images) {
   const seenUrls  = new Set();
   const seenIds   = new Set();
+  const seenDims  = new Set();
   const authorCount = {};
   const out = [];
 
@@ -16,7 +19,14 @@ export function dedupe(images) {
     const id = img.external_id || img.id;
     if (id && seenIds.has(id)) continue;
 
-    const author = (img.author || 'unknown').toLowerCase();
+    // Deduplicate same image size signature (cross-platform duplicates)
+    if (img.width > 0 && img.height > 0) {
+      const dimSig = `${img.width}x${img.height}`;
+      if (seenDims.has(dimSig)) continue;
+      seenDims.add(dimSig);
+    }
+
+    const author = cleanAuthor(img.author);
     if ((authorCount[author] || 0) >= 2) continue;
 
     seenUrls.add(img.url);
