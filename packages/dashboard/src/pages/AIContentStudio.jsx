@@ -628,9 +628,13 @@ function PostsTab({ activeBrand, brandDna: initialBrandDna, connectedPlatforms, 
       fetchMediaSuggestions({
         platform:    (connectedPlatforms?.[0]?.platform) || activeBrand?.primary_platform || 'instagram',
         contentType: 'social',
-        text:        list.slice(0, 3).map(o => o.title || o.idea || '').join(' '),
         brand:       activeBrand?.name || '',
         industry:    activeBrand?.industry || '',
+        batch:       list.map(o => ({
+          id: o.id,
+          title: o.idea || o.title || o.framework || '',
+          caption: o._caption || o.caption || o.hook || ''
+        }))
       })
         .then(buckets => {
           const pool = [
@@ -773,14 +777,17 @@ function AssetCardGrid({ cards, activeBrand, brandDna, switchTab, source }) {
 
   useEffect(() => {
     if (!cards.length) return;
-    const text = cards.slice(0, 5).map(c => c.title || c.idea || '').join(' ');
     const platform = (cards[0]?.platforms || [])[0] || 'instagram';
     fetchMediaSuggestions({
       platform,
       contentType: 'social',
-      text,
       brand: activeBrand?.name || '',
       industry: activeBrand?.industry || '',
+      batch: cards.map(c => ({
+        id: c.id,
+        title: c.title || c.idea || '',
+        caption: c.caption || c.hook || ''
+      }))
     })
       .then(buckets => {
         const pool = [

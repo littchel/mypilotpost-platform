@@ -43,6 +43,7 @@ export async function getMediaSuggestions(request, env, auth) {
     brand       = '',
     industry    = '',
     goal        = '',
+    batch       = null,
   } = body;
 
   // Fetch Brand DNA — null-safe, never throws (Step 5)
@@ -50,7 +51,7 @@ export async function getMediaSuggestions(request, env, auth) {
 
   try {
     const result = await runMediaEngine(
-      { platform, contentType, format, text, title, brand, industry, goal, brandDna },
+      { platform, contentType, format, text, title, brand, industry, goal, brandDna, batch },
       env
     );
     return json(result);

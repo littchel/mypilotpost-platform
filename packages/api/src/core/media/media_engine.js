@@ -1,18 +1,26 @@
-/**
- * myPilotPost — Media Intelligence Engine v2
- * Orchestrates: brief → fetch → dedupe → rank → curate → group
- * Returns: { featured[4], recommended[12], byCategory, more[20], meta }
- * No LLM. No new routes. Uses existing Pexels provider + KV cache.
- */
-
 import { generateBrief }     from './brief.js';
 import { buildVisualContext } from './visual_context.js';
 import { fetchPexels }        from './providers/pexels.js';
 import { fetchUnsplash }      from './providers/unsplash.js';
 import { fetchPixabay }       from './providers/pixabay.js';
 import { dedupe }             from './dedupe.js';
-import { rankImages }         from './ranking.js';
+import { rankImages, assignCategory } from './ranking.js';
 import { cacheGet, cacheSet } from './providers/cache.js';
+import { getDB }              from '../../lib/db.js';
+import { expandVisualBriefs } from './brief_expansion.js';
+
+const FALLBACK_POOL = [
+  "https://images.pexels.com/photos/3184298/pexels-photo-3184298.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
+  "https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
+  "https://images.pexels.com/photos/3760809/pexels-photo-3760809.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
+  "https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
+  "https://images.pexels.com/photos/3182812/pexels-photo-3182812.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
+  "https://images.pexels.com/photos/1181396/pexels-photo-1181396.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
+  "https://images.pexels.com/photos/3184360/pexels-photo-3184360.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
+  "https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
+  "https://images.pexels.com/photos/3184292/pexels-photo-3184292.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
+  "https://images.pexels.com/photos/3182781/pexels-photo-3182781.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1"
+];
 
 function groupByCategory(images) {
   const out = { human: [], professional: [], minimal: [], general: [] };
@@ -100,77 +108,176 @@ function calcConfidence(ranked) {
   return Math.round(avg * 100);
 }
 
+function computeSemanticScore(brief, img) {
+  const altWords = new Set((img.alt || '').toLowerCase().split(/[^a-z0-9]+/));
+  const briefWords = new Set([
+    ...(brief.mood_tags || []).map(t => t.toLowerCase()),
+    ...(brief.visual_description || '').toLowerCase().split(/[^a-z0-9]+/)
+  ].filter(w => w.length > 3));
+
+  let intersection = 0;
+  for (const w of briefWords) {
+    if (altWords.has(w)) intersection++;
+  }
+  const union = briefWords.size + altWords.size - intersection;
+  return union > 0 ? (intersection / union) : 0.0;
+}
+
+function getBayesianScore(img, visualPerformance) {
+  const category = img.category || 'general';
+  const perf = visualPerformance[category] || { impressions: 10, clicks: 1 };
+  const alpha = 1;
+  const beta = 9;
+  return (perf.clicks + alpha) / (perf.impressions + alpha + beta);
+}
+
 export async function runMediaEngine(
-  { platform, contentType, format, text = '', title = '', brand = '', industry = '', goal = '', brandDna = null },
+  { platform, contentType, format, text = '', title = '', brand = '', industry = '', goal = '', brandDna = null, batch = null },
   env
 ) {
-  const brief = generateBrief({ platform, contentType, format, text, title, brand, industry, goal, brandDna });
-
-  // Build visual_context ONCE — single source of truth for guardrails + match scoring (Step 3)
+  // If single request, cache matching applies
+  const isSingle = !batch || !batch.length;
   const visualContext = buildVisualContext({ industry, title, goal, format, brandDna });
+  const cacheKey = `${text.slice(0, 40)}::${format || 'social'}::${visualContext.industryKey || 'generic'}`;
 
-  // Cache key includes format + industry so brand-specific ranking is not shared across brands
-  const cacheKey = `${brief.query}::${brief.format}::${visualContext.industryKey || 'generic'}`;
-  const cached = await cacheGet(cacheKey, platform, env).catch(() => null);
-  if (cached) return cached;
-
-  // Fetch wider pool across Pexels, Unsplash, and Pixabay in parallel
-  const [pexelsRaw, unsplashRaw, pixabayRaw] = await Promise.all([
-    fetchPexels({ query: brief.query, orientation: brief.orientation, limit: 40 }, env).catch(() => []),
-    fetchUnsplash({ query: brief.query, orientation: brief.orientation, limit: 40 }, env).catch(() => []),
-    fetchPixabay({ query: brief.query, orientation: brief.orientation, limit: 40 }, env).catch(() => [])
-  ]);
-  const raw = [...pexelsRaw, ...unsplashRaw, ...pixabayRaw];
-
-  // Deduplicate (author limit 2, URL dedup)
-  const unique = dedupe(raw);
-
-  // Rank with visual_context — industry guardrails + title↔image match scoring applied inside
-  const ranked = rankImages(unique, {
-    tags:          brief.tags,
-    orientation:   brief.orientation,
-    subjects:      brief.subjects,
-    visualContext,
-  });
-
-  const confidence = calcConfidence(ranked);
-
-  // Agency Picks: diverse (1 per category) or fallback to minimal/editorial
-  let featured;
-  if (confidence < 70 && ranked.length > 0) {
-    // Low confidence — prefer minimal/editorial over random
-    const editorialFirst = [...ranked].sort((a, b) => {
-      const scoreA = (a.category === 'minimal' || a.category === 'professional') ? 1 : 0;
-      const scoreB = (b.category === 'minimal' || b.category === 'professional') ? 1 : 0;
-      return scoreB - scoreA || b._score - a._score;
-    });
-    featured = editorialFirst.slice(0, 4);
-  } else {
-    featured = selectDiverseFeatured(ranked, 4);
+  if (isSingle) {
+    const cached = await cacheGet(cacheKey, platform, env).catch(() => null);
+    if (cached) return cached;
   }
 
-  const recommended = buildCuratedList(ranked, 16, featured);
-  const more = ranked
-    .filter(img => !featured.includes(img) && !recommended.includes(img))
-    .slice(0, 20);
+  // 1. LLM Batch Visual Brief Expansion
+  let briefs = [];
+  if (batch && batch.length) {
+    briefs = await expandVisualBriefs({ batch, brand, env, brand_id: brandDna?.brand_id });
+  }
 
-  const byCategory = groupByCategory(ranked.map(strip));
+  // Virtual batch of 1 if single post request, or fallback if LLM failed
+  if (!briefs.length) {
+    const fallbackList = batch && batch.length ? batch : [{ title, caption: text }];
+    briefs = fallbackList.map((p, idx) => {
+      const b = generateBrief({ platform, contentType, format, text: p.caption, title: p.title, brand, industry, goal, brandDna });
+      return {
+        postId: idx,
+        search_queries: [b.query, `${industry || 'business'} visual`, `${brand || 'brand'} professional`],
+        visual_description: p.title || p.caption || 'Business and professional elements',
+        mood_tags: b.tags || ['professional', 'clean']
+      };
+    });
+  }
+
+  // 2. Parallel Labeled Fetching
+  // Deduplicate query string array to restrict subrequest limits
+  const uniqueQueries = [...new Set(briefs.flatMap(b => b.search_queries))].slice(0, 10);
+  
+  const fetchPromises = uniqueQueries.flatMap(q => [
+    fetchPexels({ query: q, orientation: visualContext.expectedCategories?.includes('portrait') ? 'portrait' : 'landscape', limit: 12 }, env).catch(() => []),
+    fetchUnsplash({ query: q, orientation: visualContext.expectedCategories?.includes('portrait') ? 'portrait' : 'landscape', limit: 12 }, env).catch(() => []),
+    fetchPixabay({ query: q, orientation: visualContext.expectedCategories?.includes('portrait') ? 'portrait' : 'landscape', limit: 12 }, env).catch(() => [])
+  ]);
+
+  const fetchedResults = await Promise.all(fetchPromises);
+  const raw = fetchedResults.flat();
+
+  // Deduplicate raw candidate pool
+  const uniqueCandidates = dedupe(raw).map(img => ({
+    ...img,
+    category: assignCategory(img)
+  }));
+
+  // 3. MAB Prior Category CTR CTR Boost
+  const visualPerformance = {};
+  if (brandDna?.brand_id) {
+    try {
+      const db = getDB(env);
+      const rows = await db
+        .prepare(`SELECT feature_name, impressions, clicks FROM visual_feature_performance WHERE brand_id = ?`)
+        .bind(brandDna.brand_id)
+        .all();
+      for (const r of rows.results || []) {
+        visualPerformance[r.feature_name] = r;
+      }
+    } catch (err) {
+      console.error('[MAB PRIORS ERROR]', err?.message);
+    }
+  }
+
+  // 4. Semantic Scoring & Bipartite Greedy Assignment
+  const assignedImages = new Array(briefs.length).fill(null);
+  const assignedImageIds = new Set();
+  const matches = [];
+
+  briefs.forEach((brief, bIdx) => {
+    uniqueCandidates.forEach(img => {
+      const semantic = computeSemanticScore(brief, img);
+      const bayesian = getBayesianScore(img, visualPerformance);
+      const score = (0.70 * semantic) + (0.30 * bayesian);
+      matches.push({ bIdx, img, score });
+    });
+  });
+
+  // Sort score descending
+  matches.sort((a, b) => b.score - a.score);
+
+  for (const match of matches) {
+    if (assignedImages[match.bIdx] === null) {
+      const imgId = match.img.id || match.img.external_id;
+      if (!assignedImageIds.has(imgId)) {
+        assignedImages[match.bIdx] = match.img;
+        assignedImageIds.add(imgId);
+      }
+    }
+  }
+
+  // Backfill any unmatched entries
+  briefs.forEach((brief, bIdx) => {
+    if (assignedImages[bIdx] === null) {
+      for (const img of uniqueCandidates) {
+        const imgId = img.id || img.external_id;
+        if (!assignedImageIds.has(imgId)) {
+          assignedImages[bIdx] = img;
+          assignedImageIds.add(imgId);
+          break;
+        }
+      }
+    }
+    // Final absolute fallbacks if pool exhausted
+    if (assignedImages[bIdx] === null) {
+      const url = FALLBACK_POOL[bIdx % FALLBACK_POOL.length];
+      assignedImages[bIdx] = {
+        id: `fallback_${bIdx}`,
+        external_id: `fallback_${bIdx}`,
+        url,
+        preview: url,
+        thumbnail_url: url,
+        author: 'myPilotPost Curated',
+        attribution: 'Curated selection',
+        provider: 'pexels',
+        category: 'general',
+        width: 1920,
+        height: 1080
+      };
+    }
+  });
+
+  const confidence = calcConfidence(uniqueCandidates);
+  const byCategory = groupByCategory(uniqueCandidates.map(strip));
 
   const result = {
-    featured:    featured.map(strip),
-    recommended: recommended.map(strip),
-    more:        more.map(strip),
+    featured:    assignedImages.slice(0, 4).map(strip),
+    recommended: assignedImages.slice(4, 20).map(strip),
+    more:        uniqueCandidates.filter(img => !assignedImageIds.has(img.id || img.external_id)).slice(0, 20).map(strip),
+    all:         assignedImages.map(strip),
     byCategory,
     meta: {
-      query:         brief.query,
-      orientation:   brief.orientation,
-      style:         brief.style,
-      format:        brief.format,
+      query:         uniqueQueries.join(', '),
       confidence,
       visual_context: visualContext,
     },
   };
 
-  await cacheSet(cacheKey, platform, result, env).catch(() => {});
+  if (isSingle) {
+    await cacheSet(cacheKey, platform, result, env).catch(() => {});
+  }
+
   return result;
 }
