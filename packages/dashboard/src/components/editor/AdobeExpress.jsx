@@ -109,17 +109,22 @@ export default function AdobeExpress({ onImport, seedImage, style }) {
     }
   }, [ensureReady, onImport, seedImage]);
 
-  if (status === "unavailable") {
-    return <span className="extra-small text-muted">Adobe Express not configured</span>;
-  }
+  const handleClick = () => {
+    if (status === "unavailable") {
+      alert("Adobe Express is not configured. Please ensure ADOBE_CLIENT_ID is set in your Cloudflare environment secrets.");
+      return;
+    }
+    launch();
+  };
 
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flex: style ? 1 : undefined }}>
-      <button style={style} className={style ? "" : "btn-grey btn-sm"} onClick={launch} disabled={status === "loading"}>
+      <button style={style} className={style ? "" : "btn-grey btn-sm"} onClick={handleClick} disabled={status === "loading"}>
         <i className={style ? "fas fa-edit me-1" : "fas fa-bezier-curve me-1"} style={{ color: style ? undefined : "#fa0f00" }}></i>
         {status === "loading" ? "Loading Adobe…" : "Adobe Express"}
       </button>
       {error && <span className="extra-small" style={{ color: "#f87171" }} title={error}>Adobe error — hover</span>}
+      {status === "unavailable" && <span className="extra-small text-muted" title="Set ADOBE_CLIENT_ID to enable">⚠️ Unconfigured</span>}
     </span>
   );
 }

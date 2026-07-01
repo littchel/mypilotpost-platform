@@ -167,15 +167,35 @@ export async function runMediaEngine(
   }
 
   // 2. Parallel Labeled Fetching
+  // Check if this brand has an active Adobe integration connected via OAuth
+  let hasAdobe = false;
+  if (brandDna?.brand_id) {
+    try {
+      const db = getDB(env);
+      const conn = await db
+        .prepare(`SELECT id FROM social_connections WHERE brand_id = ? AND platform = 'adobe' AND status = 'active'`)
+        .bind(brandDna.brand_id)
+        .first();
+      if (conn) hasAdobe = true;
+    } catch (err) {
+      console.error('[MEDIA ENGINE ADOBE CHECK ERROR]', err);
+    }
+  }
+
   // Deduplicate query string array to restrict subrequest limits
   const uniqueQueries = [...new Set(briefs.flatMap(b => b.search_queries))].slice(0, 10);
   
-  const fetchPromises = uniqueQueries.flatMap(q => [
-    fetchPexels({ query: q, orientation: visualContext.expectedCategories?.includes('portrait') ? 'portrait' : 'landscape', limit: 12 }, env).catch(() => []),
-    fetchUnsplash({ query: q, orientation: visualContext.expectedCategories?.includes('portrait') ? 'portrait' : 'landscape', limit: 12 }, env).catch(() => []),
-    fetchPixabay({ query: q, orientation: visualContext.expectedCategories?.includes('portrait') ? 'portrait' : 'landscape', limit: 12 }, env).catch(() => []),
-    fetchAdobeStock({ query: q, limit: 12 }, env).catch(() => [])
-  ]);
+  const fetchPromises = uniqueQueries.flatMap(q => {
+    const list = [
+      fetchPexels({ query: q, orientation: visualContext.expectedCategories?.includes('portrait') ? 'portrait' : 'landscape', limit: 12 }, env).catch(() => []),
+      fetchUnsplash({ query: q, orientation: visualContext.expectedCategories?.includes('portrait') ? 'portrait' : 'landscape', limit: 12 }, env).catch(() => []),
+      fetchPixabay({ query: q, orientation: visualContext.expectedCategories?.includes('portrait') ? 'portrait' : 'landscape', limit: 12 }, env).catch(() => [])
+    ];
+    if (hasAdobe) {
+      list.push(fetchAdobeStock({ query: q, limit: 12 }, env).catch(() => []));
+    }
+    return list;
+  });
 
   const fetchedResults = await Promise.all(fetchPromises);
   const raw = fetchedResults.flat();

@@ -671,11 +671,10 @@ const IntegrationsManager = () => {
               const connected      = integrations.find(i =>
                 i.platform === p.id || (p.id === "linkedin_personal" && i.platform === "linkedin")
               );
-              const isAdobe        = p.id === "adobe";
-              const isActive       = isAdobe ? adobeActive : (connected?.status === "active");
-              const needsResource  = !isAdobe && connected && (connected.status === "pending" || connected.status === "CONNECTED_NEEDS_RESOURCE");
-              const isExpired      = !isAdobe && connected && !isActive && !needsResource;
-              const hasResource    = !isAdobe && connected?.selected_resource_name;
+              const isActive       = connected?.status === "active";
+              const needsResource  = connected && (connected.status === "pending" || connected.status === "CONNECTED_NEEDS_RESOURCE");
+              const isExpired      = connected && !isActive && !needsResource;
+              const hasResource    = connected?.selected_resource_name;
               const providerMeta   = PROVIDERS.find(x => x.id === p.id);
 
               return (
@@ -685,15 +684,7 @@ const IntegrationsManager = () => {
                       <PlatformIcon id={p.id} />
                     </div>
                     <div className="platform-status">
-                      {isAdobe ? (
-                        adobeActive ? (
-                          <span className="status-badge status-badge--active">
-                            <ShieldCheck size={11} /> Ready
-                          </span>
-                        ) : (
-                          <span className="status-badge status-badge--inactive">Not Configured</span>
-                        )
-                      ) : connected ? (
+                      {connected ? (
                         isActive ? (
                           <span className="status-badge status-badge--active">
                             <ShieldCheck size={11} /> Connected
@@ -809,16 +800,6 @@ const IntegrationsManager = () => {
                           Disconnect
                         </PilotButton>
                       </div>
-                    ) : isAdobe ? (
-                      adobeActive ? (
-                        <button className="pilot-btn btn-sm btn-outline w-100" disabled style={{ opacity: 0.7, cursor: "not-allowed" }}>
-                          Configured in Editor
-                        </button>
-                      ) : (
-                        <button className="pilot-btn btn-sm btn-outline w-100" disabled style={{ opacity: 0.7, cursor: "not-allowed" }}>
-                          Set ADOBE_CLIENT_ID
-                        </button>
-                      )
                     ) : (
                       <PilotButton type="primary" size="sm" icon={ExternalLink} onClick={() => handleConnect(p.id)}>
                         Connect {p.name}
