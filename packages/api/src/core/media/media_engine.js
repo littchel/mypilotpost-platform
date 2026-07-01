@@ -3,6 +3,7 @@ import { buildVisualContext } from './visual_context.js';
 import { fetchPexels }        from './providers/pexels.js';
 import { fetchUnsplash }      from './providers/unsplash.js';
 import { fetchPixabay }       from './providers/pixabay.js';
+import { fetchAdobeStock }    from './providers/adobe_stock.js';
 import { dedupe }             from './dedupe.js';
 import { rankImages, assignCategory } from './ranking.js';
 import { cacheGet, cacheSet } from './providers/cache.js';
@@ -172,7 +173,8 @@ export async function runMediaEngine(
   const fetchPromises = uniqueQueries.flatMap(q => [
     fetchPexels({ query: q, orientation: visualContext.expectedCategories?.includes('portrait') ? 'portrait' : 'landscape', limit: 12 }, env).catch(() => []),
     fetchUnsplash({ query: q, orientation: visualContext.expectedCategories?.includes('portrait') ? 'portrait' : 'landscape', limit: 12 }, env).catch(() => []),
-    fetchPixabay({ query: q, orientation: visualContext.expectedCategories?.includes('portrait') ? 'portrait' : 'landscape', limit: 12 }, env).catch(() => [])
+    fetchPixabay({ query: q, orientation: visualContext.expectedCategories?.includes('portrait') ? 'portrait' : 'landscape', limit: 12 }, env).catch(() => []),
+    fetchAdobeStock({ query: q, limit: 12 }, env).catch(() => [])
   ]);
 
   const fetchedResults = await Promise.all(fetchPromises);

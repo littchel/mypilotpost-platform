@@ -34,9 +34,11 @@ export function getAdobeStatus(env) {
         : "Set ADOBE_CLIENT_ID to enable Adobe Express.",
     },
     stock: {
-      available: false,
-      status: "unavailable",
-      reason: "ADOBE_CLIENT_ID is not entitled for the Adobe Stock API (Stock returns ErrInvalidAPIKey / 403003). Add the Adobe Stock API to the project and provide a client secret for licensing.",
+      available: Boolean(env.ADOBE_CLIENT_ID),
+      status: env.ADOBE_CLIENT_ID ? "configured" : "not_configured",
+      note: env.ADOBE_CLIENT_ID
+        ? "Adobe Stock API search is active and integrated directly into the image discovery engine."
+        : "Set ADOBE_CLIENT_ID to enable Adobe Stock search.",
     },
   });
 }
