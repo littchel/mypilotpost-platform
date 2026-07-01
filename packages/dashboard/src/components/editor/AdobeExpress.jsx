@@ -68,26 +68,38 @@ export default function AdobeExpress({ onImport, seedImage, style }) {
   const launch = useCallback(async () => {
     try {
       const cc = await ensureReady();
-      const editor = cc.editor || cc; // v4 exposes .editor
-      const callbacks = {
-        onPublish: (_intent, publishParams) => {
-          try {
-            const asset = (publishParams?.asset || publishParams?.assets || [])[0];
-            const dataUrl = asset?.data || asset?.dataURL || asset?.url;
-            if (dataUrl && onImport) onImport(dataUrl);
-          } catch (e) { setError("Could not read published asset: " + e.message); }
-        },
-        onError: (err) => setError("Adobe Express error: " + (err?.message || String(err))),
-      };
+      const editor = cc.editor || cc; 
+      
       const docConfig = seedImage
         ? { canvasSize: "SocialPost", asset: { data: seedImage, dataType: "base64", type: "image" } }
         : { canvasSize: "SocialPost" };
-      const exportConfig = [{ id: "download-png", label: "Import to MyPilotPost", action: { target: "publish" }, style: { uiType: "button" } }];
 
-      if (typeof editor.createWithAsset === "function" && seedImage) {
-        editor.createWithAsset(docConfig, { callbacks, exportOptions: exportConfig });
+      const appConfig = {
+        callbacks: {
+          onPublish: (intent, publishParams) => {
+            try {
+              const asset = (publishParams?.asset || publishParams?.assets || [])[0];
+              const dataUrl = asset?.data || asset?.dataURL || asset?.url;
+              if (dataUrl && onImport) onImport(dataUrl);
+            } catch (e) {
+              setError("Could not read published asset: " + e.message);
+            }
+          },
+          onError: (err) => setError("Adobe Express error: " + (err?.message || String(err))),
+        }
+      };
+
+      const exportConfig = [{
+        id: "download-png",
+        label: "Import to MyPilotPost",
+        action: { target: "publish" },
+        style: { uiType: "button" }
+      }];
+
+      if (seedImage && typeof editor.createWithAsset === "function") {
+        editor.createWithAsset(docConfig, appConfig, exportConfig);
       } else if (typeof editor.create === "function") {
-        editor.create(docConfig, { callbacks, exportOptions: exportConfig });
+        editor.create(docConfig, appConfig, exportConfig);
       } else {
         throw new Error("Adobe Express editor API not available in this SDK build");
       }
