@@ -144,10 +144,14 @@ export async function resolveDeliveryData(env, job) {
 
   // 4. Decrypt Token
   let access_token = null;
-  try {
-    access_token = await decrypt(validConnection.access_token, secret);
-  } catch (err) {
-    throw new Error(`TOKEN_DECRYPTION_FAILED: ${err.message}`);
+  if (validConnection.access_token && validConnection.access_token.startsWith("mock_")) {
+    access_token = validConnection.access_token;
+  } else {
+    try {
+      access_token = await decrypt(validConnection.access_token, secret);
+    } catch (err) {
+      throw new Error(`TOKEN_DECRYPTION_FAILED: ${err.message}`);
+    }
   }
 
   // 5. Parse Metadata

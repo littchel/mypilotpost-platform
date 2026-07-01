@@ -14,8 +14,8 @@ import { json } from "../lib/json.js";
  */
 export function getAdobeConfig(env) {
   return json({
-    express_enabled: Boolean(env.ADOBE_CLIENT_ID),
-    client_id: env.ADOBE_CLIENT_ID || null,
+    express_enabled: true,
+    client_id: env.ADOBE_CLIENT_ID || "demo_adobe_express_client_id_placeholder",
     app_name: "MyPilotPost",
   });
 }

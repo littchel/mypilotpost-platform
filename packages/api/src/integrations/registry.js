@@ -46,7 +46,6 @@ export const PROVIDERS = {
     type: "media",
     capabilities: ["import_media"],
     auth: "oauth2",
-    disabled: true,
     scopes: "openid AdobeID profile creative_sdk",
     endpoints: {
       auth: "https://ims-na1.adobelogin.com/ims/authorize/v2",

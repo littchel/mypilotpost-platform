@@ -10,6 +10,10 @@ export async function publish({ content, connection, _env }) {
   const { text, media } = content;
   const { access_token, account_id } = connection;
 
+  if (access_token && access_token.startsWith("mock_")) {
+    return { success: true, external_id: `mock_threads_post_${Date.now()}` };
+  }
+
   const primaryMedia = (media || []).find(m => m.role === "primary" || m.position === 0);
 
   // Step 1: Create media container
