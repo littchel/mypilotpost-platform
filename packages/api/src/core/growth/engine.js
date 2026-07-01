@@ -41,14 +41,14 @@ export async function handleGrowthEvent({ env, eventType, payload }) {
 
   if (points === 0) return;
 
-  // daily_login: award points at most once per calendar day per user+brand
+  // daily_login: award points at most once per calendar day per user (across all brands)
   if (eventType === 'daily_login') {
     const alreadyToday = await db.prepare(`
       SELECT id FROM growth_activity
-      WHERE user_id = ? AND brand_id = ? AND action_type = 'daily_login'
-        AND created_at >= datetime('now', 'start of day')
+      WHERE user_id = ? AND action_type = 'daily_login'
+        AND date(created_at) = date('now')
       LIMIT 1
-    `).bind(user_id, brand_id).first();
+    `).bind(user_id).first();
     if (alreadyToday) return;
   }
 

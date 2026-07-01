@@ -156,15 +156,31 @@ export async function crawlWebsite(rawUrl) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 12000);
 
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; myPilotPostBot/1.0; +https://mypilotpost.com)',
-        'Accept': 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-      },
-      redirect: 'follow',
-    });
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.5',
+    };
+
+    let response;
+    try {
+      response = await fetch(url, {
+        signal: controller.signal,
+        headers,
+        redirect: 'follow',
+      });
+    } catch (fetchErr) {
+      if (url.startsWith('https://')) {
+        const httpUrl = url.replace('https://', 'http://');
+        response = await fetch(httpUrl, {
+          signal: controller.signal,
+          headers,
+          redirect: 'follow',
+        });
+      } else {
+        throw fetchErr;
+      }
+    }
 
     clearTimeout(timeout);
 

@@ -201,10 +201,26 @@ export async function scrapeWebsite(request, env, auth) {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
-    const res = await fetch(targetUrl, {
-      signal: controller.signal,
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; myPilotPost/1.0; +https://mypilotpost.com)" },
-    });
+    const headers = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    };
+    let res;
+    try {
+      res = await fetch(targetUrl, {
+        signal: controller.signal,
+        headers,
+      });
+    } catch (fetchErr) {
+      if (targetUrl.startsWith('https://')) {
+        const httpUrl = targetUrl.replace('https://', 'http://');
+        res = await fetch(httpUrl, {
+          signal: controller.signal,
+          headers,
+        });
+      } else {
+        throw fetchErr;
+      }
+    }
     clearTimeout(timeout);
     const html = await res.text();
     rawText = stripHTML(html).slice(0, 4000);
