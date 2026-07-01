@@ -524,6 +524,7 @@ const IntegrationsManager = () => {
   const [picker, setPicker]             = useState(null); // { platform, connId }
   const [wpModalOpen, setWpModalOpen]   = useState(false);
   const [wcModalOpen, setWcModalOpen]   = useState(false);
+  const [adobeActive, setAdobeActive]   = useState(false);
 
   const fetchIntegrations = useCallback(async () => {
     setLoading(true);
@@ -531,6 +532,13 @@ const IntegrationsManager = () => {
     try {
       const data = await apiRequest("/api/customer/social-connections");
       setIntegrations(data?.connections || []);
+
+      const adobeCfg = await apiRequest("/api/customer/integrations/adobe/config").catch(() => null);
+      if (adobeCfg?.express_enabled) {
+        setAdobeActive(true);
+      } else {
+        setAdobeActive(false);
+      }
     } catch (e) {
       console.error("Failed to fetch integrations", e);
       setFetchError("Unable to load integration status. Please try again.");
@@ -663,10 +671,11 @@ const IntegrationsManager = () => {
               const connected      = integrations.find(i =>
                 i.platform === p.id || (p.id === "linkedin_personal" && i.platform === "linkedin")
               );
-              const isActive       = connected?.status === "active";
-              const needsResource  = connected && (connected.status === "pending" || connected.status === "CONNECTED_NEEDS_RESOURCE");
-              const isExpired      = connected && !isActive && !needsResource;
-              const hasResource    = connected?.selected_resource_name;
+              const isAdobe        = p.id === "adobe";
+              const isActive       = isAdobe ? adobeActive : (connected?.status === "active");
+              const needsResource  = !isAdobe && connected && (connected.status === "pending" || connected.status === "CONNECTED_NEEDS_RESOURCE");
+              const isExpired      = !isAdobe && connected && !isActive && !needsResource;
+              const hasResource    = !isAdobe && connected?.selected_resource_name;
               const providerMeta   = PROVIDERS.find(x => x.id === p.id);
 
               return (
@@ -676,7 +685,15 @@ const IntegrationsManager = () => {
                       <PlatformIcon id={p.id} />
                     </div>
                     <div className="platform-status">
-                      {connected ? (
+                      {isAdobe ? (
+                        adobeActive ? (
+                          <span className="status-badge status-badge--active">
+                            <ShieldCheck size={11} /> Ready
+                          </span>
+                        ) : (
+                          <span className="status-badge status-badge--inactive">Not Configured</span>
+                        )
+                      ) : connected ? (
                         isActive ? (
                           <span className="status-badge status-badge--active">
                             <ShieldCheck size={11} /> Connected
@@ -792,6 +809,16 @@ const IntegrationsManager = () => {
                           Disconnect
                         </PilotButton>
                       </div>
+                    ) : isAdobe ? (
+                      adobeActive ? (
+                        <button className="pilot-btn btn-sm btn-outline w-100" disabled style={{ opacity: 0.7, cursor: "not-allowed" }}>
+                          Configured in Editor
+                        </button>
+                      ) : (
+                        <button className="pilot-btn btn-sm btn-outline w-100" disabled style={{ opacity: 0.7, cursor: "not-allowed" }}>
+                          Set ADOBE_CLIENT_ID
+                        </button>
+                      )
                     ) : (
                       <PilotButton type="primary" size="sm" icon={ExternalLink} onClick={() => handleConnect(p.id)}>
                         Connect {p.name}

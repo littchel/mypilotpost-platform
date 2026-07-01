@@ -81,8 +81,8 @@ export async function startUnifiedOAuth(request, env, userContext) {
     client_secret = client_secret || env.TIKTOK_CLIENT_SECRET;
   }
   if (platform === 'threads') {
-    client_id = client_id || env.THREADS_CLIENT_ID || env.THREADS_APP_ID;
-    client_secret = client_secret || env.THREADS_CLIENT_SECRET || env.THREADS_APP_SECRET;
+    client_id = client_id || env.THREADS_CLIENT_ID || env.THREADS_APP_ID || env.META_CLIENT_ID || env.FACEBOOK_APP_ID || env.FACEBOOK_CLIENT_ID;
+    client_secret = client_secret || env.THREADS_CLIENT_SECRET || env.THREADS_APP_SECRET || env.META_CLIENT_SECRET || env.FACEBOOK_APP_SECRET || env.FACEBOOK_CLIENT_SECRET;
   }
   if (platform === 'pinterest') {
     client_id = client_id || env.PINTEREST_APP_ID;
@@ -199,8 +199,8 @@ export async function handleUnifiedCallback(request, env) {
     client_secret = client_secret || env.TIKTOK_CLIENT_SECRET;
   }
   if (platform === 'threads') {
-    client_id = client_id || env.THREADS_CLIENT_ID || env.THREADS_APP_ID;
-    client_secret = client_secret || env.THREADS_CLIENT_SECRET || env.THREADS_APP_SECRET;
+    client_id = client_id || env.THREADS_CLIENT_ID || env.THREADS_APP_ID || env.META_CLIENT_ID || env.FACEBOOK_APP_ID || env.FACEBOOK_CLIENT_ID;
+    client_secret = client_secret || env.THREADS_CLIENT_SECRET || env.THREADS_APP_SECRET || env.META_CLIENT_SECRET || env.FACEBOOK_APP_SECRET || env.FACEBOOK_CLIENT_SECRET;
   }
   if (platform === 'pinterest') {
     client_id = client_id || env.PINTEREST_APP_ID;
