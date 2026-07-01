@@ -10,16 +10,6 @@ import { getAdapter } from "./providers/index.js";
 import { listPinterestBoards } from "./google-accounts.js";
 import { checkAndIncrement } from "../core/billing/enforcement.js";
 
-function isPlaceholder(value) {
-  if (!value) return true;
-  const val = String(value).toLowerCase();
-  return val.includes("placeholder") || 
-         val.includes("your_") || 
-         val.includes("change_me") || 
-         val.startsWith("mock_") ||
-         val.length < 5;
-}
-
 /**
  * Generate PKCE Code Verifier and Challenge (SHA-256)
  */
@@ -99,14 +89,20 @@ export async function startUnifiedOAuth(request, env, userContext) {
     client_secret = client_secret || env.PINTEREST_APP_SECRET;
   }
 
-  // Redirect to simulated sandbox connect if credentials are not configured in environment
-  if (isPlaceholder(client_id) || isPlaceholder(client_secret)) {
-    console.log(`[OAUTH_MOCK_REDIRECT] Redirecting connect for ${platform} to mock callback URL due to missing credentials.`);
-    const mockUrl = `${env.BASE_URL}/api/oauth/${platform}/callback?code=mock_code_123&state=${state}`;
-    return new Response(JSON.stringify({ url: mockUrl }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
+  // Defensive: catch missing credentials before Google/Meta sees an undefined client_id
+  if (!client_id) {
+    console.error(`[OAUTH_MISSING_CREDENTIAL] ${platform}: ${platform.toUpperCase()}_CLIENT_ID or ${credKey}_CLIENT_ID is not set in Worker environment`);
+    return new Response(JSON.stringify({
+      error: `OAuth credentials not configured for ${platform}. Please contact support.`,
+      debug: `Missing env var: ${platform.toUpperCase()}_CLIENT_ID or ${credKey}_CLIENT_ID`
+    }), { status: 400, headers: { "Content-Type": "application/json" } });
+  }
+  if (!client_secret) {
+    console.error(`[OAUTH_MISSING_CREDENTIAL] ${platform}: ${platform.toUpperCase()}_CLIENT_SECRET or ${credKey}_CLIENT_SECRET is not set in Worker environment`);
+    return new Response(JSON.stringify({
+      error: `OAuth credentials not configured for ${platform}. Please contact support.`,
+      debug: `Missing env var: ${platform.toUpperCase()}_CLIENT_SECRET or ${credKey}_CLIENT_SECRET`
+    }), { status: 400, headers: { "Content-Type": "application/json" } });
   }
 
   const redirectUri = `${env.BASE_URL}/api/oauth/${platform}/callback`;
@@ -211,41 +207,7 @@ export async function handleUnifiedCallback(request, env) {
     client_secret = client_secret || env.PINTEREST_APP_SECRET;
   }
 
-  if (isPlaceholder(client_id) || isPlaceholder(client_secret)) {
-    if (code === "mock_code_123") {
-      const mockAccessToken = `mock_access_token_${platform}_${Date.now()}`;
-      const access_enc = await encrypt(mockAccessToken, env.ENCRYPTION_SECRET);
-      const db = getDB(env);
-      const connection_id = crypto.randomUUID();
-      const mockUsername = `Mock ${provider?.name || platform.toUpperCase()} Sandbox`;
-      const mockAccountId = `mock_${platform}_id_${Date.now()}`;
-
-      await db.prepare(`
-        INSERT INTO social_connections (
-          id, user_id, brand_id, platform, account_id, platform_username,
-          access_token, refresh_token, expires_at, scopes, status, meta, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, null, null, 'mock', 'active', ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(brand_id, platform, account_id) DO UPDATE SET
-          platform_username = excluded.platform_username,
-          access_token = excluded.access_token,
-          status = 'active',
-          updated_at = CURRENT_TIMESTAMP
-      `).bind(
-        connection_id,
-        user_id,
-        brand_id,
-        platform,
-        mockAccountId,
-        mockUsername,
-        access_enc,
-        JSON.stringify({ is_mock: true, platform })
-      ).run();
-
-      const successRedirect = `${env.FRONTEND_URL}/integrations?oauth_success=${platform}&conn_id=${connection_id}`;
-      console.log(`[OAUTH_MOCK_CALLBACK_SUCCESS] Saved mock connection to D1. Redirecting to: ${successRedirect}`);
-      return Response.redirect(successRedirect, 302);
-    }
-
+  if (!client_id || !client_secret) {
     console.error(`[OAUTH_CALLBACK_MISSING_CRED] ${platform}: client_id=${!!client_id} client_secret=${!!client_secret}`);
     throw new Error(`OAuth credentials not configured for ${platform} (${platform.toUpperCase()}_CLIENT_ID or _SECRET or ${credKey}_CLIENT_ID or _SECRET missing)`);
   }

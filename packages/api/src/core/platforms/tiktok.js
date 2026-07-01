@@ -11,10 +11,6 @@ export async function publish({ content, connection, env }) {
   const { text, media } = content;
   const { access_token } = connection;
 
-  if (access_token && access_token.startsWith("mock_")) {
-    return { success: true, external_id: `mock_tiktok_post_${Date.now()}` };
-  }
-
   const primaryMedia = media.find(m => m.role === "primary" || m.position === 1);
   if (!primaryMedia) throw new Error("TIKTOK_REQUIRES_VIDEO");
 

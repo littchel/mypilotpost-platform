@@ -15,10 +15,6 @@ export async function refreshSocialConnection(db, connection, env) {
   const provider = getProvider(connection.platform);
   const secret = env.ENCRYPTION_SECRET;
 
-  if (connection.access_token && connection.access_token.startsWith("mock_")) {
-    return { success: true };
-  }
-
   // Connections without a refresh_token (e.g. Meta long-lived tokens) cannot be refreshed
   // via standard grant. Return early — do NOT set status='error'.
   if (!connection.refresh_token) {
@@ -141,7 +137,6 @@ export async function runBackgroundRefresh(env) {
  */
 export async function ensureValidConnection(db, connection, env) {
   if (connection.status !== 'active') return connection;
-  if (connection.access_token && connection.access_token.startsWith("mock_")) return connection;
 
   const now = Date.now();
   let expiry = null;
