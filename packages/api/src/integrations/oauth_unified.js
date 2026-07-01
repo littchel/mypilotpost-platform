@@ -10,6 +10,16 @@ import { getAdapter } from "./providers/index.js";
 import { listPinterestBoards } from "./google-accounts.js";
 import { checkAndIncrement } from "../core/billing/enforcement.js";
 
+function isPlaceholder(value) {
+  if (!value) return true;
+  const val = String(value).toLowerCase();
+  return val.includes("placeholder") || 
+         val.includes("your_") || 
+         val.includes("change_me") || 
+         val.startsWith("mock_") ||
+         val.length < 5;
+}
+
 /**
  * Generate PKCE Code Verifier and Challenge (SHA-256)
  */
@@ -90,7 +100,7 @@ export async function startUnifiedOAuth(request, env, userContext) {
   }
 
   // Redirect to simulated sandbox connect if credentials are not configured in environment
-  if (!client_id || !client_secret) {
+  if (isPlaceholder(client_id) || isPlaceholder(client_secret)) {
     console.log(`[OAUTH_MOCK_REDIRECT] Redirecting connect for ${platform} to mock callback URL due to missing credentials.`);
     const mockUrl = `${env.BASE_URL}/api/oauth/${platform}/callback?code=mock_code_123&state=${state}`;
     return new Response(JSON.stringify({ url: mockUrl }), {
@@ -201,7 +211,7 @@ export async function handleUnifiedCallback(request, env) {
     client_secret = client_secret || env.PINTEREST_APP_SECRET;
   }
 
-  if (!client_id || !client_secret) {
+  if (isPlaceholder(client_id) || isPlaceholder(client_secret)) {
     if (code === "mock_code_123") {
       const mockAccessToken = `mock_access_token_${platform}_${Date.now()}`;
       const access_enc = await encrypt(mockAccessToken, env.ENCRYPTION_SECRET);
