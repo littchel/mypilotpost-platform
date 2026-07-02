@@ -110,18 +110,63 @@ function calcConfidence(ranked) {
 }
 
 function computeSemanticScore(brief, img) {
-  const altWords = new Set((img.alt || '').toLowerCase().split(/[^a-z0-9]+/));
-  const briefWords = new Set([
-    ...(brief.mood_tags || []).map(t => t.toLowerCase()),
-    ...(brief.visual_description || '').toLowerCase().split(/[^a-z0-9]+/)
-  ].filter(w => w.length > 3));
+  const STOPWORDS = new Set([
+    "a", "an", "the", "of", "to", "in", "on", "at", "for", "with", "by", "about", 
+    "against", "during", "before", "after", "above", "below", "from", "up", "down", 
+    "over", "under", "again", "further", "then", "once", "and", "or", "but", "is", 
+    "are", "was", "were", "be", "been", "being", "have", "has", "had", "do", "does", 
+    "did", "this", "that", "these", "those", "up", "out", "into", "over", "under",
+    "some", "many", "few", "more", "most", "other", "somehow", "closeup", "close-up",
+    "photo", "image", "photography", "shot", "view"
+  ]);
 
-  let intersection = 0;
-  for (const w of briefWords) {
-    if (altWords.has(w)) intersection++;
+  const stem = word => {
+    let w = word.toLowerCase();
+    if (w.endsWith('ies')) return w.slice(0, -3) + 'y';
+    if (w.endsWith('s') && !w.endsWith('ss') && !w.endsWith('us') && !w.endsWith('is')) return w.slice(0, -1);
+    if (w.endsWith('ing')) return w.slice(0, -3);
+    if (w.endsWith('ed')) return w.slice(0, -2);
+    return w;
+  };
+
+  const cleanTokens = text => {
+    return (text || '')
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter(w => w.length > 2 && !STOPWORDS.has(w))
+      .map(stem);
+  };
+
+  const imgWords = new Set(cleanTokens(img.alt));
+  if (imgWords.size === 0) return 0.0;
+
+  // 1. Direct Search Query Overlap Score (60% Weight)
+  const queries = brief.search_queries || [];
+  let queryTerms = new Set();
+  queries.forEach(q => {
+    cleanTokens(q).forEach(term => queryTerms.add(term));
+  });
+
+  let queryMatches = 0;
+  for (const term of queryTerms) {
+    if (imgWords.has(term)) queryMatches++;
   }
-  const union = briefWords.size + altWords.size - intersection;
-  return union > 0 ? (intersection / union) : 0.0;
+  const queryScore = queryTerms.size > 0 ? (queryMatches / queryTerms.size) : 0.0;
+
+  // 2. Visual Description & Mood Score (40% Weight)
+  const descWords = new Set([
+    ...cleanTokens(brief.visual_description),
+    ...(brief.mood_tags || []).flatMap(t => cleanTokens(t))
+  ]);
+
+  let descMatches = 0;
+  for (const w of descWords) {
+    if (imgWords.has(w)) descMatches++;
+  }
+  const unionSize = descWords.size + imgWords.size - descMatches;
+  const descriptionScore = unionSize > 0 ? (descMatches / unionSize) : 0.0;
+
+  return (0.60 * queryScore) + (0.40 * descriptionScore);
 }
 
 function getBayesianScore(img, visualPerformance) {

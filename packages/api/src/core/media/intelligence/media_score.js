@@ -7,7 +7,27 @@ export function scoreMedia({
   let score = 0;
   const reasons = [];
 
-  if (content.keywords?.some(k => media.tags?.includes(k))) {
+  let keywords = [];
+  if (typeof content === "string") {
+    const stopwords = new Set(["a", "an", "the", "of", "to", "in", "on", "at", "for", "with", "by", "about", "against", "during", "before", "after", "above", "below", "from", "up", "down", "over", "under", "again", "further", "then", "once", "and", "or", "but", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "do", "does", "did", "this", "that", "these", "those"]);
+    keywords = content
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter(w => w.length > 3 && !stopwords.has(w));
+  } else if (content && typeof content === "object") {
+    keywords = content.keywords || [];
+    if (keywords.length === 0 && typeof content.text === "string") {
+      const stopwords = new Set(["a", "an", "the", "of", "to", "in", "on", "at", "for", "with", "by", "about", "against", "during", "before", "after", "above", "below", "from", "up", "down", "over", "under", "again", "further", "then", "once", "and", "or", "but", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "do", "does", "did", "this", "that", "these", "those"]);
+      keywords = content.text
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter(w => w.length > 3 && !stopwords.has(w));
+    }
+  }
+
+  const mediaTags = (media.tags || (media.alt ? media.alt.split(/[^a-z0-9]+/) : [])).map(t => t.toLowerCase());
+
+  if (keywords.some(k => mediaTags.includes(k))) {
     score += 30;
     reasons.push("Keyword match");
   }
