@@ -14,7 +14,7 @@ export async function importBrandFromUrl(request, env) {
     // Execute production audit orchestrator with a mock Request object
     const mockRequest = new Request(request.url, {
       method: "POST",
-      headers: request.headers,
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ website_url: url, brand_name: "" })
     });
 

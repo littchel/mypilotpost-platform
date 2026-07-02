@@ -101,6 +101,7 @@ export async function requireAuth(request, env) {
       const is_onboarding_route =
         url.pathname.includes("/onboarding") ||
         url.pathname.includes("/brands/create") ||
+        url.pathname.includes("/brand/import") ||
         url.pathname.includes("/profile") ||
         url.pathname.includes("/register") ||
         url.pathname.includes("/trust/") ||
