@@ -21,7 +21,7 @@ const SYSTEM_PROMPTS = {
  * Implements the 2.7s/1.2s time-split cascade with 24h success memory.
  */
 export async function hardenedRunLLM(env, brand, prompt, options = {}) {
-  const { mode = 'deep', systemPromptType = 'social' } = options;
+  const { mode = 'deep', systemPromptType = 'social', model: modelOverride } = options;
   const systemPrompt = SYSTEM_PROMPTS[systemPromptType] || SYSTEM_PROMPTS.social;
   const now = new Date();
   
@@ -29,29 +29,32 @@ export async function hardenedRunLLM(env, brand, prompt, options = {}) {
   const isFirstRun = !brand.first_ai_run_at;
   
   // 2. Success Memory Logic (24H Reset)
-  let primaryModel = "qwen/qwen3.6-27b";
+  let primaryModel = modelOverride || "qwen/qwen3.6-27b";
   const lastSuccess = brand.last_ai_success_at ? new Date(brand.last_ai_success_at) : null;
   const isMemoryValid = lastSuccess && (now - lastSuccess < 24 * 60 * 60 * 1000);
 
-  if (!isFirstRun && isMemoryValid && brand.last_ai_model === "llama-3.1-8b-instant") {
+  if (!modelOverride && !isFirstRun && isMemoryValid && brand.last_ai_model === "llama-3.1-8b-instant") {
     primaryModel = "llama-3.1-8b-instant";
   }
 
   // Override if mode is 'fast' (Dashboard)
-  if (mode === 'fast') primaryModel = "llama-3.1-8b-instant";
+  if (!modelOverride && mode === 'fast') primaryModel = "llama-3.1-8b-instant";
 
   // 3. Execution Cascade
   let result = null;
   let usedModel = null;
   let path = [];
 
-  // TIER 1: Primary Model (Qwen OR Success Memory)
+  // TIER 1: Primary Model (Qwen OR Success Memory OR Override)
   path.push(primaryModel);
   result = await triggerModelWithTimeout(env, primaryModel, prompt, 15000, systemPrompt);
 
   // TIER 2: Fast fallback
   if (!result && primaryModel === "qwen/qwen3.6-27b") {
     path.push("llama-3.1-8b-instant (retry)");
+    result = await triggerModelWithTimeout(env, "llama-3.1-8b-instant", prompt, 8000, systemPrompt);
+  } else if (!result && modelOverride) {
+    path.push("llama-3.1-8b-instant (retry-override)");
     result = await triggerModelWithTimeout(env, "llama-3.1-8b-instant", prompt, 8000, systemPrompt);
   }
 

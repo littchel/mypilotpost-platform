@@ -45,7 +45,7 @@ Respond with valid JSON only. No markdown.`;
       brand_id,
       user_id: null,
       content_type: "studio_brief_expansion",
-      options: { mode: 'fast', systemPromptType: 'social' }
+      options: { mode: 'deep', systemPromptType: 'social', model: 'openai/gpt-oss-120b' }
     });
 
     return res?.briefs || [];
