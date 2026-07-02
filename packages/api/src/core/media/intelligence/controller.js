@@ -44,14 +44,17 @@ export async function getMediaSuggestions(request, env, auth) {
     industry    = '',
     goal        = '',
     batch       = null,
+    query       = '',
   } = body;
+
+  const effectiveText = text || query || '';
 
   // Fetch Brand DNA — null-safe, never throws (Step 5)
   const brandDna = await fetchBrandDna(env, auth.brand_id);
 
   try {
     const result = await runMediaEngine(
-      { platform, contentType, format, text, title, brand, industry, goal, brandDna, batch },
+      { platform, contentType, format, text: effectiveText, title, brand, industry, goal, brandDna, batch },
       env
     );
     return json(result);

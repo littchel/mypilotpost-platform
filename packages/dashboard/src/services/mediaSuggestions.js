@@ -43,11 +43,12 @@ export async function fetchMediaSuggestions({
   brand       = '',
   industry    = '',
   goal        = '',
+  batch       = null,
 } = {}) {
   const res = await fetch(`${API_BASE}/api/customer/media/suggestions`, {
     method:  'POST',
     headers: authHeaders(),
-    body:    JSON.stringify({ platform, contentType, format, text, title, brand, industry, goal }),
+    body:    JSON.stringify({ platform, contentType, format, text, title, brand, industry, goal, batch }),
   });
 
   if (!res.ok) throw new Error(`Media suggestions failed: ${res.status}`);
