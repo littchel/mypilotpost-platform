@@ -25,11 +25,11 @@ export async function hardenedRunLLM(env, brand, prompt, options = {}) {
   const systemPrompt = SYSTEM_PROMPTS[systemPromptType] || SYSTEM_PROMPTS.social;
   const now = new Date();
   
-  // 1. First-Run Priority: Force 70B for the first user impression
+  // 1. First-Run Priority: Force Qwen for the first user impression
   const isFirstRun = !brand.first_ai_run_at;
   
   // 2. Success Memory Logic (24H Reset)
-  let primaryModel = "llama-3.3-70b-versatile";
+  let primaryModel = "qwen/qwen3.6-27b";
   const lastSuccess = brand.last_ai_success_at ? new Date(brand.last_ai_success_at) : null;
   const isMemoryValid = lastSuccess && (now - lastSuccess < 24 * 60 * 60 * 1000);
 
@@ -45,12 +45,12 @@ export async function hardenedRunLLM(env, brand, prompt, options = {}) {
   let usedModel = null;
   let path = [];
 
-  // TIER 1: Primary Model (70B OR Success Memory)
+  // TIER 1: Primary Model (Qwen OR Success Memory)
   path.push(primaryModel);
   result = await triggerModelWithTimeout(env, primaryModel, prompt, 15000, systemPrompt);
 
   // TIER 2: Fast fallback
-  if (!result && primaryModel === "llama-3.3-70b-versatile") {
+  if (!result && primaryModel === "qwen/qwen3.6-27b") {
     path.push("llama-3.1-8b-instant (retry)");
     result = await triggerModelWithTimeout(env, "llama-3.1-8b-instant", prompt, 8000, systemPrompt);
   }
