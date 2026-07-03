@@ -8,7 +8,7 @@ const OnboardingLayout = ({ children }) => {
   const { step, prevStep, data } = useOnboarding();
   const onboardingMode = data?.onboardingMode;
 
-  const totalSteps = 9;
+  const totalSteps = 6;
   const progress = Math.round(((step - 1) / totalSteps) * 100);
 
   const illustration = useMemo(() => {

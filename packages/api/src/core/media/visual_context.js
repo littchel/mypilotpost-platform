@@ -17,143 +17,189 @@
 // `expectedCategories` = which image categories (human/professional/minimal/general)
 //   are appropriate for this industry.
 // ─────────────────────────────────────────────────────────────────────────────
-const INDUSTRY_GUARDRAILS = {
-  saas: {
-    subjects:           ['technology', 'team', 'office', 'people', 'collaboration', 'workspace', 'software'],
-    reject:             ['food', 'beauty', 'cosmetic', 'skincare', 'makeup', 'hair', 'fashion', 'clothing', 'jewelry', 'restaurant', 'cooking', 'dessert', 'baking', 'fitness equipment', 'yoga mat', 'weight', 'dumbbell'],
-    style:              'clean editorial professional',
-    expectedCategories: ['professional', 'human', 'minimal'],
-  },
-  software: {
-    subjects:           ['technology', 'team', 'office', 'people', 'collaboration', 'workspace'],
-    reject:             ['food', 'beauty', 'cosmetic', 'fashion', 'restaurant', 'cooking', 'fitness equipment'],
-    style:              'clean professional modern',
-    expectedCategories: ['professional', 'human', 'minimal'],
-  },
-  tech: {
-    subjects:           ['technology', 'people', 'innovation', 'digital', 'office', 'team'],
-    reject:             ['food', 'beauty', 'fashion', 'restaurant', 'cosmetic', 'cooking'],
-    style:              'modern professional',
-    expectedCategories: ['professional', 'human', 'minimal'],
-  },
-  technology: {
-    subjects:           ['technology', 'people', 'innovation', 'digital', 'office', 'team'],
-    reject:             ['food', 'beauty', 'fashion', 'restaurant', 'cosmetic', 'cooking'],
-    style:              'modern professional',
-    expectedCategories: ['professional', 'human', 'minimal'],
-  },
-  'real estate': {
-    subjects:           ['property', 'home', 'architecture', 'interior', 'building', 'house'],
-    reject:             ['beauty', 'fashion', 'cosmetic', 'electronics', 'fitness equipment', 'restaurant kitchen staff'],
-    style:              'clean architectural',
-    expectedCategories: ['professional', 'general', 'minimal'],
-  },
-  restaurant: {
-    subjects:           ['food', 'restaurant', 'dining', 'people', 'cuisine', 'chef'],
-    reject:             ['office', 'corporate meeting', 'fashion runway', 'beauty cosmetic', 'gym equipment', 'technology dashboard'],
-    style:              'warm authentic',
-    expectedCategories: ['human', 'general'],
-  },
-  food: {
-    subjects:           ['food', 'cuisine', 'cooking', 'people', 'meal'],
-    reject:             ['office', 'corporate', 'fashion', 'beauty cosmetic', 'gym', 'technology laptop'],
-    style:              'warm authentic lifestyle',
-    expectedCategories: ['human', 'general'],
-  },
-  coffee: {
-    subjects:           ['coffee', 'cafe', 'lifestyle', 'people', 'cup'],
-    reject:             ['corporate boardroom', 'fashion runway', 'beauty cosmetic', 'gym equipment', 'fitness'],
-    style:              'warm authentic lifestyle',
-    expectedCategories: ['human', 'general'],
-  },
-  cafe: {
-    subjects:           ['coffee', 'cafe', 'lifestyle', 'people', 'cup'],
-    reject:             ['corporate boardroom', 'fashion runway', 'beauty cosmetic', 'gym equipment'],
-    style:              'warm authentic',
-    expectedCategories: ['human', 'general'],
-  },
-  fitness: {
-    subjects:           ['fitness', 'sport', 'workout', 'people', 'health', 'active'],
-    reject:             ['food styling', 'fashion runway', 'beauty cosmetic', 'corporate office', 'technology dashboard'],
-    style:              'dynamic authentic',
-    expectedCategories: ['human'],
-  },
-  healthcare: {
-    subjects:           ['health', 'medical', 'wellness', 'people', 'care', 'clean'],
-    reject:             ['fashion', 'beauty cosmetic', 'food styling', 'corporate', 'technology'],
-    style:              'clean professional',
-    expectedCategories: ['professional', 'human', 'minimal'],
-  },
-  finance: {
-    subjects:           ['professional', 'business', 'office', 'people', 'success', 'meeting'],
-    reject:             ['food', 'beauty', 'fashion', 'fitness equipment', 'restaurant', 'cosmetic'],
-    style:              'professional clean',
-    expectedCategories: ['professional', 'human'],
-  },
-  fashion: {
-    subjects:           ['fashion', 'clothing', 'style', 'model', 'people', 'lifestyle'],
-    reject:             ['office', 'technology', 'food', 'medical', 'gym equipment'],
-    style:              'lifestyle editorial',
-    expectedCategories: ['human', 'general'],
-  },
-  beauty: {
-    subjects:           ['beauty', 'skincare', 'woman', 'lifestyle', 'portrait', 'face'],
-    reject:             ['office', 'technology', 'food', 'fitness equipment', 'corporate boardroom'],
-    style:              'warm lifestyle portrait',
-    expectedCategories: ['human', 'minimal'],
-  },
-  marketing: {
-    subjects:           ['team', 'collaboration', 'creative', 'people', 'office'],
-    reject:             ['food', 'beauty', 'fashion', 'fitness equipment', 'cosmetic'],
-    style:              'creative professional',
-    expectedCategories: ['professional', 'human'],
-  },
-  consulting: {
-    subjects:           ['professional', 'business', 'meeting', 'people', 'office', 'executive'],
-    reject:             ['food', 'beauty', 'fashion', 'fitness', 'cosmetic'],
-    style:              'professional clean',
-    expectedCategories: ['professional', 'human'],
-  },
-  education: {
-    subjects:           ['learning', 'education', 'people', 'professional', 'students', 'knowledge'],
-    reject:             ['food', 'beauty', 'fashion', 'cosmetic', 'fitness equipment'],
-    style:              'clean professional',
-    expectedCategories: ['professional', 'human', 'minimal'],
-  },
-  retail: {
-    subjects:           ['product', 'shopping', 'lifestyle', 'people', 'store'],
-    reject:             ['office corporate', 'medical', 'gym', 'technology dashboard'],
-    style:              'lifestyle product',
-    expectedCategories: ['human', 'general'],
-  },
-  travel: {
-    subjects:           ['travel', 'destination', 'landscape', 'people', 'adventure', 'outdoor'],
-    reject:             ['office', 'corporate', 'beauty cosmetic', 'fashion runway', 'fitness equipment'],
-    style:              'authentic adventure',
-    expectedCategories: ['human', 'general'],
-  },
-  agency: {
-    subjects:           ['creative', 'team', 'collaboration', 'office', 'people', 'design'],
-    reject:             ['food', 'beauty', 'fashion', 'fitness', 'cosmetic', 'restaurant'],
-    style:              'creative professional',
-    expectedCategories: ['professional', 'human'],
-  },
-};
+const TECH_KEYS = new Set([
+  "aerospace and defense", "ai and machine learning", "aviation and aerospace", "biotechnology", 
+  "computer hardware", "computer networking", "cybersecurity", "fintech", "green tech", 
+  "information technology", "it consulting", "medical devices", "saas", "saas / software", 
+  "software development", "technology", "telecommunications"
+]);
+
+const WARM_KEYS = new Set([
+  "alternative medicine", "baby and children products", "beverages (alcoholic)", "beverages (non-alcoholic)", 
+  "chiropractic care", "coworking and shared spaces", "dental", "events", "food", "food and beverage", 
+  "food and beverage production", "grocery and supermarkets", "healthcare", "hospitality", "hotels", 
+  "mental health and counseling", "optometry and eye care", "organic and natural products", 
+  "pet products and services", "restaurants", "travel", "travel and hospitality", "veterinary services"
+]);
+
+const MINIMAL_KEYS = new Set([
+  "accounting", "architecture and design", "banking", "book publishing", "business supplies and equipment", 
+  "chemical industry", "commercial printing", "consulting", "design services", "education", 
+  "executive search", "facility management", "finance", "financial advisory", "general business", 
+  "human resources", "insurance", "investment banking", "legal", "management consulting", 
+  "professional services", "property management", "public relations", "real estate development", 
+  "recruitment", "venture capital and private equity", "wholesale", "writing and editing"
+]);
+
+const ORGANIC_KEYS = new Set([
+  "agriculture", "clean energy and solar", "construction", "energy and utilities", "environmental services", 
+  "general contracting", "landscaping and gardening", "moving and storage", "moving services", 
+  "pest control", "renewables and environment", "renewable energy", "yoga and mindfulness"
+]);
+
+const BOLD_KEYS = new Set([
+  "arts and crafts", "automotive", "beauty", "consumer electronics", "cosmetics and personal care", 
+  "digital media", "e-commerce", "ecommerce", "fashion", "fine art and galleries", "fitness", 
+  "fitness and wellness", "furniture and home decor", "gaming and esports", "graphic design", 
+  "hardware and tools", "interior design", "jewelry and luxury goods", "luxury goods and jewelry", 
+  "logistics and supply chain", "manufacturing", "marine and shipping", "marketing agency", 
+  "media and entertainment", "mining and metals", "music and audio production", "nonprofit", 
+  "packaging and containers", "pharmaceuticals", "photography and videography", "real estate", 
+  "retail", "retail / fashion", "sports and recreation", "transportation and warehousing", 
+  "waste management"
+]);
+
+export function getIndustryVisualProfile(industryName) {
+  const input = String(industryName || "").toLowerCase().trim();
+  const normalized = input.replace(/\s*&\s*/g, ' and ').replace(/\s+/g, ' ');
+
+  if (TECH_KEYS.has(normalized)) {
+    return {
+      preferred_terms: ["technology", "digital", "workspace", "device", "office", "code", "server", "innovation", "clean"],
+      blocked_terms: ["makeup", "skincare", "cosmetics", "food styling", "cooking", "fitness equipment", "fashion runway"],
+      visual_style: "tech"
+    };
+  }
+  if (WARM_KEYS.has(normalized)) {
+    return {
+      preferred_terms: ["people", "lifestyle", "warmth", "authentic", "natural", "cuisine", "interior", "dining", "candid"],
+      blocked_terms: ["boardroom", "corporate meeting", "server room", "cleanroom", "circuit board", "industrial manufacturing"],
+      visual_style: "warm"
+    };
+  }
+  if (MINIMAL_KEYS.has(normalized)) {
+    return {
+      preferred_terms: ["minimal", "clean", "negative space", "modern", "professional", "office", "workspace", "documents", "focused"],
+      blocked_terms: ["makeup", "skincare", "food styling", "heavy machinery", "construction site", "messy"],
+      visual_style: "minimal"
+    };
+  }
+  if (ORGANIC_KEYS.has(normalized)) {
+    return {
+      preferred_terms: ["natural", "green", "outdoor", "plant", "organic", "sunlight", "sustainability", "mindful", "nature"],
+      blocked_terms: ["boardroom", "corporate boardroom", "server racks", "makeup", "cosmetics", "high fashion"],
+      visual_style: "organic"
+    };
+  }
+  if (BOLD_KEYS.has(normalized)) {
+    return {
+      preferred_terms: ["style", "bold", "contrast", "color", "model", "artistic", "creative", "action", "lifestyle"],
+      blocked_terms: ["office corporate", "medical clinic", "staged office", "boring"],
+      visual_style: "bold"
+    };
+  }
+
+  // Substring fallback matching
+  for (const key of TECH_KEYS) {
+    if (normalized.includes(key) || key.includes(normalized)) {
+      return {
+        preferred_terms: ["technology", "digital", "workspace", "device", "office", "code", "server", "innovation", "clean"],
+        blocked_terms: ["makeup", "skincare", "cosmetics", "food styling", "cooking", "fitness equipment", "fashion runway"],
+        visual_style: "tech"
+      };
+    }
+  }
+  for (const key of WARM_KEYS) {
+    if (normalized.includes(key) || key.includes(normalized)) {
+      return {
+        preferred_terms: ["people", "lifestyle", "warmth", "authentic", "natural", "cuisine", "interior", "dining", "candid"],
+        blocked_terms: ["boardroom", "corporate meeting", "server room", "cleanroom", "circuit board", "industrial manufacturing"],
+        visual_style: "warm"
+      };
+    }
+  }
+  for (const key of MINIMAL_KEYS) {
+    if (normalized.includes(key) || key.includes(normalized)) {
+      return {
+        preferred_terms: ["minimal", "clean", "negative space", "modern", "professional", "office", "workspace", "documents", "focused"],
+        blocked_terms: ["makeup", "skincare", "food styling", "heavy machinery", "construction site", "messy"],
+        visual_style: "minimal"
+      };
+    }
+  }
+  for (const key of ORGANIC_KEYS) {
+    if (normalized.includes(key) || key.includes(normalized)) {
+      return {
+        preferred_terms: ["natural", "green", "outdoor", "plant", "organic", "sunlight", "sustainability", "mindful", "nature"],
+        blocked_terms: ["boardroom", "corporate boardroom", "server racks", "makeup", "cosmetics", "high fashion"],
+        visual_style: "organic"
+      };
+    }
+  }
+  for (const key of BOLD_KEYS) {
+    if (normalized.includes(key) || key.includes(normalized)) {
+      return {
+        preferred_terms: ["style", "bold", "contrast", "color", "model", "artistic", "creative", "action", "lifestyle"],
+        blocked_terms: ["office corporate", "medical clinic", "staged office", "boring"],
+        visual_style: "bold"
+      };
+    }
+  }
+
+  return {
+    preferred_terms: ["professional", "clean", "authentic", "lifestyle"],
+    blocked_terms: ["watermark", "staged photo", "screenshot", "meme"],
+    visual_style: "minimal"
+  };
+}
+
+export function applyIndustryGuardrails(imageAlt, industry) {
+  const profile = getIndustryVisualProfile(industry);
+  const alt = (imageAlt || "").toLowerCase();
+
+  const isBlocked = profile.blocked_terms.some(phrase => {
+    const words = phrase.toLowerCase().split(/\s+/);
+    return words.length > 1
+      ? words.every(w => alt.includes(w))
+      : alt.includes(phrase.toLowerCase());
+  });
+
+  if (isBlocked) {
+    return { approved: false, score: 0 };
+  }
+
+  let scoreBoost = 0;
+  profile.preferred_terms.forEach(term => {
+    if (alt.includes(term.toLowerCase())) {
+      scoreBoost += 10;
+    }
+  });
+
+  return { approved: true, score: scoreBoost };
+}
 
 // Words in image alt text that indicate it's off-brand for almost any professional brand
 const UNIVERSAL_REJECT = ['meme', 'screenshot', 'clip art', 'watermark', 'cartoon', 'clipart'];
 
-/**
- * Resolve the industry guardrail for a given industry string.
- * Returns null if no match found (caller applies a permissive default).
- */
 function resolveGuardrail(industry) {
   if (!industry) return null;
-  const lower = industry.toLowerCase();
-  for (const [key, rules] of Object.entries(INDUSTRY_GUARDRAILS)) {
-    if (lower.includes(key)) return { ...rules, industryKey: key };
-  }
-  return null;
+  const profile = getIndustryVisualProfile(industry);
+  
+  return {
+    subjects: profile.preferred_terms,
+    reject: profile.blocked_terms,
+    style: profile.visual_style === "tech" ? "clean professional tech" 
+         : profile.visual_style === "warm" ? "warm authentic lifestyle"
+         : profile.visual_style === "minimal" ? "clean minimal professional"
+         : profile.visual_style === "organic" ? "natural organic mindful"
+         : "bold creative lifestyle",
+    expectedCategories: profile.visual_style === "tech" ? ['professional', 'human', 'minimal']
+                      : profile.visual_style === "warm" ? ['human', 'general']
+                      : profile.visual_style === "minimal" ? ['professional', 'human', 'minimal']
+                      : profile.visual_style === "organic" ? ['general', 'minimal']
+                      : ['human', 'general'],
+    industryKey: industry
+  };
 }
 
 /**

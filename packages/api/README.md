@@ -175,3 +175,11 @@ curl -X POST https://api.mypilotpost.com/api/internal/delivery/run \
 ```
 
 This processes all `status = 'scheduled'` jobs synchronously. Use only for debugging.
+
+---
+
+## API Documentation & Contracts
+
+- [Content Studio & Template System API Documentation](../../docs/api/studio.md)
+- [Unified API Contracts](../../docs/v1.1-api-contracts.md)
+

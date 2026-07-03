@@ -6,12 +6,34 @@ import { getDB } from "../../lib/db.js";
 import { trackedRunLLM } from "../ai/ai_client.js";
 import { checkAndIncrement } from "../billing/enforcement.js";
 import { fetchBrandContext } from "../ai/brand_context.js";
+import { getTemplate, getTemplateForContent } from "../templates/templateStore.js";
+
+// Helper to map frameworks to corresponding template families
+function mapFrameworkToFamily(framework) {
+  switch (framework) {
+    case "Myth vs Reality":
+      return "carousel_comparison";
+    case "Listicle":
+      return "carousel_list";
+    case "Behind the Scenes":
+      return "story_fullscreen";
+    case "Opinion Take":
+      return "quote_card";
+    case "Seasonal":
+      return "hero_headline";
+    default:
+      return "split_layout";
+  }
+}
+
 
 // ── Brand context (wrapper for studio: adds active platforms) ─────────────────
 async function fetchBrandCtx(db, brand_id) {
-  const [dnaCtx, connections] = await Promise.all([
+  const [dnaCtx, connections, brandRow, visualRow] = await Promise.all([
     fetchBrandContext(db, brand_id, 'full'),
     db.prepare("SELECT platform FROM social_connections WHERE brand_id = ? AND status = 'active'").bind(brand_id).all(),
+    db.prepare("SELECT logo_url FROM brands WHERE id = ?").bind(brand_id).first(),
+    db.prepare("SELECT primary_color, secondary_color, typography_main, typography_heading FROM brand_dna_visual_identity WHERE brand_id = ?").bind(brand_id).first(),
   ]);
   return {
     brand: dnaCtx.brand,
@@ -19,6 +41,12 @@ async function fetchBrandCtx(db, brand_id) {
     brandName: dnaCtx.brand?.name || "this brand",
     industry: dnaCtx.brand?.industry || "General",
     activePlatforms: (connections?.results || []).map(c => c.platform),
+    visuals: {
+      primary_color: visualRow?.primary_color || "#1A1A1A",
+      secondary_color: visualRow?.secondary_color || "#F5F5F5",
+      font_stack: visualRow?.typography_main || "Inter, sans-serif",
+      logo_url: brandRow?.logo_url || "https://mypilotpost.com/assets/logo.png"
+    }
   };
 }
 
@@ -43,6 +71,23 @@ export async function getStudioOpportunities(request, env, auth) {
   const { brand, context, brandName, industry, activePlatforms } = await fetchBrandCtx(db, auth.brand_id);
   const platforms = activePlatforms.length ? activePlatforms.join(", ") : "Facebook, Instagram, LinkedIn";
   const month = new Date().toLocaleString("en", { month: "long" });
+
+  // Query preferred template ID from brand_memory
+  const preferredTemplateRow = await db.prepare(`
+    SELECT preferred_template_id FROM brand_memory
+    WHERE brand_id = ? AND preferred_template_id IS NOT NULL
+    LIMIT 1
+  `).bind(auth.brand_id).first();
+  const preferredTemplateId = preferredTemplateRow?.preferred_template_id || null;
+
+  let preferredFamily = null;
+  if (preferredTemplateId) {
+    if (preferredTemplateId.includes("carousel")) preferredFamily = "carousel_list";
+    else if (preferredTemplateId.includes("quote")) preferredFamily = "quote_card";
+    else if (preferredTemplateId.includes("hero")) preferredFamily = "hero_headline";
+    else if (preferredTemplateId.includes("story")) preferredFamily = "story_fullscreen";
+    else if (preferredTemplateId.includes("split")) preferredFamily = "split_layout";
+  }
 
   const prompt = `You are a content strategist creating a daily content opportunity briefing.
 
@@ -102,12 +147,66 @@ Rules:
     options: { mode: "deep", systemPromptType: "campaign" },
   });
 
-  const opps = result?.opportunities;
-  if (!opps?.length) {
-    return json({ opportunities: buildFallbackOpps(brandName, industry, activePlatforms) });
+  const opps = result?.opportunities || buildFallbackOpps(brandName, industry, activePlatforms);
+  
+  // Enrich opportunities with strategic template mapping and template recommendation IDs
+  const enrichedOpps = [];
+  for (let i = 0; i < Math.min(opps.length, 20); i++) {
+    const card = opps[i];
+    const cardId = card.id || (i + 1);
+    
+    let family = mapFrameworkToFamily(card.framework);
+    // Bias template family towards preferred family for low effort opportunity cards
+    if (preferredFamily && card.effort === "low") {
+      family = preferredFamily;
+    }
+    
+    // Select parameters based on family for templateStore recommendation matching
+    let format = "feed_post";
+    let pillars = ["general"];
+    let intent = ["general"];
+    
+    if (family.startsWith("carousel")) {
+      format = "carousel";
+      pillars = family === "carousel_comparison" ? ["transformation", "results"] : ["educational", "guides"];
+    } else if (family === "story_fullscreen") {
+      format = "story";
+      pillars = ["lifestyle", "brand_identity"];
+    } else if (family === "quote_card") {
+      format = "feed_post";
+      intent = ["authority"];
+      pillars = ["thought_leadership"];
+    } else if (family === "hero_headline") {
+      format = "feed_post";
+      intent = ["awareness"];
+      pillars = ["showcase"];
+    } else if (family === "split_layout") {
+      format = "feed_post";
+      intent = ["education"];
+      pillars = ["product"];
+    }
+
+    const firstPlatform = Array.isArray(card.platforms) && card.platforms.length > 0
+      ? card.platforms[0]
+      : (activePlatforms.length ? activePlatforms[0] : "instagram");
+
+    const recommended = await getTemplateForContent({
+      format,
+      platform: firstPlatform,
+      intent,
+      pillars,
+      preferredTemplateId
+    }, env);
+
+    enrichedOpps.push({
+      ...card,
+      id: cardId,
+      suggested_template_family: family,
+      suggested_template_id: recommended?.template_id || "tpl_feed_generic_default"
+    });
   }
 
-  return json({ opportunities: opps.slice(0, 20) });
+  return json({ opportunities: enrichedOpps });
 }
 
 // ── POST /api/customer/studio/generate-post ───────────────────────────────────
@@ -115,12 +214,12 @@ export async function generateStudioPost(request, env, auth) {
   if (!auth?.brand_id) return error("Unauthorized", 401);
 
   const body = await request.json().catch(() => ({}));
-  const { framework, idea, hook, platforms = [] } = body;
+  const { framework, idea, hook, platforms = [], template_id } = body;
   if (!framework) return error("framework is required", 400);
 
   const db = getDB(env);
   await checkAndIncrement(db, auth.user_id, "ai");
-  const { brand, context, brandName } = await fetchBrandCtx(db, auth.brand_id);
+  const { brand, context, brandName, visuals } = await fetchBrandCtx(db, auth.brand_id);
   const platformList = platforms.join(", ") || "Facebook, Instagram";
 
   const prompt = `You are an expert copywriter generating a complete content post or script.
@@ -173,12 +272,79 @@ Rules:
 
   if (!result?.body) return error("Generation failed. Try again.", 500);
 
+  // Auto-select template if not provided in the request payload
+  let targetTemplateId = template_id;
+  if (!targetTemplateId) {
+    const family = mapFrameworkToFamily(framework);
+    let format = "feed_post";
+    let pillars = ["general"];
+    let intent = ["general"];
+
+    if (family.startsWith("carousel")) {
+      format = "carousel";
+      pillars = family === "carousel_comparison" ? ["transformation", "results"] : ["educational", "guides"];
+    } else if (family === "story_fullscreen") {
+      format = "story";
+      pillars = ["lifestyle", "brand_identity"];
+    } else if (family === "quote_card") {
+      format = "feed_post";
+      intent = ["authority"];
+      pillars = ["thought_leadership"];
+    } else if (family === "hero_headline") {
+      format = "feed_post";
+      intent = ["awareness"];
+      pillars = ["showcase"];
+    } else if (family === "split_layout") {
+      format = "feed_post";
+      intent = ["education"];
+      pillars = ["product"];
+    }
+
+    const recommended = await getTemplateForContent({
+      format,
+      platform: platforms?.[0] || "instagram",
+      intent,
+      pillars
+    }, env);
+    
+    targetTemplateId = recommended?.template_id || "tpl_feed_generic_default";
+  }
+
+  // Fetch target template definitions
+  const tpl = await getTemplate(targetTemplateId, env);
+
+  // Map generated copy structure to template slides slots
+  const manifestSlides = [];
+  let bodyParagraphIndex = 1;
+  for (const slide of (tpl.slides || [])) {
+    const slideMapping = {
+      slot_id: slide.slot_id,
+      text_anchor: "body_paragraph_" + bodyParagraphIndex
+    };
+
+    if (slide.slot_type === "hero" || slide.slot_id.includes("cover") || slide.slot_id.includes("hook")) {
+      slideMapping.text_anchor = "headline";
+    } else if (slide.slot_type === "cta" || slide.slot_id.includes("cta")) {
+      slideMapping.text_anchor = "cta_text";
+    } else {
+      bodyParagraphIndex++;
+    }
+
+    manifestSlides.push(slideMapping);
+  }
+
   return json({
     body: result.body,
     hook: result.hook || hook || "",
     cta: result.cta || "",
     hashtags: result.hashtags || "",
     platform_variants: result.platform_variants || {},
+    layout_manifest: {
+      template_id: targetTemplateId,
+      brand_overrides: visuals,
+      slides: manifestSlides,
+      animation_preset: tpl.animation_preset || "fade_slide"
+    }
   });
 }
 
@@ -404,7 +570,7 @@ export async function generateCampaignContent(request, env, auth) {
 
   const db = getDB(env);
   await checkAndIncrement(db, auth.user_id, "ai");
-  const { brand, context, brandName } = await fetchBrandCtx(db, auth.brand_id);
+  const { brand, context, brandName, visuals } = await fetchBrandCtx(db, auth.brand_id);
   const channelList = channels.length ? channels.join(", ") : "Facebook, Instagram, LinkedIn";
 
   const prompt = `You are a campaign strategist creating a complete launch asset set as visual content cards.
@@ -457,22 +623,69 @@ Rules:
 
   if (!result) return error("Generation failed. Please try again.", 500);
 
-  const cards = (result.cards || []).slice(0, 6).map((c, i) => ({
-    id: `camp_${i}`,
-    title: c.title || `${campaign_name} — ${c.post_type || "Post"} ${i + 1}`,
-    content_type: "social",
-    platform: c.platform || "instagram",
-    platforms: Array.isArray(c.platforms) ? c.platforms : [c.platform || "instagram"],
-    caption: c.caption || "",
-    hook: c.hook || "",
-    cta: c.cta || "",
-    hashtags: Array.isArray(c.hashtags) ? c.hashtags : [],
-    format: c.format || "single_image",
-    post_type: c.post_type || "",
-    source: "campaign",
-    campaign_name,
-    campaign_id: campaign_id || null,
-  }));
+  const cards = [];
+  const rawCards = result.cards || [];
+
+  for (let i = 0; i < Math.min(rawCards.length, 6); i++) {
+    const c = rawCards[i];
+    const postType = (c.post_type || "").toLowerCase().trim();
+    
+    // Map funnel stages to specific templates
+    let templateId = "split_layout_feed";
+    if (postType === "awareness") {
+      templateId = "hero_headline_feed";
+    } else if (postType === "consideration") {
+      templateId = "split_layout_feed";
+    } else if (postType === "conversion") {
+      templateId = "product_showcase_feed";
+    } else if (postType === "social proof" || postType === "social_proof") {
+      templateId = "quote_card_feed";
+    }
+
+    const tpl = await getTemplate(templateId, env);
+
+    const manifestSlides = [];
+    let bodyParagraphIndex = 1;
+    for (const slide of (tpl.slides || [])) {
+      const slideMapping = {
+        slot_id: slide.slot_id,
+        text_anchor: "body_paragraph_" + bodyParagraphIndex
+      };
+
+      if (slide.slot_type === "hero" || slide.slot_id.includes("cover") || slide.slot_id.includes("hook")) {
+        slideMapping.text_anchor = "headline";
+      } else if (slide.slot_type === "cta" || slide.slot_id.includes("cta")) {
+        slideMapping.text_anchor = "cta_text";
+      } else {
+        bodyParagraphIndex++;
+      }
+
+      manifestSlides.push(slideMapping);
+    }
+
+    cards.push({
+      id: `camp_${i}`,
+      title: c.title || `${campaign_name} — ${c.post_type || "Post"} ${i + 1}`,
+      content_type: "social",
+      platform: c.platform || "instagram",
+      platforms: Array.isArray(c.platforms) ? c.platforms : [c.platform || "instagram"],
+      caption: c.caption || "",
+      hook: c.hook || "",
+      cta: c.cta || "",
+      hashtags: Array.isArray(c.hashtags) ? c.hashtags : [],
+      format: c.format || "single_image",
+      post_type: c.post_type || "",
+      source: "campaign",
+      campaign_name,
+      campaign_id: campaign_id || null,
+      layout_manifest: {
+        template_id: templateId,
+        brand_overrides: visuals,
+        slides: manifestSlides,
+        animation_preset: tpl.animation_preset || "fade_slide"
+      }
+    });
+  }
 
   return json({
     campaign_name,
@@ -488,7 +701,8 @@ export async function getStudioVault(request, env, auth) {
 
   const db = getDB(env);
   const { results } = await db.prepare(`
-    SELECT id, title, body, hook, cta, hashtags, platforms, content_type, lifecycle_status, metadata, created_at, updated_at
+    SELECT id, title, body, hook, cta, hashtags, platforms, content_type, lifecycle_status, metadata, created_at, updated_at,
+           template_id, layout_manifest, rendered_preview_url
     FROM content_vault
     WHERE brand_id = ? AND source = 'studio' AND lifecycle_status = 'draft'
     ORDER BY updated_at DESC LIMIT 50

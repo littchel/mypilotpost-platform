@@ -1,0 +1,27 @@
+{
+  "template_id": "story_poll",
+  "name": "Interactive Poll Story Layout",
+  "format": "story",
+  "intent": ["engagement"],
+  "pillars": ["interactive", "community"],
+  "platforms": ["instagram", "facebook"],
+  "dimensions": {
+    "width": 1080,
+    "height": 1920
+  },
+  "slides": [
+    {
+      "slot_id": "slide_1",
+      "slot_type": "human_element",
+      "layout": "poll_interactive_overlay",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
+        { "type": "image", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 2 }, "required_aspect_ratio": "9:16", "min_width": 1080, "min_height": 1920, "overlay": false },
+        { "type": "headline", "position": { "x": 10, "y": 25, "width": 80, "height": 12, "z_index": 3 }, "max_chars": 50, "overlay": true },
+        { "type": "cta_button", "position": { "x": 15, "y": 45, "width": 32, "height": 8, "z_index": 3 }, "max_chars": 20, "overlay": true },
+        { "type": "cta_button", "position": { "x": 53, "y": 45, "width": 32, "height": 8, "z_index": 3 }, "max_chars": 20, "overlay": true },
+        { "type": "logo", "position": { "x": 10, "y": 5, "width": 15, "height": 4, "z_index": 3 }, "overlay": true }
+      ]
+    }
+  ]
+}

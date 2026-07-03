@@ -1,0 +1,43 @@
+{
+  "template_id": "quote_card_feed",
+  "name": "Quote Card Feed Post",
+  "format": "feed_post",
+  "intent": ["engagement", "authority"],
+  "pillars": ["values", "thought_leadership"],
+  "platforms": ["instagram", "linkedin", "twitter"],
+  "dimensions": {
+    "width": 1080,
+    "height": 1080
+  },
+  "slides": [
+    {
+      "slot_id": "slide_1",
+      "slot_type": "body",
+      "layout": "centered_quote",
+      "components": [
+        {
+          "type": "background",
+          "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 },
+          "overlay": false
+        },
+        {
+          "type": "body",
+          "position": { "x": 15, "y": 25, "width": 70, "height": 45, "z_index": 2 },
+          "max_chars": 220,
+          "overlay": false
+        },
+        {
+          "type": "subtitle",
+          "position": { "x": 15, "y": 75, "width": 70, "height": 8, "z_index": 2 },
+          "max_chars": 50,
+          "overlay": false
+        },
+        {
+          "type": "logo",
+          "position": { "x": 42.5, "y": 10, "width": 15, "height": 6, "z_index": 2 },
+          "overlay": true
+        }
+      ]
+    }
+  ]
+}

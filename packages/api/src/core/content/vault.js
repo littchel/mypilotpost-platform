@@ -110,6 +110,9 @@ export async function saveToVault(request, env, auth) {
     metadata,
     source = "editor",
     overlays,
+    template_id,
+    layout_manifest,
+    rendered_preview_url,
   } = body;
 
   if (!bodyText && !title) {
@@ -141,6 +144,7 @@ export async function saveToVault(request, env, auth) {
   const overlaysJson = overlays !== undefined ? (typeof overlays === 'string' ? overlays : JSON.stringify(overlays)) : null;
   const derivedTitle = title || (bodyText.slice(0, 60) + (bodyText.length > 60 ? "..." : ""));
   const version      = existing ? (existing.version || 1) + 1 : 1;
+  const manifestStr = layout_manifest ? (typeof layout_manifest === 'string' ? layout_manifest : JSON.stringify(layout_manifest)) : null;
   const snapshot = {
     content_type,
     title: derivedTitle,
@@ -156,6 +160,9 @@ export async function saveToVault(request, env, auth) {
     campaign_id: campaign_id || null,
     metadata: metadataObj,
     source,
+    template_id: template_id || null,
+    layout_manifest: manifestStr,
+    rendered_preview_url: rendered_preview_url || null,
   };
 
   if (existing) {
@@ -175,6 +182,9 @@ export async function saveToVault(request, env, auth) {
         campaign_id       = ?,
         metadata          = ?,
         version           = ?,
+        template_id       = ?,
+        layout_manifest   = ?,
+        rendered_preview_url = ?,
         updated_at        = CURRENT_TIMESTAMP
       WHERE id = ? AND brand_id = ?
     `).bind(
@@ -183,6 +193,9 @@ export async function saveToVault(request, env, auth) {
       safe(mediaIdsArr), lifecycle_status,
       scheduled_at || null, campaign_id || null,
       safe(metadataObj, '{}'), version,
+      template_id || null,
+      manifestStr,
+      rendered_preview_url || null,
       id, brand_id
     ),
     ]);
@@ -191,15 +204,19 @@ export async function saveToVault(request, env, auth) {
       INSERT INTO content_vault
         (id, brand_id, user_id, content_type, title, body, hook, cta,
          hashtags, platforms, platform_variants, media_ids,
-         lifecycle_status, scheduled_at, campaign_id, metadata, version, source)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         lifecycle_status, scheduled_at, campaign_id, metadata, version, source,
+         template_id, layout_manifest, rendered_preview_url)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id, brand_id, user_id || null, content_type,
       derivedTitle, bodyText, hook || null, cta || null,
       safe(hashtagsArr), safe(platformsArrInput), safe(variantsObj, '{}'),
       safe(mediaIdsArr), lifecycle_status,
       scheduled_at || null, campaign_id || null,
-      safe(metadataObj, '{}'), 1, source
+      safe(metadataObj, '{}'), 1, source,
+      template_id || null,
+      manifestStr,
+      rendered_preview_url || null
     ).run();
   }
 

@@ -1290,16 +1290,10 @@ function App() {
         {step === 4 && isSmart && <BrandStep isReview />}
         {step === 5 && isSmart && <GoalsStep />}
         {step === 6 && isSmart && <PlatformsStep />}
-        {step === 7 && isSmart && <GenerationStep />}
-        {step === 8 && isSmart && <ScheduleStep />}
-        {step === 9 && isSmart && <CompletionStep />}
         {step === 3 && isManual && <BrandStep />}
         {step === 4 && isManual && <MarketStep />}
         {step === 5 && isManual && <GoalsStep />}
         {step === 6 && isManual && <PlatformsStep />}
-        {step === 7 && isManual && <GenerationStep />}
-        {step === 8 && isManual && <ScheduleStep />}
-        {step === 9 && isManual && <CompletionStep />}
         {/* Fallback: mode not yet chosen */}
         {step >= 3 && !obMode && <ModeStep />}
       </OnboardingLayout>

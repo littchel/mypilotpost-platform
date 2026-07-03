@@ -89,6 +89,45 @@ function generateReasons(img, tags, orientation, visualContext) {
   return reasons.length ? reasons.slice(0, 3) : ['Curated pick'];
 }
 
+export function filterBySlotRequirements(image, slotRequirements) {
+  if (!slotRequirements) return true;
+  const { required_aspect_ratio, min_width, min_height } = slotRequirements;
+
+  // 1. Hard filter on min dimensions
+  if (min_width && (image.width || 0) < min_width) return false;
+  if (min_height && (image.height || 0) < min_height) return false;
+
+  // 2. Aspect ratio tolerance check (+/- 0.1)
+  if (required_aspect_ratio) {
+    const parts = required_aspect_ratio.split(':');
+    if (parts.length === 2) {
+      const targetRatio = parseFloat(parts[0]) / parseFloat(parts[1]);
+      const imageRatio = (image.width || 0) / ((image.height || 1) || 1);
+      if (Math.abs(imageRatio - targetRatio) > 0.1) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+export function calculateNegativeSpaceScore(imageUrl, altText = '') {
+  // Pure function fallback for synchronous ranking loop.
+  // Performs a fast keyword mapping on alt text if image analysis library is missing/unavailable.
+  const alt = (altText || '').toLowerCase();
+  const uniformKeywords = ['sky', 'wall', 'blurred', 'background', 'minimal', 'gradient', 'abstract', 'negative space', 'clean'];
+  const complexKeywords = ['crowd', 'dense', 'pattern', 'complex', 'group of people', 'city street'];
+
+  if (uniformKeywords.some(w => alt.includes(w))) {
+    return 15;
+  }
+  if (complexKeywords.some(w => alt.includes(w))) {
+    return -20;
+  }
+  return 0;
+}
+
 /**
  * @param {object[]} images
  * @param {{
@@ -96,13 +135,17 @@ function generateReasons(img, tags, orientation, visualContext) {
  *   orientation?:  string,
  *   subjects?:     string[],
  *   visualContext?: object,   -- from buildVisualContext()
+ *   slotRequirements?: object, -- { required_aspect_ratio, min_width, min_height }
  * }} options
  */
-export function rankImages(images, { tags = [], orientation = 'landscape', subjects = [], visualContext = null } = {}) {
+export function rankImages(images, { tags = [], orientation = 'landscape', subjects = [], visualContext = null, slotRequirements = null } = {}) {
   // Assign category before shouldReject so computeMatchScore can use it
   const categorised = images.map(img => ({ ...img, category: assignCategory(img) }));
 
-  const eligible = categorised.filter(img => !shouldReject(img, visualContext));
+  // Hard filter aspect ratio and slot requirements BEFORE the main ranking loop
+  const eligible = categorised
+    .filter(img => !shouldReject(img, visualContext))
+    .filter(img => filterBySlotRequirements(img, slotRequirements));
 
   const authorsSeen = {};
   const scored = eligible.map(img => {
@@ -117,11 +160,19 @@ export function rankImages(images, { tags = [], orientation = 'landscape', subje
     const diversity   = Math.max(0, 1 - diversityPenalty);
     const platformFit = scorePlatformFit(img, orientation);
 
+    // Negative space entropy score (-20 to +15 mapped to 0.0 to 1.0)
+    const rawNegSpace = calculateNegativeSpaceScore(img.url, img.alt);
+    let negativeSpace = 0.5; // neutral fallback
+    if (rawNegSpace === 15) negativeSpace = 1.0;
+    else if (rawNegSpace === -20) negativeSpace = 0.0;
+
+    // New Score = (0.30 * Relevance) + (0.20 * Resolution) + (0.15 * Author Diversity) + (0.15 * Platform Fit) + (0.20 * Negative Space)
     const score = (
-      relevance   * 0.35 +
-      quality     * 0.25 +
-      diversity   * 0.20 +
-      platformFit * 0.20
+      relevance     * 0.30 +
+      quality       * 0.20 +
+      diversity     * 0.15 +
+      platformFit   * 0.15 +
+      negativeSpace * 0.20
     );
 
     const reasons = generateReasons(img, tags, orientation, visualContext);

@@ -45,10 +45,11 @@ export async function fetchBrandContext(db, brand_id, depth = 'standard') {
     return { brand, profile: null, voice: null, audience: null, pillars: [], objectives: null, competitors: [], context, forbidden: [...GENERIC_BANNED] };
   }
 
-  const [profile, voice, audience] = await Promise.all([
+  const [profile, voice, audience, visuals] = await Promise.all([
     db.prepare("SELECT mission, vision, positioning, value_proposition, brand_personality, differentiators, website_url FROM brand_dna_profiles WHERE brand_id = ?").bind(brand_id).first(),
     db.prepare("SELECT voice_traits, forbidden_language, cta_style, messaging_style FROM brand_dna_voice WHERE brand_id = ?").bind(brand_id).first(),
     db.prepare("SELECT icp_name, pain_points, desires FROM brand_dna_audience WHERE brand_id = ?").bind(brand_id).first(),
+    getBrandVisuals(db, brand_id)
   ]);
 
   let pillars = [], objectives = null, competitors = [];
@@ -111,11 +112,20 @@ export async function fetchBrandContext(db, brand_id, depth = 'standard') {
     }
   }
 
+  if (visuals) {
+    parts.push(`Visual Style: ${visuals.visual_style}`);
+    parts.push(`Primary Brand Color: ${visuals.primary_color_hex || visuals.primary_color}`);
+    parts.push(`Secondary Brand Color: ${visuals.secondary_color_hex || visuals.secondary_color}`);
+    parts.push(`Headline Font: ${visuals.font_pairing_headline}`);
+    parts.push(`Body Font: ${visuals.font_pairing_body}`);
+    parts.push(`Background Preference: ${visuals.background_preference}`);
+  }
+
   // Forbidden phrases: brand's + generic banned list
   const brandForbidden = parseJsonSafe(voice?.forbidden_language, []);
   const forbidden = [...new Set([...brandForbidden, ...GENERIC_BANNED])];
 
-  return { brand, profile, voice, audience, pillars, objectives, competitors, context: parts.join("\n"), forbidden };
+  return { brand, profile, voice, audience, pillars, objectives, competitors, context: parts.join("\n"), forbidden, visuals };
 }
 
 /**
@@ -151,4 +161,44 @@ export async function contextHash(brand_id, content_type, intent = '') {
   const raw = `${brand_id}|${content_type}|${intent}`;
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(raw));
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('').slice(0, 16);
+}
+
+export async function getBrandVisuals(db, brandId) {
+  const visuals = await db.prepare(`
+    SELECT 
+      primary_color, secondary_color, typography_main, typography_heading, visual_direction, imagery_style,
+      primary_color_hex, secondary_color_hex, font_pairing_headline, font_pairing_body, 
+      logo_asset_url, visual_style, watermark_position, background_preference
+    FROM brand_dna_visual_identity 
+    WHERE brand_id = ?
+  `).bind(brandId).first();
+  
+  if (!visuals) {
+    return {
+      primary_color: "#1A73E8",
+      secondary_color: "#34A853",
+      primary_color_hex: "#1A73E8",
+      secondary_color_hex: "#34A853",
+      font_pairing_headline: "Inter",
+      font_pairing_body: "Inter",
+      logo_asset_url: null,
+      visual_style: "minimal",
+      watermark_position: "bottom_right",
+      background_preference: "light"
+    };
+  }
+
+  // Supply fallback if some migration fields are empty/null
+  return {
+    primary_color: visuals.primary_color || "#1A73E8",
+    secondary_color: visuals.secondary_color || "#34A853",
+    primary_color_hex: visuals.primary_color_hex || visuals.primary_color || "#1A73E8",
+    secondary_color_hex: visuals.secondary_color_hex || visuals.secondary_color || "#34A853",
+    font_pairing_headline: visuals.font_pairing_headline || "Inter",
+    font_pairing_body: visuals.font_pairing_body || "Inter",
+    logo_asset_url: visuals.logo_asset_url || null,
+    visual_style: visuals.visual_style || "minimal",
+    watermark_position: visuals.watermark_position || "bottom_right",
+    background_preference: visuals.background_preference || "light"
+  };
 }

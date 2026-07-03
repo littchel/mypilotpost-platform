@@ -6,6 +6,8 @@ import { validateContent } from "../lib/platformRequirements";
 import { fetchMediaSuggestions, trackImageSelected, trackImageAttached } from "../services/mediaSuggestions";
 import OverlayEditor from "../components/editor/OverlayEditor";
 import AdobeExpress from "../components/editor/AdobeExpress";
+import TemplateCanvas from "../components/TemplateCanvas";
+import { Play, Download } from "lucide-react";
 
 const API_BASE = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 
@@ -608,6 +610,93 @@ export default function CreatePost({
   const [tabCounts, setTabCounts]           = useState({ drafts: 0, scheduled: 0, approvals: 0 });
   const [assistantOpen, setAssistantOpen]   = useState(false);
   const [assistantPrefill, setAssistantPrefill] = useState("");
+  
+  // ── Template Mode States ──────────────────────────────────────────────────
+  const [templateMode, setTemplateMode]       = useState(false);
+  const [templateSchema, setTemplateSchema]   = useState(null);
+  const [slotData, setSlotData]               = useState({});
+  const [brandVariables, setBrandVariables]   = useState({ primary_color: "#1A1A1A", secondary_color: "#F5F5F5", font_stack: "Inter, sans-serif", logo_url: "" });
+  const templateCanvasRef = useRef(null);
+  const [activeSlotIdForMedia, setActiveSlotIdForMedia] = useState(null);
+
+  const getDeterministicPalette = (imageUrl, brandVars) => {
+    const hashString = (str) => {
+      let hash = 5381;
+      for (let i = 0; i < str.length; i++) {
+        hash = (hash * 33) ^ str.charCodeAt(i);
+      }
+      return Math.abs(hash);
+    };
+
+    const palettes = [
+      { dominant: "#2A3B4C", accent: "#F4A261", background: "#1D2836" },
+      { dominant: "#1D3557", accent: "#E63946", background: "#F1FAEE" },
+      { dominant: "#264653", accent: "#E76F51", background: "#E9C46A" },
+      { dominant: "#457B9D", accent: "#E63946", background: "#F1FAEE" },
+      { dominant: "#3D5A80", accent: "#EE6C4D", background: "#E0F2F1" },
+      { dominant: "#2B2D42", accent: "#EF233C", background: "#F4F4F9" },
+      { dominant: "#003049", accent: "#F77F00", background: "#FCBF49" },
+      { dominant: "#31572C", accent: "#A3B18A", background: "#E8F0E6" }
+    ];
+
+    const getLuminance = (hex) => {
+      const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+      const fullHex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(fullHex);
+      if (!result) return 0;
+      const r = parseInt(result[1], 16) / 255;
+      const g = parseInt(result[2], 16) / 255;
+      const b = parseInt(result[3], 16) / 255;
+      const aR = r <= 0.03928 ? r / 12.92 : Math.pow((r + 0.055) / 1.055, 2.4);
+      const aG = g <= 0.03928 ? g / 12.92 : Math.pow((g + 0.055) / 1.055, 2.4);
+      const aB = b <= 0.03928 ? b / 12.92 : Math.pow((b + 0.055) / 1.055, 2.4);
+      return 0.2126 * aR + 0.7152 * aG + 0.0722 * aB;
+    };
+
+    const getContrastColor = (bgHex) => {
+      return getLuminance(bgHex) > 0.179 ? "#000000" : "#FFFFFF";
+    };
+
+    const hash = hashString(imageUrl || "");
+    const selected = palettes[hash % palettes.length];
+    
+    const dominant = brandVars?.primary_color || selected.dominant;
+    const accent = brandVars?.secondary_color || selected.accent;
+    
+    return {
+      dominant,
+      accent,
+      background: selected.background,
+      text_contrast: getContrastColor(selected.background)
+    };
+  };
+
+  const handleExportPNG = () => {
+    if (!templateCanvasRef.current) return;
+    const dataUrl = templateCanvasRef.current.renderToPNG();
+    if (!dataUrl) return;
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = `mypilotpost-design-${templateSchema?.template_id || "post"}.png`;
+    a.click();
+    showToast("PNG design downloaded successfully!", "success");
+  };
+
+  const handleExportMP4 = async () => {
+    if (!templateCanvasRef.current) return;
+    try {
+      const blob = await templateCanvasRef.current.renderToMP4(3000);
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `mypilotpost-animation-${templateSchema?.template_id || "post"}.webm`;
+      a.click();
+      showToast("MP4 animation exported successfully!", "success");
+    } catch (e) {
+      showToast("Export failed: video container format unsupported in this browser", "error");
+    }
+  };
 
   useEffect(() => {
     const handleTrigger = (e) => {
@@ -734,6 +823,60 @@ export default function CreatePost({
     if (Array.isArray(prefill.platforms) && prefill.platforms.length) setSelectedPlatforms(prefill.platforms);
     if (prefill.campaign_id) setCampaignId(prefill.campaign_id);
     if (prefill.overlays) setOverlays(prefill.overlays);
+
+    // If layout_manifest exists, enter Template Mode
+    if (prefill.layout_manifest) {
+      const manifest = prefill.layout_manifest;
+      setTemplateMode(true);
+      
+      const brandVars = {
+        primary_color: manifest.brand_overrides?.primary_color || "#1A1A1A",
+        secondary_color: manifest.brand_overrides?.secondary_color || "#F5F5F5",
+        font_stack: manifest.brand_overrides?.font_stack || "Inter, sans-serif",
+        logo_url: manifest.brand_overrides?.logo_url || ""
+      };
+      setBrandVariables(brandVars);
+
+      apiFetch(`/api/customer/templates/${manifest.template_id}`)
+        .then(schema => {
+          if (schema) {
+            setTemplateSchema(schema);
+            
+            const paragraphs = (prefill.caption || prefill.body || "").split("\n\n").filter(Boolean);
+            const defaultPalette = {
+              dominant: brandVars.primary_color,
+              accent: brandVars.secondary_color,
+              background: "#F5F5F5",
+              text_contrast: "#FFFFFF"
+            };
+
+            const initialSlotData = {};
+            (manifest.slides || []).forEach(slide => {
+              let textVal = "";
+              if (slide.text_anchor === "headline" || slide.text_anchor === "hook") {
+                textVal = prefill.hook || prefill.headline || paragraphs[0] || "";
+              } else if (slide.text_anchor === "cta_text" || slide.text_anchor === "cta") {
+                textVal = prefill.cta || prefill.cta_text || "";
+              } else if (slide.text_anchor.startsWith("body_paragraph_")) {
+                const idx = parseInt(slide.text_anchor.replace("body_paragraph_", "")) - 1;
+                textVal = paragraphs[idx] || "";
+              }
+
+              initialSlotData[slide.slot_id] = {
+                text: textVal,
+                image_url: prefill.image || prefill.image_url || "",
+                palette: defaultPalette
+              };
+            });
+
+            setSlotData(initialSlotData);
+          }
+        })
+        .catch(err => {
+          console.error("Failed to load template schema", err);
+          setTemplateMode(false);
+        });
+    }
 
     if (prefill.image) {
       const tempId = crypto.randomUUID();
@@ -956,6 +1099,22 @@ export default function CreatePost({
 
   const handlePexelsUse = async (item) => {
     const previewUrl = item.preview_url || item.preview || item.url;
+    
+    if (templateMode && activeSlotIdForMedia) {
+      const palette = getDeterministicPalette(previewUrl, brandVariables);
+      setSlotData(prev => ({
+        ...prev,
+        [activeSlotIdForMedia]: {
+          ...prev[activeSlotIdForMedia],
+          image_url: previewUrl,
+          palette
+        }
+      }));
+      setActiveSlotIdForMedia(null);
+      showToast(`Image updated for slot: ${activeSlotIdForMedia}`);
+      return;
+    }
+
     setPexelsUsing(item.external_id || item.id);
     trackImageSelected(item);
     try {
@@ -995,6 +1154,22 @@ export default function CreatePost({
     const url = item.preview_url
       ? (item.preview_url.startsWith("http") ? item.preview_url : `${API_BASE}${item.preview_url}`)
       : "";
+
+    if (templateMode && activeSlotIdForMedia) {
+      const palette = getDeterministicPalette(url, brandVariables);
+      setSlotData(prev => ({
+        ...prev,
+        [activeSlotIdForMedia]: {
+          ...prev[activeSlotIdForMedia],
+          image_url: url,
+          palette
+        }
+      }));
+      setActiveSlotIdForMedia(null);
+      showToast(`Image updated for slot: ${activeSlotIdForMedia}`);
+      return;
+    }
+
     setMediaItems(prev => [...prev, {
       id: crypto.randomUUID(),
       url,
@@ -1409,9 +1584,130 @@ export default function CreatePost({
       </div>
 
       {activeTopTab === "editor" ? (
-        <>
-          {/* ── MAIN TWO-COLUMN ─────────────────────────────────────────────── */}
+        templateMode && templateSchema ? (
           <div style={{ display: "flex", gap: 14, flex: 1, minHeight: 0 }}>
+            {/* LEFT COLUMN (Template Slot Editor) — ~60% width */}
+            <div style={{ width: "60%", display: "flex", flexDirection: "column", minHeight: 0, gap: 12 }}>
+              <div className="card-workspace" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflowY: "auto", padding: 16, gap: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#0f172a" }}>Template Design Studio</h3>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Layout: {templateSchema.name}</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (window.confirm("Switch to Blank Canvas Mode? This will reset your custom slide mappings.")) {
+                        setTemplateMode(false);
+                      }
+                    }}
+                    style={{ background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 600, color: "#475569", cursor: "pointer" }}
+                  >
+                    Switch to Blank Canvas
+                  </button>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {Object.keys(slotData).map(slotId => {
+                    const slot = slotData[slotId];
+                    return (
+                      <div key={slotId} style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "#2563eb", textTransform: "uppercase" }}>Slot: {slotId}</div>
+                        
+                        {/* Text slot editor */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                          <label style={{ fontSize: 9, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase" }}>Text Caption</label>
+                          <textarea
+                            className="form-control"
+                            style={{ fontSize: 12, resize: "none", background: "#fff", border: "1px solid #cbd5e1", borderRadius: 6, padding: "6px 8px" }}
+                            rows={2}
+                            value={slot.text}
+                            onChange={(e) => {
+                              const txt = e.target.value;
+                              setSlotData(prev => ({
+                                ...prev,
+                                [slotId]: { ...prev[slotId], text: txt }
+                              }));
+                            }}
+                          />
+                        </div>
+
+                        {/* Image slot editor */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                          <label style={{ fontSize: 9, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase" }}>Image Link</label>
+                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                            {slot.image_url && (
+                              <img src={slot.image_url} style={{ width: 42, height: 42, borderRadius: 6, objectFit: "cover", border: "1px solid #cbd5e1" }} alt="" />
+                            )}
+                            <input
+                              type="text"
+                              className="form-control form-control-sm"
+                              style={{ fontSize: 11, background: "#fff", border: "1px solid #cbd5e1", borderRadius: 6, padding: "4px 8px", flex: 1 }}
+                              placeholder="Direct image URL"
+                              value={slot.image_url}
+                              onChange={(e) => {
+                                const url = e.target.value;
+                                setSlotData(prev => ({
+                                  ...prev,
+                                  [slotId]: { ...prev[slotId], image_url: url }
+                                }));
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* RIGHT COLUMN (TemplateCanvas Preview) — ~40% width */}
+            <div style={{ width: "40%", display: "flex", flexDirection: "column", minHeight: 0, gap: 12, alignItems: "center" }}>
+              <TemplateCanvas
+                ref={templateCanvasRef}
+                templateSchema={templateSchema}
+                slotData={slotData}
+                brandVariables={brandVariables}
+                dimensions={templateSchema.dimensions || { width: 1080, height: 1080 }}
+                onSlotEdit={(slotId, updatedFields) => {
+                  setSlotData(prev => ({
+                    ...prev,
+                    [slotId]: { ...prev[slotId], ...updatedFields }
+                  }));
+                }}
+                onTemplateSwitch={(newTemplateId, newSlotData, newSchema) => {
+                  setTemplateSchema(newSchema);
+                  setSlotData(newSlotData);
+                  showToast("Switched template layout successfully!", "success");
+                }}
+                onSlotMediaClick={(slotId) => {
+                  setActiveSlotIdForMedia(slotId);
+                  setLibraryOpen(true);
+                  showToast(`Select an image from the library to update slot: ${slotId}`, "info");
+                }}
+                style={{ width: "100%" }}
+              />
+
+              <div style={{ display: "flex", gap: 8, width: "100%", padding: "0 10px" }}>
+                <button
+                  onClick={handleExportPNG}
+                  style={{ flex: 1, background: "#ef4444", color: "#fff", border: "none", borderRadius: 8, padding: "10px", fontWeight: 700, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                >
+                  <Download style={{ width: 14, height: 14 }} /> Download PNG
+                </button>
+                <button
+                  onClick={handleExportMP4}
+                  style={{ flex: 1, background: "#0f172a", color: "#fff", border: "none", borderRadius: 8, padding: "10px", fontWeight: 700, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                >
+                  <Play style={{ width: 14, height: 14 }} /> Export MP4 Video
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* ── MAIN TWO-COLUMN ─────────────────────────────────────────────── */}
+            <div style={{ display: "flex", gap: 14, flex: 1, minHeight: 0 }}>
 
             {/* LEFT COLUMN (Composer) — ~60% width */}
         <div style={{ width: "60%", display: "flex", flexDirection: "column", minHeight: 0, gap: 12 }}>
@@ -2004,6 +2300,7 @@ export default function CreatePost({
         </div>
       </div>
     </>
+        )
       ) : (
 
         /* ── VAULT WORKSPACE ─────────────────────────────────────────────── */

@@ -1,0 +1,69 @@
+{
+  "template_id": "carousel_faq_005",
+  "name": "5-Slide FAQ Q&A Carousel",
+  "format": "carousel",
+  "intent": ["authority", "engagement"],
+  "pillars": ["faq", "educational"],
+  "platforms": ["instagram", "linkedin"],
+  "dimensions": {
+    "width": 1080,
+    "height": 1350
+  },
+  "animation_preset": "typewriter",
+  "slides": [
+    {
+      "slot_id": "slide_1_question",
+      "slot_type": "hero",
+      "layout": "faq_cover",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
+        { "type": "headline", "position": { "x": 10, "y": 25, "width": 80, "height": 30, "z_index": 2 }, "max_chars": 80, "overlay": false },
+        { "type": "logo", "position": { "x": 5, "y": 5, "width": 15, "height": 5, "z_index": 2 }, "overlay": true }
+      ]
+    },
+    {
+      "slot_id": "slide_2_ans1",
+      "slot_type": "body",
+      "layout": "faq_answer",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
+        { "type": "headline", "position": { "x": 10, "y": 15, "width": 80, "height": 10, "z_index": 2 }, "max_chars": 40, "overlay": false },
+        { "type": "body", "position": { "x": 10, "y": 30, "width": 80, "height": 60, "z_index": 2 }, "max_chars": 260, "overlay": false },
+        { "type": "logo", "position": { "x": 5, "y": 5, "width": 15, "height": 5, "z_index": 2 }, "overlay": true }
+      ]
+    },
+    {
+      "slot_id": "slide_3_ans2",
+      "slot_type": "body",
+      "layout": "faq_answer",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
+        { "type": "headline", "position": { "x": 10, "y": 15, "width": 80, "height": 10, "z_index": 2 }, "max_chars": 40, "overlay": false },
+        { "type": "body", "position": { "x": 10, "y": 30, "width": 80, "height": 60, "z_index": 2 }, "max_chars": 260, "overlay": false },
+        { "type": "logo", "position": { "x": 5, "y": 5, "width": 15, "height": 5, "z_index": 2 }, "overlay": true }
+      ]
+    },
+    {
+      "slot_id": "slide_4_ans3",
+      "slot_type": "body",
+      "layout": "faq_answer",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
+        { "type": "headline", "position": { "x": 10, "y": 15, "width": 80, "height": 10, "z_index": 2 }, "max_chars": 40, "overlay": false },
+        { "type": "body", "position": { "x": 10, "y": 30, "width": 80, "height": 60, "z_index": 2 }, "max_chars": 260, "overlay": false },
+        { "type": "logo", "position": { "x": 5, "y": 5, "width": 15, "height": 5, "z_index": 2 }, "overlay": true }
+      ]
+    },
+    {
+      "slot_id": "slide_5_cta",
+      "slot_type": "cta",
+      "layout": "faq_cta",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
+        { "type": "headline", "position": { "x": 10, "y": 20, "width": 80, "height": 20, "z_index": 2 }, "max_chars": 60, "overlay": false },
+        { "type": "cta_button", "position": { "x": 30, "y": 55, "width": 40, "height": 12, "z_index": 2 }, "max_chars": 25, "overlay": false },
+        { "type": "logo", "position": { "x": 42.5, "y": 5, "width": 15, "height": 5, "z_index": 2 }, "overlay": true }
+      ]
+    }
+  ]
+}

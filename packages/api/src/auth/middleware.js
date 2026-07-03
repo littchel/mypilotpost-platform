@@ -119,6 +119,36 @@ export async function requireAuth(request, env) {
 
   }
 
+  if (env.ENVIRONMENT === "development" && user_id) {
+    try {
+      await db.prepare(`
+        UPDATE users
+        SET subscription_status = 'active',
+            trial_ends_at = datetime('now', '+30 days'),
+            current_period_start = datetime('now'),
+            current_period_end = datetime('now', '+30 days')
+        WHERE id = ?
+      `).bind(user_id).run();
+
+      await db.prepare(`
+        INSERT OR IGNORE INTO usage_tracking (user_id, period_start, period_end)
+        VALUES (?, datetime('now'), datetime('now', '+30 days'))
+      `).bind(user_id).run();
+
+      await db.prepare(`
+        UPDATE usage_tracking
+        SET posts_used = 0,
+            ai_generations_used = 0,
+            social_accounts_used = 0,
+            period_start = datetime('now'),
+            period_end = datetime('now', '+30 days')
+        WHERE user_id = ?
+      `).bind(user_id).run();
+    } catch (_e) {
+      console.error("[DEV AUTH FALLBACK ERROR]", _e.message);
+    }
+  }
+
   return {
     user_id,
     brand_id,

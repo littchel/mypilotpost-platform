@@ -164,21 +164,41 @@ export async function updateBrandDNA(request, env, auth) {
 
   if (visual) {
     batches.push(db.prepare(`
-      INSERT INTO brand_dna_visual_identity (brand_id, primary_color, secondary_color, typography_main, visual_direction, imagery_style, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+      INSERT INTO brand_dna_visual_identity (
+        brand_id, primary_color, secondary_color, typography_main, visual_direction, imagery_style,
+        primary_color_hex, secondary_color_hex, font_pairing_headline, font_pairing_body, 
+        logo_asset_url, visual_style, watermark_position, background_preference, updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
       ON CONFLICT(brand_id) DO UPDATE SET
         primary_color = COALESCE(?, primary_color),
         secondary_color = COALESCE(?, secondary_color),
         typography_main = COALESCE(?, typography_main),
         visual_direction = COALESCE(?, visual_direction),
         imagery_style = COALESCE(?, imagery_style),
+        primary_color_hex = COALESCE(?, primary_color_hex),
+        secondary_color_hex = COALESCE(?, secondary_color_hex),
+        font_pairing_headline = COALESCE(?, font_pairing_headline),
+        font_pairing_body = COALESCE(?, font_pairing_body),
+        logo_asset_url = COALESCE(?, logo_asset_url),
+        visual_style = COALESCE(?, visual_style),
+        watermark_position = COALESCE(?, watermark_position),
+        background_preference = COALESCE(?, background_preference),
         updated_at = datetime('now')
     `).bind(
       brandId,
       visual.primary_color || null, visual.secondary_color || null,
       visual.typography_main || null, visual.visual_direction || null, visual.imagery_style || null,
+      visual.primary_color_hex || null, visual.secondary_color_hex || null,
+      visual.font_pairing_headline || null, visual.font_pairing_body || null,
+      visual.logo_asset_url || null, visual.visual_style || null,
+      visual.watermark_position || null, visual.background_preference || null,
       visual.primary_color || null, visual.secondary_color || null,
-      visual.typography_main || null, visual.visual_direction || null, visual.imagery_style || null
+      visual.typography_main || null, visual.visual_direction || null, visual.imagery_style || null,
+      visual.primary_color_hex || null, visual.secondary_color_hex || null,
+      visual.font_pairing_headline || null, visual.font_pairing_body || null,
+      visual.logo_asset_url || null, visual.visual_style || null,
+      visual.watermark_position || null, visual.background_preference || null
     ));
   }
 
@@ -235,6 +255,15 @@ export async function updateBrandDNA(request, env, auth) {
         c.strategy_notes || ''
       ).run();
     }
+  }
+
+  // Invalidate any visual DNA or context caches
+  if (env.KV_NAMESPACE || env.REDIS) {
+    try {
+      const cacheKey = `brand_context:${brandId}`;
+      if (env.KV_NAMESPACE) await env.KV_NAMESPACE.delete(cacheKey);
+      if (env.REDIS) await env.REDIS.del(cacheKey);
+    } catch {}
   }
 
   return json({ success: true, message: "Brand DNA updated" });

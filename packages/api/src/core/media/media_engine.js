@@ -1,4 +1,4 @@
-import { generateBrief }     from './brief.js';
+import { generateBrief, generateSlotQuery } from './brief.js';
 import { buildVisualContext } from './visual_context.js';
 import { fetchPexels }        from './providers/pexels.js';
 import { fetchUnsplash }      from './providers/unsplash.js';
@@ -9,6 +9,7 @@ import { rankImages, assignCategory } from './ranking.js';
 import { cacheGet, cacheSet } from './providers/cache.js';
 import { getDB }              from '../../lib/db.js';
 import { expandVisualBriefs } from './brief_expansion.js';
+import { extractPalette }     from './colorExtractor.js';
 
 const FALLBACK_POOL = [
   "https://images.pexels.com/photos/3184298/pexels-photo-3184298.jpeg?auto=compress&cs=tinysrgb&w=640&h=480&dpr=1",
@@ -38,10 +39,6 @@ function strip(img) {
   return clean;
 }
 
-/**
- * Pick 4 diverse featured images — one from each category where possible.
- * This makes Agency Picks feel curated, not randomly top-4.
- */
 function selectDiverseFeatured(ranked, count = 4) {
   const ORDER = ['human', 'professional', 'minimal', 'general'];
   const byCategory = { human: [], professional: [], minimal: [], general: [] };
@@ -51,13 +48,11 @@ function selectDiverseFeatured(ranked, count = 4) {
   }
 
   const picked = [];
-  // One best from each category
   for (const cat of ORDER) {
     if (picked.length >= count) break;
     const best = byCategory[cat][0];
     if (best) picked.push(best);
   }
-  // Fill remaining from top overall
   for (const img of ranked) {
     if (picked.length >= count) break;
     if (!picked.includes(img)) picked.push(img);
@@ -65,17 +60,12 @@ function selectDiverseFeatured(ranked, count = 4) {
   return picked.slice(0, count);
 }
 
-/**
- * Build recommended list with category interleaving.
- * Avoids showing 5 identical corporate photos in a row.
- * Enforces: max 2 same category adjacent, max 3 same category total per slot.
- */
 function buildCuratedList(ranked, limit, skip = []) {
   const skipSet = new Set(skip.map(s => s.id || s.external_id));
   const pool = ranked.filter(img => !skipSet.has(img.id || img.external_id));
 
   const out = [];
-  const categoryRun = {}; // consecutive count per category
+  const categoryRun = {};
   const categoryTotal = {};
 
   for (const img of pool) {
@@ -85,15 +75,12 @@ function buildCuratedList(ranked, limit, skip = []) {
     const run   = categoryRun[cat]   || 0;
     const total = categoryTotal[cat] || 0;
 
-    // Soft cap: no more than 4 of any one category in recommended
     if (total >= 4) continue;
-    // Adjacency cap: no more than 2 consecutive same category
     if (run >= 2) continue;
 
     out.push(img);
     categoryTotal[cat] = total + 1;
 
-    // Reset run counts on category change
     const lastCat = out.length > 1 ? (out[out.length - 2]?.category || 'general') : null;
     if (lastCat !== cat) Object.keys(categoryRun).forEach(k => (categoryRun[k] = 0));
     categoryRun[cat] = run + 1;
@@ -140,7 +127,6 @@ function computeSemanticScore(brief, img) {
   const imgWords = new Set(cleanTokens(img.alt));
   if (imgWords.size === 0) return 0.0;
 
-  // 1. Direct Search Query Overlap Score (60% Weight)
   const queries = brief.search_queries || [];
   let queryTerms = new Set();
   queries.forEach(q => {
@@ -153,7 +139,6 @@ function computeSemanticScore(brief, img) {
   }
   const queryScore = queryTerms.size > 0 ? (queryMatches / queryTerms.size) : 0.0;
 
-  // 2. Visual Description & Mood Score (40% Weight)
   const descWords = new Set([
     ...cleanTokens(brief.visual_description),
     ...(brief.mood_tags || []).flatMap(t => cleanTokens(t))
@@ -177,11 +162,204 @@ function getBayesianScore(img, visualPerformance) {
   return (perf.clicks + alpha) / (perf.impressions + alpha + beta);
 }
 
-export async function runMediaEngine(
-  { platform, contentType, format, text = '', title = '', brand = '', industry = '', goal = '', brandDna = null, batch = null },
-  env
-) {
-  // If single request, cache matching applies
+export async function runMediaEngine(params, env) {
+  const { slots, platform = 'instagram', brandId, brand_id } = params;
+  const targetBrandId = brandId || brand_id;
+
+  // ==========================================
+  // NEW BEHAVIOR: Per-slot media processing
+  // ==========================================
+  if (slots && Array.isArray(slots)) {
+    const db = getDB(env);
+    let industry = "General";
+    let brandName = "this brand";
+    let primary_color = null;
+    let secondary_color = null;
+    if (targetBrandId) {
+      try {
+        const brandRow = await db.prepare("SELECT name, industry FROM brands WHERE id = ?").bind(targetBrandId).first();
+        if (brandRow) {
+          brandName = brandRow.name || brandName;
+          industry = brandRow.industry || industry;
+        }
+        const visualRow = await db.prepare("SELECT primary_color, secondary_color FROM brand_dna_visual_identity WHERE brand_id = ?").bind(targetBrandId).first();
+        if (visualRow) {
+          primary_color = visualRow.primary_color;
+          secondary_color = visualRow.secondary_color;
+        }
+      } catch (e) {
+        console.warn("[MEDIA ENGINE] Failed to fetch brand context from database", e);
+      }
+    }
+
+    // Fetch active Adobe connection
+    let hasAdobe = false;
+    if (targetBrandId) {
+      try {
+        const conn = await db
+          .prepare(`SELECT id FROM social_connections WHERE brand_id = ? AND platform = 'adobe' AND status = 'active'`)
+          .bind(targetBrandId)
+          .first();
+        if (conn) hasAdobe = true;
+      } catch (err) {
+        console.error('[MEDIA ENGINE ADOBE CHECK ERROR]', err);
+      }
+    }
+
+    // Fetch visual performance metrics for MAB CTR boost
+    const visualPerformance = {};
+    if (targetBrandId) {
+      try {
+        const rows = await db
+          .prepare(`SELECT feature_name, impressions, clicks FROM visual_feature_performance WHERE brand_id = ?`)
+          .bind(targetBrandId)
+          .all();
+        for (const r of rows.results || []) {
+          visualPerformance[r.feature_name] = r;
+        }
+      } catch (err) {
+        console.error('[MAB PRIORS ERROR]', err?.message);
+      }
+    }
+
+    // Parallel fetch candidates per slot
+    const slotFetchPromises = slots.map(async (slot) => {
+      const augmented_query = generateSlotQuery(slot.query, industry, slot.slot_type, platform);
+      
+      const providers = [
+        fetchPexels({ query: augmented_query, limit: 12 }, env).catch(() => []),
+        fetchUnsplash({ query: augmented_query, limit: 12 }, env).catch(() => []),
+        fetchPixabay({ query: augmented_query, limit: 12 }, env).catch(() => [])
+      ];
+      
+      if (hasAdobe) {
+        providers.push(fetchAdobeStock({ query: augmented_query, limit: 12 }, env).catch(() => []));
+      }
+      
+      const results = await Promise.all(providers);
+      const rawPool = results.flat();
+      const uniquePool = dedupe(rawPool).map(img => ({
+        ...img,
+        category: assignCategory(img)
+      }));
+      
+      return {
+        slot,
+        augmented_query,
+        candidates: uniquePool
+      };
+    });
+
+    const slotsWithCandidates = await Promise.all(slotFetchPromises);
+
+    // Compute scores and gather match pairs for greedy assignment
+    const matches = [];
+    const orientation = platform === "instagram" ? "portrait" : "landscape";
+
+    slotsWithCandidates.forEach((slotData) => {
+      const slot = slotData.slot;
+      const visualContext = buildVisualContext({ industry, title: slot.query, format: "feed_post" });
+      const slotRequirements = {
+        required_aspect_ratio: slot.required_aspect_ratio,
+        min_width: slot.min_width,
+        min_height: slot.min_height
+      };
+
+      const ranked = rankImages(slotData.candidates, {
+        tags: [slot.query],
+        orientation,
+        visualContext,
+        slotRequirements
+      });
+
+      ranked.forEach(img => {
+        const bayesian = getBayesianScore(img, visualPerformance);
+        const finalScore = (0.70 * img._score) + (0.30 * bayesian);
+        matches.push({
+          slotId: slot.slot_id,
+          img,
+          score: finalScore
+        });
+      });
+    });
+
+    // Sort matches descending by score
+    matches.sort((a, b) => b.score - a.score);
+
+    // Bipartite greedy assignment (ensures unique image per slot inside the same post)
+    const assignedImages = {};
+    const assignedImageIds = new Set();
+
+    for (const match of matches) {
+      if (!assignedImages[match.slotId]) {
+        const imgId = match.img.id || match.img.external_id;
+        if (!assignedImageIds.has(imgId)) {
+          assignedImages[match.slotId] = match.img;
+          assignedImageIds.add(imgId);
+        }
+      }
+    }
+
+    // Backfill and fallback if slots are missing images
+    slotsWithCandidates.forEach((slotData, sIdx) => {
+      const slotId = slotData.slot.slot_id;
+      if (!assignedImages[slotId]) {
+        for (const img of slotData.candidates) {
+          const imgId = img.id || img.external_id;
+          if (!assignedImageIds.has(imgId)) {
+            assignedImages[slotId] = img;
+            assignedImageIds.add(imgId);
+            break;
+          }
+        }
+      }
+
+      if (!assignedImages[slotId]) {
+        const url = FALLBACK_POOL[sIdx % FALLBACK_POOL.length];
+        const fallbackImg = {
+          id: `fallback_${slotId}_${sIdx}`,
+          external_id: `fallback_${slotId}_${sIdx}`,
+          url,
+          preview: url,
+          thumbnail_url: url,
+          author: 'myPilotPost Curated',
+          attribution: 'Curated selection',
+          provider: 'pexels',
+          category: 'general',
+          width: 1080,
+          height: 1080
+        };
+        assignedImages[slotId] = fallbackImg;
+        assignedImageIds.add(fallbackImg.id);
+      }
+    });
+
+    // Format return JSON with dynamic color extraction
+    const result = {};
+    for (const [slotId, img] of Object.entries(assignedImages)) {
+      const palette = await extractPalette(
+        img.url,
+        2,
+        { primary_color, secondary_color },
+        env
+      );
+      result[slotId] = {
+        image_url: img.url,
+        author: img.author || 'myPilotPost Curated',
+        dimensions: {
+          width: img.width || 1080,
+          height: img.height || 1080
+        },
+        palette
+      };
+    }
+    return result;
+  }
+
+  // ==========================================
+  // BACKWARD COMPATIBILITY: Legacy behavior
+  // ==========================================
+  const { contentType = 'social', format, text = '', title = '', brand = '', industry = '', goal = '', brandDna = null, batch = null } = params;
   const isSingle = !batch || !batch.length;
   const visualContext = buildVisualContext({ industry, title, goal, format, brandDna });
   const cacheKey = `${text.slice(0, 40)}::${format || 'social'}::${visualContext.industryKey || 'generic'}`;
@@ -191,13 +369,11 @@ export async function runMediaEngine(
     if (cached) return cached;
   }
 
-  // 1. LLM Batch Visual Brief Expansion
   let briefs = [];
   if (batch && batch.length) {
     briefs = await expandVisualBriefs({ batch, brand, env, brand_id: brandDna?.brand_id });
   }
 
-  // Virtual batch of 1 if single post request, or fallback if LLM failed
   if (!briefs.length) {
     const fallbackList = batch && batch.length ? batch : [{ title, caption: text }];
     briefs = fallbackList.map((p, idx) => {
@@ -211,8 +387,7 @@ export async function runMediaEngine(
     });
   }
 
-  // 2. Parallel Labeled Fetching
-  // Check if this brand has an active Adobe integration connected via OAuth
+  // Fetch Adobe details
   let hasAdobe = false;
   if (brandDna?.brand_id) {
     try {
@@ -227,9 +402,7 @@ export async function runMediaEngine(
     }
   }
 
-  // Deduplicate query string array to restrict subrequest limits
   const uniqueQueries = [...new Set(briefs.flatMap(b => b.search_queries))].slice(0, 10);
-  
   const fetchPromises = uniqueQueries.flatMap(q => {
     const list = [
       fetchPexels({ query: q, orientation: visualContext.expectedCategories?.includes('portrait') ? 'portrait' : 'landscape', limit: 12 }, env).catch(() => []),
@@ -244,14 +417,11 @@ export async function runMediaEngine(
 
   const fetchedResults = await Promise.all(fetchPromises);
   const raw = fetchedResults.flat();
-
-  // Deduplicate raw candidate pool
   const uniqueCandidates = dedupe(raw).map(img => ({
     ...img,
     category: assignCategory(img)
   }));
 
-  // 3. MAB Prior Category CTR CTR Boost
   const visualPerformance = {};
   if (brandDna?.brand_id) {
     try {
@@ -268,7 +438,6 @@ export async function runMediaEngine(
     }
   }
 
-  // 4. Semantic Scoring & Bipartite Greedy Assignment
   const assignedImages = new Array(briefs.length).fill(null);
   const assignedImageIds = new Set();
   const matches = [];
@@ -282,7 +451,6 @@ export async function runMediaEngine(
     });
   });
 
-  // Sort score descending
   matches.sort((a, b) => b.score - a.score);
 
   for (const match of matches) {
@@ -295,7 +463,6 @@ export async function runMediaEngine(
     }
   }
 
-  // Backfill any unmatched entries
   briefs.forEach((brief, bIdx) => {
     if (assignedImages[bIdx] === null) {
       for (const img of uniqueCandidates) {
@@ -307,7 +474,6 @@ export async function runMediaEngine(
         }
       }
     }
-    // Final absolute fallbacks if pool exhausted
     if (assignedImages[bIdx] === null) {
       const url = FALLBACK_POOL[bIdx % FALLBACK_POOL.length];
       assignedImages[bIdx] = {

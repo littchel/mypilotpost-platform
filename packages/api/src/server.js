@@ -263,7 +263,7 @@ import {
   updateCampaignStatus,
 } from "./core/campaigns/campaigns.js";
 
-import { generateCampaignPlan, generatePostIdea, generateRecommendation, generateVisualBrief } from "./core/templates/templates.js";
+import { generateCampaignPlan, generatePostIdea, generateRecommendation, generateVisualBrief, getTemplateById } from "./core/templates/templates.js";
 import { getStudioOpportunities, generateStudioPost, runPlaybook, generateCampaignContent, getStudioVault, scrapeWebsite } from "./core/studio/studio.js";
 
 /* ======================================================
@@ -2848,6 +2848,9 @@ export default {
           return withCors(request, scrapeWebsite(request, env, auth));
 
         /* ---------- TEMPLATES ---------- */
+        if (method === "GET" && path.startsWith("/api/customer/templates/"))
+          return withCors(request, getTemplateById(request, env, auth));
+
         if (method === "POST" && path === "/api/customer/templates/generate-campaign")
           return withCors(request, generateCampaignPlan(request, env, auth));
 

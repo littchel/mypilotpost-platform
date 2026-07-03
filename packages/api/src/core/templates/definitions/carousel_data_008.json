@@ -1,0 +1,102 @@
+{
+  "template_id": "carousel_data_008",
+  "name": "8-Slide Data & Insight Carousel",
+  "format": "carousel",
+  "intent": ["authority", "education"],
+  "pillars": ["data", "insights"],
+  "platforms": ["instagram", "linkedin"],
+  "dimensions": {
+    "width": 1080,
+    "height": 1350
+  },
+  "animation_preset": "fade_slide",
+  "slides": [
+    {
+      "slot_id": "slide_1_cover",
+      "slot_type": "hero",
+      "layout": "data_cover",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
+        { "type": "headline", "position": { "x": 10, "y": 25, "width": 80, "height": 30, "z_index": 2 }, "max_chars": 60, "overlay": false },
+        { "type": "logo", "position": { "x": 5, "y": 5, "width": 15, "height": 5, "z_index": 2 }, "overlay": true }
+      ]
+    },
+    {
+      "slot_id": "slide_2_chart",
+      "slot_type": "body",
+      "layout": "chart_visual",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
+        { "type": "image", "position": { "x": 10, "y": 15, "width": 80, "height": 55, "z_index": 2 }, "required_aspect_ratio": "4:3", "min_width": 864, "min_height": 648, "overlay": false },
+        { "type": "headline", "position": { "x": 10, "y": 75, "width": 80, "height": 15, "z_index": 3 }, "max_chars": 60, "overlay": true },
+        { "type": "logo", "position": { "x": 5, "y": 5, "width": 15, "height": 5, "z_index": 3 }, "overlay": true }
+      ]
+    },
+    {
+      "slot_id": "slide_3_insight",
+      "slot_type": "body",
+      "layout": "insight_statement",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
+        { "type": "headline", "position": { "x": 10, "y": 15, "width": 80, "height": 10, "z_index": 2 }, "max_chars": 50, "overlay": false },
+        { "type": "body", "position": { "x": 10, "y": 30, "width": 80, "height": 60, "z_index": 2 }, "max_chars": 260, "overlay": false },
+        { "type": "logo", "position": { "x": 5, "y": 5, "width": 15, "height": 5, "z_index": 2 }, "overlay": true }
+      ]
+    },
+    {
+      "slot_id": "slide_4_imp1",
+      "slot_type": "body",
+      "layout": "implication_item",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
+        { "type": "headline", "position": { "x": 10, "y": 15, "width": 80, "height": 10, "z_index": 2 }, "max_chars": 45, "overlay": false },
+        { "type": "body", "position": { "x": 10, "y": 30, "width": 80, "height": 60, "z_index": 2 }, "max_chars": 240, "overlay": false },
+        { "type": "logo", "position": { "x": 5, "y": 5, "width": 15, "height": 5, "z_index": 2 }, "overlay": true }
+      ]
+    },
+    {
+      "slot_id": "slide_5_imp2",
+      "slot_type": "body",
+      "layout": "implication_item",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
+        { "type": "headline", "position": { "x": 10, "y": 15, "width": 80, "height": 10, "z_index": 2 }, "max_chars": 45, "overlay": false },
+        { "type": "body", "position": { "x": 10, "y": 30, "width": 80, "height": 60, "z_index": 2 }, "max_chars": 240, "overlay": false },
+        { "type": "logo", "position": { "x": 5, "y": 5, "width": 15, "height": 5, "z_index": 2 }, "overlay": true }
+      ]
+    },
+    {
+      "slot_id": "slide_6_imp3",
+      "slot_type": "body",
+      "layout": "implication_item",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
+        { "type": "headline", "position": { "x": 10, "y": 15, "width": 80, "height": 10, "z_index": 2 }, "max_chars": 45, "overlay": false },
+        { "type": "body", "position": { "x": 10, "y": 30, "width": 80, "height": 60, "z_index": 2 }, "max_chars": 240, "overlay": false },
+        { "type": "logo", "position": { "x": 5, "y": 5, "width": 15, "height": 5, "z_index": 2 }, "overlay": true }
+      ]
+    },
+    {
+      "slot_id": "slide_7_summary",
+      "slot_type": "body",
+      "layout": "takeaways_summary",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
+        { "type": "headline", "position": { "x": 10, "y": 15, "width": 80, "height": 10, "z_index": 2 }, "max_chars": 50, "overlay": false },
+        { "type": "body", "position": { "x": 10, "y": 30, "width": 80, "height": 60, "z_index": 2 }, "max_chars": 260, "overlay": false },
+        { "type": "logo", "position": { "x": 5, "y": 5, "width": 15, "height": 5, "z_index": 2 }, "overlay": true }
+      ]
+    },
+    {
+      "slot_id": "slide_8_cta",
+      "slot_type": "cta",
+      "layout": "closing_call_action",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
+        { "type": "headline", "position": { "x": 10, "y": 20, "width": 80, "height": 20, "z_index": 2 }, "max_chars": 60, "overlay": false },
+        { "type": "cta_button", "position": { "x": 30, "y": 55, "width": 40, "height": 12, "z_index": 2 }, "max_chars": 25, "overlay": false },
+        { "type": "logo", "position": { "x": 42.5, "y": 5, "width": 15, "height": 5, "z_index": 2 }, "overlay": true }
+      ]
+    }
+  ]
+}

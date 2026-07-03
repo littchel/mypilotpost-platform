@@ -357,3 +357,23 @@ export async function generateVisualBrief(request, env, auth) {
 
   return json({ idea_name, industry: industryTerm, queries, images, videos });
 }
+
+export async function getTemplateById(request, env, auth) {
+  if (!auth?.brand_id) return error("Unauthorized", "UNAUTHORIZED", null, 401);
+  
+  const url = new URL(request.url);
+  const templateId = url.pathname.split("/").pop();
+  if (!templateId) return error("Template ID is required", "BAD_REQUEST", null, 400);
+
+  const { getTemplate } = await import("./templateStore.js");
+
+  try {
+    const template = await getTemplate(templateId, env);
+    if (!template) {
+      return error("Template not found", "NOT_FOUND", null, 404);
+    }
+    return json(template);
+  } catch (err) {
+    return error(`Failed to load template: ${err.message}`, "INTERNAL_ERROR", null, 500);
+  }
+}

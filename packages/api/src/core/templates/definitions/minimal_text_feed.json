@@ -1,0 +1,43 @@
+{
+  "template_id": "minimal_text_feed",
+  "name": "Minimal Text Feed Post",
+  "format": "feed_post",
+  "intent": ["awareness", "authority"],
+  "pillars": ["thought_leadership", "insights"],
+  "platforms": ["linkedin", "twitter", "instagram"],
+  "dimensions": {
+    "width": 1080,
+    "height": 1080
+  },
+  "slides": [
+    {
+      "slot_id": "slide_1",
+      "slot_type": "hero",
+      "layout": "minimalist_centered_typography",
+      "components": [
+        {
+          "type": "background",
+          "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 },
+          "overlay": false
+        },
+        {
+          "type": "headline",
+          "position": { "x": 10, "y": 30, "width": 80, "height": 15, "z_index": 2 },
+          "max_chars": 50,
+          "overlay": false
+        },
+        {
+          "type": "body",
+          "position": { "x": 10, "y": 50, "width": 80, "height": 30, "z_index": 2 },
+          "max_chars": 200,
+          "overlay": false
+        },
+        {
+          "type": "logo",
+          "position": { "x": 45, "y": 15, "width": 10, "height": 5, "z_index": 2 },
+          "overlay": true
+        }
+      ]
+    }
+  ]
+}

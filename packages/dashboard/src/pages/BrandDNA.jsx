@@ -144,12 +144,141 @@ const ContentDNAPanel = ({ data, onChange }) => (
 );
 
 const VisualDNAPanel = ({ data, onChange }) => (
-  <div>
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
     <GuidedField label="Primary brand colour" helper="Your main brand colour (hex code or description)." placeholder="#2563EB or 'electric blue'" value={data.primaryColor} onChange={v => onChange('primaryColor', v)} />
     <GuidedField label="Secondary colours" helper="Supporting palette colours." placeholder="White, dark navy, warm gold..." value={data.secondaryColors} onChange={v => onChange('secondaryColors', v)} />
     <GuidedField label="Typography style" helper="Your font choices and typographic personality." placeholder="Clean sans-serif, modern editorial..." value={data.typography} onChange={v => onChange('typography', v)} />
     <GuidedField label="Visual direction" helper="How do your images, graphics, and visuals feel? Professional studio photography? Bold flat design? Documentary-style?" placeholder="Our visual style is..." value={data.visualDirection} onChange={v => onChange('visualDirection', v)} multiline example="Clean, premium, minimal. White backgrounds, natural light photography, confident people." />
     <GuidedField label="Imagery style" helper="What do your photos and graphics communicate emotionally?" placeholder="Our imagery evokes..." value={data.imageryStyle} onChange={v => onChange('imageryStyle', v)} />
+
+    {/* Brand Visual Kit Extension */}
+    <div style={{ marginTop: 20, borderTop: '1px solid #e2e8f0', paddingTop: 20 }}>
+      <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 12 }}>Brand Visual Kit Configuration</h3>
+      <p style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>Configure color HEX values, typography selections, and layout preferences used in dynamic visual rendering.</p>
+      
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
+        <div>
+          <label className="extra-small fw-bold text-muted text-uppercase mb-1" style={{ display: "block" }}>Primary Color (Hex)</label>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input 
+              type="color" 
+              value={data.primaryColorHex || '#1A73E8'} 
+              onChange={e => onChange('primaryColorHex', e.target.value)} 
+              style={{ width: 36, height: 36, padding: 0, border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer' }}
+            />
+            <input 
+              type="text" 
+              className="form-control form-control-sm"
+              value={data.primaryColorHex || ''} 
+              placeholder="#1A73E8"
+              onChange={e => onChange('primaryColorHex', e.target.value)} 
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="extra-small fw-bold text-muted text-uppercase mb-1" style={{ display: "block" }}>Secondary Color (Hex)</label>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input 
+              type="color" 
+              value={data.secondaryColorHex || '#34A853'} 
+              onChange={e => onChange('secondaryColorHex', e.target.value)} 
+              style={{ width: 36, height: 36, padding: 0, border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer' }}
+            />
+            <input 
+              type="text" 
+              className="form-control form-control-sm"
+              value={data.secondaryColorHex || ''} 
+              placeholder="#34A853"
+              onChange={e => onChange('secondaryColorHex', e.target.value)} 
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="extra-small fw-bold text-muted text-uppercase mb-1" style={{ display: "block" }}>Headline Font Pairing</label>
+          <select 
+            className="form-select form-select-sm"
+            value={data.fontPairingHeadline || 'Inter'} 
+            onChange={e => onChange('fontPairingHeadline', e.target.value)}
+          >
+            <option value="Inter">Inter (Sans)</option>
+            <option value="Outfit">Outfit (Display)</option>
+            <option value="Playfair Display">Playfair Display (Serif)</option>
+            <option value="Merriweather">Merriweather (Serif)</option>
+            <option value="Roboto">Roboto (Clean)</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="extra-small fw-bold text-muted text-uppercase mb-1" style={{ display: "block" }}>Body Font Pairing</label>
+          <select 
+            className="form-select form-select-sm"
+            value={data.fontPairingBody || 'Inter'} 
+            onChange={e => onChange('fontPairingBody', e.target.value)}
+          >
+            <option value="Inter">Inter (Sans)</option>
+            <option value="Roboto">Roboto (Clean)</option>
+            <option value="Lora">Lora (Serif)</option>
+            <option value="Merriweather">Merriweather (Serif)</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="extra-small fw-bold text-muted text-uppercase mb-1" style={{ display: "block" }}>Visual Style Preset</label>
+          <select 
+            className="form-select form-select-sm"
+            value={data.visualStyle || 'minimal'} 
+            onChange={e => onChange('visualStyle', e.target.value)}
+          >
+            <option value="minimal">Minimal</option>
+            <option value="bold">Bold</option>
+            <option value="warm">Warm</option>
+            <option value="tech">Tech</option>
+            <option value="organic">Organic</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="extra-small fw-bold text-muted text-uppercase mb-1" style={{ display: "block" }}>Watermark Logo Position</label>
+          <select 
+            className="form-select form-select-sm"
+            value={data.watermarkPosition || 'bottom_right'} 
+            onChange={e => onChange('watermarkPosition', e.target.value)}
+          >
+            <option value="top_left">Top Left</option>
+            <option value="top_right">Top Right</option>
+            <option value="bottom_left">Bottom Left</option>
+            <option value="bottom_right">Bottom Right</option>
+            <option value="none">No Watermark</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="extra-small fw-bold text-muted text-uppercase mb-1" style={{ display: "block" }}>Background Preference</label>
+          <select 
+            className="form-select form-select-sm"
+            value={data.backgroundPreference || 'light'} 
+            onChange={e => onChange('backgroundPreference', e.target.value)}
+          >
+            <option value="light">Light Mode</option>
+            <option value="dark">Dark Mode</option>
+            <option value="gradient">Gradient Blend</option>
+          </select>
+        </div>
+
+        <div style={{ gridColumn: 'span 2' }}>
+          <label className="extra-small fw-bold text-muted text-uppercase mb-1" style={{ display: "block" }}>Logo Asset URL</label>
+          <input 
+            type="text" 
+            className="form-control form-control-sm"
+            value={data.logoAssetUrl || ''} 
+            placeholder="https://assets.yourbrand.com/logo.png"
+            onChange={e => onChange('logoAssetUrl', e.target.value)} 
+          />
+        </div>
+      </div>
+    </div>
   </div>
 );
 
@@ -231,6 +360,10 @@ const EMPTY_DNA = {
   tone: '', vocabulary: [], forbiddenLanguage: [], ctaStyle: '', communicationStyle: '',
   pillars: [], formats: [], cadence: '', authorityThemes: [], narrativePriorities: '',
   primaryColor: '', secondaryColors: '', typography: '', visualDirection: '', imageryStyle: '',
+  primaryColorHex: '#1A73E8', secondaryColorHex: '#34A853',
+  fontPairingHeadline: 'Inter', fontPairingBody: 'Inter',
+  logoAssetUrl: '', visualStyle: 'minimal',
+  watermarkPosition: 'bottom_right', backgroundPreference: 'light',
   awarenessGoal: '', leadGoal: '', retentionGoal: '', seoGoal: '', authorityGoal: '', conversionGoal: '',
   competitors: [{ name: '', strengths: '', weaknesses: '', whitespace: '' }],
 };
@@ -271,6 +404,14 @@ function mapApiToDna(res) {
     typography: vi.typography_main || '',
     visualDirection: vi.visual_direction || '',
     imageryStyle: vi.imagery_style || '',
+    primaryColorHex: vi.primary_color_hex || '#1A73E8',
+    secondaryColorHex: vi.secondary_color_hex || '#34A853',
+    fontPairingHeadline: vi.font_pairing_headline || 'Inter',
+    fontPairingBody: vi.font_pairing_body || 'Inter',
+    logoAssetUrl: vi.logo_asset_url || '',
+    visualStyle: vi.visual_style || 'minimal',
+    watermarkPosition: vi.watermark_position || 'bottom_right',
+    backgroundPreference: vi.background_preference || 'light',
     awarenessGoal: o.awareness_goal || '',
     leadGoal: o.leads_goal || '',
     retentionGoal: o.retention_goal || '',
@@ -320,6 +461,14 @@ function mapDnaToApi(dna) {
       typography_main: dna.typography || null,
       visual_direction: dna.visualDirection || null,
       imagery_style: dna.imageryStyle || null,
+      primary_color_hex: dna.primaryColorHex || null,
+      secondary_color_hex: dna.secondaryColorHex || null,
+      font_pairing_headline: dna.fontPairingHeadline || null,
+      font_pairing_body: dna.fontPairingBody || null,
+      logo_asset_url: dna.logoAssetUrl || null,
+      visual_style: dna.visualStyle || null,
+      watermark_position: dna.watermarkPosition || null,
+      background_preference: dna.backgroundPreference || null,
     },
     objectives: {
       awareness_goal: dna.awarenessGoal || null,

@@ -96,8 +96,6 @@ export const OnboardingProvider = ({ children }) => {
     try {
       await apiRequest("/api/customer/onboarding/complete", { method: "POST" });
       trackOnboardingEvent("onboarding_complete", { mode: data.onboardingMode || signupSource });
-      setShowCelebration(true);
-      setTimeout(() => setShowCelebration(false), 3500);
       setIsComplete(true);
     } catch (err) {
       console.error("Failed to complete onboarding", err);

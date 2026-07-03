@@ -14,7 +14,8 @@ const PlatformSVG = ({ id, size = 20, color }) => {
 };
 
 const PlatformsStep = () => {
-  const { data, nextStep } = useOnboarding();
+  const { data, updateStep, completeOnboarding } = useOnboarding();
+  const [loading, setLoading] = useState(false);
 
   const [selected, setSelected] = useState(data?.platforms || []);
   const [socialLinks, setSocialLinks] = useState({
@@ -40,7 +41,7 @@ const PlatformsStep = () => {
     );
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     const hasSocial = Object.values(socialLinks).some(link => link && link.trim());
     const hasWebsite = data.websiteURL && data.websiteURL.trim();
 
@@ -49,7 +50,15 @@ const PlatformsStep = () => {
       return;
     }
 
-    nextStep({ platforms: selected, socialLinks });
+    setLoading(true);
+    try {
+      await updateStep(6, { platforms: selected, socialLinks });
+      await completeOnboarding();
+    } catch (err) {
+      setError("An error occurred. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -104,8 +113,9 @@ const PlatformsStep = () => {
       <button
         className="btn btn-primary w-100 py-3 fw-bold rounded-pill shadow-sm mt-2"
         onClick={handleContinue}
+        disabled={loading}
       >
-        Confirm & Continue
+        {loading ? <span className="spinner-border spinner-border-sm me-2"></span> : "Confirm & Complete Onboarding"}
       </button>
     </div>
   );

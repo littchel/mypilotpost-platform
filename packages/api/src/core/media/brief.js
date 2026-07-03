@@ -185,3 +185,48 @@ export function generateBrief({
     defaultCategory: platformRules.defaultCategory,
   };
 }
+
+const SLOT_MODIFIERS = {
+  'hero': ' dramatic lighting, wide angle, cinematic, negative space on left',
+  'body': ' clean composition, professional setting, focused',
+  'cta': ' bright, energetic, call to action, attention-grabbing',
+  'background_texture': ' soft focus, minimalist, blurred background, subtle gradient, abstract',
+  'product_showcase': ' studio lighting, clean cutout, isolated on white, high detail, macro',
+  'human_element': ' candid shot, natural light, authentic expressions, lifestyle, diverse',
+  'cover': ' bold, high contrast, magazine style, impactful',
+  'icon_support': ' simple, flat vector, geometric, isolated graphic, minimal'
+};
+
+export function generateSlotQuery(text, industry, slotType, platform) {
+  // 1. Start with base query from text + industry
+  const textWords = extractKeywords(text || "").slice(0, 3);
+  const indMod = industryModifier(industry) || (industry ? { subject: industry } : null);
+  const indWord = indMod ? indMod.subject.split(' ')[0] : (industry ? industry.toLowerCase().trim().split(/\s+/)[0] : "");
+
+  // Deduplicate words for clean base query
+  const seen = new Set();
+  const baseParts = [...textWords, indWord].filter(p => {
+    if (!p) return false;
+    const k = p.toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+
+  const baseQuery = baseParts.length > 0 ? baseParts.join(" ") : "lifestyle";
+
+  // 2. Append the appropriate SLOT_MODIFIER
+  const normalizedSlot = (slotType || "").toLowerCase().trim();
+  const modifier = SLOT_MODIFIERS[normalizedSlot] || "";
+  let finalQuery = baseQuery + modifier;
+
+  // 3. Apply platform-specific orientation (Instagram=portrait, LinkedIn=landscape, etc.)
+  const normalizedPlatform = (platform || "instagram").toLowerCase().trim();
+  const platformRules = PLATFORM_RULES[normalizedPlatform] || PLATFORM_RULES.instagram;
+  const orientation = platformRules.orientation || "portrait";
+
+  finalQuery += `, ${orientation}`;
+
+  // 4. Return final query string
+  return finalQuery.trim();
+}

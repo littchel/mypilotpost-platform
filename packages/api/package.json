@@ -6,7 +6,8 @@
     "bcryptjs": "^3.0.3",
     "hono": "^4.12.15",
     "jsonwebtoken": "^9.0.3",
-    "nanoid": "^5.1.6"
+    "nanoid": "^5.1.6",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "wrangler": "^4.86.0"
