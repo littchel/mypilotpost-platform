@@ -151,8 +151,8 @@ export async function processGrowthAction(request, env, auth) {
     return error("Invalid JSON", 400);
   }
 
-  const { type, action_type, meta = {} } = body;
-  const action = type || action_type;
+  const { type, action_type, action: bodyAction, meta = {} } = body;
+  const action = type || action_type || bodyAction;
   if (!action) return error("action type required", 400);
 
   // Validate action (only allow specific ones from frontend)
