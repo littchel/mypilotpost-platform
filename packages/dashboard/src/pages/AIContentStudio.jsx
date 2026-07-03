@@ -5,6 +5,7 @@ import PlatformIcon from "../components/shared/PlatformIcon";
 import { fetchMediaSuggestions, trackImageImported } from "../services/mediaSuggestions";
 import { PreviewOverlays } from "../components/publishing/PlatformPreviewPanel";
 import IndustryAutoSuggest from "../components/shared/IndustryAutoSuggest";
+import TemplateCanvas from "../components/TemplateCanvas";
 
 const CSS = `
 @keyframes cs-spin    { to { transform:rotate(360deg) } }
@@ -15,8 +16,8 @@ const CSS = `
   background-size:200% 100%;
   animation:cs-shimmer 1.4s infinite;
 }
-.cs-card { animation:cs-in 0.3s ease both; }
-.cs-card:hover { transform:translateY(-2px)!important; box-shadow:0 12px 32px rgba(15,23,42,0.12)!important; }
+.cs-card { animation:cs-in 0.3s ease both; transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease; }
+.cs-card:hover { transform: scale(1.02) translateY(-4px)!important; box-shadow: 0 16px 40px rgba(15,23,42,0.16)!important; }
 `;
 
 // ── Calendar events ───────────────────────────────────────────────────────────
@@ -124,70 +125,111 @@ function preloadImg(src) {
 }
 
 // ── Discovery Card — Posts Discovery Card v1 ─────────────────────────────────
+function getFamilyFriendlyName(family) {
+  switch (family) {
+    case "carousel_comparison": return "Comparison Layout";
+    case "carousel_list": return "Listicle Layout";
+    case "story_fullscreen": return "Fullscreen Story";
+    case "quote_card": return "Quote Card";
+    case "hero_headline": return "Hero Headline";
+    case "split_layout": return "Split Layout";
+    default: return "Standard Feed";
+  }
+}
+
 // onSave optional — if provided renders Save button
 function DiscoveryCard({ opp, imageUrl, imgReady, activeBrand, brandDna, onPreview, onUseIdea, onSave, saved }) {
-  const title     = opp.idea || opp.title || opp.framework || "Content Opportunity";
   const format    = (opp.media_type || opp.format || opp.type || "Post").replace(/_/g, " ");
   const effort    = opp.effort || "15 min";
   const platforms = Array.isArray(opp.platforms) ? opp.platforms.slice(0, 3) : [];
 
+  const displayImage = opp.thumbnail_url || imageUrl || PEXELS_POOL[0];
+  const familyName = getFamilyFriendlyName(opp.suggested_template_family);
+
   return (
     <div className="cs-card" style={{
-      border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)",
-      background: "var(--surface-primary)", boxShadow: "0 2px 8px rgba(15,23,42,0.06)",
-      overflow: "hidden", display: "flex", flexDirection: "column", maxHeight: 520, transition: "all 0.22s",
+      border: "1px solid var(--border-subtle)",
+      borderRadius: "var(--radius-lg)",
+      background: "var(--surface-primary)",
+      boxShadow: "0 2px 8px rgba(15,23,42,0.06)",
+      overflow: "hidden",
+      display: "flex",
+      flexDirection: "column",
+      height: 480,
     }}>
-      {/* IMAGE 80% */}
-      <div style={{ position: "relative", width: "100%", height: 408, flexShrink: 0, overflow: "hidden", background: "var(--hover-bg)" }}>
-        {imgReady && imageUrl && (
-          <img src={imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+      {/* IMAGE / VISUAL 80% */}
+      <div style={{ position: "relative", width: "100%", height: 384, flexShrink: 0, overflow: "hidden", background: "var(--hover-bg)" }}>
+        {displayImage && (
+          <img src={displayImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
         )}
-        {imgReady && imageUrl && (
-          <PreviewOverlays overlays={generateBrandOverlay(opp, imageUrl, activeBrand, brandDna)} height={408} />
-        )}
-        <div style={{ position: "absolute", top: 10, left: 10, background: "rgba(15,23,42,0.6)", backdropFilter: "blur(6px)", borderRadius: "var(--radius-md)", padding: "4px 8px" }}>
-          <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "#fff", textTransform: "uppercase", letterSpacing: "0.06em" }}>{format}</span>
+
+        {/* Top-Left Corner: Format Badge */}
+        <div style={{ position: "absolute", top: 12, left: 12, background: "rgba(15,23,42,0.75)", backdropFilter: "blur(8px)", borderRadius: "var(--radius-md)", padding: "4px 8px", zIndex: 2 }}>
+          <span style={{ fontSize: "0.65rem", fontWeight: 800, color: "#fff", textTransform: "uppercase", letterSpacing: "0.06em" }}>{format}</span>
         </div>
-        <div style={{ position: "absolute", top: 10, right: 10, background: "rgba(15,23,42,0.6)", backdropFilter: "blur(6px)", borderRadius: "var(--radius-md)", padding: "4px 8px" }}>
+
+        {/* Top-Right Corner: Effort Badge */}
+        <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(15,23,42,0.75)", backdropFilter: "blur(8px)", borderRadius: "var(--radius-md)", padding: "4px 8px", zIndex: 2 }}>
           <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "#fff" }}>{effort}</span>
         </div>
+
+        {/* Bottom Area: Dark overlay gradient, Template Family + Hook */}
+        <div style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          padding: "20px 14px 16px",
+          background: "linear-gradient(to top, rgba(15,23,42,0.95) 0%, rgba(15,23,42,0.6) 60%, transparent 100%)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
+          zIndex: 2
+        }}>
+          <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "rgba(255,255,255,0.75)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            {familyName}
+          </span>
+          <div style={{
+            fontSize: "0.85rem",
+            fontWeight: 700,
+            color: "#ffffff",
+            lineHeight: 1.3,
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+            textOverflow: "ellipsis"
+          }}>
+            {opp.hook || opp.idea}
+          </div>
+        </div>
+
+        {/* Social Platforms */}
         {platforms.length > 0 && (
-          <div style={{ position: "absolute", bottom: 10, left: 10, display: "flex", gap: 4 }}>
+          <div style={{ position: "absolute", top: 48, left: 12, display: "flex", flexDirection: "column", gap: 4, zIndex: 2 }}>
             {platforms.map(p => (
-              <div key={p} style={{ background: "rgba(15,23,42,0.6)", backdropFilter: "blur(6px)", borderRadius: "var(--radius-md)", padding: "3px 8px 3px 5px", display: "flex", alignItems: "center", gap: 4 }}>
-                <PlatformIcon platform={p} size={11} />
-                <span style={{ fontSize: "0.65rem", fontWeight: 600, color: "#fff", textTransform: "capitalize" }}>{p}</span>
+              <div key={p} style={{ background: "rgba(15,23,42,0.75)", backdropFilter: "blur(8px)", borderRadius: "var(--radius-md)", padding: "3px 6px", display: "flex", alignItems: "center" }}>
+                <PlatformIcon platform={p} size={10} />
               </div>
             ))}
           </div>
         )}
-        {opp.calendar_event && (
-          <div style={{ position: "absolute", bottom: 10, right: 10, background: "rgba(15,23,42,0.6)", backdropFilter: "blur(6px)", borderRadius: "var(--radius-md)", padding: "3px 8px" }}>
-            <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "#fff" }}>{opp.days_away ? `${opp.days_away}d` : "soon"}</span>
-          </div>
-        )}
       </div>
 
-      {/* BOTTOM 20% */}
-      <div style={{ padding: "12px 14px 14px", flex: 1 }}>
-        <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-main)", lineHeight: 1.3, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {title}
-        </div>
-        <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: 12 }}>
-          Suggested for your audience
-        </div>
-        <div style={{ display: "flex", gap: 6 }}>
+      {/* CONTROLS 20% */}
+      <div style={{ padding: "12px 14px", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", background: "var(--surface-primary)" }}>
+        <div style={{ display: "flex", gap: 8 }}>
           <button type="button" onClick={() => onPreview(opp, imageUrl)}
-            style={{ flex: 1, border: "1px solid var(--border-subtle)", background: "var(--surface-secondary)", color: "var(--text-main)", borderRadius: "var(--radius-md)", padding: "8px 0", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer" }}>
+            style={{ flex: 1, border: "1px solid var(--border-subtle)", background: "var(--surface-secondary)", color: "var(--text-main)", borderRadius: "var(--radius-md)", padding: "8px 0", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}>
             Preview
           </button>
           <button type="button" onClick={() => onUseIdea(opp)}
-            style={{ flex: 1, border: "none", background: "var(--pilot-blue)", color: "#fff", borderRadius: "var(--radius-md)", padding: "8px 0", fontSize: "0.85rem", fontWeight: 700, cursor: "pointer" }}>
+            style={{ flex: 1, border: "none", background: "var(--pilot-blue)", color: "#fff", borderRadius: "var(--radius-md)", padding: "8px 0", fontSize: "0.8rem", fontWeight: 700, cursor: "pointer", transition: "all 0.15s" }}>
             Use Idea
           </button>
           {onSave && (
             <button type="button" onClick={() => onSave(opp, imageUrl)} disabled={saved}
-              style={{ flex: 1, border: `1px solid ${saved ? "var(--status-success)" : "var(--border-subtle)"}`, background: saved ? "var(--surface-primary)" : "var(--surface-secondary)", color: saved ? "var(--status-success)" : "var(--text-main)", borderRadius: "var(--radius-md)", padding: "8px 0", fontSize: "0.85rem", fontWeight: saved ? 700 : 600, cursor: saved ? "default" : "pointer" }}>
+              style={{ flex: 0.8, border: `1px solid ${saved ? "var(--status-success)" : "var(--border-subtle)"}`, background: saved ? "var(--surface-primary)" : "var(--surface-secondary)", color: saved ? "var(--status-success)" : "var(--text-main)", borderRadius: "var(--radius-md)", padding: "8px 0", fontSize: "0.8rem", fontWeight: saved ? 700 : 600, cursor: saved ? "default" : "pointer" }}>
               {saved ? "✓ Saved" : "Save"}
             </button>
           )}
@@ -213,10 +255,25 @@ function AccordionRow({ label, body, open, onToggle }) {
 // ── Preview Modal ─────────────────────────────────────────────────────────────
 function PreviewModal({ opp, imageUrl, activeBrand, brandDna, onClose, onUseIdea }) {
   const [openRow, setOpenRow] = useState(0);
+  const [templateSchema, setTemplateSchema] = useState(null);
+
   const brandName = activeBrand?.name || "Your Brand";
-  const initials  = brandName.split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase();
-  // Use actual generated caption if available, otherwise fall back to hook/idea
-  const caption   = opp._caption || opp.caption || opp.hook || opp.idea || opp.title || "Open in Create Social Post to write your full post.";
+  const caption   = opp._caption || opp.caption || opp.hook || opp.idea || opp.title || "";
+
+  useEffect(() => {
+    if (opp.suggested_template_id) {
+      apiRequest(`/api/customer/templates/${opp.suggested_template_id}`)
+        .then(setTemplateSchema)
+        .catch(err => console.error("Failed to load preview template:", err));
+    }
+  }, [opp.suggested_template_id]);
+
+  const brandVars = {
+    primary_color: brandDna?.visual?.primary_color || "#1A73E8",
+    secondary_color: brandDna?.visual?.secondary_color || "#34A853",
+    font_stack: brandDna?.visual?.font_pairing_body || "Inter",
+    logo_url: activeBrand?.logo_url || ""
+  };
 
   const rows = [
     {
@@ -243,45 +300,44 @@ function PreviewModal({ opp, imageUrl, activeBrand, brandDna, onClose, onUseIdea
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 3000, backdropFilter: "blur(3px)" }} />
       <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(820px, 94vw)", maxHeight: "88vh", background: "var(--surface-primary)", borderRadius: "var(--radius-lg)", border: "1px solid var(--border-subtle)", boxShadow: "0 20px 60px rgba(15,23,42,0.18)", zIndex: 3001, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-          <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-main)" }}>Content Preview</div>
+          <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-main)" }}>Opportunity Preview</div>
           <button type="button" onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, color: "var(--slate-400)", cursor: "pointer", lineHeight: 1 }}>×</button>
         </div>
         <div style={{ flex: 1, display: "flex", minHeight: 0, overflow: "hidden" }}>
           {/* LEFT */}
-          <div style={{ width: "46%", borderRight: "1px solid var(--border-subtle)", padding: "20px 16px", overflowY: "auto", background: "var(--surface-secondary)", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-            <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", alignSelf: "flex-start" }}>Post Preview</div>
-            <div style={{ background: "var(--surface-primary)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)", maxWidth: 340, width: "100%" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px" }}>
-                <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--pilot-blue)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: "#fff" }}>{initials}</span>
+          <div style={{ width: "48%", borderRight: "1px solid var(--border-subtle)", padding: "20px 16px", overflowY: "auto", background: "var(--surface-secondary)", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+            <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", alignSelf: "flex-start" }}>Visual Layout Preview</div>
+            <div style={{ width: 340, height: 340, borderRadius: "var(--radius-md)", overflow: "hidden", border: "1px solid var(--border-subtle)", background: "var(--surface-primary)", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", position: "relative" }}>
+              {templateSchema ? (
+                <TemplateCanvas
+                  templateSchema={templateSchema}
+                  slotData={{
+                    headline: { text: opp.hook || opp.idea || "" },
+                    body: { text: caption },
+                    image_url: { text: imageUrl }
+                  }}
+                  brandVariables={brandVars}
+                  dimensions={{ width: 340, height: 340 }}
+                />
+              ) : (
+                <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: "0.85rem" }}>
+                  Loading preview canvas...
                 </div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-main)" }}>{brandName}</div>
-                  <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Suggested</div>
-                </div>
-                <div style={{ marginLeft: "auto", color: "var(--text-muted)", fontSize: 16 }}>•••</div>
-              </div>
-              <div style={{ width: "100%", aspectRatio: "1/1", overflow: "hidden", background: "var(--hover-bg)", position: "relative" }}>
-                {imageUrl && <img src={imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
-                {imageUrl && (
-                  <PreviewOverlays overlays={generateBrandOverlay(opp, imageUrl, activeBrand, brandDna)} height={340} />
-                )}
-              </div>
-              <div style={{ padding: "8px 12px 4px", display: "flex", gap: 14, fontSize: 20, color: "var(--text-main)" }}>
-                <i className="far fa-heart" /><i className="far fa-comment" /><i className="far fa-paper-plane" />
-                <i className="far fa-bookmark" style={{ marginLeft: "auto" }} />
-              </div>
-              <div style={{ padding: "4px 12px 14px", fontSize: "0.85rem", color: "var(--text-main)", lineHeight: 1.6, maxHeight: 180, overflowY: "auto" }}>
-                <strong>{brandName.toLowerCase().replace(/\s+/g, "")}</strong>{" "}{caption}
-              </div>
+              )}
             </div>
           </div>
           {/* RIGHT */}
           <div style={{ flex: 1, padding: "20px 20px", overflowY: "auto", background: "var(--surface-primary)" }}>
-            <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>Intelligence</div>
+            <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>Intelligence Report</div>
             {rows.map((row, i) => (
               <AccordionRow key={i} label={row.label} body={row.body} open={openRow === i} onToggle={() => setOpenRow(openRow === i ? null : i)} />
             ))}
+            <div style={{ marginTop: 24, padding: 14, background: "var(--surface-secondary)", borderRadius: "var(--radius-md)", border: "1px solid var(--border-subtle)" }}>
+              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-main)", marginBottom: 6 }}>Copywriter Hook Idea</div>
+              <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", lineHeight: 1.4, fontStyle: "italic" }}>
+                "{opp.hook || opp.idea}"
+              </div>
+            </div>
           </div>
         </div>
         <div style={{ padding: "12px 20px", borderTop: "1px solid var(--border-subtle)", background: "var(--surface-secondary)", display: "flex", gap: 8, justifyContent: "flex-end", flexShrink: 0 }}>
@@ -447,6 +503,26 @@ function RouteModal({ opp, imageUrl, activeBrand, brandDna, switchTab, onClose }
     try {
       if (imageUrl) trackImageImported({ url: imageUrl, provider: 'pexels' });
       const generatedOverlays = generateBrandOverlay(opp, imageUrl, activeBrand, brandDna);
+      
+      const primaryColor = brandDna?.visual?.primary_color || "#1A73E8";
+      const secondaryColor = brandDna?.visual?.secondary_color || "#34A853";
+      const fontStack = brandDna?.visual?.font_pairing_body || "Inter";
+      
+      const layoutManifest = {
+        template_id: opp.suggested_template_id || "tpl_feed_generic_default",
+        brand_overrides: {
+          primary_color: primaryColor,
+          secondary_color: secondaryColor,
+          font_stack: fontStack,
+          logo_url: activeBrand?.logo_url || ""
+        },
+        slides: [
+          { text_anchor: "headline" },
+          { text_anchor: "body_paragraph_0" },
+          { text_anchor: "cta_text" }
+        ]
+      };
+
       sessionStorage.setItem("studio_idea_prefill", JSON.stringify({
         idea_id:             opp.id || opp.title,
         title:               opp.idea || opp.title || opp.framework || "",
@@ -465,6 +541,7 @@ function RouteModal({ opp, imageUrl, activeBrand, brandDna, switchTab, onClose }
         brand_context:       opp.objective || opp.suggested_because || "",
         generationMeta:      { source: opp.source || "studio", playbook_type: opp.playbook_type || null },
         overlays:            generatedOverlays || null,
+        layout_manifest:     layoutManifest,
         source:              "studio",
       }));
     } catch {}
