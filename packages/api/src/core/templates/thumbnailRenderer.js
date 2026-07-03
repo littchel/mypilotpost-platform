@@ -1,4 +1,12 @@
-import sharp from 'sharp';
+// Headless Thumbnail Renderer with dynamic runtime loading & Cloudflare compatibility
+let sharp = null;
+try {
+  // Use variable to mask static bundling analyzers (e.g. esbuild/wrangler)
+  const libName = "sharp";
+  sharp = (await import(libName)).default;
+} catch (e) {
+  // sharp native library is not available in this environment (e.g. Cloudflare Workers V8 isolate)
+}
 
 /**
  * Headless Thumbnail Renderer for AI Content Studio opportunities and templates.
@@ -6,7 +14,7 @@ import sharp from 'sharp';
  * @param {Object} templateSchema The layout template schema definition.
  * @param {Object} slotData Content values, e.g. { headline, body, image_url }.
  * @param {Object} brandVariables Visual DNA rules, e.g. { primary_color, logo_url }.
- * @returns {Promise<Buffer>} Returns a PNG image buffer.
+ * @returns {Promise<Buffer>} Returns a PNG/SVG image buffer.
  */
 export async function generateOpportunityThumbnail(templateSchema, slotData, brandVariables) {
   const format = templateSchema?.format || 'feed_post';
@@ -19,7 +27,38 @@ export async function generateOpportunityThumbnail(templateSchema, slotData, bra
   const imageUrl = slotData?.image_url || null;
   const headline = slotData?.headline || slotData?.text || '';
 
-  // 1. Create base solid primary color canvas
+  const maxLineLen = isFeed ? 22 : 16;
+  const wrappedLines = wrapText(headline, maxLineLen);
+  const textH = wrappedLines.length * 30;
+  const startY = Math.max(40, (height - textH) / 2 + 10);
+
+  const tspanLines = wrappedLines.map((line, idx) => {
+    return `<tspan x="${width / 2}" dy="${idx === 0 ? 0 : '1.2em'}">${escapeXml(line)}</tspan>`;
+  }).join('');
+
+  // 1. Fallback to pure SVG buffer if sharp is not available (Cloudflare Workers)
+  if (!sharp) {
+    const pureSvg = `
+      <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+        <rect width="${width}" height="${height}" fill="${primaryColor}" />
+        <style>
+          .headline {
+            fill: #FFFFFF;
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            font-size: 22px;
+            font-weight: 800;
+            text-anchor: middle;
+          }
+        </style>
+        <text y="${startY}" class="headline">
+          ${tspanLines}
+        </text>
+      </svg>
+    `;
+    return Buffer.from(pureSvg);
+  }
+
+  // 2. Perform native sharp compositing if available
   let baseImage = sharp({
     create: {
       width,
@@ -31,7 +70,6 @@ export async function generateOpportunityThumbnail(templateSchema, slotData, bra
 
   const composites = [];
 
-  // 2. Fetch and resize/crop main slot image
   if (imageUrl) {
     try {
       const imgRes = await fetch(imageUrl);
@@ -47,7 +85,6 @@ export async function generateOpportunityThumbnail(templateSchema, slotData, bra
           left: 0
         });
 
-        // Add 40% dark overlay for readable text
         const overlay = Buffer.from(`
           <svg width="${width}" height="${height}">
             <rect x="0" y="0" width="${width}" height="${height}" fill="#000000" opacity="0.4" />
@@ -64,7 +101,6 @@ export async function generateOpportunityThumbnail(templateSchema, slotData, bra
     }
   }
 
-  // 3. Fetch and place brand logo in bottom-right corner
   if (logoUrl) {
     try {
       const logoRes = await fetch(logoUrl);
@@ -89,16 +125,6 @@ export async function generateOpportunityThumbnail(templateSchema, slotData, bra
     }
   }
 
-  // 4. Render headline text lines inside SVG
-  const maxLineLen = isFeed ? 22 : 16;
-  const wrappedLines = wrapText(headline, maxLineLen);
-  const textH = wrappedLines.length * 30;
-  const startY = Math.max(40, (height - textH) / 2 + 10);
-
-  const tspanLines = wrappedLines.map((line, idx) => {
-    return `<tspan x="${width / 2}" dy="${idx === 0 ? 0 : '1.2em'}">${escapeXml(line)}</tspan>`;
-  }).join('');
-
   const textOverlaySvg = `
     <svg width="${width}" height="${height}">
       <style>
@@ -122,7 +148,6 @@ export async function generateOpportunityThumbnail(templateSchema, slotData, bra
     left: 0
   });
 
-  // 5. Composite everything on base canvas
   const finalBuffer = await baseImage
     .composite(composites)
     .png()
@@ -131,7 +156,6 @@ export async function generateOpportunityThumbnail(templateSchema, slotData, bra
   return finalBuffer;
 }
 
-// Simple XML escaper to prevent SVG parsing errors
 function escapeXml(unsafe) {
   return (unsafe || '').replace(/[<>&'"]/g, (c) => {
     switch (c) {

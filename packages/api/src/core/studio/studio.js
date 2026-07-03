@@ -7,6 +7,9 @@ import { trackedRunLLM } from "../ai/ai_client.js";
 import { checkAndIncrement } from "../billing/enforcement.js";
 import { fetchBrandContext } from "../ai/brand_context.js";
 import { getTemplate, getTemplateForContent } from "../templates/templateStore.js";
+import { generateBrief } from "../media/brief.js";
+import { fetchPexels } from "../media/providers/pexels.js";
+import { generateOpportunityThumbnail } from "../templates/thumbnailRenderer.js";
 
 // Helper to map frameworks to corresponding template families
 function mapFrameworkToFamily(framework) {
@@ -62,13 +65,106 @@ function stripHTML(html) {
     .trim();
 }
 
+// Simple string hash function for cache indexing
+function getHash(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(16);
+}
+
+// Helper to resolve card hero image, render thumbnail, upload, and cache in Redis
+async function processCardThumbnail(card, suggestedTemplateId, visuals, auth, env) {
+  const cardHash = getHash(`${card.idea || ''}:${card.framework || ''}:${suggestedTemplateId}:${visuals.primary_color || ''}:${visuals.logo_url || ''}`);
+  const cacheKey = `studio_thumb:${auth.brand_id}:${cardHash}`;
+
+  // 1. Try Redis cache
+  if (env.REDIS_CLIENT) {
+    try {
+      const cached = await env.REDIS_CLIENT.get(cacheKey);
+      if (cached) return cached;
+    } catch (e) {
+      console.warn("[STUDIO THUMBNAIL] Redis read failed:", e.message);
+    }
+  }
+
+  // 2. Fetch hero image (lightweight)
+  let imageUrl = null;
+  const firstPlatform = Array.isArray(card.platforms) && card.platforms.length > 0
+    ? card.platforms[0]
+    : "instagram";
+  const format = suggestedTemplateId.includes("carousel") ? "carousel" : "feed_post";
+
+  try {
+    const brief = generateBrief({
+      platform: firstPlatform,
+      contentType: 'social',
+      format,
+      text: card.caption || card.idea || '',
+      title: card.idea || '',
+      brand: visuals.brandName || '',
+      industry: visuals.industry || '',
+      goal: card.objective || ''
+    });
+
+    const photos = await fetchPexels({
+      query: brief.query,
+      orientation: brief.orientation === 'portrait' ? 'portrait' : 'landscape',
+      limit: 1
+    }, env);
+
+    if (photos && photos.length > 0) {
+      imageUrl = photos[0].url || photos[0].preview || null;
+    }
+  } catch (err) {
+    console.warn("[STUDIO THUMBNAIL] Media fetch failed for card:", card.id, err.message);
+  }
+
+  // 3. Generate Thumbnail and upload to R2
+  let cdnUrl = "";
+  try {
+    const templateSchema = await getTemplate(suggestedTemplateId, env);
+    const first60Chars = (card.hook || card.idea || "").slice(0, 60);
+
+    const finalBuffer = await generateOpportunityThumbnail(
+      templateSchema,
+      { headline: first60Chars, image_url: imageUrl },
+      visuals
+    );
+
+    if (env.MEDIA_BUCKET) {
+      const r2Key = `opportunities/${auth.brand_id}/${cardHash}.png`;
+      const contentType = finalBuffer.toString('utf8', 0, 5) === '<svg ' ? 'image/svg+xml' : 'image/png';
+      await env.MEDIA_BUCKET.put(r2Key, finalBuffer, {
+        httpMetadata: { contentType }
+      });
+      cdnUrl = `${env.BASE_URL || "https://api.mypilotpost.com"}/api/media/file/${r2Key}`;
+    }
+  } catch (err) {
+    console.error("[STUDIO THUMBNAIL] Render/Upload failed for card:", card.id, err.message);
+  }
+
+  // 4. Save to Redis Cache (24-hour TTL)
+  if (cdnUrl && env.REDIS_CLIENT) {
+    try {
+      await env.REDIS_CLIENT.setEx(cacheKey, 24 * 60 * 60, cdnUrl);
+    } catch (e) {
+      console.warn("[STUDIO THUMBNAIL] Redis set failed:", e.message);
+    }
+  }
+
+  return cdnUrl;
+}
+
 // ── GET /api/customer/studio/opportunities ────────────────────────────────────
 export async function getStudioOpportunities(request, env, auth) {
   if (!auth?.brand_id) return error("Unauthorized", 401);
 
   const db = getDB(env);
   await checkAndIncrement(db, auth.user_id, "ai");
-  const { brand, context, brandName, industry, activePlatforms } = await fetchBrandCtx(db, auth.brand_id);
+  const { brand, context, brandName, industry, activePlatforms, visuals } = await fetchBrandCtx(db, auth.brand_id);
   const platforms = activePlatforms.length ? activePlatforms.join(", ") : "Facebook, Instagram, LinkedIn";
   const month = new Date().toLocaleString("en", { month: "long" });
 
@@ -150,7 +246,7 @@ Rules:
   const opps = result?.opportunities || buildFallbackOpps(brandName, industry, activePlatforms);
   
   // Enrich opportunities with strategic template mapping and template recommendation IDs
-  const enrichedOpps = [];
+  const promises = [];
   for (let i = 0; i < Math.min(opps.length, 20); i++) {
     const card = opps[i];
     const cardId = card.id || (i + 1);
@@ -190,22 +286,29 @@ Rules:
       ? card.platforms[0]
       : (activePlatforms.length ? activePlatforms[0] : "instagram");
 
-    const recommended = await getTemplateForContent({
-      format,
-      platform: firstPlatform,
-      intent,
-      pillars,
-      preferredTemplateId
-    }, env);
+    promises.push((async () => {
+      const recommended = await getTemplateForContent({
+        format,
+        platform: firstPlatform,
+        intent,
+        pillars,
+        preferredTemplateId
+      }, env);
 
-    enrichedOpps.push({
-      ...card,
-      id: cardId,
-      suggested_template_family: family,
-      suggested_template_id: recommended?.template_id || "tpl_feed_generic_default"
-    });
+      const suggestedTemplateId = recommended?.template_id || "tpl_feed_generic_default";
+      const thumbnailUrl = await processCardThumbnail(card, suggestedTemplateId, { ...visuals, brandName, industry }, auth, env);
+
+      return {
+        ...card,
+        id: cardId,
+        suggested_template_family: family,
+        suggested_template_id: suggestedTemplateId,
+        thumbnail_url: thumbnailUrl || null
+      };
+    })());
   }
 
+  const enrichedOpps = await Promise.all(promises);
   return json({ opportunities: enrichedOpps });
 }
 
