@@ -111,7 +111,8 @@ const TemplateCanvas = forwardRef(({
     if (!fCanvas || !activeSlide) return;
 
     fCanvas.clear();
-    fCanvas.setBackgroundColor(secondaryColor, fCanvas.renderAll.bind(fCanvas));
+    fCanvas.backgroundColor = secondaryColor;
+    fCanvas.requestRenderAll();
 
     const drawSlide = async () => {
       const components = activeSlide.components || [];
@@ -124,7 +125,8 @@ const TemplateCanvas = forwardRef(({
 
       // 1. Draw Background Rect first (and flag it as background for color clicks)
       const bgFill = palette.background || secondaryColor;
-      fCanvas.setBackgroundColor(bgFill, fCanvas.renderAll.bind(fCanvas));
+      fCanvas.backgroundColor = bgFill;
+      fCanvas.requestRenderAll();
 
       const bgRect = new Rect({
         left: 0,
