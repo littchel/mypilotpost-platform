@@ -6,6 +6,7 @@ import { fetchMediaSuggestions, trackImageImported } from "../services/mediaSugg
 import { PreviewOverlays } from "../components/publishing/PlatformPreviewPanel";
 import IndustryAutoSuggest from "../components/shared/IndustryAutoSuggest";
 import TemplateCanvas from "../components/TemplateCanvas";
+import TemplatePreviewModal from "../components/TemplatePreviewModal";
 
 const CSS = `
 @keyframes cs-spin    { to { transform:rotate(360deg) } }
@@ -252,108 +253,7 @@ function AccordionRow({ label, body, open, onToggle }) {
   );
 }
 
-// ── Preview Modal ─────────────────────────────────────────────────────────────
-function PreviewModal({ opp, imageUrl, activeBrand, brandDna, onClose, onUseIdea }) {
-  const [openRow, setOpenRow] = useState(0);
-  const [templateSchema, setTemplateSchema] = useState(null);
-
-  const brandName = activeBrand?.name || "Your Brand";
-  const caption   = opp._caption || opp.caption || opp.hook || opp.idea || opp.title || "";
-
-  useEffect(() => {
-    if (opp.suggested_template_id) {
-      apiRequest(`/api/customer/templates/${opp.suggested_template_id}`)
-        .then(setTemplateSchema)
-        .catch(err => console.error("Failed to load preview template:", err));
-    }
-  }, [opp.suggested_template_id]);
-
-  const brandVars = {
-    primary_color: brandDna?.visual?.primary_color || "#1A73E8",
-    secondary_color: brandDna?.visual?.secondary_color || "#34A853",
-    font_stack: brandDna?.visual?.font_pairing_body || "Inter",
-    logo_url: activeBrand?.logo_url || ""
-  };
-
-  const rows = [
-    {
-      label: "Why suggested",
-      body: opp.objective || opp.suggested_because || opp.reason
-        || "Based on your brand DNA and recent engagement patterns. This format is performing above average in your niche.",
-    },
-    {
-      label: "Brand signals",
-      body: `${opp.framework ? `Your brand responds well to ${opp.framework} content. ` : ""}This format matches your top-performing content type based on connected platform data.`,
-    },
-    {
-      label: "Campaign alignment",
-      body: opp.calendar_event
-        ? `Aligned with upcoming ${opp.calendar_event} — ${opp.days_away || "soon"} days away. Ideal timing.`
-        : opp.campaign_name
-          ? `Generated for campaign: ${opp.campaign_name}. Assign to campaign in the editor to track attribution.`
-          : "No active campaign currently linked. Assign a campaign after opening in the editor.",
-    },
-  ];
-
-  return (
-    <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 3000, backdropFilter: "blur(3px)" }} />
-      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(820px, 94vw)", maxHeight: "88vh", background: "var(--surface-primary)", borderRadius: "var(--radius-lg)", border: "1px solid var(--border-subtle)", boxShadow: "0 20px 60px rgba(15,23,42,0.18)", zIndex: 3001, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-          <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-main)" }}>Opportunity Preview</div>
-          <button type="button" onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, color: "var(--slate-400)", cursor: "pointer", lineHeight: 1 }}>×</button>
-        </div>
-        <div style={{ flex: 1, display: "flex", minHeight: 0, overflow: "hidden" }}>
-          {/* LEFT */}
-          <div style={{ width: "48%", borderRight: "1px solid var(--border-subtle)", padding: "20px 16px", overflowY: "auto", background: "var(--surface-secondary)", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-            <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", alignSelf: "flex-start" }}>Visual Layout Preview</div>
-            <div style={{ width: 340, height: 340, borderRadius: "var(--radius-md)", overflow: "hidden", border: "1px solid var(--border-subtle)", background: "var(--surface-primary)", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", position: "relative" }}>
-              {templateSchema ? (
-                <TemplateCanvas
-                  templateSchema={templateSchema}
-                  slotData={{
-                    headline: { text: opp.hook || opp.idea || "" },
-                    body: { text: caption },
-                    image_url: { text: imageUrl }
-                  }}
-                  brandVariables={brandVars}
-                  dimensions={{ width: 340, height: 340 }}
-                />
-              ) : (
-                <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: "0.85rem" }}>
-                  Loading preview canvas...
-                </div>
-              )}
-            </div>
-          </div>
-          {/* RIGHT */}
-          <div style={{ flex: 1, padding: "20px 20px", overflowY: "auto", background: "var(--surface-primary)" }}>
-            <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>Intelligence Report</div>
-            {rows.map((row, i) => (
-              <AccordionRow key={i} label={row.label} body={row.body} open={openRow === i} onToggle={() => setOpenRow(openRow === i ? null : i)} />
-            ))}
-            <div style={{ marginTop: 24, padding: 14, background: "var(--surface-secondary)", borderRadius: "var(--radius-md)", border: "1px solid var(--border-subtle)" }}>
-              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-main)", marginBottom: 6 }}>Copywriter Hook Idea</div>
-              <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", lineHeight: 1.4, fontStyle: "italic" }}>
-                "{opp.hook || opp.idea}"
-              </div>
-            </div>
-          </div>
-        </div>
-        <div style={{ padding: "12px 20px", borderTop: "1px solid var(--border-subtle)", background: "var(--surface-secondary)", display: "flex", gap: 8, justifyContent: "flex-end", flexShrink: 0 }}>
-          <button type="button" onClick={onClose}
-            style={{ border: "1px solid var(--border-subtle)", background: "var(--surface-primary)", color: "var(--text-main)", borderRadius: "var(--radius-md)", padding: "8px 16px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer" }}>
-            Close
-          </button>
-          <button type="button" onClick={() => onUseIdea(opp)}
-            style={{ border: "none", background: "var(--pilot-blue)", color: "#fff", borderRadius: "var(--radius-md)", padding: "8px 20px", fontSize: "0.85rem", fontWeight: 700, cursor: "pointer" }}>
-            Use Idea
-          </button>
-        </div>
-      </div>
-    </>
-  );
-}
+// ── Obsolete Preview Modal Removed (using TemplatePreviewModal) ────────────────
 
 // ── Route Modal — enriched prefill including image ────────────────────────────
 function generateBrandOverlay(opp, imageUrl, activeBrand, brandDna) {
@@ -837,9 +737,9 @@ function PostsTab({ activeBrand, brandDna: initialBrandDna, connectedPlatforms, 
       )}
 
       {preview && (
-        <PreviewModal opp={preview.opp} imageUrl={preview.imageUrl} activeBrand={activeBrand} brandDna={brandDna}
+        <TemplatePreviewModal opp={preview.opp} imageUrl={preview.imageUrl} activeBrand={activeBrand} brandDna={brandDna}
           onClose={() => setPreview(null)}
-          onUseIdea={o => { setPreview(null); setRouting({ opp: o, imageUrl: preview.imageUrl }); }} />
+          onUseIdea={o => { setPreview(null); switchTab("editor"); }} />
       )}
       {routing && (
         <RouteModal opp={routing.opp} imageUrl={routing.imageUrl} activeBrand={activeBrand} brandDna={brandDna} switchTab={switchTab} onClose={() => setRouting(null)} />
@@ -951,9 +851,9 @@ function AssetCardGrid({ cards, activeBrand, brandDna, switchTab, source }) {
       </div>
 
       {preview && (
-        <PreviewModal opp={preview.opp} imageUrl={preview.imageUrl} activeBrand={activeBrand} brandDna={brandDna}
+        <TemplatePreviewModal opp={preview.opp} imageUrl={preview.imageUrl} activeBrand={activeBrand} brandDna={brandDna}
           onClose={() => setPreview(null)}
-          onUseIdea={o => { setPreview(null); setRouting({ opp: o, imageUrl: preview.imageUrl }); }} />
+          onUseIdea={o => { setPreview(null); switchTab("editor"); }} />
       )}
       {routing && (
         <RouteModal opp={routing.opp} imageUrl={routing.imageUrl} activeBrand={activeBrand} brandDna={brandDna} switchTab={switchTab} onClose={() => setRouting(null)} />
