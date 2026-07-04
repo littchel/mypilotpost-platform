@@ -504,46 +504,50 @@ function RouteModal({ opp, imageUrl, activeBrand, brandDna, switchTab, onClose }
       if (imageUrl) trackImageImported({ url: imageUrl, provider: 'pexels' });
       const generatedOverlays = generateBrandOverlay(opp, imageUrl, activeBrand, brandDna);
       
-      const primaryColor = brandDna?.visual?.primary_color || "#1A73E8";
-      const secondaryColor = brandDna?.visual?.secondary_color || "#34A853";
-      const fontStack = brandDna?.visual?.font_pairing_body || "Inter";
-      
-      const layoutManifest = {
-        template_id: opp.suggested_template_id || "tpl_feed_generic_default",
-        brand_overrides: {
-          primary_color: primaryColor,
-          secondary_color: secondaryColor,
-          font_stack: fontStack,
-          logo_url: activeBrand?.logo_url || ""
-        },
-        slides: [
-          { text_anchor: "headline" },
-          { text_anchor: "body_paragraph_0" },
-          { text_anchor: "cta_text" }
-        ]
-      };
+      if (opp.draft_payload) {
+        sessionStorage.setItem("studio_idea_prefill", JSON.stringify(opp.draft_payload));
+      } else {
+        const primaryColor = brandDna?.visual?.primary_color || "#1A73E8";
+        const secondaryColor = brandDna?.visual?.secondary_color || "#34A853";
+        const fontStack = brandDna?.visual?.font_pairing_body || "Inter";
+        
+        const layoutManifest = {
+          template_id: opp.suggested_template_id || "tpl_feed_generic_default",
+          brand_overrides: {
+            primary_color: primaryColor,
+            secondary_color: secondaryColor,
+            font_stack: fontStack,
+            logo_url: activeBrand?.logo_url || ""
+          },
+          slides: [
+            { text_anchor: "headline" },
+            { text_anchor: "body_paragraph_0" },
+            { text_anchor: "cta_text" }
+          ]
+        };
 
-      sessionStorage.setItem("studio_idea_prefill", JSON.stringify({
-        idea_id:             opp.id || opp.title,
-        title:               opp.idea || opp.title || opp.framework || "",
-        caption:             opp._caption || opp.caption || "",
-        hook:                opp.hook || "",
-        cta:                 opp._cta || opp.cta || "",
-        hashtags:            opp._hashtags || opp.hashtags || [],
-        platforms:           opp.platforms || [],
-        contentType:         opp.content_type || "social",
-        image:               imageUrl || "",
-        imageSource:         "pexels",
-        suggested_structure: opp.structure || opp.framework || "",
-        campaign_id:         opp.campaign_id || null,
-        campaign_name:       opp.campaign_name || null,
-        calendar_context:    opp.calendar_event || null,
-        brand_context:       opp.objective || opp.suggested_because || "",
-        generationMeta:      { source: opp.source || "studio", playbook_type: opp.playbook_type || null },
-        overlays:            generatedOverlays || null,
-        layout_manifest:     layoutManifest,
-        source:              "studio",
-      }));
+        sessionStorage.setItem("studio_idea_prefill", JSON.stringify({
+          idea_id:             opp.id || opp.title,
+          title:               opp.idea || opp.title || opp.framework || "",
+          caption:             opp._caption || opp.caption || "",
+          hook:                opp.hook || "",
+          cta:                 opp._cta || opp.cta || "",
+          hashtags:            opp._hashtags || opp.hashtags || [],
+          platforms:           opp.platforms || [],
+          contentType:         opp.content_type || "social",
+          image:               imageUrl || "",
+          imageSource:         "pexels",
+          suggested_structure: opp.structure || opp.framework || "",
+          campaign_id:         opp.campaign_id || null,
+          campaign_name:       opp.campaign_name || null,
+          calendar_context:    opp.calendar_event || null,
+          brand_context:       opp.objective || opp.suggested_because || "",
+          generationMeta:      { source: opp.source || "studio", playbook_type: opp.playbook_type || null },
+          overlays:            generatedOverlays || null,
+          layout_manifest:     layoutManifest,
+          source:              "studio",
+        }));
+      }
     } catch {}
     onClose();
     switchTab(tab);

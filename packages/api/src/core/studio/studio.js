@@ -84,7 +84,13 @@ async function processCardThumbnail(card, suggestedTemplateId, visuals, auth, en
   if (env.REDIS_CLIENT) {
     try {
       const cached = await env.REDIS_CLIENT.get(cacheKey);
-      if (cached) return cached;
+      if (cached) {
+        try {
+          return JSON.parse(cached);
+        } catch {
+          return { thumbnailUrl: cached, heroImageUrl: null };
+        }
+      }
     } catch (e) {
       console.warn("[STUDIO THUMBNAIL] Redis read failed:", e.message);
     }
@@ -128,15 +134,55 @@ async function processCardThumbnail(card, suggestedTemplateId, visuals, auth, en
     const templateSchema = await getTemplate(suggestedTemplateId, env);
     const first60Chars = (card.hook || card.idea || "").slice(0, 60);
 
-    const finalBuffer = await generateOpportunityThumbnail(
-      templateSchema,
-      { headline: first60Chars, image_url: imageUrl },
-      visuals
-    );
+    let finalBuffer;
+    let extension = "png";
+    let contentType = "image/png";
+
+    // Attempt Puppeteer headless render if in Node environment, fallback to SVG
+    let renderOpportunityCard = null;
+    try {
+      if (typeof process !== "undefined" && process.release?.name === "node") {
+        const rendererModule = await import("../templates/headlessRenderer.js");
+        renderOpportunityCard = rendererModule.renderOpportunityCard;
+      }
+    } catch (e) {}
+
+    if (renderOpportunityCard) {
+      try {
+        const slotData = {};
+        const slotId = templateSchema.slides?.[0]?.slot_id || "slide_1";
+        slotData[slotId] = {
+          text: first60Chars,
+          image_url: imageUrl || "",
+          palette: {
+            dominant: visuals.primary_color,
+            accent: visuals.secondary_color,
+            background: "#F5F5F5",
+            text_contrast: "#FFFFFF"
+          }
+        };
+
+        finalBuffer = await renderOpportunityCard(templateSchema, slotData, visuals);
+        extension = "webp";
+        contentType = "image/webp";
+      } catch (err) {
+        console.warn("[STUDIO THUMBNAIL] Puppeteer render failed, falling back to SVG:", err.message);
+      }
+    }
+
+    if (!finalBuffer) {
+      finalBuffer = await generateOpportunityThumbnail(
+        templateSchema,
+        { headline: first60Chars, image_url: imageUrl },
+        visuals
+      );
+      const isSvg = finalBuffer.toString('utf8', 0, 5) === '<svg ';
+      extension = isSvg ? 'svg' : 'png';
+      contentType = isSvg ? 'image/svg+xml' : 'image/png';
+    }
 
     if (env.MEDIA_BUCKET) {
-      const r2Key = `opportunities/${auth.brand_id}/${cardHash}.png`;
-      const contentType = finalBuffer.toString('utf8', 0, 5) === '<svg ' ? 'image/svg+xml' : 'image/png';
+      const r2Key = `opportunities/${auth.brand_id}/${cardHash}.${extension}`;
       await env.MEDIA_BUCKET.put(r2Key, finalBuffer, {
         httpMetadata: { contentType }
       });
@@ -146,16 +192,18 @@ async function processCardThumbnail(card, suggestedTemplateId, visuals, auth, en
     console.error("[STUDIO THUMBNAIL] Render/Upload failed for card:", card.id, err.message);
   }
 
+  const result = { thumbnailUrl: cdnUrl || null, heroImageUrl: imageUrl || null };
+
   // 4. Save to Redis Cache (24-hour TTL)
   if (cdnUrl && env.REDIS_CLIENT) {
     try {
-      await env.REDIS_CLIENT.setEx(cacheKey, 24 * 60 * 60, cdnUrl);
+      await env.REDIS_CLIENT.setEx(cacheKey, 24 * 60 * 60, JSON.stringify(result));
     } catch (e) {
       console.warn("[STUDIO THUMBNAIL] Redis set failed:", e.message);
     }
   }
 
-  return cdnUrl;
+  return result;
 }
 
 // ── GET /api/customer/studio/opportunities ────────────────────────────────────
@@ -296,14 +344,46 @@ Rules:
       }, env);
 
       const suggestedTemplateId = recommended?.template_id || "tpl_feed_generic_default";
-      const thumbnailUrl = await processCardThumbnail(card, suggestedTemplateId, { ...visuals, brandName, industry }, auth, env);
+      const { thumbnailUrl, heroImageUrl } = await processCardThumbnail(card, suggestedTemplateId, { ...visuals, brandName, industry }, auth, env);
+
+      const layoutManifest = {
+        template_id: suggestedTemplateId,
+        brand_overrides: {
+          primary_color: visuals.primary_color || "#1A1A1A",
+          secondary_color: visuals.secondary_color || "#F5F5F5",
+          font_stack: visuals.font_stack || "Inter, sans-serif",
+          logo_url: visuals.logo_url || ""
+        },
+        slides: [
+          { text_anchor: "headline" },
+          { text_anchor: "body_paragraph_0" },
+          { text_anchor: "cta_text" }
+        ]
+      };
+
+      const draftPayload = {
+        idea_id: cardId,
+        title: card.idea || card.framework || "",
+        caption: card.caption || "",
+        hook: card.hook || "",
+        cta: card.cta || "",
+        hashtags: card.hashtags || [],
+        platforms: card.platforms || [],
+        contentType: card.media_type || "social",
+        image: heroImageUrl || "",
+        imageSource: "pexels",
+        suggested_structure: card.framework || "",
+        layout_manifest: layoutManifest,
+        source: "studio"
+      };
 
       return {
         ...card,
         id: cardId,
         suggested_template_family: family,
         suggested_template_id: suggestedTemplateId,
-        thumbnail_url: thumbnailUrl || null
+        thumbnail_url: thumbnailUrl || null,
+        draft_payload: draftPayload
       };
     })());
   }
