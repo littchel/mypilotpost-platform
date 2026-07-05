@@ -264,7 +264,7 @@ import {
 } from "./core/campaigns/campaigns.js";
 
 import { generateCampaignPlan, generatePostIdea, generateRecommendation, generateVisualBrief, getTemplateById } from "./core/templates/templates.js";
-import { getTemplateWithVariant } from "./core/templates/templateRoutes.js";
+import { getTemplateWithVariant, getTemplatePreviewImage } from "./core/templates/templateRoutes.js";
 import { getStudioOpportunities, generateStudioPost, runPlaybook, generateCampaignContent, getStudioVault, scrapeWebsite } from "./core/studio/studio.js";
 import { resolveBrandBindings } from "./core/branding/resolveBrandBindings.js";
 
@@ -2863,6 +2863,9 @@ export default {
           return withCors(request, scrapeWebsite(request, env, auth));
 
         /* ---------- TEMPLATES ---------- */
+        if (method === "GET" && path === "/api/customer/templates/render-preview")
+          return withCors(request, getTemplatePreviewImage(request, env, auth));
+
         if (method === "GET" && path.startsWith("/api/customer/templates/"))
           return withCors(request, getTemplateWithVariant(request, env, auth));
 

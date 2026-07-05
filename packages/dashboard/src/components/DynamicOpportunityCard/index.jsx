@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { apiRequest } from "../../lib/api/client";
-import { renderTemplateToHTML } from "../TemplateHTML/templateFallbacks";
 import { getFormatLabel } from "../../utils/labelHelpers";
 
 // Local static cache to avoid redundant template schema fetches across cards
@@ -366,7 +365,7 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
       headline: card.preview_data?.headline || card.hook || 'Your Headline',
       body: card.preview_data?.body || '',
       cta: card.preview_data?.cta || 'Learn More',
-      image_url: card.preview_data?.hero_image_url || ''
+      image_url: card.preview_data?.hero_image_url || imageUrl || ''
     };
 
     return {
@@ -382,22 +381,25 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
         }
       }
     };
-  }, [templateSchema, card.preview_data, card.hook, brandVars]);
+  }, [templateSchema, card.preview_data, card.hook, brandVars, imageUrl]);
 
-  const htmlContent = useMemo(() => {
-    if (card.preview_url || !templateSchema) return null;
-    return renderTemplateToHTML(templateSchema, {
+  const realPreviewUrl = useMemo(() => {
+    if (card.preview_url) return card.preview_url;
+    if (!templateSchema) return null;
+
+    const apiBase = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+    const token = localStorage.getItem("mpp_token") || "";
+
+    return `${apiBase}/api/customer/templates/render-preview?` + new URLSearchParams({
+      template_id: templateSchema.template_id,
+      variant: templateSchema.variant_id || "A",
       headline: card.preview_data?.headline || card.hook || 'Your Headline',
       body: card.preview_data?.body || '',
       cta: card.preview_data?.cta || 'Learn More',
-      image_url: card.preview_data?.hero_image_url || '',
-      primary_color: brandVars.primary_color || '#1A73E8',
-      secondary_color: brandVars.secondary_color || '#34A853',
-      logo_url: brandVars.logo_url || '',
-      font_headline: brandVars.font_headline || 'Inter',
-      font_body: brandVars.font_body || 'Inter'
-    });
-  }, [card.preview_url, templateSchema, card.preview_data, card.hook, brandVars]);
+      image_url: card.preview_data?.hero_image_url || imageUrl || '',
+      token: token
+    }).toString();
+  }, [card.preview_url, templateSchema, card.preview_data, card.hook, imageUrl]);
 
   // Skeleton Loader State
   if (loading) {
@@ -479,18 +481,13 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
         background: "#f0f0f0",
         aspectRatio 
       }}>
-        {card.preview_url ? (
-          <img src={card.preview_url} alt={card.preview_data?.headline || "Post preview"} className="card-image" style={{
+        {realPreviewUrl ? (
+          <img src={realPreviewUrl} alt={card.preview_data?.headline || "Post preview"} className="card-image" style={{
             width: "100%",
             height: "100%",
             objectFit: "cover",
             display: "block"
           }} />
-        ) : htmlContent ? (
-          <div 
-            style={{ width: "100%", height: "100%", containerType: "size" }}
-            dangerouslySetInnerHTML={{ __html: htmlContent }} 
-          />
         ) : (
           <div className="fallback-placeholder" style={{
             width: "100%",

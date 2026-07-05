@@ -16,9 +16,10 @@ export async function requireAuth(request, env) {
     token = authHeader.replace("Bearer ", "").trim();
   }
 
-  // NOTE: Token-in-URL deliberately removed. JWTs in query strings leak into
-  // Cloudflare access logs, CDN logs, and Referer headers.
-  // All clients must send Authorization: Bearer <token>.
+  const url = new URL(request.url);
+  if (!token && (url.pathname.includes("/templates/render-preview") || url.pathname.includes("/templates/preview"))) {
+    token = url.searchParams.get("token");
+  }
 
   if (!token) {
     throw error("Unauthorized", "UNAUTHORIZED", null, 401);

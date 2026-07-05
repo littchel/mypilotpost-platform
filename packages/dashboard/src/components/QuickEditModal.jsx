@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { apiRequest } from "../lib/api/client";
 import { fetchMediaSuggestions } from "../services/mediaSuggestions";
-import { renderTemplateToHTML } from "./TemplateHTML/templateFallbacks";
 
 export default function QuickEditModal({ card, activeBrand, brandDna, onClose, onSave }) {
   const [templateId, setTemplateId] = useState(card.template_id || card.suggested_template_id);
@@ -122,20 +121,38 @@ export default function QuickEditModal({ card, activeBrand, brandDna, onClose, o
     };
   }, [templateSchema, headline, bodyText, ctaText, heroImageUrl, brandVars]);
 
-  const htmlContent = useMemo(() => {
+  // Debounced fields for real-time preview to avoid high-frequency rendering requests
+  const [debouncedHeadline, setDebouncedHeadline] = useState(headline);
+  const [debouncedBodyText, setDebouncedBodyText] = useState(bodyText);
+  const [debouncedCtaText, setDebouncedCtaText] = useState(ctaText);
+  const [debouncedHeroImageUrl, setDebouncedHeroImageUrl] = useState(heroImageUrl);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedHeadline(headline);
+      setDebouncedBodyText(bodyText);
+      setDebouncedCtaText(ctaText);
+      setDebouncedHeroImageUrl(heroImageUrl);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [headline, bodyText, ctaText, heroImageUrl]);
+
+  const realPreviewUrl = useMemo(() => {
     if (!templateSchema) return null;
-    return renderTemplateToHTML(templateSchema, {
-      headline: headline,
-      body: bodyText,
-      cta: ctaText,
-      image_url: heroImageUrl,
-      primary_color: brandVars.primary_color || '#1A73E8',
-      secondary_color: brandVars.secondary_color || '#34A853',
-      logo_url: brandVars.logo_url || '',
-      font_headline: brandVars.font_stack || 'Inter',
-      font_body: brandVars.font_stack || 'Inter'
-    });
-  }, [templateSchema, headline, bodyText, ctaText, heroImageUrl, brandVars]);
+
+    const apiBase = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+    const token = localStorage.getItem("mpp_token") || "";
+
+    return `${apiBase}/api/customer/templates/render-preview?` + new URLSearchParams({
+      template_id: templateSchema.template_id,
+      variant: templateSchema.variant_id || "A",
+      headline: debouncedHeadline || 'Your Headline',
+      body: debouncedBodyText || '',
+      cta: debouncedCtaText || 'Learn More',
+      image_url: debouncedHeroImageUrl || '',
+      token: token
+    }).toString();
+  }, [templateSchema, debouncedHeadline, debouncedBodyText, debouncedCtaText, debouncedHeroImageUrl]);
 
   // Handle confirmation: serialize manifest and navigate
   const handleSaveAndUse = () => {
@@ -238,10 +255,11 @@ export default function QuickEditModal({ card, activeBrand, brandDna, onClose, o
             alignItems: "center",
             justifyContent: "center"
           }}>
-            {htmlContent ? (
-              <div 
-                style={{ width: "100%", height: "100%", containerType: "size" }}
-                dangerouslySetInnerHTML={{ __html: htmlContent }} 
+            {realPreviewUrl ? (
+              <img 
+                src={realPreviewUrl} 
+                alt="Post preview" 
+                style={{ width: "100%", height: "100%", objectFit: "cover" }} 
               />
             ) : card.preview_url ? (
               <img 
