@@ -1,69 +1,153 @@
 {
-  "template_id": "carousel_faq_005",
-  "name": "5-Slide FAQ Q&A Carousel",
-  "format": "carousel",
-  "intent": ["authority", "engagement"],
-  "pillars": ["faq", "educational"],
-  "platforms": ["instagram", "linkedin"],
+  "carousel_id": "faq_carousel_template_9_v3",
+  "format": "Carousels (Multi-Slide, 1:1 Square)",
   "dimensions": {
     "width": 1080,
-    "height": 1350
+    "height": 1080
   },
-  "animation_preset": "typewriter",
+  "transition_style": "Slide Left (smooth)",
+  "brand_defaults": {
+    "background_color_light": "#E5E1DC",
+    "text_color_dark": "#4A4A4A",
+    "text_color_light": "#FFFFFF"
+  },
+  "global_elements": {
+    "header_rail": {
+      "position": {
+        "top": "70px",
+        "left": "100px",
+        "right": "100px"
+      },
+      "components": {
+        "index_counter": true,
+        "pagination_dots": {
+          "total_dots": 5,
+          "border_color_light": "rgba(255, 255, 255, 0.6)",
+          "border_color_dark": "#4A4A4A"
+        }
+      }
+    },
+    "footer_brand": {
+      "text": "reallygreatsite.com",
+      "position": {
+        "bottom": "60px"
+      },
+      "font_style": {
+        "font_family": "Inter, sans-serif",
+        "font_size": "20px",
+        "letter_spacing": "3px",
+        "text_transform": "uppercase"
+      }
+    }
+  },
   "slides": [
     {
-      "slot_id": "slide_1_question",
-      "slot_type": "hero",
-      "layout": "faq_cover",
-      "components": [
-        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
-        { "type": "headline", "position": { "x": 10, "y": 25, "width": 80, "height": 30, "z_index": 2 }, "max_chars": 80, "overlay": false },
-        { "type": "logo", "position": { "x": 5, "y": 5, "width": 15, "height": 5, "z_index": 2 }, "overlay": true }
-      ]
+      "slide_index": 1,
+      "type": "cover",
+      "background_image_url": "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40",
+      "overlay": {
+        "type": "black-tint",
+        "opacity": 0.45
+      },
+      "theme": "light-text",
+      "content": {
+        "headline": {
+          "text": "FAQ Guide",
+          "font_family": "Didot, Playfair Display, Georgia, serif",
+          "font_size": "110px",
+          "text_shadow": "0 4px 20px rgba(0,0,0,0.4)"
+        },
+        "subtitle": {
+          "text": "Your Questions, Answered.\nSwipe for the FAQs.",
+          "font_size": "40px",
+          "text_shadow": "0 2px 12px rgba(0,0,0,0.5)"
+        }
+      }
     },
     {
-      "slot_id": "slide_2_ans1",
-      "slot_type": "body",
-      "layout": "faq_answer",
-      "components": [
-        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
-        { "type": "headline", "position": { "x": 10, "y": 15, "width": 80, "height": 10, "z_index": 2 }, "max_chars": 40, "overlay": false },
-        { "type": "body", "position": { "x": 10, "y": 30, "width": 80, "height": 60, "z_index": 2 }, "max_chars": 260, "overlay": false },
-        { "type": "logo", "position": { "x": 5, "y": 5, "width": 15, "height": 5, "z_index": 2 }, "overlay": true }
-      ]
+      "slide_index": 2,
+      "type": "qa_split",
+      "theme": "dark-text",
+      "layout_rules": {
+        "vertical_alignment": "center",
+        "padding_bottom_protection": "140px"
+      },
+      "content": {
+        "meta_label": "Question & Answer",
+        "question": {
+          "text": "How long does an operational framework setup map require to fully execute?",
+          "font_size": "42px",
+          "avatar_image_url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb"
+        },
+        "answer": {
+          "text": "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.",
+          "font_size": "28px",
+          "padding_left_alignment": "145px"
+        }
+      }
     },
     {
-      "slot_id": "slide_3_ans2",
-      "slot_type": "body",
-      "layout": "faq_answer",
-      "components": [
-        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
-        { "type": "headline", "position": { "x": 10, "y": 15, "width": 80, "height": 10, "z_index": 2 }, "max_chars": 40, "overlay": false },
-        { "type": "body", "position": { "x": 10, "y": 30, "width": 80, "height": 60, "z_index": 2 }, "max_chars": 260, "overlay": false },
-        { "type": "logo", "position": { "x": 5, "y": 5, "width": 15, "height": 5, "z_index": 2 }, "overlay": true }
-      ]
+      "slide_index": 3,
+      "type": "qa_split",
+      "theme": "dark-text",
+      "layout_rules": {
+        "vertical_alignment": "center",
+        "padding_bottom_protection": "140px"
+      },
+      "content": {
+        "meta_label": "Question & Answer",
+        "question": {
+          "text": "Are custom integrations supported across external cloud APIs or legacy databases?",
+          "font_size": "42px",
+          "avatar_image_url": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d"
+        },
+        "answer": {
+          "text": "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.",
+          "font_size": "28px",
+          "padding_left_alignment": "145px"
+        }
+      }
     },
     {
-      "slot_id": "slide_4_ans3",
-      "slot_type": "body",
-      "layout": "faq_answer",
-      "components": [
-        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
-        { "type": "headline", "position": { "x": 10, "y": 15, "width": 80, "height": 10, "z_index": 2 }, "max_chars": 40, "overlay": false },
-        { "type": "body", "position": { "x": 10, "y": 30, "width": 80, "height": 60, "z_index": 2 }, "max_chars": 260, "overlay": false },
-        { "type": "logo", "position": { "x": 5, "y": 5, "width": 15, "height": 5, "z_index": 2 }, "overlay": true }
-      ]
+      "slide_index": 4,
+      "type": "qa_split",
+      "theme": "dark-text",
+      "layout_rules": {
+        "vertical_alignment": "center",
+        "padding_bottom_protection": "140px"
+      },
+      "content": {
+        "meta_label": "Question & Answer",
+        "question": {
+          "text": "What structural support plans are included post deployment inside your system agreements?",
+          "font_size": "42px",
+          "avatar_image_url": "https://images.unsplash.com/photo-1544005313-94ddf0286df2"
+        },
+        "answer": {
+          "text": "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.",
+          "font_size": "28px",
+          "padding_left_alignment": "145px"
+        }
+      }
     },
     {
-      "slot_id": "slide_5_cta",
-      "slot_type": "cta",
-      "layout": "faq_cta",
-      "components": [
-        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
-        { "type": "headline", "position": { "x": 10, "y": 20, "width": 80, "height": 20, "z_index": 2 }, "max_chars": 60, "overlay": false },
-        { "type": "cta_button", "position": { "x": 30, "y": 55, "width": 40, "height": 12, "z_index": 2 }, "max_chars": 25, "overlay": false },
-        { "type": "logo", "position": { "x": 42.5, "y": 5, "width": 15, "height": 5, "z_index": 2 }, "overlay": true }
-      ]
+      "slide_index": 5,
+      "type": "closing_cta",
+      "theme": "dark-text",
+      "content": {
+        "showcase_frame": {
+          "image_url": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085",
+          "height": "420px",
+          "margin_top": "20px"
+        },
+        "headline": {
+          "text": "Still Have Questions?",
+          "font_size": "58px"
+        },
+        "body_text": "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat. **DM us** to resolve your story.",
+        "font_size": "24px"
+      }
     }
-  ]
+  ],
+  "template_id": "carousel_faq_005"
 }

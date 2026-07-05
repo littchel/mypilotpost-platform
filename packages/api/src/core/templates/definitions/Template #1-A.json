@@ -1,0 +1,28 @@
+{
+  "template_id": "TEMPLATE_01",
+  "template_name": "Hero + Headline",
+  "variant": "glassmorphic_eco_editorial",
+  "format": "1:1 Feed Post",
+  "global_styles": {
+    "background_image_url": "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&q=80&w=1080&h=1080",
+    "font_family": "Plus Jakarta Sans, sans-serif"
+  },
+  "card_layer": {
+    "type": "frosted_blur_glass",
+    "background_color": "rgba(26, 38, 23, 0.45)",
+    "backdrop_filter": "blur(14px)",
+    "border_radius": "36px",
+    "padding": "48px 40px"
+  },
+  "content": {
+    "meta_tag_text": "Let's discuss",
+    "meta_tag_color": "#E2EAD2",
+    "headline_text": "Yes, Climate\nChange is real.",
+    "headline_color": "#F4F9E9"
+  },
+  "footer_action": {
+    "label": "Swipe to know more",
+    "label_color": "#E2EAD2",
+    "icon": "arrow_long_horizontal"
+  }
+}

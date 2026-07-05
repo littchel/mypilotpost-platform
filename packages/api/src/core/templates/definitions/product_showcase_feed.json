@@ -1,57 +1,81 @@
 {
   "template_id": "product_showcase_feed",
-  "name": "Product Showcase Feed Post",
-  "format": "feed_post",
-  "intent": ["sales", "conversions"],
-  "pillars": ["product", "promotion"],
-  "platforms": ["instagram", "facebook", "pinterest"],
+  "format": "Feed Post (1:1)",
   "dimensions": {
     "width": 1080,
     "height": 1080
   },
-  "slides": [
-    {
-      "slot_id": "slide_1",
-      "slot_type": "product_showcase",
-      "layout": "centered_product_with_details",
-      "components": [
-        {
-          "type": "background",
-          "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 },
-          "overlay": false
+  "layout_structure": {
+    "top_zone": {
+      "height": "594px",
+      "percentage": "55%",
+      "background": "#FFFFFF",
+      "components": {
+        "badge_header": {
+          "text": "BEST SELLER",
+          "font_family": "Inter, sans-serif",
+          "font_size": "40px",
+          "letter_spacing": "24px"
         },
-        {
-          "type": "image",
-          "position": { "x": 10, "y": 15, "width": 80, "height": 50, "z_index": 2 },
-          "required_aspect_ratio": "16:10",
-          "min_width": 864,
-          "min_height": 540,
-          "overlay": false
-        },
-        {
-          "type": "headline",
-          "position": { "x": 10, "y": 70, "width": 50, "height": 10, "z_index": 2 },
-          "max_chars": 40,
-          "overlay": false
-        },
-        {
-          "type": "body",
-          "position": { "x": 10, "y": 82, "width": 50, "height": 13, "z_index": 2 },
-          "max_chars": 120,
-          "overlay": false
-        },
-        {
-          "type": "cta_button",
-          "position": { "x": 65, "y": 72, "width": 25, "height": 10, "z_index": 2 },
-          "max_chars": 20,
-          "overlay": false
-        },
-        {
-          "type": "logo",
-          "position": { "x": 80, "y": 5, "width": 10, "height": 5, "z_index": 2 },
-          "overlay": true
+        "image_frame": {
+          "max_width": "600px",
+          "height": "430px",
+          "background_color": "#000000",
+          "content_key": "product_image_url"
         }
-      ]
+      }
+    },
+    "bottom_zone": {
+      "height": "486px",
+      "percentage": "45%",
+      "background": "#FFFFFF",
+      "components": {
+        "product_name": {
+          "text": "PRIMADONNA",
+          "font_family": "{{brand.font_headline}}",
+          "font_size": "38px",
+          "letter_spacing": "16px",
+          "color": "{{brand.primary_color}}"
+        },
+        "feature_bullets": {
+          "max_items": 3,
+          "max_lines_per_item": 2,
+          "font_family": "{{brand.font_body}}",
+          "font_size": "16px",
+          "color": "#333333",
+          "items": [
+            "Exquisite notes of dark amber, rich plum, and crisp midnight jasmine flora.",
+            "Long-lasting luxury formulation engineered to adapt beautifully to your natural chemistry."
+          ]
+        },
+        "cta_button": {
+          "text": "Learn More",
+          "font_family": "{{brand.font_body}}",
+          "font_size": "18px",
+          "font_weight": "600",
+          "background_color": "{{brand.primary_color}}",
+          "text_color": "#FFFFFF",
+          "padding": "14px 45px",
+          "border_radius": "50px"
+        }
+      }
+    },
+    "background_accents": {
+      "horizontal_strip": {
+        "top": "350px",
+        "height": "300px",
+        "color": "{{brand.secondary_color}}"
+      },
+      "side_url": {
+        "text": "www.reallygreatsite.com",
+        "font_size": "24px",
+        "letter_spacing": "2px",
+        "color": "#FFFFFF",
+        "rotation": "-90deg"
+      }
     }
-  ]
+  },
+  "content_data": {
+    "product_image_url": "https://images.unsplash.com/photo-1541643600914-78b084683601"
+  }
 }

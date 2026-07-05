@@ -1,0 +1,207 @@
+{
+  "template_id": "TEMPLATE_05_TIMELINE",
+  "template_name": "Why You Should Post Carousels",
+  "format": "1:1 Feed Post Carousel",
+  "carousel_specification": {
+    "total_slides": 10,
+    "canvas_background_color": "#2B3344",
+    "accent_color_coral": "#FF7B83",
+    "text_color_primary": "#FFFFFF",
+    "font_family_display": "Antonio, sans-serif",
+    "font_family_body": "Plus Jakarta Sans, sans-serif"
+  },
+  "global_components": {
+    "top_metadata": {
+      "left_brand_text": "Really Great Site",
+      "right_counter_format": "{{slide_index}}/10"
+    },
+    "footer": {
+      "handle_tag": "@reallygreatsite"
+    }
+  },
+  "slides": [
+    {
+      "slide_index": 1,
+      "reference_file": "Screenshot 2026-07-05 at 00.00.18.png",
+      "layout_type": "carousel_cover",
+      "vector_overlays": {
+        "type": "right_aligned_inbound_arrow",
+        "stroke_color": "#FFFFFF",
+        "stroke_width": "5px"
+      },
+      "content": {
+        "headline_lines": ["Why You", "Should", "Post", "Carousels"]
+      }
+    },
+    {
+      "slide_index": 2,
+      "reference_file": "Screenshot 2026-07-05 at 00.00.30.png",
+      "layout_type": "left_asymmetric_split_text",
+      "vector_overlays": {
+        "type": "left_edge_horizontal_connector_line",
+        "background_color": "#FFFFFF",
+        "width": "125px",
+        "height": "6px"
+      },
+      "content": {
+        "headline_lines": ["There's", "Exponential", "Growth", "Happening"],
+        "headline_color": "#FFFFFF",
+        "body_text": "Carousel posts are seeing great reach and results."
+      }
+    },
+    {
+      "slide_index": 3,
+      "reference_file": "Screenshot 2026-07-05 at 00.00.41.png",
+      "layout_type": "dual_headline_stack",
+      "vector_overlays": {
+        "type": "right_edge_wire_node_pointer",
+        "line_color": "#FF7B83",
+        "node_type": "hollow_circle_with_navy_center"
+      },
+      "content": {
+        "headline_coral_lines": ["Are You Ready", "For The Secret?"],
+        "headline_white_lines": ["Let's Dive In", "Together..."]
+      }
+    },
+    {
+      "slide_index": 4,
+      "reference_file": "Screenshot 2026-07-05 at 00.00.51.png",
+      "layout_type": "centered_statement_graph",
+      "vector_overlays": {
+        "type": "bottom_left_angled_upwards_chart_line",
+        "stroke_color": "#FF7B83",
+        "has_terminal_dot_node": true
+      },
+      "content": {
+        "body_text": "Creating content isn't always easy."
+      }
+    },
+    {
+      "slide_index": 5,
+      "reference_file": "Screenshot 2026-07-05 at 00.01.01.png",
+      "layout_type": "mid_aligned_statement_node",
+      "vector_overlays": {
+        "type": "right_edge_horizontal_wire_node",
+        "line_color": "#FF7B83"
+      },
+      "content": {
+        "body_text": "Some days you may want to quit..."
+      }
+    },
+    {
+      "slide_index": 6,
+      "reference_file": "Screenshot 2026-07-05 at 01.03.26.png",
+      "layout_type": "geometric_centerpiece_focal",
+      "vector_overlays": {
+        "left_horizontal_bridge_line": {
+          "width": "175px",
+          "height": "4px",
+          "color": "#FF7B83"
+        },
+        "top_right_concentric_arc_boundary": {
+          "diameter": "480px",
+          "border_stroke": "4px solid #FF7B83"
+        }
+      },
+      "content": {
+        "center_circle": {
+          "background_color": "#FF7B83",
+          "dimensions": "254px x 254px",
+          "text_lines": ["Don't", "Quit"]
+        }
+      }
+    },
+    {
+      "slide_index": 7,
+      "reference_file": "Screenshot 2026-07-05 at 01.03.33.png",
+      "layout_type": "crescent_framed_headline_swipe",
+      "vector_overlays": {
+        "left_geometric_crescent_arc": {
+          "dimensions": "652px x 652px",
+          "border_stroke": "4px solid #FF7B83"
+        },
+        "right_edge_sliding_indicators": {
+          "active_bubble": {
+            "type": "circle_coral_swipe_hand",
+            "icon_path": "left_pointing_ui_back_arrow"
+          },
+          "partial_peek_bubble": {
+            "type": "right_clipped_coral_circle"
+          }
+        }
+      },
+      "content": {
+        "headline_lines": ["Use", "This", "Outline", "Instead"],
+        "headline_color": "#FFFFFF"
+      }
+    },
+    {
+      "slide_index": 8,
+      "reference_file": "Screenshot 2026-07-05 at 01.03.41.png",
+      "layout_type": "bullet_points_list_deck",
+      "vector_overlays": {
+        "left_edge_anchored_circle_lip": {
+          "dimensions": "108px x 108px",
+          "background_color": "#FF7B83"
+        }
+      },
+      "content": {
+        "headline_lines": ["Carousel", "Structure"],
+        "list_items": [
+          "Create a \"hook\" to capture your audience's attention",
+          "Follow up with pain points that help to peak interest",
+          "Provide practical tips and solutions to the pain points",
+          "End with a Call to Action"
+        ]
+      }
+    },
+    {
+      "slide_index": 9,
+      "reference_file": "Screenshot 2026-07-05 at 01.03.47.png",
+      "layout_type": "asymmetric_crescent_summary_list",
+      "vector_overlays": {
+        "right_edge_colossal_crescent_moon": {
+          "dimensions": "615px x 615px",
+          "background_color": "#FF7B83"
+        },
+        "left_accent_vertical_rule": {
+          "width": "4px",
+          "height": "240px",
+          "background_color": "#FF7B83"
+        }
+      },
+      "content": {
+        "list_items": [
+          "Carousels are a great way to increase reach.",
+          "Don't give up and don't be discouraged.",
+          "Create a Carousel Structure that will connect with your audience."
+        ]
+      }
+    },
+    {
+      "slide_index": 10,
+      "reference_file": "Screenshot 2026-07-05 at 00.01.50.png",
+      "layout_type": "conversion_endframe_colorway_invert",
+      "styles": {
+        "override_canvas_background_color": "#FF7B83",
+        "override_text_color_primary": "#2B3344"
+      },
+      "content": {
+        "creator_badge": {
+          "avatar_image_url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150&h=150",
+          "title": "Really Great Site",
+          "handle": "@reallygreatsite"
+        },
+        "headline_lines": ["Do You Think", "You'll Give", "This A Try?"]
+      },
+      "native_app_footer_simulation": {
+        "left_actions_group": ["heart_filled", "comment_bubble", "paper_plane_share"],
+        "right_actions_group": {
+          "text": "save for later",
+          "arrow": "thin_line_horizontal_arrow",
+          "bookmark": "ribbon_save_outline"
+        }
+      }
+    }
+  ]
+}

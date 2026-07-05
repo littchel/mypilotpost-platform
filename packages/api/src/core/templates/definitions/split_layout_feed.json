@@ -1,51 +1,46 @@
 {
   "template_id": "split_layout_feed",
-  "name": "Split Layout Feed Post",
-  "format": "feed_post",
-  "intent": ["education", "awareness"],
-  "pillars": ["product", "educational"],
-  "platforms": ["instagram", "linkedin", "facebook"],
+  "format": "Feed Post (1:1)",
   "dimensions": {
     "width": 1080,
     "height": 1080
   },
-  "slides": [
-    {
-      "slot_id": "slide_1",
-      "slot_type": "body",
-      "layout": "split_left_image_right_text",
-      "components": [
-        {
-          "type": "background",
-          "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 },
-          "overlay": false
-        },
-        {
-          "type": "image",
-          "position": { "x": 0, "y": 0, "width": 50, "height": 100, "z_index": 2 },
-          "required_aspect_ratio": "1:2",
-          "min_width": 540,
-          "min_height": 1080,
-          "overlay": false
-        },
-        {
-          "type": "headline",
-          "position": { "x": 55, "y": 15, "width": 40, "height": 20, "z_index": 2 },
-          "max_chars": 50,
-          "overlay": false
-        },
-        {
-          "type": "body",
-          "position": { "x": 55, "y": 40, "width": 40, "height": 45, "z_index": 2 },
-          "max_chars": 200,
-          "overlay": false
-        },
-        {
-          "type": "logo",
-          "position": { "x": 55, "y": 90, "width": 12, "height": 5, "z_index": 2 },
-          "overlay": true
+  "layout_structure": {
+    "left_pane": {
+      "width": "540px",
+      "type": "image",
+      "style": {
+        "filter": "grayscale(100%)",
+        "border_right": "2px solid #FFFFFF"
+      },
+      "overlay": {
+        "text": "BEFORE",
+        "position": {
+          "top": "120px"
         }
-      ]
+      }
+    },
+    "right_pane": {
+      "width": "540px",
+      "type": "image",
+      "style": {
+        "filter": "none"
+      },
+      "overlay": {
+        "text": "AFTER",
+        "position": {
+          "bottom": "120px"
+        }
+      }
     }
-  ]
+  },
+  "global_overlay_styling": {
+    "font_family": "Inter, sans-serif",
+    "font_size": "54px",
+    "font_weight": "700",
+    "text_transform": "uppercase",
+    "letter_spacing": "4px",
+    "color": "#FFFFFF",
+    "text_shadow": "0 4px 12px rgba(0, 0, 0, 0.5)"
+  }
 }

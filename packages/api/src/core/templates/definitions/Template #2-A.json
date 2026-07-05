@@ -1,0 +1,37 @@
+{
+  "template_id": "TEMPLATE_02",
+  "template_name": "Quote Card",
+  "variant": "two_tone_pop_graphic_editorial",
+  "format": "1:1 Feed Post",
+  "styles": {
+    "background_color_canvas": "#2D1E45",
+    "font_family_header": "Montserrat, sans-serif",
+    "font_family_body": "Plus Jakarta Sans, sans-serif"
+  },
+  "header_navigation": {
+    "brand_name": "schematiq",
+    "logo_type": "grid_wireframe_rect",
+    "domain_url": "reallygreatsite.com"
+  },
+  "graphic_frame_showcase": {
+    "strip_background_color": "#EBB629",
+    "floating_quote_character": "“",
+    "floating_quote_font_size": "130px",
+    "character_portrait_cutout": {
+      "image_url": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400&h=500",
+      "grayscale_filter": true,
+      "z_index": 4
+    }
+  },
+  "quote_typography_block": {
+    "text_content": "True success lies not in what we achieve alone, but in the connections we build and the support we offer along the way.",
+    "text_transform": "uppercase",
+    "font_size": "17px",
+    "font_weight": 800,
+    "attribution": {
+      "name": "Benjamin Shah",
+      "font_size": "18px",
+      "font_weight": 400
+    }
+  }
+}

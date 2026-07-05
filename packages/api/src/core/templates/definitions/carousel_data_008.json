@@ -1,102 +1,113 @@
 {
   "template_id": "carousel_data_008",
-  "name": "8-Slide Data & Insight Carousel",
-  "format": "carousel",
-  "intent": ["authority", "education"],
-  "pillars": ["data", "insights"],
-  "platforms": ["instagram", "linkedin"],
-  "dimensions": {
-    "width": 1080,
-    "height": 1350
+  "template_name": "The Data Story Carousel",
+  "global_styles": {
+    "canvas_background": "#FAF9F6",
+    "primary_text_color": "#1C1A17",
+    "accent_text_color": "#964B1D",
+    "font_family_serif": "Instrument Serif, serif",
+    "font_family_sans": "Inter, sans-serif"
   },
-  "animation_preset": "fade_slide",
-  "slides": [
+  "carousel_slides": [
     {
-      "slot_id": "slide_1_cover",
-      "slot_type": "hero",
-      "layout": "data_cover",
-      "components": [
-        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
-        { "type": "headline", "position": { "x": 10, "y": 25, "width": 80, "height": 30, "z_index": 2 }, "max_chars": 60, "overlay": false },
-        { "type": "logo", "position": { "x": 5, "y": 5, "width": 15, "height": 5, "z_index": 2 }, "overlay": true }
-      ]
+      "slide_number": 1,
+      "layout_type": "full-bleed-hook",
+      "meta_header": {
+        "left_text": "@reallygreatsite",
+        "center_text": "Larana, Inc.",
+        "right_text": "December 2024"
+      },
+      "background_image_url": "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=600&q=80",
+      "content": {
+        "pill_tag_text": "5 Fashion Tips to",
+        "headline_text": "Improve Your Style"
+      }
     },
     {
-      "slot_id": "slide_2_chart",
-      "slot_type": "body",
-      "layout": "chart_visual",
-      "components": [
-        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
-        { "type": "image", "position": { "x": 10, "y": 15, "width": 80, "height": 55, "z_index": 2 }, "required_aspect_ratio": "4:3", "min_width": 864, "min_height": 648, "overlay": false },
-        { "type": "headline", "position": { "x": 10, "y": 75, "width": 80, "height": 15, "z_index": 3 }, "max_chars": 60, "overlay": true },
-        { "type": "logo", "position": { "x": 5, "y": 5, "width": 15, "height": 5, "z_index": 3 }, "overlay": true }
-      ]
+      "slide_number": 2,
+      "layout_type": "media-top-stat-badge",
+      "meta_header": {
+        "left_text": "@reallygreatsite",
+        "center_text": "Larana, Inc.",
+        "right_text": "December 2024"
+      },
+      "media": {
+        "image_url": "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=600&q=80",
+        "badge_value": "1"
+      },
+      "content": {
+        "headline_text": "Invest in Timeless Goods",
+        "pill_tag_text": "Fashion Tips",
+        "body_description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean hendrerit consectetur pretium. Etiam porta orci in sem mattis convallis."
+      }
     },
     {
-      "slot_id": "slide_3_insight",
-      "slot_type": "body",
-      "layout": "insight_statement",
-      "components": [
-        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
-        { "type": "headline", "position": { "x": 10, "y": 15, "width": 80, "height": 10, "z_index": 2 }, "max_chars": 50, "overlay": false },
-        { "type": "body", "position": { "x": 10, "y": 30, "width": 80, "height": 60, "z_index": 2 }, "max_chars": 260, "overlay": false },
-        { "type": "logo", "position": { "x": 5, "y": 5, "width": 15, "height": 5, "z_index": 2 }, "overlay": true }
-      ]
+      "slide_number": 3,
+      "layout_type": "inline-row-badge-insight",
+      "meta_header": {
+        "left_text": "@reallygreatsite",
+        "center_text": "Larana, Inc.",
+        "right_text": "December 2024"
+      },
+      "media": {
+        "image_url": "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=600&q=80",
+        "badge_value": "2"
+      },
+      "content": {
+        "headline_text": "Playing with Accessories",
+        "pill_tag_text": "Fashion Tips",
+        "body_description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean hendrerit consectetur pretium. Etiam porta orci in sem mattis convallis."
+      }
     },
     {
-      "slot_id": "slide_4_imp1",
-      "slot_type": "body",
-      "layout": "implication_item",
-      "components": [
-        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
-        { "type": "headline", "position": { "x": 10, "y": 15, "width": 80, "height": 10, "z_index": 2 }, "max_chars": 45, "overlay": false },
-        { "type": "body", "position": { "x": 10, "y": 30, "width": 80, "height": 60, "z_index": 2 }, "max_chars": 240, "overlay": false },
-        { "type": "logo", "position": { "x": 5, "y": 5, "width": 15, "height": 5, "z_index": 2 }, "overlay": true }
-      ]
+      "slide_number": 4,
+      "layout_type": "content-top-media-bottom-inversion",
+      "meta_header": {
+        "left_text": "@reallygreatsite",
+        "center_text": "Larana, Inc.",
+        "right_text": "December 2024"
+      },
+      "media": {
+        "image_url": "https://images.unsplash.com/photo-1485230895905-ec40ba36b9bc?auto=format&fit=crop&w=600&q=80",
+        "badge_value": "3"
+      },
+      "content": {
+        "headline_text": "Mix and Match Textures",
+        "pill_tag_text": "Fashion Tips",
+        "body_description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean hendrerit consectetur pretium. Etiam porta orci in sem mattis convallis."
+      }
     },
     {
-      "slot_id": "slide_5_imp2",
-      "slot_type": "body",
-      "layout": "implication_item",
-      "components": [
-        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
-        { "type": "headline", "position": { "x": 10, "y": 15, "width": 80, "height": 10, "z_index": 2 }, "max_chars": 45, "overlay": false },
-        { "type": "body", "position": { "x": 10, "y": 30, "width": 80, "height": 60, "z_index": 2 }, "max_chars": 240, "overlay": false },
-        { "type": "logo", "position": { "x": 5, "y": 5, "width": 15, "height": 5, "z_index": 2 }, "overlay": true }
-      ]
-    },
-    {
-      "slot_id": "slide_6_imp3",
-      "slot_type": "body",
-      "layout": "implication_item",
-      "components": [
-        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
-        { "type": "headline", "position": { "x": 10, "y": 15, "width": 80, "height": 10, "z_index": 2 }, "max_chars": 45, "overlay": false },
-        { "type": "body", "position": { "x": 10, "y": 30, "width": 80, "height": 60, "z_index": 2 }, "max_chars": 240, "overlay": false },
-        { "type": "logo", "position": { "x": 5, "y": 5, "width": 15, "height": 5, "z_index": 2 }, "overlay": true }
-      ]
-    },
-    {
-      "slot_id": "slide_7_summary",
-      "slot_type": "body",
-      "layout": "takeaways_summary",
-      "components": [
-        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
-        { "type": "headline", "position": { "x": 10, "y": 15, "width": 80, "height": 10, "z_index": 2 }, "max_chars": 50, "overlay": false },
-        { "type": "body", "position": { "x": 10, "y": 30, "width": 80, "height": 60, "z_index": 2 }, "max_chars": 260, "overlay": false },
-        { "type": "logo", "position": { "x": 5, "y": 5, "width": 15, "height": 5, "z_index": 2 }, "overlay": true }
-      ]
-    },
-    {
-      "slot_id": "slide_8_cta",
-      "slot_type": "cta",
-      "layout": "closing_call_action",
-      "components": [
-        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 }, "overlay": false },
-        { "type": "headline", "position": { "x": 10, "y": 20, "width": 80, "height": 20, "z_index": 2 }, "max_chars": 60, "overlay": false },
-        { "type": "cta_button", "position": { "x": 30, "y": 55, "width": 40, "height": 12, "z_index": 2 }, "max_chars": 25, "overlay": false },
-        { "type": "logo", "position": { "x": 42.5, "y": 5, "width": 15, "height": 5, "z_index": 2 }, "overlay": true }
-      ]
+      "slide_number": 5,
+      "layout_type": "full-bleed-end-cta",
+      "meta_header": {
+        "left_text": "@reallygreatsite",
+        "center_text": "Larana, Inc.",
+        "right_text": "December 2024"
+      },
+      "background_image_url": "https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?auto=format&fit=crop&w=600&q=80",
+      "content": {
+        "headline_text": "Follow Us For More Info",
+        "pill_tag_text": "Which fashion tip will you try first?"
+      },
+      "interactive_actions": [
+        {
+          "icon": "heart",
+          "label": "Like"
+        },
+        {
+          "icon": "send",
+          "label": "Share"
+        },
+        {
+          "icon": "bookmark",
+          "label": "Save"
+        }
+      ],
+      "meta_footer": {
+        "left_text": "hello@reallygreatsite.com",
+        "right_text": "www.reallygreatsite.com"
+      }
     }
   ]
 }

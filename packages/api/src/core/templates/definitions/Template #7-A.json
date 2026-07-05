@@ -1,0 +1,145 @@
+{
+  "template_id": "TEMPLATE_06_ATHLETIC",
+  "template_name": "Running Tips for Beginners",
+  "format": "4:5 Feed Post Carousel",
+  "carousel_specification": {
+    "total_slides": 6,
+    "global_styles": {
+      "primary_brand_color": "#000be3",
+      "font_family": "Plus Jakarta Sans, sans-serif",
+      "inner_border": {
+        "thickness": "2px",
+        "color": "rgba(255, 255, 255, 0.85)",
+        "margin_offset": "24px",
+        "border_radius": "24px"
+      },
+      "overlay_mask": "linear-gradient(135deg, rgba(0, 11, 227, 0.98) 0%, rgba(0, 11, 227, 0.85) 30%, rgba(13, 27, 66, 0.4) 75%, rgba(0, 11, 227, 0.95) 100%)"
+    }
+  },
+  "brand_identity": {
+    "logo_type": "vector_lightning_bolt_badge",
+    "name": "Borcelle",
+    "decorative_accent": "/// (tilted_parallelogram_trio)"
+  },
+  "slides": [
+    {
+      "slide_index": 1,
+      "reference_file": "Screenshot 2026-07-04 at 22.27.03.png",
+      "layout_variant": "carousel_cover",
+      "background_image_url": "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&q=80&w=600&h=750",
+      "components": {
+        "top_left_identity": { "has_logo": true, "has_name": true },
+        "top_right_action": { "type": "circle_outline_arrow_right" },
+        "content_block": {
+          "headline": "Running\nTips for\nBeginners",
+          "sub_headline": "Starting your running journey?\nRead this first"
+        },
+        "footer_row": {
+          "left_handle": "@reallygreatsite",
+          "right_decoration": "tilted_parallelogram_trio"
+        }
+      }
+    },
+    {
+      "slide_index": 2,
+      "reference_file": "Screenshot 2026-07-04 at 22.27.15.png",
+      "layout_variant": "step_detail_frame",
+      "background_image_url": "https://images.unsplash.com/photo-1483721310020-03333e577078?auto=format&fit=crop&q=80&w=600&h=750",
+      "components": {
+        "header_pill": {
+          "has_identity": true,
+          "has_right_parallelogram_decoration": true
+        },
+        "content_block": {
+          "step_flag": "Step #1",
+          "headline": "Start slow with\nwalk-run\nintervals"
+        },
+        "footer_row": {
+          "action_button": "circle_outline_arrow_right",
+          "alignment": "right"
+        }
+      }
+    },
+    {
+      "slide_index": 3,
+      "reference_file": "Screenshot 2026-07-04 at 22.27.28.png",
+      "layout_variant": "step_detail_frame",
+      "background_image_url": "https://images.unsplash.com/photo-1502224562085-639556652f33?auto=format&fit=crop&q=80&w=600&h=750",
+      "components": {
+        "header_pill": {
+          "has_identity": true,
+          "has_right_parallelogram_decoration": true
+        },
+        "content_block": {
+          "step_flag": "Step #2",
+          "headline": "Always warm\nup and cool\ndown"
+        },
+        "footer_row": {
+          "action_button": "circle_outline_arrow_right",
+          "alignment": "right"
+        }
+      }
+    },
+    {
+      "slide_index": 4,
+      "reference_file": "Screenshot 2026-07-04 at 22.27.43.png",
+      "layout_variant": "step_detail_frame",
+      "background_image_url": "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?auto=format&fit=crop&q=80&w=600&h=750",
+      "components": {
+        "header_pill": {
+          "has_identity": true,
+          "has_right_parallelogram_decoration": true
+        },
+        "content_block": {
+          "step_flag": "Step #3",
+          "headline": "Stay hydrated\n— before and\nafter"
+        },
+        "footer_row": {
+          "action_button": "circle_outline_arrow_right",
+          "alignment": "right"
+        }
+      }
+    },
+    {
+      "slide_index": 5,
+      "reference_file": "Screenshot 2026-07-04 at 22.27.56.png",
+      "layout_variant": "step_detail_frame",
+      "background_image_url": "https://images.unsplash.com/photo-1510017803434-a899398421b3?auto=format&fit=crop&q=80&w=600&h=750",
+      "components": {
+        "header_pill": {
+          "has_identity": true,
+          "has_right_parallelogram_decoration": true
+        },
+        "content_block": {
+          "step_flag": "Step #4",
+          "headline": "Track your\nprogress, not\nperfection"
+        },
+        "footer_row": {
+          "action_button": "circle_outline_arrow_right",
+          "alignment": "right"
+        }
+      }
+    },
+    {
+      "slide_index": 6,
+      "reference_file": "Screenshot 2026-07-04 at 22.28.13.png",
+      "layout_variant": "carousel_outro",
+      "background_image_url": "https://images.unsplash.com/photo-1491756906519-aa57a5cf2b01?auto=format&fit=crop&q=80&w=600&h=750",
+      "components": {
+        "header_pill": {
+          "has_identity": true,
+          "has_right_parallelogram_decoration": true
+        },
+        "content_block": {
+          "step_flag": "Step #5",
+          "headline": "Rest days are\npart of the\nplan",
+          "sub_headline": "Everyone starts somewhere —\njust start!"
+        },
+        "footer_row": {
+          "left_handle": "@reallygreatsite",
+          "right_action_button": "circle_outline_submit_airplane"
+        }
+      }
+    }
+  ]
+}

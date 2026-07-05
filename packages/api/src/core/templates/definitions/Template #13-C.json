@@ -1,0 +1,35 @@
+{
+  "template_id": "TEMPLATE_13",
+  "template_name": "Poll / Question Story",
+  "version": "3_minimalist_floating_widget",
+  "global_styles": {
+    "canvas_background_image": "https://images.unsplash.com/photo-1545241047-6083a3684587?auto=format&fit=crop&q=80&w=800&h=1422",
+    "font_family": "Plus Jakarta Sans, sans-serif"
+  },
+  "widget_group": {
+    "search_bar_question": {
+      "text": "Do you take time to rest?",
+      "background_color": "#FFFFFF",
+      "border_color": "#9CA3AF",
+      "text_color": "#1F2937",
+      "icon": "magnifying-glass"
+    },
+    "binary_selection_deck": {
+      "background_color": "#374151",
+      "border_radius": "12px",
+      "pointer_alignment": "36%",
+      "options": [
+        {
+          "id": "choice_1",
+          "text": "Every day",
+          "text_color": "#FFFFFF"
+        },
+        {
+          "id": "choice_2",
+          "text": "Rarely ever",
+          "text_color": "#FFFFFF"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "template_id": "TEMPLATE_01",
+  "template_name": "Hero + Headline",
+  "variant": "camera_viewfinder_ui",
+  "format": "1:1 Feed Post",
+  "global_styles": {
+    "media_background_url": "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&q=80&w=1080&h=1080",
+    "font_family": "Inter, sans-serif",
+    "overlay_shading": "linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, transparent 15%, transparent 75%, rgba(0,0,0,0.7) 100%)"
+  },
+  "interface_overlays": {
+    "focus_box": {
+      "dimensions": "90px x 90px",
+      "color": "#E5A93C",
+      "has_sun_indicator": true
+    },
+    "modes_row": {
+      "items": ["Slo-Mo", "Video", "Photo", "Square", "Sticker"],
+      "active_item": "Photo",
+      "active_color": "#E5A93C",
+      "inactive_color": "rgba(255, 255, 255, 0.6)"
+    }
+  },
+  "footer_controls": {
+    "thumbnail_preview_url": "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=100&h=100",
+    "shutter_button": {
+      "style": "solid_white_with_double_ring"
+    },
+    "flip_camera_icon": "rotate_arrows"
+  }
+}

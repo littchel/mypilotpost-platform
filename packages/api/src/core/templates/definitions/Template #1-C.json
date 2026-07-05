@@ -1,0 +1,95 @@
+{
+  "template_id": "TEMPLATE_01",
+  "template_name": "Hero + Headline",
+  "format": "1:1 Feed Post",
+  "designs": [
+    {
+      "design_index": 1,
+      "variant": "glassmorphic_eco_editorial",
+      "global_styles": {
+        "background_image_url": "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&q=80&w=1080&h=1080",
+        "font_family": "Plus Jakarta Sans, sans-serif"
+      },
+      "card_layer": {
+        "type": "frosted_blur_glass",
+        "background_color": "rgba(26, 38, 23, 0.45)",
+        "backdrop_filter": "blur(14px)",
+        "border_radius": "36px",
+        "padding": "48px 40px"
+      },
+      "content": {
+        "meta_tag_text": "Let's discuss",
+        "meta_tag_color": "#E2EAD2",
+        "headline_text": "Yes, Climate\nChange is real.",
+        "headline_color": "#F4F9E9"
+      },
+      "footer_action": {
+        "label": "Swipe to know more",
+        "label_color": "#E2EAD2",
+        "icon": "arrow_long_horizontal"
+      }
+    },
+    {
+      "design_index": 2,
+      "variant": "camera_viewfinder_ui",
+      "global_styles": {
+        "media_background_url": "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&q=80&w=1080&h=1080",
+        "font_family": "Inter, sans-serif",
+        "overlay_shading": "linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, transparent 15%, transparent 75%, rgba(0,0,0,0.7) 100%)"
+      },
+      "interface_overlays": {
+        "focus_box": {
+          "dimensions": "90px x 90px",
+          "color": "#E5A93C",
+          "has_sun_indicator": true
+        },
+        "modes_row": {
+          "items": ["Slo-Mo", "Video", "Photo", "Square", "Sticker"],
+          "active_item": "Photo",
+          "active_color": "#E5A93C",
+          "inactive_color": "rgba(255, 255, 255, 0.6)"
+        }
+      },
+      "footer_controls": {
+        "thumbnail_preview_url": "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=100&h=100",
+        "shutter_button": {
+          "style": "solid_white_with_double_ring"
+        },
+        "flip_camera_icon": "rotate_arrows"
+      }
+    },
+    {
+      "design_index": 3,
+      "variant": "high_intensity_fitness_editorial_remix",
+      "global_styles": {
+        "canvas_background_color": "#000000",
+        "hero_image_url": "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&q=80&w=900&h=1080",
+        "font_headline": "Montserrat, sans-serif",
+        "font_sub_headline": "Antonio, sans-serif"
+      },
+      "layout_settings": {
+        "grid_left_offset": "54px",
+        "safe_frame_visibility": "3/4 visible (75% within margins)"
+      },
+      "header_elements": {
+        "running_header_text": "Morning Routine",
+        "running_header_stroke": "1px #FFFFFF",
+        "year_badge": {
+          "text": "2022",
+          "background_color": "#FFA800",
+          "text_color": "#000000"
+        }
+      },
+      "vertical_typography_core": {
+        "rotation_degrees": -90,
+        "giant_stroke_text": "Action",
+        "giant_stroke_color": "transparent",
+        "giant_stroke_border": "2px #FFA800",
+        "sub_headers": [
+          "More Get Health"
+        ],
+        "sub_headers_stroke": "1px #FFFFFF"
+      }
+    }
+  ]
+}

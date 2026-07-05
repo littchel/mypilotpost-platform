@@ -1,51 +1,65 @@
 {
   "template_id": "hero_headline_feed",
-  "name": "Hero Headline Feed Post",
-  "format": "feed_post",
-  "intent": ["awareness", "engagement"],
-  "pillars": ["showcase", "lifestyle"],
-  "platforms": ["instagram", "facebook", "linkedin"],
   "dimensions": {
     "width": 1080,
-    "height": 1080
+    "height": 1350
   },
-  "slides": [
+  "slots": [
     {
-      "slot_id": "slide_1",
-      "slot_type": "hero",
-      "layout": "hero_image_headline",
-      "components": [
-        {
-          "type": "background",
-          "position": { "x": 0, "y": 0, "width": 100, "height": 100, "z_index": 1 },
-          "overlay": false
-        },
-        {
-          "type": "image",
-          "position": { "x": 0, "y": 0, "width": 100, "height": 75, "z_index": 2 },
-          "required_aspect_ratio": "4:3",
-          "min_width": 1080,
-          "min_height": 810,
-          "overlay": false
-        },
-        {
-          "type": "headline",
-          "position": { "x": 10, "y": 78, "width": 80, "height": 12, "z_index": 3 },
-          "max_chars": 60,
-          "overlay": true
-        },
-        {
-          "type": "subtitle",
-          "position": { "x": 10, "y": 91, "width": 60, "height": 6, "z_index": 3 },
-          "max_chars": 80,
-          "overlay": true
-        },
-        {
-          "type": "logo",
-          "position": { "x": 80, "y": 91, "width": 10, "height": 6, "z_index": 3 },
-          "overlay": true
-        }
-      ]
+      "slot_id": "media_background",
+      "type": "image",
+      "x": "0%",
+      "y": "0%",
+      "width": "100%",
+      "height": "100%"
+    },
+    {
+      "slot_id": "boxed_pre_headline",
+      "type": "text",
+      "text": "HOW TO FIND YOUR",
+      "font": "Inter",
+      "weight": 500,
+      "size": 24,
+      "color": "#FFFFFF",
+      "align": "center",
+      "x": "30%",
+      "y": "38%",
+      "width": "40%",
+      "height": "6%",
+      "border": {
+        "width": "2px",
+        "color": "#FFFFFF",
+        "radius": "8px"
+      }
+    },
+    {
+      "slot_id": "massive_serif_title",
+      "type": "text",
+      "text": "style",
+      "font": "Playfair Display",
+      "weight": 400,
+      "style": "italic",
+      "size": 120,
+      "color": "#FFFFFF",
+      "align": "center",
+      "x": "10%",
+      "y": "44%",
+      "width": "80%",
+      "height": "25%"
+    },
+    {
+      "slot_id": "brand_handle_footer",
+      "type": "text",
+      "text": "@ reallygreatsite",
+      "font": "Inter",
+      "weight": 400,
+      "size": 18,
+      "color": "#FFFFFF",
+      "align": "center",
+      "x": "20%",
+      "y": "92%",
+      "width": "60%",
+      "height": "4%"
     }
   ]
 }

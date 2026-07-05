@@ -305,5 +305,178 @@ export const exampleCarouselTemplate = {
  * @returns {{success: boolean, data?: any, error?: z.ZodError}}
  */
 export function validateTemplate(data) {
-  return TemplateSchema.safeParse(data);
+  const result = TemplateSchema.safeParse(data);
+  if (result.success) return result;
+
+  if (data && typeof data === "object" && data.template_id) {
+    const template_id = data.template_id;
+    const name = data.template_name || data.name || template_id;
+    
+    let format = data.format || "";
+    if (format.toLowerCase().includes("carousel")) {
+      format = "carousel";
+    } else if (format.toLowerCase().includes("story")) {
+      format = "story";
+    } else if (format.toLowerCase().includes("reel")) {
+      format = "reel";
+    } else {
+      format = "feed_post";
+    }
+
+    const intent = data.intent || ["engagement"];
+    const pillars = data.pillars || ["brand_dna"];
+    const platforms = data.platforms || ["instagram", "facebook", "linkedin"];
+    const dimensions = data.dimensions || (format === "story" || format === "reel" ? { width: 1080, height: 1920 } : { width: 1080, height: 1080 });
+
+    const parseVal = (val, maxDim) => {
+      if (typeof val === "string") {
+        if (val.endsWith("px")) {
+          return Math.min(100, Math.max(0, (parseFloat(val) / maxDim) * 100));
+        }
+        if (val.endsWith("%")) {
+          return Math.min(100, Math.max(0, parseFloat(val)));
+        }
+      }
+      const num = parseFloat(val || 0);
+      if (num > 100) {
+        return Math.min(100, Math.max(0, (num / maxDim) * 100));
+      }
+      return Math.min(100, Math.max(0, num));
+    };
+
+    const slides = [];
+    if (data.slides && Array.isArray(data.slides)) {
+      const isStandard = data.slides.every(s => s.slot_id && s.components && Array.isArray(s.components));
+      if (isStandard) {
+        slides.push(...data.slides);
+      } else {
+        slides.push(...data.slides.map((s, idx) => {
+          const slot_id = `slide_${s.slide_index || idx + 1}`;
+          const slot_type = s.type === "cover_title" || s.type === "closing_cta" ? "hero" : "body";
+          const layout = s.type || "carousel_slide";
+          
+          const components = [
+            {
+              type: "background",
+              position: { x: 0, y: 0, width: 100, height: 100, z_index: 1 },
+              overlay: false
+            }
+          ];
+          
+          if (s.content?.circle_image_url || s.content?.capsule_image_url || s.background_image_url) {
+            components.push({
+              type: "image",
+              position: { x: 10, y: 10, width: 80, height: 50, z_index: 2 },
+              overlay: false
+            });
+          }
+          
+          if (s.content?.title || s.content?.section_header || s.components?.comparison_headers?.top_text) {
+            components.push({
+              type: "headline",
+              position: { x: 10, y: 65, width: 80, height: 15, z_index: 3 },
+              max_chars: 100,
+              overlay: true
+            });
+          }
+          
+          if (s.content?.sub_header || s.content?.left_description || s.content?.right_description) {
+            components.push({
+              type: "body",
+              position: { x: 10, y: 80, width: 80, height: 15, z_index: 3 },
+              max_chars: 200,
+              overlay: true
+            });
+          }
+          
+          if (s.components?.brand_seal || s.content?.brand_seal_large || s.content?.social_handle_pill) {
+            components.push({
+              type: "logo",
+              position: { x: 5, y: 5, width: 15, height: 5, z_index: 3 },
+              overlay: true
+            });
+          }
+
+          return {
+            slot_id,
+            slot_type,
+            layout,
+            components
+          };
+        }));
+      }
+    } else if (data.slots && Array.isArray(data.slots)) {
+      slides.push({
+        slot_id: "slide_1",
+        slot_type: "hero",
+        layout: "custom_slots",
+        components: data.slots.map(s => {
+          let cType = "headline";
+          if (s.type === "image" || s.slot_id === "media_background" || s.slot_id?.includes("image")) {
+            cType = "image";
+          } else if (s.slot_id?.includes("logo")) {
+            cType = "logo";
+          } else if (s.type === "container" || s.slot_id?.includes("background")) {
+            cType = "background";
+          }
+          return {
+            type: cType,
+            position: {
+              x: parseVal(s.x, dimensions.width),
+              y: parseVal(s.y, dimensions.height),
+              width: parseVal(s.width, dimensions.width),
+              height: parseVal(s.height, dimensions.height),
+              z_index: s.z_index || 3
+            },
+            max_chars: s.max_chars || 100,
+            overlay: s.overlay ?? true
+          };
+        })
+      });
+    } else {
+      slides.push({
+        slot_id: "slide_1",
+        slot_type: "hero",
+        layout: "generic_fallback",
+        components: [
+          {
+            type: "background",
+            position: { x: 0, y: 0, width: 100, height: 100, z_index: 1 },
+            overlay: false
+          },
+          {
+            type: "image",
+            position: { x: 0, y: 0, width: 100, height: 100, z_index: 2 },
+            overlay: false
+          },
+          {
+            type: "headline",
+            position: { x: 10, y: 30, width: 80, height: 40, z_index: 3 },
+            max_chars: 100,
+            overlay: true
+          }
+        ]
+      });
+    }
+
+    const normalized = {
+      template_id,
+      name,
+      format,
+      intent,
+      pillars,
+      platforms,
+      dimensions,
+      slides
+    };
+
+    const finalResult = TemplateSchema.safeParse(normalized);
+    if (finalResult.success) {
+      return finalResult;
+    } else {
+      console.warn("[VALIDATION FAILED] Normalization failed for:", template_id, JSON.stringify(finalResult.error.format()));
+    }
+  }
+
+  return result;
 }

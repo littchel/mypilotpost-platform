@@ -1,0 +1,48 @@
+{
+  "template_id": "TEMPLATE_13",
+  "template_name": "Poll / Question Story",
+  "version": "2_visual_studio_comparison",
+  "global_styles": {
+    "canvas_background_image": "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&q=80&w=800&h=1422",
+    "overlay_opacity": 0.75,
+    "font_family": "Plus Jakarta Sans, sans-serif"
+  },
+  "question_zone": {
+    "category_pill": "Quick Poll",
+    "headline": "Where do you train better?",
+    "text_color": "#FFFFFF"
+  },
+  "poll_sticker_panel": {
+    "background_color": "#BFBFBF",
+    "border_radius": "24px",
+    "comparison_cards": [
+      {
+        "card_id": "preview_a",
+        "image_url": "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&q=80&w=300&h=300"
+      },
+      {
+        "card_id": "preview_b",
+        "image_url": "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&q=80&w=300&h=300"
+      }
+    ],
+    "options": [
+      {
+        "badge": "A",
+        "text": "Home",
+        "background_color": "#121214",
+        "text_color": "#FFFFFF"
+      },
+      {
+        "badge": "B",
+        "text": "Gym",
+        "background_color": "#121214",
+        "text_color": "#FFFFFF"
+      }
+    ]
+  },
+  "footer_metadata": {
+    "instruction_text": "Send your answer below here",
+    "indicator_icon": "chevron-down",
+    "brand_tag": "@reallygreatsite"
+  }
+}

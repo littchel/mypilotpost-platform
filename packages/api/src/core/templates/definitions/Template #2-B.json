@@ -1,0 +1,41 @@
+{
+  "template_id": "TEMPLATE_02",
+  "template_name": "Quote Card",
+  "variant": "The Portrait Focus Minimalist",
+  "format": "1:1 Feed Post",
+  "styles": {
+    "background_gradient_overlay": "linear-gradient(to right, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.2) 60%, transparent 100%)",
+    "font_family_headline": "Oswald, sans-serif",
+    "font_family_body": "Inter, sans-serif"
+  },
+  "media_layer": {
+    "background_image_url": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=900&h=900",
+    "description": "High-contrast studio portrait character framing"
+  },
+  "typography_stack": {
+    "alignment": "left-aligned",
+    "layout_width_percentage": "50%",
+    "decorations": {
+      "mini_quote_tag": "“",
+      "mini_quote_font_size": "72px"
+    },
+    "content": {
+      "headline_text": "Just living\nmy best life",
+      "font_size": "38px",
+      "font_weight": 700,
+      "line_height": 1.15
+    },
+    "attribution": {
+      "handle_text": "@reallygreatsite",
+      "font_size": "15px",
+      "font_weight": 300,
+      "opacity": 0.85
+    },
+    "footer_graphic": {
+      "type": "horizontal_short_dash_marker",
+      "width": "20px",
+      "height": "3.5px",
+      "color": "#FFFFFF"
+    }
+  }
+}
