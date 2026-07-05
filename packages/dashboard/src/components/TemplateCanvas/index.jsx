@@ -199,7 +199,10 @@ const TemplateCanvas = forwardRef(({
         } 
         
         else if (['headline', 'subtitle', 'body', 'hashtags'].includes(comp.type)) {
-          const textVal = currentSlot.text || 
+          const textVal = (comp.type === 'headline' ? currentSlot.headline :
+                           comp.type === 'body' ? currentSlot.body :
+                           comp.type === 'subtitle' ? currentSlot.subtitle : null) ||
+                           currentSlot.text || 
             (comp.type === 'headline' ? 'Bold Narrative Headline' : 
              comp.type === 'subtitle' ? 'Subheading contextual copy goes here' : 'Standard copy block');
           
@@ -258,7 +261,7 @@ const TemplateCanvas = forwardRef(({
         }
 
         else if (comp.type === 'cta_button') {
-          const btnText = currentSlot.text || "Learn More";
+          const btnText = currentSlot.cta || currentSlot.cta_text || currentSlot.text || "Learn More";
           const btnBgColor = palette.accent || primaryColor;
           const btnTextColor = getContrastColor(btnBgColor);
 

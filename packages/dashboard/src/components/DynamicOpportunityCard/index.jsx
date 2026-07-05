@@ -5,7 +5,7 @@ import TemplateCanvas from "../TemplateCanvas";
 // Local static cache to avoid redundant template schema fetches across cards
 const templateCache = new Map();
 
-function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPreview, onUseIdea, onSave, saved }) {
+function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPreview, onUseIdea, onSave, saved, onQuickEdit }) {
   const [templateSchema, setTemplateSchema] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -64,40 +64,50 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
   const brandVars = useMemo(() => ({
     primary_color: brandDna?.visual?.primary_color || "#1A1A1A",
     secondary_color: brandDna?.visual?.secondary_color || "#F5F5F5",
-    font_stack: brandDna?.visual?.font_pairing_body || "Inter",
-    logo_url: activeBrand?.logo_url || ""
+    font_stack: brandDna?.visual?.typography_main || "Inter, sans-serif",
+    logo_url: activeBrand?.logo_url || brandDna?.visual?.logo_url || ""
   }), [brandDna, activeBrand]);
 
-  // Format dimensions (mini canvas sizes: 300x300 for feed, 300x400 for carousels/stories)
+  // Format dimensions (mini canvas sizes: 280x280 for feed, 280x400 for carousels/stories)
   const isFeed = !card.template_format || card.template_format === "feed_post" || card.template_format === "quote_card";
   const dimensions = useMemo(() => {
-    return isFeed ? { width: 300, height: 300 } : { width: 300, height: 400 };
+    return isFeed ? { width: 280, height: 280 } : { width: 280, height: 400 };
   }, [isFeed]);
 
   // Map slot data
   const slotData = useMemo(() => {
     if (!templateSchema) return null;
     const activeSlideId = templateSchema.slides?.[0]?.slot_id || "slide_1";
+    
+    // Support preview_data from backend copy generators
+    const headlineText = card.preview_data?.headline || card.hook || card.idea || "";
+    const bodyText = card.preview_data?.body || card.caption || "";
+    const ctaText = card.preview_data?.cta || "Learn More";
+    const bgImage = card.preview_data?.hero_image_url || imageUrl || card.thumbnail_url || "";
+
     return {
       [activeSlideId]: {
-        text: card.hook || card.idea || "",
-        image_url: imageUrl || card.thumbnail_url || "",
+        text: headlineText,
+        headline: headlineText,
+        body: bodyText,
+        cta: ctaText,
+        image_url: bgImage,
         palette: {
           dominant: brandVars.primary_color,
           accent: brandVars.secondary_color,
-          background: "#F5F5F5",
-          text_contrast: "#FFFFFF"
+          background: brandVars.secondary_color || "#F5F5F5",
+          text_contrast: brandVars.primary_color || "#1A1A1A"
         }
       }
     };
-  }, [templateSchema, card.hook, card.idea, imageUrl, card.thumbnail_url, brandVars]);
+  }, [templateSchema, card.preview_data, card.hook, card.idea, card.caption, imageUrl, card.thumbnail_url, brandVars]);
 
   // Skeleton Loader State
   if (loading) {
     return (
       <div style={{
         width: 280,
-        height: isFeed ? 380 : 480,
+        height: isFeed ? 380 : 500,
         background: "var(--surface-primary)",
         border: "1px solid var(--border-subtle)",
         borderRadius: "var(--radius-lg)",
@@ -126,7 +136,7 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
     return (
       <div style={{
         width: 280,
-        height: isFeed ? 380 : 480,
+        height: isFeed ? 380 : 500,
         background: "var(--surface-primary)",
         border: "1px solid var(--border-subtle)",
         borderRadius: "var(--radius-lg)",
@@ -152,7 +162,7 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
             {card.idea || "Idea Draft"}
           </h4>
           <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
-            {card.hook || card.caption}
+            {card.preview_data?.body || card.hook || card.caption}
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
@@ -171,7 +181,7 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
               cursor: "pointer"
             }}
           >
-            Use Idea
+            Use Post →
           </button>
         </div>
       </div>
@@ -203,10 +213,9 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
         e.currentTarget.style.boxShadow = "0 4px 12px rgba(15,23,42,0.04)";
       }}
     >
-      {/* Live Canvas Render Box */}
+      {/* Live Canvas Render Box inside Phone Mockup Frame */}
       <div style={{
-        height: isFeed ? 280 : 360,
-        width: "100%",
+        padding: "16px 0",
         background: "var(--surface-secondary)",
         display: "flex",
         alignItems: "center",
@@ -218,8 +227,8 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
         {/* Overlay Badge */}
         <div style={{
           position: "absolute",
-          top: 10,
-          left: 10,
+          top: 24,
+          left: 18,
           zIndex: 10,
           display: "flex",
           gap: 6
@@ -250,40 +259,40 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
           )}
         </div>
 
-        <TemplateCanvas
-          templateSchema={templateSchema}
-          slotData={slotData}
-          brandVariables={brandVars}
-          dimensions={dimensions}
-        />
-
-        {/* Gradient Text Overlay at the bottom */}
+        {/* Phone Mockup Frame wrapper */}
         <div style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: "40%",
-          background: "linear-gradient(to top, rgba(15,23,42,0.9) 0%, rgba(15,23,42,0.4) 60%, transparent 100%)",
+          borderRadius: "24px",
+          border: "6px solid #1e293b", // Slate-800 mockup bezel
+          boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)",
+          overflow: "hidden",
+          width: dimensions.width,
+          height: dimensions.height,
+          background: "#000",
+          position: "relative",
           display: "flex",
-          alignItems: "flex-end",
-          padding: "16px 12px",
-          pointerEvents: "none"
+          alignItems: "center",
+          justifyContent: "center"
         }}>
-          <p style={{
-            fontSize: "0.75rem",
-            color: "#FFFFFF",
-            fontWeight: 600,
-            lineHeight: 1.3,
-            margin: 0,
-            textShadow: "0 1px 2px rgba(0,0,0,0.2)",
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            overflow: "hidden"
-          }}>
-            {card.hook || card.idea || ""}
-          </p>
+          {/* Phone speaker notch */}
+          <div style={{
+            position: "absolute",
+            top: 0,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "48px",
+            height: "8px",
+            background: "#1e293b",
+            borderBottomLeftRadius: "4px",
+            borderBottomRightRadius: "4px",
+            zIndex: 99
+          }} />
+
+          <TemplateCanvas
+            templateSchema={templateSchema}
+            slotData={slotData}
+            brandVariables={brandVars}
+            dimensions={dimensions}
+          />
         </div>
       </div>
 
@@ -291,13 +300,13 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
       <div style={{
         padding: "12px 14px",
         display: "flex",
-        gap: 8,
+        gap: 6,
         background: "var(--surface-primary)",
         alignItems: "center"
       }}>
         <button
           type="button"
-          onClick={() => onPreview && onPreview(card, imageUrl)}
+          onClick={() => onQuickEdit && onQuickEdit(card)}
           style={{
             flex: 1,
             border: "1px solid var(--border-subtle)",
@@ -305,27 +314,27 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
             color: "var(--text-main)",
             borderRadius: "var(--radius-md)",
             padding: "8px 0",
-            fontSize: "0.75rem",
-            fontWeight: 600,
+            fontSize: "0.7rem",
+            fontWeight: 700,
             cursor: "pointer",
             transition: "background 0.15s"
           }}
           onMouseEnter={(e) => e.currentTarget.style.background = "var(--hover-bg)"}
           onMouseLeave={(e) => e.currentTarget.style.background = "var(--surface-secondary)"}
         >
-          Preview
+          ✎ Quick Edit
         </button>
         <button
           type="button"
           onClick={() => onUseIdea(card)}
           style={{
-            flex: 1.3,
+            flex: 1.2,
             border: "none",
             background: "var(--pilot-blue)",
             color: "#fff",
             borderRadius: "var(--radius-md)",
             padding: "8px 0",
-            fontSize: "0.75rem",
+            fontSize: "0.7rem",
             fontWeight: 700,
             cursor: "pointer",
             transition: "opacity 0.15s"
@@ -333,28 +342,26 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
           onMouseEnter={(e) => e.currentTarget.style.opacity = "0.95"}
           onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
         >
-          Use Idea
+          Use Post →
         </button>
-        {onSave && (
-          <button
-            type="button"
-            onClick={() => onSave(card, imageUrl)}
-            disabled={saved}
-            style={{
-              flex: 0.9,
-              border: `1px solid ${saved ? "var(--status-success)" : "var(--border-subtle)"}`,
-              background: saved ? "var(--surface-primary)" : "var(--surface-secondary)",
-              color: saved ? "var(--status-success)" : "var(--text-main)",
-              borderRadius: "var(--radius-md)",
-              padding: "8px 0",
-              fontSize: "0.75rem",
-              fontWeight: saved ? 700 : 600,
-              cursor: saved ? "default" : "pointer"
-            }}
-          >
-            {saved ? "✓ Saved" : "Save"}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => onSave && onSave(card)}
+          disabled={saved}
+          style={{
+            flex: 0.8,
+            border: `1px solid ${saved ? "var(--status-success)" : "var(--border-subtle)"}`,
+            background: saved ? "var(--surface-primary)" : "var(--surface-secondary)",
+            color: saved ? "var(--status-success)" : "var(--text-main)",
+            borderRadius: "var(--radius-md)",
+            padding: "8px 0",
+            fontSize: "0.7rem",
+            fontWeight: 700,
+            cursor: saved ? "default" : "pointer"
+          }}
+        >
+          {saved ? "✓ Saved" : "♡ Save"}
+        </button>
       </div>
     </div>
   );

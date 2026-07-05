@@ -212,6 +212,21 @@ export async function getStudioOpportunities(request, env, auth) {
   if (!auth?.brand_id) return error("Unauthorized", 401);
 
   const db = getDB(env);
+  
+  // 1. Check Redis Cache first (24-hour TTL, key: studio_feed_{brand_id}_{YYYY-MM-DD})
+  const todayStr = new Date().toISOString().split("T")[0];
+  const redisKey = `studio_feed_${auth.brand_id}_${todayStr}`;
+  if (env.REDIS_CLIENT) {
+    try {
+      const cached = await env.REDIS_CLIENT.get(redisKey);
+      if (cached) {
+        return json(JSON.parse(cached));
+      }
+    } catch (err) {
+      console.warn("[STUDIO FEED] Redis read failed:", err.message);
+    }
+  }
+
   await checkAndIncrement(db, auth.user_id, "ai");
   const { brand, context, brandName, industry, activePlatforms, visuals } = await fetchBrandCtx(db, auth.brand_id);
   const platforms = activePlatforms.length ? activePlatforms.join(", ") : "Facebook, Instagram, LinkedIn";
@@ -224,15 +239,6 @@ export async function getStudioOpportunities(request, env, auth) {
     LIMIT 1
   `).bind(auth.brand_id).first();
   const preferredTemplateId = preferredTemplateRow?.preferred_template_id || null;
-
-  let preferredFamily = null;
-  if (preferredTemplateId) {
-    if (preferredTemplateId.includes("carousel")) preferredFamily = "carousel_list";
-    else if (preferredTemplateId.includes("quote")) preferredFamily = "quote_card";
-    else if (preferredTemplateId.includes("hero")) preferredFamily = "hero_headline";
-    else if (preferredTemplateId.includes("story")) preferredFamily = "story_fullscreen";
-    else if (preferredTemplateId.includes("split")) preferredFamily = "split_layout";
-  }
 
   const prompt = `You are a content strategist creating a daily content opportunity briefing.
 
@@ -253,7 +259,10 @@ Return ONLY this JSON object:
       "idea": "specific post concept for this brand",
       "hook": "scroll-stopping opening line — max 12 words, never generic",
       "caption": "complete, ready-to-publish post — 80-220 words, no placeholders, structured as requested below",
-      "cta": "specific call to action",
+      "headline": "headline for template rendering (max 60 chars)",
+      "body": "short description for template rendering (max 120 chars)",
+      "cta_text": "CTA button text (max 30 chars)",
+      "cta": "specific call to action link target/description",
       "hashtags": ["#tag1", "#tag2", "#tag3"],
       "objective": "one short goal: build trust / generate leads / etc.",
       "platforms": ["platform1", "platform2"],
@@ -292,13 +301,39 @@ Rules:
     options: { mode: "deep", systemPromptType: "campaign" },
   });
 
-  const opps = result?.opportunities || buildFallbackOpps(brandName, industry, activePlatforms);
+  const opps = result?.opportunities || [];
   
   // Assign template layouts deterministically based on seed
   const routedOpps = await assignTemplatesToCards(opps.slice(0, 20), auth.brand_id, env, preferredTemplateId);
 
-  const enrichedOpps = routedOpps.map((card, i) => {
+  // Parallel fetch image suggestions and build full preview cards
+  const enrichedPromises = routedOpps.map(async (card, i) => {
     const cardId = card.id || (i + 1);
+
+    const headline = card.headline || card.hook || card.idea || "";
+    const bodyText = card.body || (card.caption ? card.caption.slice(0, 120) : "");
+    const ctaText = card.cta_text || card.cta || "Learn More";
+
+    // 2. Fetch hero image using Pexels lookup based on the hook & industry
+    let hero_image_url = "https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=640&q=80";
+    try {
+      const photos = await fetchPexels({
+        query: `${card.hook || card.idea} ${industry}`.slice(0, 80),
+        limit: 1
+      }, env).catch(() => []);
+      if (photos && photos.length > 0) {
+        hero_image_url = photos[0].url || photos[0].preview || hero_image_url;
+      }
+    } catch (e) {
+      console.warn(`[STUDIO] Pexels suggestions lookup failed for card ${cardId}:`, e.message);
+    }
+
+    const previewData = {
+      headline,
+      body: bodyText,
+      cta: ctaText,
+      hero_image_url
+    };
 
     const layoutManifest = {
       template_id: card.template_id,
@@ -310,9 +345,7 @@ Rules:
         logo_url: visuals.logo_url || ""
       },
       slides: [
-        { text_anchor: "headline" },
-        { text_anchor: "body_paragraph_0" },
-        { text_anchor: "cta_text" }
+        { slot_id: "slide_1", text: headline, image_url: hero_image_url }
       ]
     };
 
@@ -325,7 +358,7 @@ Rules:
       hashtags: card.hashtags || [],
       platforms: card.platforms || [],
       contentType: card.media_type || (card.template_format === "carousel" ? "carousel" : "social"),
-      image: "",
+      image: hero_image_url,
       imageSource: "pexels",
       suggested_structure: card.framework || "",
       layout_manifest: layoutManifest,
@@ -334,16 +367,29 @@ Rules:
 
     return {
       ...card,
-      id: cardId,
+      id: `card_${cardId}`,
       suggested_template_id: card.template_id,
       suggested_template_variant: card.template_variant,
       suggested_template_family: card.template_format,
-      thumbnail_url: null,
+      thumbnail_url: hero_image_url,
+      preview_data: previewData,
       draft_payload: draftPayload
     };
   });
 
-  return json({ opportunities: enrichedOpps });
+  const enrichedOpps = await Promise.all(enrichedPromises);
+  const responseData = { opportunities: enrichedOpps };
+
+  // Write to Redis cache (24-hour TTL)
+  if (env.REDIS_CLIENT) {
+    try {
+      await env.REDIS_CLIENT.setEx(redisKey, 86400, JSON.stringify(responseData));
+    } catch (err) {
+      console.warn("[STUDIO FEED] Redis write failed:", err.message);
+    }
+  }
+
+  return json(responseData);
 }
 
 // ── POST /api/customer/studio/generate-post ───────────────────────────────────

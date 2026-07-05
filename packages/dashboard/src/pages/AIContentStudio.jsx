@@ -8,6 +8,7 @@ import IndustryAutoSuggest from "../components/shared/IndustryAutoSuggest";
 import TemplateCanvas from "../components/TemplateCanvas";
 import TemplatePreviewModal from "../components/TemplatePreviewModal";
 import DynamicOpportunityCard from "../components/DynamicOpportunityCard";
+import QuickEditModal from "../components/QuickEditModal";
 
 const CSS = `
 @keyframes cs-spin    { to { transform:rotate(360deg) } }
@@ -492,6 +493,7 @@ function RouteModal({ opp, imageUrl, activeBrand, brandDna, switchTab, onClose }
 
 // ── Save card to vault ────────────────────────────────────────────────────────
 async function saveCardToVault(card, imageUrl) {
+  const manifest = card.layout_manifest || card.draft_payload?.layout_manifest || null;
   const payload = {
     content_type: card.content_type || "social",
     title:        card.title || card.idea || "Studio Draft",
@@ -502,10 +504,12 @@ async function saveCardToVault(card, imageUrl) {
     platforms:    JSON.stringify(card.platforms || []),
     lifecycle_status: "draft",
     source:       "studio",
+    layout_manifest: manifest ? (typeof manifest === "string" ? manifest : JSON.stringify(manifest)) : null,
     metadata: JSON.stringify({
-      image: imageUrl || "",
+      image: imageUrl || card.thumbnail_url || card.draft_payload?.image || "",
       image_source: "pexels",
       platform_targets: card.platforms || [],
+      layout_manifest: manifest,
       generation_context: {
         source:         card.source || "studio",
         playbook_type:  card.playbook_type || null,
@@ -519,6 +523,7 @@ async function saveCardToVault(card, imageUrl) {
         hashtags:   card._hashtags || card.hashtags || [],
         format:     card.format || "single_image",
         timing:     card.timing || "",
+        layout_manifest: manifest,
       },
     }),
   };
@@ -590,6 +595,34 @@ function PostsTab({ activeBrand, brandDna: initialBrandDna, connectedPlatforms, 
   const [routing,    setRouting]   = useState(null);
   const [brandDna,   setBrandDna]  = useState(initialBrandDna || null);
   const ccs = calcCCS(activeBrand, brandDna, connectedPlatforms);
+  
+  const [savedSet, setSavedSet] = useState(new Set());
+  const [quickEditCard, setQuickEditCard] = useState(null);
+
+  const handleUseIdea = useCallback((card) => {
+    const payload = {
+      template_id: card.template_id || card.suggested_template_id,
+      template_variant: card.template_variant || card.suggested_template_variant || "A",
+      platform: Array.isArray(card.platforms) && card.platforms.length ? card.platforms[0] : "instagram",
+      caption: card.draft_payload?.caption || card.caption || "",
+      hook: card.draft_payload?.hook || card.hook || "",
+      cta: card.draft_payload?.cta || card.cta || "",
+      image: card.draft_payload?.image || card.thumbnail_url || "",
+      layout_manifest: card.draft_payload?.layout_manifest || card.layout_manifest
+    };
+    sessionStorage.setItem("studio_idea_prefill", JSON.stringify(payload));
+    switchTab("editor");
+  }, [switchTab]);
+
+  const handleSave = useCallback(async (card) => {
+    try {
+      const img = card.preview_data?.hero_image_url || card.thumbnail_url || card.draft_payload?.image || "";
+      await saveCardToVault(card, img);
+      setSavedSet(s => new Set([...s, card.id]));
+    } catch (err) {
+      console.error("[STUDIO SAVE] Failed to save draft:", err);
+    }
+  }, []);
 
   useEffect(() => {
     if (initialBrandDna) setBrandDna(initialBrandDna);
@@ -726,7 +759,10 @@ function PostsTab({ activeBrand, brandDna: initialBrandDna, connectedPlatforms, 
                   <DynamicOpportunityCard key={opp.id || i} card={opp} imageUrl={imgData.url || null}
                     activeBrand={activeBrand} brandDna={brandDna}
                     onPreview={(o, u) => setPreview({ opp: o, imageUrl: u })}
-                    onUseIdea={o => setRouting({ opp: o, imageUrl: imgData.url || null })} />
+                    onUseIdea={handleUseIdea}
+                    onSave={handleSave}
+                    saved={savedSet.has(opp.id)}
+                    onQuickEdit={setQuickEditCard} />
                 );
               })}
             </div>
@@ -757,6 +793,18 @@ function PostsTab({ activeBrand, brandDna: initialBrandDna, connectedPlatforms, 
       {routing && (
         <RouteModal opp={routing.opp} imageUrl={routing.imageUrl} activeBrand={activeBrand} brandDna={brandDna} switchTab={switchTab} onClose={() => setRouting(null)} />
       )}
+      {quickEditCard && (
+        <QuickEditModal
+          card={quickEditCard}
+          activeBrand={activeBrand}
+          brandDna={brandDna}
+          onClose={() => setQuickEditCard(null)}
+          onSave={(updatedCard) => {
+            setQuickEditCard(null);
+            handleUseIdea(updatedCard);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -768,6 +816,22 @@ function AssetCardGrid({ cards, activeBrand, brandDna, switchTab, source }) {
   const [preview,   setPreview]   = useState(null);
   const [routing,   setRouting]   = useState(null);
   const [saveErr,   setSaveErr]   = useState("");
+  const [quickEditCard, setQuickEditCard] = useState(null);
+
+  const handleUseIdea = useCallback((card) => {
+    const payload = {
+      template_id: card.template_id || card.suggested_template_id,
+      template_variant: card.template_variant || card.suggested_template_variant || "A",
+      platform: Array.isArray(card.platforms) && card.platforms.length ? card.platforms[0] : "instagram",
+      caption: card.draft_payload?.caption || card.caption || "",
+      hook: card.draft_payload?.hook || card.hook || "",
+      cta: card.draft_payload?.cta || card.cta || "",
+      image: card.draft_payload?.image || card.thumbnail_url || "",
+      layout_manifest: card.draft_payload?.layout_manifest || card.layout_manifest
+    };
+    sessionStorage.setItem("studio_idea_prefill", JSON.stringify(payload));
+    switchTab("editor");
+  }, [switchTab]);
 
   useEffect(() => {
     if (!cards.length) return;
@@ -856,9 +920,10 @@ function AssetCardGrid({ cards, activeBrand, brandDna, switchTab, source }) {
             <DynamicOpportunityCard key={card.id || i} card={opp} imageUrl={imgData.url || null}
               activeBrand={activeBrand} brandDna={brandDna}
               onPreview={(o, u) => setPreview({ opp: o, imageUrl: u })}
-              onUseIdea={o => setRouting({ opp: o, imageUrl: imgData.url || null })}
+              onUseIdea={handleUseIdea}
               onSave={(o, u) => handleSave(o, u)}
-              saved={savedSet.has(card.id)} />
+              saved={savedSet.has(card.id)}
+              onQuickEdit={setQuickEditCard} />
           );
         })}
       </div>
@@ -882,6 +947,18 @@ function AssetCardGrid({ cards, activeBrand, brandDna, switchTab, source }) {
       )}
       {routing && (
         <RouteModal opp={routing.opp} imageUrl={routing.imageUrl} activeBrand={activeBrand} brandDna={brandDna} switchTab={switchTab} onClose={() => setRouting(null)} />
+      )}
+      {quickEditCard && (
+        <QuickEditModal
+          card={quickEditCard}
+          activeBrand={activeBrand}
+          brandDna={brandDna}
+          onClose={() => setQuickEditCard(null)}
+          onSave={(updatedCard) => {
+            setQuickEditCard(null);
+            handleUseIdea(updatedCard);
+          }}
+        />
       )}
     </div>
   );

@@ -613,6 +613,7 @@ export default function CreatePost({
   
   // ── Template Mode States ──────────────────────────────────────────────────
   const [templateMode, setTemplateMode]       = useState(false);
+  const [readOnlyTemplateMode, setReadOnlyTemplateMode] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState("A");
   const [templateSchema, setTemplateSchema]   = useState(null);
   const [slotData, setSlotData]               = useState({});
@@ -829,6 +830,7 @@ export default function CreatePost({
     if (prefill.layout_manifest) {
       const manifest = prefill.layout_manifest;
       setTemplateMode(true);
+      setReadOnlyTemplateMode(true);
       const varId = manifest.template_variant || "A";
       setSelectedVariant(varId);
       
@@ -1634,7 +1636,142 @@ export default function CreatePost({
       </div>
 
       {activeTopTab === "editor" ? (
-        templateMode && templateSchema ? (
+        readOnlyTemplateMode && templateSchema ? (
+          <div style={{ display: "flex", gap: 14, flex: 1, minHeight: 0 }}>
+            {/* LEFT COLUMN: Visual Preview Mockup (ReadOnly) */}
+            <div style={{ width: "60%", display: "flex", flexDirection: "column", minHeight: 0, gap: 12, alignItems: "center", justifyContent: "center", background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0", padding: 24 }}>
+              <div style={{ marginBottom: 12, textAlign: "center" }}>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#0f172a" }}>Visual Draft Ready</h3>
+                <span style={{ fontSize: 11, fontWeight: 600, color: "#64748b" }}>Format: {templateSchema.format?.toUpperCase()} · Layout: {templateSchema.name}</span>
+              </div>
+
+              <div style={{
+                borderRadius: "24px",
+                border: "6px solid #1e293b",
+                boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
+                overflow: "hidden",
+                width: templateSchema.dimensions?.width > templateSchema.dimensions?.height ? 320 : 300,
+                height: templateSchema.dimensions?.width > templateSchema.dimensions?.height ? 320 : 380,
+                background: "#000",
+                position: "relative",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+              }}>
+                <div style={{
+                  position: "absolute",
+                  top: 0,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  width: "50px",
+                  height: "8px",
+                  background: "#1e293b",
+                  borderBottomLeftRadius: "4px",
+                  borderBottomRightRadius: "4px",
+                  zIndex: 99
+                }} />
+
+                <TemplateCanvas
+                  ref={templateCanvasRef}
+                  templateSchema={templateSchema}
+                  slotData={slotData}
+                  brandVariables={brandVariables}
+                  dimensions={templateSchema.dimensions || { width: 1080, height: 1080 }}
+                  style={{ width: "100%" }}
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setReadOnlyTemplateMode(false)}
+                style={{
+                  marginTop: 16,
+                  background: "#fff",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 8,
+                  padding: "6px 14px",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "var(--text-main)",
+                  cursor: "pointer"
+                }}
+              >
+                ✎ Customize Visual Layout
+              </button>
+            </div>
+
+            {/* RIGHT COLUMN: Pure Scheduling / Captions Sidebar */}
+            <div style={{ width: "40%", display: "flex", flexDirection: "column", minHeight: 0, gap: 12, overflowY: "auto" }}>
+              {/* Target Platforms */}
+              <div className="card-workspace" style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8 }}>Target Platforms</span>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                  {allKnownPlatforms.map(conn => {
+                    const m = PLATFORM_META[conn.platform];
+                    if (!m) return null;
+                    const isSelected = conn.platform === "instagram"
+                      ? selectedPlatforms.some(p => p.startsWith("instagram"))
+                      : conn.platform === "facebook"
+                        ? selectedPlatforms.some(p => p.startsWith("facebook"))
+                        : selectedPlatforms.includes(conn.platform);
+                    return (
+                      <button
+                        key={conn.platform}
+                        onClick={() => togglePlatform(conn.platform)}
+                        style={{
+                          border: `1px solid ${isSelected ? m.color : "#e2e8f0"}`,
+                          background: isSelected ? m.color + "15" : "#fff",
+                          color: isSelected ? m.color : "#64748b",
+                          borderRadius: 20, padding: "4px 11px",
+                          fontSize: 11, fontWeight: 600, cursor: "pointer",
+                          display: "flex", alignItems: "center", gap: 5
+                        }}
+                      >
+                        <PlatformIcon platform={conn.platform} size={12} />
+                        {m.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Caption Overrides */}
+              <div className="card-workspace" style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8 }}>Social Caption</span>
+                <textarea
+                  className="form-control"
+                  rows={6}
+                  placeholder="Describe your post..."
+                  style={{ fontSize: 12, resize: "none", width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 8 }}
+                  value={content}
+                  onChange={e => setContent(e.target.value)}
+                />
+                
+                {/* Generate Hashtags button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const hashtagsText = "\n\n#marketing #business #growth #" + (activeBrand?.industry || "onlinemarketing").toLowerCase().replace(/\s+/g, "");
+                    setContent(prev => prev + hashtagsText);
+                    showToast("Suggested hashtags appended!", "success");
+                  }}
+                  style={{
+                    background: "#f1f5f9",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 6,
+                    padding: "6px 12px",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "#475569",
+                    cursor: "pointer"
+                  }}
+                >
+                  ✨ Append Suggested Hashtags
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : templateMode && templateSchema ? (
           <div style={{ display: "flex", gap: 14, flex: 1, minHeight: 0 }}>
             {/* LEFT COLUMN (Template Slot Editor) — ~60% width */}
             <div style={{ width: "60%", display: "flex", flexDirection: "column", minHeight: 0, gap: 12 }}>
