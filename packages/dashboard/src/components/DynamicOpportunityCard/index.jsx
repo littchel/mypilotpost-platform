@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { apiRequest } from "../../lib/api/client";
-import TemplateCanvas from "../TemplateCanvas";
-import { renderHTMLTemplate } from "../TemplateHTML/renderer";
 import { renderTemplateToHTML } from "../TemplateHTML/templateFallbacks";
+import { getFormatLabel } from "../../utils/labelHelpers";
 
 // Local static cache to avoid redundant template schema fetches across cards
 const templateCache = new Map();
@@ -331,25 +330,31 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
     logo_url: brand.logo_url || ''
   };
 
-  const getFormatLabel = (fmt) => {
-    const map = { 'feed_post': 'Post', 'carousel': 'Carousel', 'story': 'Story', 'reel': 'Reel' };
-    return map[fmt?.toLowerCase()] || 'Post';
-  };
-
   const getVariantLabel = (v) => {
     if (!v) return "";
     return `Design ${v}`;
   };
 
-  // Format dimensions (mini canvas sizes: 280x280 for feed, 280x350 for carousels/stories)
-  const format = card.template_format;
-  const isFeed = !format || format === "feed_post" || format === "quote_card";
+  // Format dimensions and dynamic aspect ratios
+  const formatCode = card.template_format || card.format || '';
+  const label = getFormatLabel(formatCode);
+
+  let aspectRatio = '1/1';
+  let cardHeight = 370;
+  if (formatCode === 'story' || formatCode === 'reel' || label === 'Story' || label === 'Reel') {
+    aspectRatio = '9/16';
+    cardHeight = 590;
+  } else if (formatCode === 'carousel' || label === 'Carousel') {
+    aspectRatio = '4/5';
+    cardHeight = 440;
+  }
+
   const dimensions = useMemo(() => {
     return {
       width: 280,
-      height: format === 'carousel' || format === 'story' ? 350 : 280
+      height: aspectRatio === '9/16' ? 500 : aspectRatio === '4/5' ? 350 : 280
     };
-  }, [format]);
+  }, [aspectRatio]);
 
   // Map slot data
   const slotData = useMemo(() => {
@@ -399,7 +404,7 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
     return (
       <div style={{
         width: 280,
-        height: isFeed ? 380 : 500,
+        height: cardHeight,
         background: "var(--surface-primary)",
         border: "1px solid var(--border-subtle)",
         borderRadius: "var(--radius-lg)",
@@ -423,124 +428,12 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
     );
   }
 
-  // Fallback State: Show a raw HTML mock template card if template schema fails to load
-  if (error || !templateSchema) {
-    const htmlContent = renderHTMLTemplate(templateId, {
-      headline: card.preview_data?.headline || card.hook || 'Your Headline',
-      body: card.preview_data?.body || '',
-      cta: card.preview_data?.cta || 'Learn More',
-      image_url: card.preview_data?.hero_image_url || '',
-      primary_color: brandVars.primary_color || '#1A73E8',
-      secondary_color: brandVars.secondary_color || '#34A853',
-      logo_url: brandVars.logo_url || '',
-      font_headline: brandVars.font_headline || 'Inter',
-      font_body: brandVars.font_body || 'Inter'
-    });
-
-    return (
-      <div style={{
-        width: 280,
-        height: format === 'carousel' || format === 'story' ? 440 : 370,
-        background: "var(--surface-primary)",
-        border: "1px solid var(--border-subtle)",
-        borderRadius: "var(--radius-lg)",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-        transition: "all 0.2s ease"
-      }}>
-        {/* Frame container */}
-        <div style={{
-          flex: 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "var(--surface-secondary)",
-          position: "relative",
-          padding: 12
-        }}>
-          <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
-        </div>
-
-        {/* Footer controls */}
-        <div style={{
-          padding: "12px 14px",
-          display: "flex",
-          gap: 6,
-          background: "var(--surface-primary)",
-          alignItems: "center",
-          borderTop: "1px solid var(--border-subtle)"
-        }}>
-          <button
-            type="button"
-            onClick={() => onQuickEdit && onQuickEdit(card)}
-            style={{
-              flex: 1,
-              border: "1px solid var(--border-subtle)",
-              background: "var(--surface-secondary)",
-              color: "var(--text-main)",
-              borderRadius: "var(--radius-md)",
-              padding: "8px 0",
-              fontSize: "0.7rem",
-              fontWeight: 700,
-              cursor: "pointer",
-              transition: "background 0.15s"
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = "var(--hover-bg)"}
-            onMouseLeave={(e) => e.currentTarget.style.background = "var(--surface-secondary)"}
-          >
-            ✎ Quick Edit
-          </button>
-          <button
-            type="button"
-            onClick={() => onUseIdea(card)}
-            style={{
-              flex: 1.2,
-              border: "none",
-              background: "var(--pilot-blue)",
-              color: "#fff",
-              borderRadius: "var(--radius-md)",
-              padding: "8px 0",
-              fontSize: "0.7rem",
-              fontWeight: 700,
-              cursor: "pointer",
-              transition: "opacity 0.15s"
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = "0.95"}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
-          >
-            Use Post →
-          </button>
-          <button
-            type="button"
-            onClick={() => onSave && onSave(card)}
-            disabled={saved}
-            style={{
-              flex: 0.8,
-              border: `1px solid ${saved ? "var(--status-success)" : "var(--border-subtle)"}`,
-              background: saved ? "var(--surface-primary)" : "var(--surface-secondary)",
-              color: saved ? "var(--status-success)" : "var(--text-main)",
-              borderRadius: "var(--radius-md)",
-              padding: "8px 0",
-              fontSize: "0.7rem",
-              fontWeight: 700,
-              cursor: saved ? "default" : "pointer"
-            }}
-          >
-            {saved ? "✓ Saved" : "♡ Save"}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Interactive Live Canvas Card State
   return (
     <div 
-      className="dynamic-opportunity-card"
+      className="opportunity-card"
       style={{
         width: 280,
+        height: cardHeight,
         background: "var(--surface-primary)",
         border: "1px solid var(--border-subtle)",
         borderRadius: "var(--radius-lg)",
@@ -552,7 +445,7 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
         transition: "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease"
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.transform = "scale(1.03)";
+        e.currentTarget.style.transform = "scale(1.02)";
         e.currentTarget.style.boxShadow = "0 12px 24px rgba(15,23,42,0.08)";
       }}
       onMouseLeave={(e) => {
@@ -560,97 +453,74 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
         e.currentTarget.style.boxShadow = "0 4px 12px rgba(15,23,42,0.04)";
       }}
     >
-      {/* Live Canvas Render Box inside Phone Mockup Frame */}
-      <div style={{
-        padding: "16px 0",
-        background: "var(--surface-secondary)",
+      <div className="card-header" style={{
+        padding: "10px 14px",
         display: "flex",
+        justifyContent: "space-between",
         alignItems: "center",
-        justifyContent: "center",
-        overflow: "hidden",
         borderBottom: "1px solid var(--border-subtle)",
-        position: "relative"
+        background: "var(--surface-primary)"
       }}>
-        {/* Overlay Badge */}
-        <div style={{
-          position: "absolute",
-          top: 24,
-          left: 18,
-          zIndex: 10,
-          display: "flex",
-          gap: 6
-        }}>
-          <span style={{
-            fontSize: "0.6rem",
-            fontWeight: 800,
-            color: "#fff",
-            background: "rgba(15,23,42,0.75)",
-            backdropFilter: "blur(4px)",
-            padding: "3px 8px",
-            borderRadius: "4px",
-            textTransform: "uppercase"
-          }}>
-            {getFormatLabel(card.template_format)}
-          </span>
-        </div>
+        <span className="format-badge" style={{
+          fontSize: "0.65rem",
+          fontWeight: 800,
+          color: "var(--pilot-blue)",
+          background: "var(--surface-secondary)",
+          padding: "3px 8px",
+          borderRadius: "4px",
+          textTransform: "uppercase"
+        }}>{label}</span>
+      </div>
 
-        {/* Phone Mockup Frame wrapper */}
-        <div style={{
-          borderRadius: "24px",
-          border: "6px solid #1e293b", // Slate-800 mockup bezel
-          boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)",
-          overflow: "hidden",
-          width: dimensions.width,
-          height: dimensions.height,
-          background: "#000",
-          position: "relative",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center"
-        }}>
-          {/* Phone speaker notch */}
-          <div style={{
-            position: "absolute",
-            top: 0,
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: "48px",
-            height: "8px",
-            background: "#1e293b",
-            borderBottomLeftRadius: "4px",
-            borderBottomRightRadius: "4px",
-            zIndex: 99
+      <div className="card-image-wrapper" style={{ 
+        width: "100%", 
+        position: "relative", 
+        overflow: "hidden", 
+        background: "#f0f0f0",
+        aspectRatio 
+      }}>
+        {card.preview_url ? (
+          <img src={card.preview_url} alt={card.preview_data?.headline || "Post preview"} className="card-image" style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            display: "block"
           }} />
-
-          {card.preview_url ? (
-            <img 
-              src={card.preview_url} 
-              alt={card.preview_data?.headline || "Post preview"} 
-              style={{ width: "100%", height: "100%", objectFit: "cover" }} 
-            />
-          ) : htmlContent ? (
-            <div 
-              style={{ width: "100%", height: "100%", containerType: "size" }}
-              dangerouslySetInnerHTML={{ __html: htmlContent }} 
-            />
-          ) : (
-            <TemplateCanvas
-              templateSchema={templateSchema}
-              slotData={slotData}
-              brandVariables={brandVars}
-              dimensions={dimensions}
-            />
-          )}
-        </div>
+        ) : htmlContent ? (
+          <div 
+            style={{ width: "100%", height: "100%", containerType: "size" }}
+            dangerouslySetInnerHTML={{ __html: htmlContent }} 
+          />
+        ) : (
+          <div className="fallback-placeholder" style={{
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "#fafafa",
+            color: "#333",
+            fontSize: "13px",
+            padding: "20px",
+            textAlign: "center",
+            boxSizing: "border-box"
+          }}>
+            <span style={{ fontWeight: 600 }}>{card.preview_data?.headline || card.hook || 'Your Headline'}</span>
+            <span style={{ fontSize: "11px", color: "#666", marginTop: "8px" }}>{card.preview_data?.body || ''}</span>
+          </div>
+        )}
       </div>
 
       {/* Button Controls Footer */}
-      <div style={{
+      <div className="card-actions" style={{
         padding: "12px 14px",
         display: "flex",
         gap: 6,
         background: "var(--surface-primary)",
-        alignItems: "center"
+        alignItems: "center",
+        borderTop: "1px solid var(--border-subtle)",
+        marginTop: "auto"
       }}>
         <button
           type="button"
@@ -670,11 +540,11 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
           onMouseEnter={(e) => e.currentTarget.style.background = "var(--hover-bg)"}
           onMouseLeave={(e) => e.currentTarget.style.background = "var(--surface-secondary)"}
         >
-          ✎ Quick Edit
+          Quick Edit
         </button>
         <button
           type="button"
-          onClick={() => onUseIdea(card)}
+          onClick={() => onUseIdea && onUseIdea(card)}
           style={{
             flex: 1.2,
             border: "none",
@@ -690,7 +560,7 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
           onMouseEnter={(e) => e.currentTarget.style.opacity = "0.95"}
           onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
         >
-          Use Post →
+          Use Post
         </button>
         <button
           type="button"

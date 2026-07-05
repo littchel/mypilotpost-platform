@@ -600,17 +600,29 @@ function PostsTab({ activeBrand, brandDna: initialBrandDna, connectedPlatforms, 
   const [quickEditCard, setQuickEditCard] = useState(null);
 
   const handleUseIdea = useCallback((card) => {
-    const payload = {
+    const templateData = {
       template_id: card.template_id || card.suggested_template_id,
-      template_variant: card.template_variant || card.suggested_template_variant || "A",
+      variant: card.template_variant || card.suggested_template_variant || "A",
+      slides: card.slides || card.layout_manifest?.slides || [],
+      content: {
+        headline: card.preview_data?.headline || card.hook || 'Your Headline',
+        body: card.preview_data?.body || '',
+        cta: card.preview_data?.cta || 'Learn More',
+        image_url: card.preview_data?.hero_image_url || card.thumbnail_url || '',
+      },
+      brand: card.brand_overrides || {},
+    };
+    sessionStorage.setItem('createPostPrefill', JSON.stringify(templateData));
+    sessionStorage.setItem("studio_idea_prefill", JSON.stringify({
+      template_id: templateData.template_id,
+      template_variant: templateData.variant,
       platform: Array.isArray(card.platforms) && card.platforms.length ? card.platforms[0] : "instagram",
       caption: card.draft_payload?.caption || card.caption || "",
-      hook: card.draft_payload?.hook || card.hook || "",
-      cta: card.draft_payload?.cta || card.cta || "",
-      image: card.draft_payload?.image || card.thumbnail_url || "",
+      hook: templateData.content.headline,
+      cta: templateData.content.cta,
+      image: templateData.content.image_url,
       layout_manifest: card.draft_payload?.layout_manifest || card.layout_manifest
-    };
-    sessionStorage.setItem("studio_idea_prefill", JSON.stringify(payload));
+    }));
     switchTab("social");
   }, [switchTab]);
 

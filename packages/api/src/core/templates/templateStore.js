@@ -1,131 +1,132 @@
-import { validateTemplate } from "./schema.js";
+import template01A from './definitions/hero_headline_feed-A.json' with { type: 'json' };
+import template01B from './definitions/hero_headline_feed-B.json' with { type: 'json' };
+import template01C from './definitions/hero_headline_feed-C.json' with { type: 'json' };
+import template02A from './definitions/quote_card_feed-A.json' with { type: 'json' };
+import template02B from './definitions/quote_card_feed-B.json' with { type: 'json' };
+import template03A from './definitions/split_layout_feed-A.json' with { type: 'json' };
+import template04A from './definitions/product_showcase_feed-A.json' with { type: 'json' };
+import template05A from './definitions/minimal_text_feed-A.json' with { type: 'json' };
+import template05B from './definitions/minimal_text_feed-B.json' with { type: 'json' };
+import template07A from './definitions/carousel_story_006-A.json' with { type: 'json' };
+import template11A from './definitions/story_fullscreen-A.json' with { type: 'json' };
+import template1 from './definitions/hero_headline_feed.json' with { type: 'json' };
+import template2 from './definitions/quote_card_feed.json' with { type: 'json' };
+import template3 from './definitions/split_layout_feed.json' with { type: 'json' };
+import template4 from './definitions/product_showcase_feed.json' with { type: 'json' };
+import template5 from './definitions/minimal_text_feed.json' with { type: 'json' };
+import template6 from './definitions/carousel_list_005.json' with { type: 'json' };
+import template7 from './definitions/carousel_story_006.json' with { type: 'json' };
+import template8 from './definitions/carousel_comparison_004.json' with { type: 'json' };
+import template9 from './definitions/carousel_faq_005.json' with { type: 'json' };
+import template10 from './definitions/carousel_data_008.json' with { type: 'json' };
+import template11 from './definitions/story_fullscreen.json' with { type: 'json' };
+import template12 from './definitions/story_split.json' with { type: 'json' };
+import template13A from './definitions/story_poll-A.json' with { type: 'json' };
+import template13B from './definitions/story_poll-B.json' with { type: 'json' };
+import template13C from './definitions/story_poll-C.json' with { type: 'json' };
+import template14 from './definitions/reel_hook.json' with { type: 'json' };
+import template15 from './definitions/reel_loop.json' with { type: 'json' };
 
-import hero_headline_feed from './definitions/hero_headline_feed.json' assert { type: 'json' };
-import hero_headline_feed_A from './definitions/hero_headline_feed-A.json' assert { type: 'json' };
-import hero_headline_feed_B from './definitions/hero_headline_feed-B.json' assert { type: 'json' };
-import hero_headline_feed_C from './definitions/hero_headline_feed-C.json' assert { type: 'json' };
+export const templateMap = {
+  'TEMPLATE_01': { A: template01A, B: template01B, C: template01C },
+  'TEMPLATE_02': { A: template02A, B: template02B },
+  'TEMPLATE_03': { A: template03A },
+  'TEMPLATE_03_VARIANT': { A: template04A },
+  'TEMPLATE_04_CAROUSEL': { A: template05A },
+  'TEMPLATE_05_TIMELINE': { A: template05B },
+  'TEMPLATE_06_ATHLETIC': { A: template07A },
+  'TEMPLATE_07_STORY_EDITORIAL': { A: template11A },
+  'editorial_dual_font_cover': { A: template1 },
+  'minimal_quote_card_feed': { A: template2 },
+  'split_layout_50_50_image_only': { A: template3 },
+  'product_showcase_template_4': { A: template4 },
+  'minimal_text_template_5': { A: template5 },
+  'the_list_carousel_template_6': { A: template6 },
+  'story_carousel_1x1_template_7': { A: template7 },
+  'comparison_carousel_template_8_v2': { A: template8 },
+  'faq_carousel_template_9_v3': { A: template9 },
+  'TEMPLATE_10': { A: template10 },
+  'TEMPLATE_11': { A: template11 },
+  'TEMPLATE_12': { A: template12 },
+  'TEMPLATE_13': { A: template13A, B: template13B, C: template13C },
+  'TEMPLATE_14': { A: template14 },
+  'TEMPLATE_14_variant2': { A: template15 },
 
-import quote_card_feed from './definitions/quote_card_feed.json' assert { type: 'json' };
-import quote_card_feed_A from './definitions/quote_card_feed-A.json' assert { type: 'json' };
-import quote_card_feed_B from './definitions/quote_card_feed-B.json' assert { type: 'json' };
-
-import split_layout_feed from './definitions/split_layout_feed.json' assert { type: 'json' };
-import split_layout_feed_A from './definitions/split_layout_feed-A.json' assert { type: 'json' };
-
-import product_showcase_feed from './definitions/product_showcase_feed.json' assert { type: 'json' };
-import product_showcase_feed_A from './definitions/product_showcase_feed-A.json' assert { type: 'json' };
-
-import minimal_text_feed from './definitions/minimal_text_feed.json' assert { type: 'json' };
-import minimal_text_feed_A from './definitions/minimal_text_feed-A.json' assert { type: 'json' };
-import minimal_text_feed_B from './definitions/minimal_text_feed-B.json' assert { type: 'json' };
-
-import carousel_list_005 from './definitions/carousel_list_005.json' assert { type: 'json' };
-import carousel_story_006 from './definitions/carousel_story_006.json' assert { type: 'json' };
-import carousel_story_006_A from './definitions/carousel_story_006-A.json' assert { type: 'json' };
-import carousel_comparison_004 from './definitions/carousel_comparison_004.json' assert { type: 'json' };
-import carousel_faq_005 from './definitions/carousel_faq_005.json' assert { type: 'json' };
-import carousel_data_008 from './definitions/carousel_data_008.json' assert { type: 'json' };
-
-import story_fullscreen from './definitions/story_fullscreen.json' assert { type: 'json' };
-import story_fullscreen_A from './definitions/story_fullscreen-A.json' assert { type: 'json' };
-import story_split from './definitions/story_split.json' assert { type: 'json' };
-import story_poll from './definitions/story_poll.json' assert { type: 'json' };
-import story_poll_A from './definitions/story_poll-A.json' assert { type: 'json' };
-import story_poll_B from './definitions/story_poll-B.json' assert { type: 'json' };
-import story_poll_C from './definitions/story_poll-C.json' assert { type: 'json' };
-
-import reel_hook from './definitions/reel_hook.json' assert { type: 'json' };
-import reel_loop from './definitions/reel_loop.json' assert { type: 'json' };
-
-const STATIC_REGISTRY = {
-  'hero_headline_feed': hero_headline_feed,
-  'hero_headline_feed-A': hero_headline_feed_A,
-  'hero_headline_feed-B': hero_headline_feed_B,
-  'hero_headline_feed-C': hero_headline_feed_C,
-  'quote_card_feed': quote_card_feed,
-  'quote_card_feed-A': quote_card_feed_A,
-  'quote_card_feed-B': quote_card_feed_B,
-  'split_layout_feed': split_layout_feed,
-  'split_layout_feed-A': split_layout_feed_A,
-  'product_showcase_feed': product_showcase_feed,
-  'product_showcase_feed-A': product_showcase_feed_A,
-  'minimal_text_feed': minimal_text_feed,
-  'minimal_text_feed-A': minimal_text_feed_A,
-  'minimal_text_feed-B': minimal_text_feed_B,
-  'carousel_list_005': carousel_list_005,
-  'carousel_story_006': carousel_story_006,
-  'carousel_story_006-A': carousel_story_006_A,
-  'carousel_comparison_004': carousel_comparison_004,
-  'carousel_faq_005': carousel_faq_005,
-  'carousel_data_008': carousel_data_008,
-  'story_fullscreen': story_fullscreen,
-  'story_fullscreen-A': story_fullscreen_A,
-  'story_split': story_split,
-  'story_poll': story_poll,
-  'story_poll-A': story_poll_A,
-  'story_poll-B': story_poll_B,
-  'story_poll-C': story_poll_C,
-  'reel_hook': reel_hook,
-  'reel_loop': reel_loop
+  // Add mappings for standard names to support historical API queries
+  'hero_headline_feed': { A: template1 },
+  'hero_headline_feed-A': { A: template01A },
+  'hero_headline_feed-B': { B: template01B },
+  'hero_headline_feed-C': { C: template01C },
+  'quote_card_feed': { A: template2 },
+  'quote_card_feed-A': { A: template02A },
+  'quote_card_feed-B': { B: template02B },
+  'split_layout_feed': { A: template3 },
+  'split_layout_feed-A': { A: template03A },
+  'product_showcase_feed': { A: template4 },
+  'product_showcase_feed-A': { A: template04A },
+  'minimal_text_feed': { A: template5 },
+  'minimal_text_feed-A': { A: template05A },
+  'minimal_text_feed-B': { B: template05B },
+  'carousel_list_005': { A: template6 },
+  'carousel_story_006': { A: template7 },
+  'carousel_story_006-A': { A: template07A },
+  'carousel_comparison_004': { A: template8 },
+  'carousel_faq_005': { A: template9 },
+  'carousel_data_008': { A: template10 },
+  'story_fullscreen': { A: template11 },
+  'story_fullscreen-A': { A: template11A },
+  'story_split': { A: template12 },
+  'story_poll-A': { A: template13A },
+  'story_poll-B': { B: template13B },
+  'story_poll-C': { C: template13C },
+  'reel_hook': { A: template14 },
+  'reel_loop': { A: template15 }
 };
 
-export function getTemplate(templateId, variantOrEnv = null) {
-  let key = templateId;
-  if (typeof variantOrEnv === "string") {
-    key = `${templateId}-${variantOrEnv}`;
+export function getTemplate(templateId, variant = 'A') {
+  let actualId = templateId;
+  let actualVariant = variant;
+  
+  if (templateId && templateId.includes('-')) {
+    const parts = templateId.split('-');
+    actualId = parts[0];
+    actualVariant = parts[1];
   }
-  const raw = STATIC_REGISTRY[key] || null;
-  if (!raw) return null;
 
-  // Run normalization/validation to convert raw "slots" to "slides" format for fabric rendering
-  const validated = validateTemplate(raw);
-  return validated.success ? validated.data : raw;
+  let entry = templateMap[actualId];
+  if (!entry) {
+    entry = templateMap['hero_headline_feed'];
+  }
+  return entry[actualVariant] || entry['A'] || null;
 }
 
 export function listTemplates() {
-  return Object.keys(STATIC_REGISTRY).map(id => getTemplate(id));
+  return Object.keys(templateMap).map(id => getTemplate(id));
+}
+
+export function listVariants() {
+  return [
+    "hero_headline_feed-A", "hero_headline_feed-B", "hero_headline_feed-C",
+    "quote_card_feed-A", "quote_card_feed-B",
+    "split_layout_feed-A",
+    "product_showcase_feed-A",
+    "minimal_text_feed-A", "minimal_text_feed-B",
+    "carousel_story_006-A",
+    "story_fullscreen-A",
+    "story_poll-A", "story_poll-B", "story_poll-C"
+  ];
 }
 
 export function getTemplateForContent(contentBrief) {
-  // Simple mapping logic - returns first matching template by format
   const formatMap = {
-    'feed_post': ['hero_headline_feed', 'quote_card_feed', 'split_layout_feed', 'product_showcase_feed', 'minimal_text_feed'],
-    'carousel': ['carousel_list_005', 'carousel_story_006', 'carousel_comparison_004', 'carousel_faq_005', 'carousel_data_008'],
-    'story': ['story_fullscreen', 'story_split', 'story_poll'],
-    'reel': ['reel_hook', 'reel_loop']
+    'feed_post': ['editorial_dual_font_cover', 'minimal_quote_card_feed', 'split_layout_50_50_image_only', 'product_showcase_template_4', 'minimal_text_template_5'],
+    'carousel': ['the_list_carousel_template_6', 'story_carousel_1x1_template_7', 'comparison_carousel_template_8_v2', 'faq_carousel_template_9_v3', 'TEMPLATE_10'],
+    'story': ['TEMPLATE_11', 'TEMPLATE_12', 'TEMPLATE_13'],
+    'reel': ['TEMPLATE_14', 'TEMPLATE_14_variant2']
   };
   
   const format = contentBrief.format || 'feed_post';
   const templates = formatMap[format] || formatMap['feed_post'];
-  const tplId = templates[0] || 'hero_headline_feed';
+  const tplId = templates[0] || 'editorial_dual_font_cover';
   return getTemplate(tplId);
-}
-
-const STATIC_VARIANTS = [
-  "hero_headline_feed-A", "hero_headline_feed-B", "hero_headline_feed-C",
-  "quote_card_feed-A", "quote_card_feed-B",
-  "split_layout_feed-A",
-  "product_showcase_feed-A",
-  "minimal_text_feed-A", "minimal_text_feed-B",
-  "carousel_story_006-A",
-  "story_fullscreen-A",
-  "story_poll-A", "story_poll-B", "story_poll-C"
-];
-
-export async function listVariants(env) {
-  try {
-    const fs = await import("node:fs").catch(() => null);
-    const path = await import("node:path").catch(() => null);
-    if (fs?.default && path?.default) {
-      const defsDir = path.default.join(process.cwd(), "packages/api/src/core/templates/definitions");
-      if (fs.default.existsSync(defsDir)) {
-        const files = fs.default.readdirSync(defsDir);
-        const variants = files
-          .filter(f => f.match(/^[a-z0-9_]+-[A-Z]\.json$/))
-          .map(f => f.replace(/\.json$/, ''));
-        if (variants.length > 0) return variants;
-      }
-    }
-  } catch {}
-  return STATIC_VARIANTS;
 }

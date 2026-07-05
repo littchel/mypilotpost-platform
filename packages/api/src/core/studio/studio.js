@@ -443,6 +443,7 @@ Rules:
         const { getTemplatePreview } = await import("../templates/previewService.js");
         preview_url = await getTemplatePreview(
           card.template_id,
+          card.template_variant || card.suggested_template_variant || 'A',
           {
             ...previewData,
             primary_color: visuals.primary_color || '#1A73E8',
@@ -599,14 +600,15 @@ Rules:
   const manifestSlides = [];
   let bodyParagraphIndex = 1;
   for (const slide of (tpl.slides || [])) {
+    const slotId = slide.slot_id || `slide_${slide.slide_index || bodyParagraphIndex}`;
     const slideMapping = {
-      slot_id: slide.slot_id,
+      slot_id: slotId,
       text_anchor: "body_paragraph_" + bodyParagraphIndex
     };
 
-    if (slide.slot_type === "hero" || slide.slot_id.includes("cover") || slide.slot_id.includes("hook")) {
+    if (slide.slot_type === "hero" || (slotId && (slotId.includes("cover") || slotId.includes("hook")))) {
       slideMapping.text_anchor = "headline";
-    } else if (slide.slot_type === "cta" || slide.slot_id.includes("cta")) {
+    } else if (slide.slot_type === "cta" || (slotId && slotId.includes("cta"))) {
       slideMapping.text_anchor = "cta_text";
     } else {
       bodyParagraphIndex++;
