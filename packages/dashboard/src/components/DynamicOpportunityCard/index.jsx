@@ -5,6 +5,247 @@ import TemplateCanvas from "../TemplateCanvas";
 // Local static cache to avoid redundant template schema fetches across cards
 const templateCache = new Map();
 
+const FALLBACK_TEMPLATES = {
+  'hero_headline_feed': {
+    "template_id": "hero_headline_feed",
+    "name": "Hero Headline",
+    "format": "feed_post",
+    "dimensions": { "width": 1080, "height": 1080 },
+    "slides": [{
+      "slot_id": "slide_1",
+      "slot_type": "hero",
+      "layout": "hero_split",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100 } },
+        { "type": "image", "position": { "x": 0, "y": 0, "width": 100, "height": 70 } },
+        { "type": "headline", "position": { "x": 10, "y": 75, "width": 80, "height": 20 } }
+      ]
+    }]
+  },
+  'quote_card_feed': {
+    "template_id": "quote_card_feed",
+    "name": "Quote Card",
+    "format": "feed_post",
+    "dimensions": { "width": 1080, "height": 1080 },
+    "slides": [{
+      "slot_id": "slide_1",
+      "slot_type": "hero",
+      "layout": "quote_centered",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100 } },
+        { "type": "headline", "position": { "x": 10, "y": 25, "width": 80, "height": 50 } },
+        { "type": "body", "position": { "x": 10, "y": 80, "width": 80, "height": 10 } }
+      ]
+    }]
+  },
+  'split_layout_feed': {
+    "template_id": "split_layout_feed",
+    "name": "Split Layout",
+    "format": "feed_post",
+    "dimensions": { "width": 1080, "height": 1080 },
+    "slides": [{
+      "slot_id": "slide_1",
+      "slot_type": "hero",
+      "layout": "split_vertical",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100 } },
+        { "type": "image", "position": { "x": 0, "y": 0, "width": 50, "height": 100 } },
+        { "type": "headline", "position": { "x": 55, "y": 20, "width": 40, "height": 60 } }
+      ]
+    }]
+  },
+  'product_showcase_feed': {
+    "template_id": "product_showcase_feed",
+    "name": "Product Showcase",
+    "format": "feed_post",
+    "dimensions": { "width": 1080, "height": 1080 },
+    "slides": [{
+      "slot_id": "slide_1",
+      "slot_type": "hero",
+      "layout": "product_focus",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100 } },
+        { "type": "image", "position": { "x": 10, "y": 10, "width": 80, "height": 60 } },
+        { "type": "headline", "position": { "x": 10, "y": 75, "width": 80, "height": 15 } }
+      ]
+    }]
+  },
+  'minimal_text_feed': {
+    "template_id": "minimal_text_feed",
+    "name": "Minimal Text",
+    "format": "feed_post",
+    "dimensions": { "width": 1080, "height": 1080 },
+    "slides": [{
+      "slot_id": "slide_1",
+      "slot_type": "hero",
+      "layout": "minimal_centered",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100 } },
+        { "type": "headline", "position": { "x": 10, "y": 40, "width": 80, "height": 30 } }
+      ]
+    }]
+  },
+  'carousel_list_005': {
+    "template_id": "carousel_list_005",
+    "name": "List Carousel",
+    "format": "carousel",
+    "dimensions": { "width": 1080, "height": 1350 },
+    "slides": [{
+      "slot_id": "slide_1",
+      "slot_type": "hero",
+      "layout": "carousel_slide",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100 } },
+        { "type": "image", "position": { "x": 0, "y": 0, "width": 100, "height": 60 } },
+        { "type": "headline", "position": { "x": 10, "y": 65, "width": 80, "height": 20 } }
+      ]
+    }]
+  },
+  'carousel_story_006': {
+    "template_id": "carousel_story_006",
+    "name": "Story Carousel",
+    "format": "carousel",
+    "dimensions": { "width": 1080, "height": 1350 },
+    "slides": [{
+      "slot_id": "slide_1",
+      "slot_type": "hero",
+      "layout": "carousel_slide",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100 } },
+        { "type": "image", "position": { "x": 0, "y": 0, "width": 100, "height": 60 } },
+        { "type": "headline", "position": { "x": 10, "y": 65, "width": 80, "height": 20 } }
+      ]
+    }]
+  },
+  'carousel_comparison_004': {
+    "template_id": "carousel_comparison_004",
+    "name": "Comparison Carousel",
+    "format": "carousel",
+    "dimensions": { "width": 1080, "height": 1350 },
+    "slides": [{
+      "slot_id": "slide_1",
+      "slot_type": "hero",
+      "layout": "carousel_slide",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100 } },
+        { "type": "image", "position": { "x": 0, "y": 0, "width": 100, "height": 60 } },
+        { "type": "headline", "position": { "x": 10, "y": 65, "width": 80, "height": 20 } }
+      ]
+    }]
+  },
+  'carousel_faq_005': {
+    "template_id": "carousel_faq_005",
+    "name": "FAQ Carousel",
+    "format": "carousel",
+    "dimensions": { "width": 1080, "height": 1350 },
+    "slides": [{
+      "slot_id": "slide_1",
+      "slot_type": "hero",
+      "layout": "carousel_slide",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100 } },
+        { "type": "image", "position": { "x": 0, "y": 0, "width": 100, "height": 60 } },
+        { "type": "headline", "position": { "x": 10, "y": 65, "width": 80, "height": 20 } }
+      ]
+    }]
+  },
+  'carousel_data_008': {
+    "template_id": "carousel_data_008",
+    "name": "Data Carousel",
+    "format": "carousel",
+    "dimensions": { "width": 1080, "height": 1350 },
+    "slides": [{
+      "slot_id": "slide_1",
+      "slot_type": "hero",
+      "layout": "carousel_slide",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100 } },
+        { "type": "image", "position": { "x": 0, "y": 0, "width": 100, "height": 60 } },
+        { "type": "headline", "position": { "x": 10, "y": 65, "width": 80, "height": 20 } }
+      ]
+    }]
+  },
+  'story_fullscreen': {
+    "template_id": "story_fullscreen",
+    "name": "Fullscreen Story",
+    "format": "story",
+    "dimensions": { "width": 1080, "height": 1920 },
+    "slides": [{
+      "slot_id": "slide_1",
+      "slot_type": "hero",
+      "layout": "story_slide",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100 } },
+        { "type": "image", "position": { "x": 0, "y": 0, "width": 100, "height": 100 } },
+        { "type": "headline", "position": { "x": 10, "y": 100, "width": 80, "height": 20 } }
+      ]
+    }]
+  },
+  'story_split': {
+    "template_id": "story_split",
+    "name": "Split Story",
+    "format": "story",
+    "dimensions": { "width": 1080, "height": 1920 },
+    "slides": [{
+      "slot_id": "slide_1",
+      "slot_type": "hero",
+      "layout": "story_slide",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100 } },
+        { "type": "image", "position": { "x": 0, "y": 0, "width": 100, "height": 50 } },
+        { "type": "headline", "position": { "x": 10, "y": 55, "width": 80, "height": 35 } }
+      ]
+    }]
+  },
+  'story_quote': {
+    "template_id": "story_quote",
+    "name": "Quote Story",
+    "format": "story",
+    "dimensions": { "width": 1080, "height": 1920 },
+    "slides": [{
+      "slot_id": "slide_1",
+      "slot_type": "hero",
+      "layout": "story_slide",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100 } },
+        { "type": "headline", "position": { "x": 10, "y": 30, "width": 80, "height": 40 } }
+      ]
+    }]
+  },
+  'reel_fullscreen': {
+    "template_id": "reel_fullscreen",
+    "name": "Fullscreen Reel",
+    "format": "reel",
+    "dimensions": { "width": 1080, "height": 1920 },
+    "slides": [{
+      "slot_id": "slide_1",
+      "slot_type": "hero",
+      "layout": "reel_slide",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100 } },
+        { "type": "image", "position": { "x": 0, "y": 0, "width": 100, "height": 100 } },
+        { "type": "headline", "position": { "x": 10, "y": 100, "width": 80, "height": 20 } }
+      ]
+    }]
+  },
+  'reel_split': {
+    "template_id": "reel_split",
+    "name": "Split Reel",
+    "format": "reel",
+    "dimensions": { "width": 1080, "height": 1920 },
+    "slides": [{
+      "slot_id": "slide_1",
+      "slot_type": "hero",
+      "layout": "reel_slide",
+      "components": [
+        { "type": "background", "position": { "x": 0, "y": 0, "width": 100, "height": 100 } },
+        { "type": "image", "position": { "x": 0, "y": 0, "width": 100, "height": 50 } },
+        { "type": "headline", "position": { "x": 10, "y": 55, "width": 80, "height": 35 } }
+      ]
+    }]
+  }
+};
+
 function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPreview, onUseIdea, onSave, saved, onQuickEdit }) {
   const [templateSchema, setTemplateSchema] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -44,12 +285,26 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
           templateCache.set(cacheKey, schema);
           setTemplateSchema(schema);
         } else {
-          setError(true);
+          const baseId = templateId;
+          if (FALLBACK_TEMPLATES[baseId]) {
+            setTemplateSchema(FALLBACK_TEMPLATES[baseId]);
+            setError(false);
+          } else {
+            setError(true);
+          }
         }
       })
       .catch(err => {
         console.warn(`[DYNAMIC CARD] Failed to load schema for ${cacheKey}:`, err);
-        if (active) setError(true);
+        if (active) {
+          const baseId = templateId;
+          if (FALLBACK_TEMPLATES[baseId]) {
+            setTemplateSchema(FALLBACK_TEMPLATES[baseId]);
+            setError(false);
+          } else {
+            setError(true);
+          }
+        }
       })
       .finally(() => {
         if (active) setLoading(false);
