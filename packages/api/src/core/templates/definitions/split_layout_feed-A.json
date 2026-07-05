@@ -1,5 +1,5 @@
 {
-  "template_id": "TEMPLATE_03",
+  "template_id": "split_layout_feed-A",
   "template_name": "Split Layout (50/50)",
   "format": "1:1 Feed Post Carousel",
   "carousel_specification": {
@@ -33,7 +33,10 @@
       "widget_card": {
         "headline": "Habits That Changed My Life",
         "body_pill_text": "Simple routines with real impact.",
-        "action_buttons": ["plus", "next"]
+        "action_buttons": [
+          "plus",
+          "next"
+        ]
       }
     },
     {
@@ -58,7 +61,10 @@
       "widget_card": {
         "headline": "Starting mornings without rushing",
         "body_pill_text": "Giving myself time instead of pressure.",
-        "action_buttons": ["plus", "next"]
+        "action_buttons": [
+          "plus",
+          "next"
+        ]
       }
     },
     {
@@ -83,7 +89,10 @@
       "widget_card": {
         "headline": "Spending time offline",
         "body_pill_text": "Creating space to think and feel.",
-        "action_buttons": ["plus", "next"]
+        "action_buttons": [
+          "plus",
+          "next"
+        ]
       }
     },
     {
@@ -108,7 +117,10 @@
       "widget_card": {
         "headline": "Writing one honest thought",
         "body_pill_text": "Clearing my mind regularly.",
-        "action_buttons": ["plus", "next"]
+        "action_buttons": [
+          "plus",
+          "next"
+        ]
       }
     }
   ]

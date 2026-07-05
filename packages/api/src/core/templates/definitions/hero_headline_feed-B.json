@@ -1,5 +1,5 @@
 {
-  "template_id": "TEMPLATE_01",
+  "template_id": "hero_headline_feed-B",
   "template_name": "Hero + Headline",
   "variant": "camera_viewfinder_ui",
   "format": "1:1 Feed Post",
@@ -15,7 +15,13 @@
       "has_sun_indicator": true
     },
     "modes_row": {
-      "items": ["Slo-Mo", "Video", "Photo", "Square", "Sticker"],
+      "items": [
+        "Slo-Mo",
+        "Video",
+        "Photo",
+        "Square",
+        "Sticker"
+      ],
       "active_item": "Photo",
       "active_color": "#E5A93C",
       "inactive_color": "rgba(255, 255, 255, 0.6)"

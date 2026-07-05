@@ -1,5 +1,5 @@
 {
-  "template_id": "TEMPLATE_06_ATHLETIC",
+  "template_id": "carousel_story_006-A",
   "template_name": "Running Tips for Beginners",
   "format": "4:5 Feed Post Carousel",
   "carousel_specification": {
@@ -28,8 +28,13 @@
       "layout_variant": "carousel_cover",
       "background_image_url": "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&q=80&w=600&h=750",
       "components": {
-        "top_left_identity": { "has_logo": true, "has_name": true },
-        "top_right_action": { "type": "circle_outline_arrow_right" },
+        "top_left_identity": {
+          "has_logo": true,
+          "has_name": true
+        },
+        "top_right_action": {
+          "type": "circle_outline_arrow_right"
+        },
         "content_block": {
           "headline": "Running\nTips for\nBeginners",
           "sub_headline": "Starting your running journey?\nRead this first"

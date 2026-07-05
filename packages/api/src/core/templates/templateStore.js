@@ -264,3 +264,36 @@ export async function getTemplateForContent(contentBrief = {}, env) {
   // Return best match if it has positive alignment, else safe default
   return highestScore >= 0 ? bestTemplate : SAFE_DEFAULT_TEMPLATE;
 }
+
+const STATIC_VARIANTS = [
+  "hero_headline_feed-A", "hero_headline_feed-B", "hero_headline_feed-C",
+  "quote_card_feed-A", "quote_card_feed-B",
+  "split_layout_feed-A",
+  "product_showcase_feed-A",
+  "minimal_text_feed-A", "minimal_text_feed-B",
+  "carousel_story_006-A",
+  "story_fullscreen-A",
+  "story_poll-A", "story_poll-B", "story_poll-C"
+];
+
+/**
+ * Returns a list of available variant template IDs.
+ * Scans filesystem in Node or returns STATIC_VARIANTS as fallback.
+ */
+export async function listVariants(env) {
+  try {
+    const fs = await import("node:fs").catch(() => null);
+    const path = await import("node:path").catch(() => null);
+    if (fs?.default && path?.default) {
+      const defsDir = path.default.join(process.cwd(), "packages/api/src/core/templates/definitions");
+      if (fs.default.existsSync(defsDir)) {
+        const files = fs.default.readdirSync(defsDir);
+        const variants = files
+          .filter(f => f.match(/^[a-z0-9_]+-[A-Z]\.json$/))
+          .map(f => f.replace(/\.json$/, ''));
+        if (variants.length > 0) return variants;
+      }
+    }
+  } catch {}
+  return STATIC_VARIANTS;
+}

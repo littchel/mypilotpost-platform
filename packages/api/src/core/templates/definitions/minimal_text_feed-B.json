@@ -1,5 +1,5 @@
 {
-  "template_id": "TEMPLATE_05_TIMELINE",
+  "template_id": "minimal_text_feed-B",
   "template_name": "Why You Should Post Carousels",
   "format": "1:1 Feed Post Carousel",
   "carousel_specification": {
@@ -30,7 +30,12 @@
         "stroke_width": "5px"
       },
       "content": {
-        "headline_lines": ["Why You", "Should", "Post", "Carousels"]
+        "headline_lines": [
+          "Why You",
+          "Should",
+          "Post",
+          "Carousels"
+        ]
       }
     },
     {
@@ -44,7 +49,12 @@
         "height": "6px"
       },
       "content": {
-        "headline_lines": ["There's", "Exponential", "Growth", "Happening"],
+        "headline_lines": [
+          "There's",
+          "Exponential",
+          "Growth",
+          "Happening"
+        ],
         "headline_color": "#FFFFFF",
         "body_text": "Carousel posts are seeing great reach and results."
       }
@@ -59,8 +69,14 @@
         "node_type": "hollow_circle_with_navy_center"
       },
       "content": {
-        "headline_coral_lines": ["Are You Ready", "For The Secret?"],
-        "headline_white_lines": ["Let's Dive In", "Together..."]
+        "headline_coral_lines": [
+          "Are You Ready",
+          "For The Secret?"
+        ],
+        "headline_white_lines": [
+          "Let's Dive In",
+          "Together..."
+        ]
       }
     },
     {
@@ -107,7 +123,10 @@
         "center_circle": {
           "background_color": "#FF7B83",
           "dimensions": "254px x 254px",
-          "text_lines": ["Don't", "Quit"]
+          "text_lines": [
+            "Don't",
+            "Quit"
+          ]
         }
       }
     },
@@ -131,7 +150,12 @@
         }
       },
       "content": {
-        "headline_lines": ["Use", "This", "Outline", "Instead"],
+        "headline_lines": [
+          "Use",
+          "This",
+          "Outline",
+          "Instead"
+        ],
         "headline_color": "#FFFFFF"
       }
     },
@@ -146,7 +170,10 @@
         }
       },
       "content": {
-        "headline_lines": ["Carousel", "Structure"],
+        "headline_lines": [
+          "Carousel",
+          "Structure"
+        ],
         "list_items": [
           "Create a \"hook\" to capture your audience's attention",
           "Follow up with pain points that help to peak interest",
@@ -192,10 +219,18 @@
           "title": "Really Great Site",
           "handle": "@reallygreatsite"
         },
-        "headline_lines": ["Do You Think", "You'll Give", "This A Try?"]
+        "headline_lines": [
+          "Do You Think",
+          "You'll Give",
+          "This A Try?"
+        ]
       },
       "native_app_footer_simulation": {
-        "left_actions_group": ["heart_filled", "comment_bubble", "paper_plane_share"],
+        "left_actions_group": [
+          "heart_filled",
+          "comment_bubble",
+          "paper_plane_share"
+        ],
         "right_actions_group": {
           "text": "save for later",
           "arrow": "thin_line_horizontal_arrow",

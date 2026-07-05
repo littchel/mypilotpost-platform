@@ -1,5 +1,5 @@
 {
-  "template_id": "TEMPLATE_04_CAROUSEL",
+  "template_id": "minimal_text_feed-A",
   "template_name": "Minimalist Condensed Text Step Carousel",
   "format": "1:1 Feed Post Carousel",
   "carousel_specification": {
@@ -33,10 +33,22 @@
       },
       "content": {
         "title_lines": [
-          { "text": "How To", "color_type": "primary" },
-          { "text": "Organize", "color_type": "accent" },
-          { "text": "Your", "color_type": "primary" },
-          { "text": "Routine?", "color_type": "primary" }
+          {
+            "text": "How To",
+            "color_type": "primary"
+          },
+          {
+            "text": "Organize",
+            "color_type": "accent"
+          },
+          {
+            "text": "Your",
+            "color_type": "primary"
+          },
+          {
+            "text": "Routine?",
+            "color_type": "primary"
+          }
         ]
       }
     },

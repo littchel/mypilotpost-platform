@@ -10,6 +10,7 @@ import { getTemplate, getTemplateForContent } from "../templates/templateStore.j
 import { generateBrief } from "../media/brief.js";
 import { fetchPexels } from "../media/providers/pexels.js";
 import { generateOpportunityThumbnail } from "../templates/thumbnailRenderer.js";
+import { assignTemplatesToCards } from "../templates/templateRouter.js";
 
 // Helper to map frameworks to corresponding template families
 function mapFrameworkToFamily(framework) {
@@ -293,102 +294,55 @@ Rules:
 
   const opps = result?.opportunities || buildFallbackOpps(brandName, industry, activePlatforms);
   
-  // Enrich opportunities with strategic template mapping and template recommendation IDs
-  const promises = [];
-  for (let i = 0; i < Math.min(opps.length, 20); i++) {
-    const card = opps[i];
+  // Assign template layouts deterministically based on seed
+  const routedOpps = await assignTemplatesToCards(opps.slice(0, 20), auth.brand_id, env, preferredTemplateId);
+
+  const enrichedOpps = routedOpps.map((card, i) => {
     const cardId = card.id || (i + 1);
-    
-    let family = mapFrameworkToFamily(card.framework);
-    // Bias template family towards preferred family for low effort opportunity cards
-    if (preferredFamily && card.effort === "low") {
-      family = preferredFamily;
-    }
-    
-    // Select parameters based on family for templateStore recommendation matching
-    let format = "feed_post";
-    let pillars = ["general"];
-    let intent = ["general"];
-    
-    if (family.startsWith("carousel")) {
-      format = "carousel";
-      pillars = family === "carousel_comparison" ? ["transformation", "results"] : ["educational", "guides"];
-    } else if (family === "story_fullscreen") {
-      format = "story";
-      pillars = ["lifestyle", "brand_identity"];
-    } else if (family === "quote_card") {
-      format = "feed_post";
-      intent = ["authority"];
-      pillars = ["thought_leadership"];
-    } else if (family === "hero_headline") {
-      format = "feed_post";
-      intent = ["awareness"];
-      pillars = ["showcase"];
-    } else if (family === "split_layout") {
-      format = "feed_post";
-      intent = ["education"];
-      pillars = ["product"];
-    }
 
-    const firstPlatform = Array.isArray(card.platforms) && card.platforms.length > 0
-      ? card.platforms[0]
-      : (activePlatforms.length ? activePlatforms[0] : "instagram");
+    const layoutManifest = {
+      template_id: card.template_id,
+      template_variant: card.template_variant,
+      brand_overrides: {
+        primary_color: visuals.primary_color || "#1A1A1A",
+        secondary_color: visuals.secondary_color || "#F5F5F5",
+        font_stack: visuals.font_stack || "Inter, sans-serif",
+        logo_url: visuals.logo_url || ""
+      },
+      slides: [
+        { text_anchor: "headline" },
+        { text_anchor: "body_paragraph_0" },
+        { text_anchor: "cta_text" }
+      ]
+    };
 
-    promises.push((async () => {
-      const recommended = await getTemplateForContent({
-        format,
-        platform: firstPlatform,
-        intent,
-        pillars,
-        preferredTemplateId
-      }, env);
+    const draftPayload = {
+      idea_id: cardId,
+      title: card.idea || card.framework || "",
+      caption: card.caption || "",
+      hook: card.hook || "",
+      cta: card.cta || "",
+      hashtags: card.hashtags || [],
+      platforms: card.platforms || [],
+      contentType: card.media_type || (card.template_format === "carousel" ? "carousel" : "social"),
+      image: "",
+      imageSource: "pexels",
+      suggested_structure: card.framework || "",
+      layout_manifest: layoutManifest,
+      source: "studio"
+    };
 
-      const suggestedTemplateId = recommended?.template_id || "tpl_feed_generic_default";
-      const { thumbnailUrl, heroImageUrl } = await processCardThumbnail(card, suggestedTemplateId, { ...visuals, brandName, industry }, auth, env);
+    return {
+      ...card,
+      id: cardId,
+      suggested_template_id: card.template_id,
+      suggested_template_variant: card.template_variant,
+      suggested_template_family: card.template_format,
+      thumbnail_url: null,
+      draft_payload: draftPayload
+    };
+  });
 
-      const layoutManifest = {
-        template_id: suggestedTemplateId,
-        brand_overrides: {
-          primary_color: visuals.primary_color || "#1A1A1A",
-          secondary_color: visuals.secondary_color || "#F5F5F5",
-          font_stack: visuals.font_stack || "Inter, sans-serif",
-          logo_url: visuals.logo_url || ""
-        },
-        slides: [
-          { text_anchor: "headline" },
-          { text_anchor: "body_paragraph_0" },
-          { text_anchor: "cta_text" }
-        ]
-      };
-
-      const draftPayload = {
-        idea_id: cardId,
-        title: card.idea || card.framework || "",
-        caption: card.caption || "",
-        hook: card.hook || "",
-        cta: card.cta || "",
-        hashtags: card.hashtags || [],
-        platforms: card.platforms || [],
-        contentType: card.media_type || "social",
-        image: heroImageUrl || "",
-        imageSource: "pexels",
-        suggested_structure: card.framework || "",
-        layout_manifest: layoutManifest,
-        source: "studio"
-      };
-
-      return {
-        ...card,
-        id: cardId,
-        suggested_template_family: family,
-        suggested_template_id: suggestedTemplateId,
-        thumbnail_url: thumbnailUrl || null,
-        draft_payload: draftPayload
-      };
-    })());
-  }
-
-  const enrichedOpps = await Promise.all(promises);
   return json({ opportunities: enrichedOpps });
 }
 
