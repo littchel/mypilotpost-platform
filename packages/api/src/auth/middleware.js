@@ -37,7 +37,6 @@ export async function requireAuth(request, env) {
   if (!user_id) throw error("Unauthorized", "UNAUTHORIZED", null, 401);
 
   const db = getDB(env);
-  const url = new URL(request.url);
   const is_email_exempt_route =
     url.pathname.includes("/trust/") ||
     url.pathname.includes("/verify-email") ||
