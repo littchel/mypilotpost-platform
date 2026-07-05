@@ -1,0 +1,46 @@
+{
+  "template_id": "split_layout_feed",
+  "format": "Feed Post (1:1)",
+  "dimensions": {
+    "width": 1080,
+    "height": 1080
+  },
+  "layout_structure": {
+    "left_pane": {
+      "width": "540px",
+      "type": "image",
+      "style": {
+        "filter": "grayscale(100%)",
+        "border_right": "2px solid #FFFFFF"
+      },
+      "overlay": {
+        "text": "BEFORE",
+        "position": {
+          "top": "120px"
+        }
+      }
+    },
+    "right_pane": {
+      "width": "540px",
+      "type": "image",
+      "style": {
+        "filter": "none"
+      },
+      "overlay": {
+        "text": "AFTER",
+        "position": {
+          "bottom": "120px"
+        }
+      }
+    }
+  },
+  "global_overlay_styling": {
+    "font_family": "Inter, sans-serif",
+    "font_size": "54px",
+    "font_weight": "700",
+    "text_transform": "uppercase",
+    "letter_spacing": "4px",
+    "color": "#FFFFFF",
+    "text_shadow": "0 4px 12px rgba(0, 0, 0, 0.5)"
+  }
+}

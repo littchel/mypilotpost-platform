@@ -1,0 +1,36 @@
+{
+  "template_id": "story_poll-A",
+  "template_name": "Poll / Question Story",
+  "version": "1_fashion_editorial",
+  "global_styles": {
+    "canvas_background_image": "https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&q=80&w=800&h=1422",
+    "overlay_opacity": 0.15,
+    "font_headline": "Playfair Display, serif",
+    "font_sans": "Inter, sans-serif"
+  },
+  "question_zone": {
+    "pre_title": "Let's Play",
+    "headline": "YAY OR NAY?",
+    "post_title": "Fashion Trends",
+    "text_color": "#111111"
+  },
+  "poll_sticker": {
+    "background_color": "#FFFFFF",
+    "border_radius": "28px",
+    "context_title": "Minimal style",
+    "options": [
+      {
+        "id": "option_a",
+        "text": "Yay!",
+        "background_color": "#2D2D2E",
+        "text_color": "#FFFFFF"
+      },
+      {
+        "id": "option_b",
+        "text": "Nay!",
+        "background_color": "#2D2D2E",
+        "text_color": "#FFFFFF"
+      }
+    ]
+  }
+}

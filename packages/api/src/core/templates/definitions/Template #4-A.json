@@ -1,0 +1,81 @@
+{
+  "template_id": "product_showcase_feed-A",
+  "template_name": "Personal Brand Editorial Carousel",
+  "format": "1:1 Feed Post Carousel",
+  "carousel_specification": {
+    "total_slides": 3,
+    "theme_color": "#7A3B22",
+    "font_family": "Montserrat, sans-serif",
+    "global_overlays": {
+      "has_window_pane_shadows": true
+    }
+  },
+  "brand_identity": {
+    "logo_type": "monogram_profile_line",
+    "text": "NS",
+    "subtext": "Business Company"
+  },
+  "slides": [
+    {
+      "slide_index": 1,
+      "reference_file": "Screenshot 2026-07-05 at 00.07.14.png",
+      "background_image_url": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=800&h=800",
+      "overlay_style": "gradient_left_heavy",
+      "layout": {
+        "branding_position": "top-left",
+        "index_badge_position": "top-right",
+        "headline": "Your Personal Brand\nIs Your Digital\nReputation",
+        "body_text_layout": "single_column_bottom_left",
+        "body_paragraphs": [
+          "People may forget your resume, but they will remember how your content makes them feel. Your personal brand is not about pretending to be perfect it's about showing consistency, value, and perspective online."
+        ],
+        "call_to_action": {
+          "text": "Learn More",
+          "style": "horizontal_hand_drawn_oval",
+          "position": "bottom-right"
+        }
+      }
+    },
+    {
+      "slide_index": 2,
+      "reference_file": "Screenshot 2026-07-05 at 00.07.24.png",
+      "background_image_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=800&h=800",
+      "overlay_style": "gradient_top_heavy",
+      "layout": {
+        "branding_position": "bottom-left",
+        "index_badge_position": "top-right",
+        "headline": "Stop Trying\nTo Impress\nEveryone",
+        "body_text_layout": "floating_column_middle_right",
+        "body_paragraphs": [
+          "Strong personal brands are built through clarity, not popularity. The more specific your style, message, and identity become, the easier people will remember you."
+        ],
+        "call_to_action": {
+          "text": "Learn More",
+          "style": "horizontal_hand_drawn_oval",
+          "position": "middle-right_below_text"
+        }
+      }
+    },
+    {
+      "slide_index": 3,
+      "reference_file": "Screenshot 2026-07-05 at 00.07.33.png",
+      "background_image_url": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=800&h=800",
+      "overlay_style": "gradient_bottom_heavy",
+      "layout": {
+        "branding_position": "top-left",
+        "index_badge_position": "top-right",
+        "headline": "Consistency Builds\nRecognition",
+        "body_text_layout": "two_column_split_bottom",
+        "body_paragraphs": [
+          "You don't need to go viral every week. You need recognizable visuals, clear communication, and consistent publishing.",
+          "Small repeated actions create strong digital presence over time. Your audience trusts what they see repeatedly."
+        ],
+        "call_to_action": {
+          "text": "Learn More",
+          "style": "vertical_hand_drawn_oval_rotated_90",
+          "position": "bottom-right"
+        }
+      }
+    }
+  ]
+}

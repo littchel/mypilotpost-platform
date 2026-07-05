@@ -1,0 +1,83 @@
+{
+  "template_id": "minimal_text_feed-A",
+  "template_name": "Minimalist Condensed Text Step Carousel",
+  "format": "1:1 Feed Post Carousel",
+  "carousel_specification": {
+    "total_slides": 4,
+    "canvas_background_color": "#EAEAEA",
+    "font_family_display": "Antonio, sans-serif",
+    "font_family_body": "Inter, sans-serif",
+    "accent_color_lime": "#64DF32",
+    "text_color_primary": "#000000"
+  },
+  "global_components": {
+    "running_footer": {
+      "left_handle": "@reallygreatsite",
+      "right_url": "www.reallygreatsite.com",
+      "has_center_divider_line": true
+    },
+    "interaction_element": {
+      "type": "right_floating_pullout_sticker",
+      "background_color": "#FFFFFF",
+      "icon_type": "circle_lime_arrow_right"
+    }
+  },
+  "slides": [
+    {
+      "slide_index": 1,
+      "reference_file": "Screenshot 2026-07-05 at 00.04.02.png",
+      "layout_type": "carousel_cover",
+      "header": {
+        "text": "Ingoude Company",
+        "has_side_divider_lines": true
+      },
+      "content": {
+        "title_lines": [
+          {
+            "text": "How To",
+            "color_type": "primary"
+          },
+          {
+            "text": "Organize",
+            "color_type": "accent"
+          },
+          {
+            "text": "Your",
+            "color_type": "primary"
+          },
+          {
+            "text": "Routine?",
+            "color_type": "primary"
+          }
+        ]
+      }
+    },
+    {
+      "slide_index": 2,
+      "reference_file": "Screenshot 2026-07-05 at 00.04.12.png",
+      "layout_type": "educational_step_card",
+      "content": {
+        "step_number": "1",
+        "body_text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut eleifend mi vel malesuada egestas."
+      }
+    },
+    {
+      "slide_index": 3,
+      "reference_file": "Screenshot 2026-07-05 at 00.04.19.png",
+      "layout_type": "educational_step_card",
+      "content": {
+        "step_number": "2",
+        "body_text": "Lorem ipsum dolor sit amet, consectetur elit. Pellentesque ornare porttitor mi finibus aliquet."
+      }
+    },
+    {
+      "slide_index": 4,
+      "reference_file": "Screenshot 2026-07-05 at 00.04.28.png",
+      "layout_type": "educational_step_card",
+      "content": {
+        "step_number": "3",
+        "body_text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc luctus nisl sed libero placerat egestas."
+      }
+    }
+  ]
+}

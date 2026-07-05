@@ -1,0 +1,61 @@
+{
+  "template_id": "story_split",
+  "template_name": "Split Screen Story (50/50)",
+  "global_styles": {
+    "canvas_background_color": "#D6C4AD",
+    "canvas_background_grain": "radial-gradient(rgba(0,0,0,0.15) 1px, transparent 0)",
+    "polaroid_background_color": "#F9F8F4",
+    "font_family_caption": "Courier Prime, monospace",
+    "font_family_handwriting": "Caveat, cursive"
+  },
+  "layout_elements": {
+    "torn_paper_top": {
+      "text_content": "something backth... tch tic night eating, or all it place big-c e yea ch l rwe nsic par er",
+      "background_color": "#EAE5D9"
+    },
+    "torn_paper_bottom": {
+      "background_color": "#CBB9A3"
+    },
+    "middle_divider_tape": {
+      "label_text": "or",
+      "background_color": "rgba(245, 242, 232, 0.85)"
+    }
+  },
+  "interactive_zones": {
+    "top_zone": {
+      "item_id": "choice_this",
+      "polaroid_rotation_degrees": -4.5,
+      "media": {
+        "type": "image",
+        "url": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=500&q=80",
+        "alt_text": "Premium Burger Asset"
+      },
+      "caption": "Burger",
+      "callout": {
+        "text": "This",
+        "rotation_degrees": 4,
+        "arrow_svg_path": "M10,10 Q25,5 35,25 M25,25 L35,25 L35,15"
+      }
+    },
+    "bottom_zone": {
+      "item_id": "choice_that",
+      "polaroid_rotation_degrees": 3.5,
+      "media": {
+        "type": "image",
+        "url": "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=500&q=80",
+        "alt_text": "Artisan Pizza Asset"
+      },
+      "caption": "Pizza",
+      "callout": {
+        "text": "That",
+        "rotation_degrees": -8,
+        "arrow_svg_path": "M10,10 Q25,5 35,25 M25,25 L35,25 L35,15"
+      }
+    }
+  },
+  "video_controls": {
+    "icon_type": "pause",
+    "background_color": "rgba(0, 0, 0, 0.45)",
+    "position": "bottom-left"
+  }
+}

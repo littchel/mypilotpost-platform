@@ -1,0 +1,127 @@
+{
+  "template_id": "split_layout_feed-A",
+  "template_name": "Split Layout (50/50)",
+  "format": "1:1 Feed Post Carousel",
+  "carousel_specification": {
+    "total_slides": 4,
+    "layout_style": "Overlapping Scrapbook Layering",
+    "global_card_type": "Compact Vertically Centered Widget",
+    "widget_width_percentage": "42%",
+    "image_tilt_direction": "left",
+    "overlap_hierarchy": "Right column overlaps left column"
+  },
+  "slides": [
+    {
+      "slide_index": 1,
+      "left_column": {
+        "image_url": "https://images.unsplash.com/photo-1512438248247-f0f2a5a8b7f0?auto=format&fit=crop&q=80&w=500&h=800",
+        "rotation_degrees": -6,
+        "border_radius": "20px"
+      },
+      "right_column": {
+        "image_url": "https://images.unsplash.com/photo-1545205597-3d9d02c29597?auto=format&fit=crop&q=80&w=500&h=800",
+        "rotation_degrees": -3,
+        "border_radius": "20px"
+      },
+      "decorations": {
+        "floating_bubble": {
+          "type": "text_callout",
+          "text": "Save this for later",
+          "position": "bottom-left"
+        }
+      },
+      "widget_card": {
+        "headline": "Habits That Changed My Life",
+        "body_pill_text": "Simple routines with real impact.",
+        "action_buttons": [
+          "plus",
+          "next"
+        ]
+      }
+    },
+    {
+      "slide_index": 2,
+      "left_column": {
+        "image_url": "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&q=80&w=500&h=800",
+        "rotation_degrees": -6,
+        "border_radius": "20px"
+      },
+      "right_column": {
+        "image_url": "https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&q=80&w=500&h=800",
+        "rotation_degrees": -3,
+        "border_radius": "20px"
+      },
+      "decorations": {
+        "floating_bubble": {
+          "type": "like_counter",
+          "count": 1,
+          "position": "widget-top-left"
+        }
+      },
+      "widget_card": {
+        "headline": "Starting mornings without rushing",
+        "body_pill_text": "Giving myself time instead of pressure.",
+        "action_buttons": [
+          "plus",
+          "next"
+        ]
+      }
+    },
+    {
+      "slide_index": 3,
+      "left_column": {
+        "image_url": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=500&h=800",
+        "rotation_degrees": -6,
+        "border_radius": "20px"
+      },
+      "right_column": {
+        "image_url": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=500&h=800",
+        "rotation_degrees": -3,
+        "border_radius": "20px"
+      },
+      "decorations": {
+        "floating_bubble": {
+          "type": "like_counter",
+          "count": 2,
+          "position": "widget-top-left"
+        }
+      },
+      "widget_card": {
+        "headline": "Spending time offline",
+        "body_pill_text": "Creating space to think and feel.",
+        "action_buttons": [
+          "plus",
+          "next"
+        ]
+      }
+    },
+    {
+      "slide_index": 4,
+      "left_column": {
+        "image_url": "https://images.unsplash.com/photo-1516414447565-b14be0adf13e?auto=format&fit=crop&q=80&w=500&h=800",
+        "rotation_degrees": -6,
+        "border_radius": "20px"
+      },
+      "right_column": {
+        "image_url": "https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&q=80&w=500&h=800",
+        "rotation_degrees": -3,
+        "border_radius": "20px"
+      },
+      "decorations": {
+        "floating_bubble": {
+          "type": "like_counter",
+          "count": 3,
+          "position": "widget-top-left"
+        }
+      },
+      "widget_card": {
+        "headline": "Writing one honest thought",
+        "body_pill_text": "Clearing my mind regularly.",
+        "action_buttons": [
+          "plus",
+          "next"
+        ]
+      }
+    }
+  ]
+}

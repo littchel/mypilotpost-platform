@@ -1,0 +1,113 @@
+{
+  "template_id": "carousel_data_008",
+  "template_name": "The Data Story Carousel",
+  "global_styles": {
+    "canvas_background": "#FAF9F6",
+    "primary_text_color": "#1C1A17",
+    "accent_text_color": "#964B1D",
+    "font_family_serif": "Instrument Serif, serif",
+    "font_family_sans": "Inter, sans-serif"
+  },
+  "carousel_slides": [
+    {
+      "slide_number": 1,
+      "layout_type": "full-bleed-hook",
+      "meta_header": {
+        "left_text": "@reallygreatsite",
+        "center_text": "Larana, Inc.",
+        "right_text": "December 2024"
+      },
+      "background_image_url": "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=600&q=80",
+      "content": {
+        "pill_tag_text": "5 Fashion Tips to",
+        "headline_text": "Improve Your Style"
+      }
+    },
+    {
+      "slide_number": 2,
+      "layout_type": "media-top-stat-badge",
+      "meta_header": {
+        "left_text": "@reallygreatsite",
+        "center_text": "Larana, Inc.",
+        "right_text": "December 2024"
+      },
+      "media": {
+        "image_url": "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=600&q=80",
+        "badge_value": "1"
+      },
+      "content": {
+        "headline_text": "Invest in Timeless Goods",
+        "pill_tag_text": "Fashion Tips",
+        "body_description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean hendrerit consectetur pretium. Etiam porta orci in sem mattis convallis."
+      }
+    },
+    {
+      "slide_number": 3,
+      "layout_type": "inline-row-badge-insight",
+      "meta_header": {
+        "left_text": "@reallygreatsite",
+        "center_text": "Larana, Inc.",
+        "right_text": "December 2024"
+      },
+      "media": {
+        "image_url": "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=600&q=80",
+        "badge_value": "2"
+      },
+      "content": {
+        "headline_text": "Playing with Accessories",
+        "pill_tag_text": "Fashion Tips",
+        "body_description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean hendrerit consectetur pretium. Etiam porta orci in sem mattis convallis."
+      }
+    },
+    {
+      "slide_number": 4,
+      "layout_type": "content-top-media-bottom-inversion",
+      "meta_header": {
+        "left_text": "@reallygreatsite",
+        "center_text": "Larana, Inc.",
+        "right_text": "December 2024"
+      },
+      "media": {
+        "image_url": "https://images.unsplash.com/photo-1485230895905-ec40ba36b9bc?auto=format&fit=crop&w=600&q=80",
+        "badge_value": "3"
+      },
+      "content": {
+        "headline_text": "Mix and Match Textures",
+        "pill_tag_text": "Fashion Tips",
+        "body_description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean hendrerit consectetur pretium. Etiam porta orci in sem mattis convallis."
+      }
+    },
+    {
+      "slide_number": 5,
+      "layout_type": "full-bleed-end-cta",
+      "meta_header": {
+        "left_text": "@reallygreatsite",
+        "center_text": "Larana, Inc.",
+        "right_text": "December 2024"
+      },
+      "background_image_url": "https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?auto=format&fit=crop&w=600&q=80",
+      "content": {
+        "headline_text": "Follow Us For More Info",
+        "pill_tag_text": "Which fashion tip will you try first?"
+      },
+      "interactive_actions": [
+        {
+          "icon": "heart",
+          "label": "Like"
+        },
+        {
+          "icon": "send",
+          "label": "Share"
+        },
+        {
+          "icon": "bookmark",
+          "label": "Save"
+        }
+      ],
+      "meta_footer": {
+        "left_text": "hello@reallygreatsite.com",
+        "right_text": "www.reallygreatsite.com"
+      }
+    }
+  ]
+}

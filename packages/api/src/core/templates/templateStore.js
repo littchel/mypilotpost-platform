@@ -1,31 +1,31 @@
-import template01A from './definitions/hero_headline_feed-A.json' with { type: 'json' };
-import template01B from './definitions/hero_headline_feed-B.json' with { type: 'json' };
-import template01C from './definitions/hero_headline_feed-C.json' with { type: 'json' };
-import template02A from './definitions/quote_card_feed-A.json' with { type: 'json' };
-import template02B from './definitions/quote_card_feed-B.json' with { type: 'json' };
-import template03A from './definitions/split_layout_feed-A.json' with { type: 'json' };
-import template04A from './definitions/product_showcase_feed-A.json' with { type: 'json' };
-import template05A from './definitions/minimal_text_feed-A.json' with { type: 'json' };
-import template05B from './definitions/minimal_text_feed-B.json' with { type: 'json' };
-import template07A from './definitions/carousel_story_006-A.json' with { type: 'json' };
-import template11A from './definitions/story_fullscreen-A.json' with { type: 'json' };
-import template1 from './definitions/hero_headline_feed.json' with { type: 'json' };
-import template2 from './definitions/quote_card_feed.json' with { type: 'json' };
-import template3 from './definitions/split_layout_feed.json' with { type: 'json' };
-import template4 from './definitions/product_showcase_feed.json' with { type: 'json' };
-import template5 from './definitions/minimal_text_feed.json' with { type: 'json' };
-import template6 from './definitions/carousel_list_005.json' with { type: 'json' };
-import template7 from './definitions/carousel_story_006.json' with { type: 'json' };
-import template8 from './definitions/carousel_comparison_004.json' with { type: 'json' };
-import template9 from './definitions/carousel_faq_005.json' with { type: 'json' };
-import template10 from './definitions/carousel_data_008.json' with { type: 'json' };
-import template11 from './definitions/story_fullscreen.json' with { type: 'json' };
-import template12 from './definitions/story_split.json' with { type: 'json' };
-import template13A from './definitions/story_poll-A.json' with { type: 'json' };
-import template13B from './definitions/story_poll-B.json' with { type: 'json' };
-import template13C from './definitions/story_poll-C.json' with { type: 'json' };
-import template14 from './definitions/reel_hook.json' with { type: 'json' };
-import template15 from './definitions/reel_loop.json' with { type: 'json' };
+import template01A from './definitions/Template #1-A.json' assert { type: 'json' };
+import template01B from './definitions/Template #1-B.json' assert { type: 'json' };
+import template01C from './definitions/Template #1-C.json' assert { type: 'json' };
+import template02A from './definitions/Template #2-A.json' assert { type: 'json' };
+import template02B from './definitions/Template #2-B.json' assert { type: 'json' };
+import template03A from './definitions/Template #3-A.json' assert { type: 'json' };
+import template04A from './definitions/Template #4-A.json' assert { type: 'json' };
+import template05A from './definitions/Template #5-A.json' assert { type: 'json' };
+import template05B from './definitions/Template #5-B.json' assert { type: 'json' };
+import template07A from './definitions/Template #7-A.json' assert { type: 'json' };
+import template11A from './definitions/Template #11-A.json' assert { type: 'json' };
+import template1 from './definitions/Template #1.json' assert { type: 'json' };
+import template2 from './definitions/Template #2.json' assert { type: 'json' };
+import template3 from './definitions/Template #3.json' assert { type: 'json' };
+import template4 from './definitions/Template #4.json' assert { type: 'json' };
+import template5 from './definitions/Template #5.json' assert { type: 'json' };
+import template6 from './definitions/Template #6.json' assert { type: 'json' };
+import template7 from './definitions/Template #7.json' assert { type: 'json' };
+import template8 from './definitions/Template #8.json' assert { type: 'json' };
+import template9 from './definitions/Template #9.json' assert { type: 'json' };
+import template10 from './definitions/Template #10.json' assert { type: 'json' };
+import template11 from './definitions/Template #11.json' assert { type: 'json' };
+import template12 from './definitions/Template #12.json' assert { type: 'json' };
+import template13A from './definitions/Template #13-A.json' assert { type: 'json' };
+import template13B from './definitions/Template #13-B.json' assert { type: 'json' };
+import template13C from './definitions/Template #13-C.json' assert { type: 'json' };
+import template14 from './definitions/Template #14.json' assert { type: 'json' };
+import template15 from './definitions/Template #15.json' assert { type: 'json' };
 
 export const templateMap = {
   'TEMPLATE_01': { A: template01A, B: template01B, C: template01C },
@@ -52,7 +52,7 @@ export const templateMap = {
   'TEMPLATE_14': { A: template14 },
   'TEMPLATE_14_variant2': { A: template15 },
 
-  // Add mappings for standard names to support historical API queries
+  // System historical keys fallbacks
   'hero_headline_feed': { A: template1 },
   'hero_headline_feed-A': { A: template01A },
   'hero_headline_feed-B': { B: template01B },
@@ -95,7 +95,7 @@ export function getTemplate(templateId, variant = 'A') {
 
   let entry = templateMap[actualId];
   if (!entry) {
-    entry = templateMap['hero_headline_feed'];
+    entry = templateMap['editorial_dual_font_cover'];
   }
   return entry[actualVariant] || entry['A'] || null;
 }

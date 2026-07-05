@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { apiRequest } from "../lib/api/client";
 import { fetchMediaSuggestions } from "../services/mediaSuggestions";
-import TemplateCanvas from "./TemplateCanvas";
+import { renderTemplateToHTML } from "./TemplateHTML/templateFallbacks";
 
 export default function QuickEditModal({ card, activeBrand, brandDna, onClose, onSave }) {
   const [templateId, setTemplateId] = useState(card.template_id || card.suggested_template_id);
@@ -122,6 +122,21 @@ export default function QuickEditModal({ card, activeBrand, brandDna, onClose, o
     };
   }, [templateSchema, headline, bodyText, ctaText, heroImageUrl, brandVars]);
 
+  const htmlContent = useMemo(() => {
+    if (!templateSchema) return null;
+    return renderTemplateToHTML(templateSchema, {
+      headline: headline,
+      body: bodyText,
+      cta: ctaText,
+      image_url: heroImageUrl,
+      primary_color: brandVars.primary_color || '#1A73E8',
+      secondary_color: brandVars.secondary_color || '#34A853',
+      logo_url: brandVars.logo_url || '',
+      font_headline: brandVars.font_stack || 'Inter',
+      font_body: brandVars.font_stack || 'Inter'
+    });
+  }, [templateSchema, headline, bodyText, ctaText, heroImageUrl, brandVars]);
+
   // Handle confirmation: serialize manifest and navigate
   const handleSaveAndUse = () => {
     const activeSlideId = templateSchema?.slides?.[0]?.slot_id || "slide_1";
@@ -209,49 +224,37 @@ export default function QuickEditModal({ card, activeBrand, brandDna, onClose, o
           borderRight: "1px solid var(--border-subtle)",
           position: "relative"
         }}>
-          {loadingSchema ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
-              <div style={{ width: 80, height: 80, borderRadius: "50%", background: "var(--border-subtle)", animation: "cs-shimmer 1.5s infinite linear" }} />
-              <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: 600 }}>Loading visual canvas...</div>
-            </div>
-          ) : (
-            <div style={{
-              borderRadius: "32px",
-              border: "10px solid #1e293b",
-              boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)",
-              overflow: "hidden",
-              width: dimensions.width,
-              height: dimensions.height,
-              background: "#000",
-              position: "relative",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center"
-            }}>
-              {/* Speaker Notch */}
-              <div style={{
-                position: "absolute",
-                top: 0,
-                left: "50%",
-                transform: "translateX(-50%)",
-                width: "60px",
-                height: "10px",
-                background: "#1e293b",
-                borderBottomLeftRadius: "5px",
-                borderBottomRightRadius: "5px",
-                zIndex: 99
-              }} />
-
-              {templateSchema && (
-                <TemplateCanvas
-                  templateSchema={{ ...templateSchema, animation_preset: animationPreset }}
-                  slotData={slotData}
-                  brandVariables={brandVars}
-                  dimensions={dimensions}
-                />
-              )}
-            </div>
-          )}
+          <div style={{
+            width: "100%",
+            height: "100%",
+            maxHeight: "380px",
+            position: "relative",
+            overflow: "hidden",
+            background: "#f0f0f0",
+            aspectRatio: formatType === "story" ? "9/16" : formatType === "carousel" ? "4/5" : "1/1",
+            borderRadius: "12px",
+            boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center"
+          }}>
+            {htmlContent ? (
+              <div 
+                style={{ width: "100%", height: "100%", containerType: "size" }}
+                dangerouslySetInnerHTML={{ __html: htmlContent }} 
+              />
+            ) : card.preview_url ? (
+              <img 
+                src={card.preview_url} 
+                alt="Post preview" 
+                style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+              />
+            ) : (
+              <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", padding: "20px", textAlign: "center" }}>
+                {headline || "Loading preview..."}
+              </div>
+            )}
+          </div>
 
           <div style={{ marginTop: 16, fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600 }}>
             Visual preview updates dynamically in real-time

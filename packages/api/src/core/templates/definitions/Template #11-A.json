@@ -1,0 +1,76 @@
+{
+  "template_id": "story_fullscreen-A",
+  "template_name": "Elegant Productive Monday",
+  "format": "9:16 Story Post",
+  "specification": {
+    "dimensions": "1080x1920",
+    "background_image_url": "https://images.unsplash.com/photo-1517256064527-09c53b2d0c6f?auto=format&fit=crop&q=80&w=700&h=1244",
+    "canvas_overlay": "linear-gradient(to top, rgba(26, 23, 21, 0.45) 0%, rgba(26, 23, 21, 0.1) 50%, rgba(0, 0, 0, 0.2) 100%)"
+  },
+  "typography": {
+    "fonts_utilized": [
+      {
+        "provider": "Google Fonts",
+        "family": "Bodoni Moda",
+        "category": "Serif"
+      },
+      {
+        "provider": "Google Fonts",
+        "family": "Alex Brush",
+        "category": "Cursive/Script"
+      },
+      {
+        "provider": "Google Fonts",
+        "family": "Plus Jakarta Sans",
+        "category": "Sans-serif"
+      }
+    ]
+  },
+  "layout_hierarchy": {
+    "header_block": {
+      "alignment": "right-aligned",
+      "margin_bottom": "36px",
+      "line_1": {
+        "text": "Have a",
+        "font_family": "Bodoni Moda",
+        "font_size": "38px",
+        "color": "#E2AFA4",
+        "font_weight": 400
+      },
+      "line_2": {
+        "text": "Productive",
+        "font_family": "Bodoni Moda",
+        "font_size": "38px",
+        "color": "#E2AFA4",
+        "font_weight": 400
+      },
+      "line_3": {
+        "text": "Monday",
+        "font_family": "Alex Brush",
+        "font_size": "115px",
+        "color": "#E2AFA4",
+        "font_weight": 400,
+        "margin_top": "12px"
+      }
+    },
+    "body_content": {
+      "alignment": "left-aligned",
+      "max_width": "82%",
+      "text": "May your Monday be the beginning of a week filled with success and happiness.",
+      "font_family": "Plus Jakarta Sans",
+      "font_size": "16.5px",
+      "color": "#FFFFFF",
+      "line_height": 1.45,
+      "opacity": 0.95,
+      "margin_bottom": "28px"
+    },
+    "footer_elements": {
+      "alignment": "left-aligned",
+      "icon_type": "hollow_heart",
+      "dimensions": "25px x 25px",
+      "stroke_color": "#FFFFFF",
+      "stroke_width": 1.5,
+      "opacity": 0.95
+    }
+  }
+}

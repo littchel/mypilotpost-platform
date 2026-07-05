@@ -1,0 +1,56 @@
+{
+  "template_id": "reel_hook",
+  "template_name": "The Hook Reel",
+  "global_styles": {
+    "background_color_cream": "#EFEBE3",
+    "primary_text_color": "#242424",
+    "font_family_headline": "Montserrat, sans-serif"
+  },
+  "static_slides": [
+    {
+      "slide_index": 1,
+      "layout_type": "centered-headline",
+      "content": {
+        "headline_text": "Three Hooks For Your Videos"
+      }
+    },
+    {
+      "slide_index": 2,
+      "layout_type": "structured-hook-card",
+      "content": {
+        "hook_number_label": "Hook #1",
+        "italic_headline": "Did you know there's an easy way to",
+        "has_underline_divider": true,
+        "sub_text_instruction": "Fill in the blank with your target client's goal"
+      }
+    },
+    {
+      "slide_index": 3,
+      "layout_type": "structured-hook-card",
+      "content": {
+        "hook_number_label": "Hook #2",
+        "italic_headline": "A guide on how to approach",
+        "has_underline_divider": true,
+        "sub_text_instruction": "Fill in the blank with your target client's problem"
+      }
+    },
+    {
+      "slide_index": 4,
+      "layout_type": "structured-hook-card",
+      "content": {
+        "hook_number_label": "Hook #3",
+        "italic_headline": "Want to\nI can help.",
+        "has_underline_divider": true,
+        "sub_text_instruction": "Fill in the blank with your target client's goal"
+      }
+    },
+    {
+      "slide_index": 5,
+      "layout_type": "repeating-text-wall-cta",
+      "content": {
+        "repeating_phrase": "Follow for more",
+        "matrix_rows": 14
+      }
+    }
+  ]
+}

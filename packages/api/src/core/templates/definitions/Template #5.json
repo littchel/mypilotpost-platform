@@ -1,0 +1,64 @@
+{
+  "template_id": "minimal_text_feed",
+  "format": "Feed Post (1:1)",
+  "dimensions": {
+    "width": 1080,
+    "height": 1080
+  },
+  "layout_structure": {
+    "background_color": "#1A1A1A",
+    "padding": "80px 100px",
+    "decorative_components": {
+      "top_line": {
+        "width": "80px",
+        "height": "4px",
+        "top": "40px",
+        "background_color": "#FFFFFF"
+      }
+    },
+    "top_meta_row": {
+      "left_link": {
+        "text": "Read my blog",
+        "url": "#",
+        "font_size": "26px"
+      },
+      "right_label": {
+        "text": "Your Name",
+        "font_size": "26px"
+      },
+      "color": "#FFFFFF"
+    },
+    "content_area": {
+      "headline_numeral": {
+        "text": "01.",
+        "font_family": "{{brand.font_headline}}",
+        "font_size": "150px",
+        "font_weight": "700",
+        "alignment": "right",
+        "color": "#FFFFFF"
+      },
+      "subtext_body": {
+        "max_characters": 200,
+        "font_family": "{{brand.font_body}}",
+        "font_size": "28px",
+        "line_height": "1.5",
+        "alignment": "justify",
+        "max_width": "720px",
+        "color": "#E4E4E7",
+        "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
+      }
+    },
+    "bottom_action_row": {
+      "left_icon": "bubble_shape",
+      "right_icon": "paper_airplane",
+      "cta_center": {
+        "text": "@reallygreatsite",
+        "url": "#",
+        "font_family": "{{brand.font_body}}",
+        "font_size": "24px",
+        "font_weight": "600",
+        "color": "#FFFFFF"
+      }
+    }
+  }
+}
