@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { apiRequest } from "../../lib/api/client";
 import TemplateCanvas from "../TemplateCanvas";
+import { renderHTMLTemplate } from "../TemplateHTML/renderer";
 
 // Local static cache to avoid redundant template schema fetches across cards
 const templateCache = new Map();
@@ -406,52 +407,112 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
     );
   }
 
-  // Fallback State: Show a simple text-only card if template schema fails to load
+  // Fallback State: Show a raw HTML mock template card if template schema fails to load
   if (error || !templateSchema) {
+    const htmlContent = renderHTMLTemplate(templateId, {
+      headline: card.preview_data?.headline || card.hook || 'Your Headline',
+      body: card.preview_data?.body || '',
+      cta: card.preview_data?.cta || 'Learn More',
+      image_url: card.preview_data?.hero_image_url || '',
+      primary_color: brandVars.primary_color || '#1A73E8',
+      secondary_color: brandVars.secondary_color || '#34A853',
+      logo_url: brandVars.logo_url || '',
+      font_headline: brandVars.font_headline || 'Inter',
+      font_body: brandVars.font_body || 'Inter'
+    });
+
     return (
       <div style={{
         width: 280,
-        height: isFeed ? 380 : 500,
+        height: format === 'carousel' || format === 'story' ? 440 : 370,
         background: "var(--surface-primary)",
         border: "1px solid var(--border-subtle)",
         borderRadius: "var(--radius-lg)",
-        padding: 18,
         display: "flex",
         flexDirection: "column",
-        justifyContent: "space-between",
+        overflow: "hidden",
         boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
         transition: "all 0.2s ease"
       }}>
-        <div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-            <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>
-              {getFormatLabel(card.template_format)}
-            </span>
-          </div>
-          <h4 style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--text-main)", marginBottom: 8, lineHeight: 1.3 }}>
-            {card.idea || "Idea Draft"}
-          </h4>
-          <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
-            {card.preview_data?.body || card.hook || card.caption}
-          </p>
+        {/* Frame container */}
+        <div style={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "var(--surface-secondary)",
+          position: "relative",
+          padding: 12
+        }}>
+          <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
         </div>
-        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+
+        {/* Footer controls */}
+        <div style={{
+          padding: "12px 14px",
+          display: "flex",
+          gap: 6,
+          background: "var(--surface-primary)",
+          alignItems: "center",
+          borderTop: "1px solid var(--border-subtle)"
+        }}>
+          <button
+            type="button"
+            onClick={() => onQuickEdit && onQuickEdit(card)}
+            style={{
+              flex: 1,
+              border: "1px solid var(--border-subtle)",
+              background: "var(--surface-secondary)",
+              color: "var(--text-main)",
+              borderRadius: "var(--radius-md)",
+              padding: "8px 0",
+              fontSize: "0.7rem",
+              fontWeight: 700,
+              cursor: "pointer",
+              transition: "background 0.15s"
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = "var(--hover-bg)"}
+            onMouseLeave={(e) => e.currentTarget.style.background = "var(--surface-secondary)"}
+          >
+            ✎ Quick Edit
+          </button>
           <button
             type="button"
             onClick={() => onUseIdea(card)}
             style={{
-              flex: 1,
+              flex: 1.2,
               border: "none",
               background: "var(--pilot-blue)",
               color: "#fff",
               borderRadius: "var(--radius-md)",
               padding: "8px 0",
-              fontSize: "0.75rem",
+              fontSize: "0.7rem",
               fontWeight: 700,
-              cursor: "pointer"
+              cursor: "pointer",
+              transition: "opacity 0.15s"
             }}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = "0.95"}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
           >
             Use Post →
+          </button>
+          <button
+            type="button"
+            onClick={() => onSave && onSave(card)}
+            disabled={saved}
+            style={{
+              flex: 0.8,
+              border: `1px solid ${saved ? "var(--status-success)" : "var(--border-subtle)"}`,
+              background: saved ? "var(--surface-primary)" : "var(--surface-secondary)",
+              color: saved ? "var(--status-success)" : "var(--text-main)",
+              borderRadius: "var(--radius-md)",
+              padding: "8px 0",
+              fontSize: "0.7rem",
+              fontWeight: 700,
+              cursor: saved ? "default" : "pointer"
+            }}
+          >
+            {saved ? "✓ Saved" : "♡ Save"}
           </button>
         </div>
       </div>
