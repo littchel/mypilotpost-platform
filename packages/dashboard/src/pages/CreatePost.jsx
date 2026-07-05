@@ -613,6 +613,7 @@ export default function CreatePost({
   
   // ── Template Mode States ──────────────────────────────────────────────────
   const [templateMode, setTemplateMode]       = useState(false);
+  const [selectedVariant, setSelectedVariant] = useState("A");
   const [templateSchema, setTemplateSchema]   = useState(null);
   const [slotData, setSlotData]               = useState({});
   const [brandVariables, setBrandVariables]   = useState({ primary_color: "#1A1A1A", secondary_color: "#F5F5F5", font_stack: "Inter, sans-serif", logo_url: "" });
@@ -828,6 +829,8 @@ export default function CreatePost({
     if (prefill.layout_manifest) {
       const manifest = prefill.layout_manifest;
       setTemplateMode(true);
+      const varId = manifest.template_variant || "A";
+      setSelectedVariant(varId);
       
       const brandVars = {
         primary_color: manifest.brand_overrides?.primary_color || "#1A1A1A",
@@ -837,7 +840,8 @@ export default function CreatePost({
       };
       setBrandVariables(brandVars);
 
-      apiFetch(`/api/customer/templates/${manifest.template_id}`)
+      const endpoint = `/api/customer/templates/${manifest.template_id}/${varId}`;
+      apiFetch(endpoint)
         .then(schema => {
           if (schema) {
             setTemplateSchema(schema);
@@ -851,23 +855,35 @@ export default function CreatePost({
             };
 
             const initialSlotData = {};
-            (manifest.slides || []).forEach(slide => {
-              let textVal = "";
-              if (slide.text_anchor === "headline" || slide.text_anchor === "hook") {
-                textVal = prefill.hook || prefill.headline || paragraphs[0] || "";
-              } else if (slide.text_anchor === "cta_text" || slide.text_anchor === "cta") {
-                textVal = prefill.cta || prefill.cta_text || "";
-              } else if (slide.text_anchor.startsWith("body_paragraph_")) {
-                const idx = parseInt(slide.text_anchor.replace("body_paragraph_", "")) - 1;
-                textVal = paragraphs[idx] || "";
-              }
+            const prefillSlides = Array.isArray(manifest.slides) ? manifest.slides : [];
+            
+            if (prefillSlides.length > 0 && prefillSlides[0].slot_id) {
+              prefillSlides.forEach(slide => {
+                initialSlotData[slide.slot_id] = {
+                  text: slide.text || prefill.hook || prefill.headline || "",
+                  image_url: slide.image_url || prefill.image || prefill.image_url || "",
+                  palette: defaultPalette
+                };
+              });
+            } else {
+              (prefillSlides || []).forEach(slide => {
+                let textVal = "";
+                if (slide.text_anchor === "headline" || slide.text_anchor === "hook") {
+                  textVal = prefill.hook || prefill.headline || paragraphs[0] || "";
+                } else if (slide.text_anchor === "cta_text" || slide.text_anchor === "cta") {
+                  textVal = prefill.cta || prefill.cta_text || "";
+                } else if (slide.text_anchor.startsWith("body_paragraph_")) {
+                  const idx = parseInt(slide.text_anchor.replace("body_paragraph_", "")) - 1;
+                  textVal = paragraphs[idx] || "";
+                }
 
-              initialSlotData[slide.slot_id] = {
-                text: textVal,
-                image_url: prefill.image || prefill.image_url || "",
-                palette: defaultPalette
-              };
-            });
+                initialSlotData[slide.slot_id || "slide_1"] = {
+                  text: textVal,
+                  image_url: prefill.image || prefill.image_url || "",
+                  palette: defaultPalette
+                };
+              });
+            }
 
             setSlotData(initialSlotData);
           }
@@ -1377,6 +1393,22 @@ export default function CreatePost({
 
   // ── Save draft ──────────────────────────────────────────────────────────
   const saveDraft = async () => {
+    const layoutManifest = templateMode && templateSchema ? {
+      template_id: templateSchema.template_id,
+      template_variant: selectedVariant,
+      brand_overrides: {
+        primary_color: brandVariables.primary_color,
+        secondary_color: brandVariables.secondary_color,
+        font_stack: brandVariables.font_stack,
+        logo_url: brandVariables.logo_url
+      },
+      slides: Object.keys(slotData).map(slotId => ({
+        slot_id: slotId,
+        text: slotData[slotId].text,
+        image_url: slotData[slotId].image_url
+      }))
+    } : undefined;
+
     const data = await apiJSON("/api/customer/vault", "POST", {
       content_id: selectedVaultItem?.id || undefined,
       body: content,
@@ -1386,6 +1418,7 @@ export default function CreatePost({
       lifecycle_status: "draft",
       content_type: "social",
       overlays: (applyOverlay ? overlays : null) || undefined,
+      layout_manifest: layoutManifest,
     });
     if (data?.content_id) await linkMedia(data.content_id);
     return data?.content_id;
@@ -1427,6 +1460,22 @@ export default function CreatePost({
     setPublishPhase("creating");
     setPublishResult(null);
     try {
+      const layoutManifest = templateMode && templateSchema ? {
+        template_id: templateSchema.template_id,
+        template_variant: selectedVariant,
+        brand_overrides: {
+          primary_color: brandVariables.primary_color,
+          secondary_color: brandVariables.secondary_color,
+          font_stack: brandVariables.font_stack,
+          logo_url: brandVariables.logo_url
+        },
+        slides: Object.keys(slotData).map(slotId => ({
+          slot_id: slotId,
+          text: slotData[slotId].text,
+          image_url: slotData[slotId].image_url
+        }))
+      } : undefined;
+
       // Step 1: write to vault (single source of truth)
       const asset = await apiJSON("/api/customer/vault", "POST", {
         content_id: selectedVaultItem?.id || undefined,
@@ -1437,6 +1486,7 @@ export default function CreatePost({
         lifecycle_status: "draft",
         content_type: "social",
         overlays: (applyOverlay ? overlays : null) || undefined,
+        layout_manifest: layoutManifest,
       });
 
       // Step 2: link media
