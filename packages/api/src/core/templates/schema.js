@@ -97,7 +97,7 @@ export const TemplateSchema = z
     slides: z.array(SlideSchema).min(1, "At least one slide is required"),
     animation_preset: AnimationPresetEnum.optional()
   })
-  .strict();
+  .passthrough();
 
 // ==========================================
 // 6. Complete 5-Slide Carousel Example & Validation
@@ -460,6 +460,7 @@ export function validateTemplate(data) {
     }
 
     const normalized = {
+      ...data,
       template_id,
       name,
       format,
