@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { apiRequest } from "../../lib/api/client";
 import TemplateCanvas from "../TemplateCanvas";
 import { renderHTMLTemplate } from "../TemplateHTML/renderer";
+import { renderTemplateToHTML } from "../TemplateHTML/templateFallbacks";
 
 // Local static cache to avoid redundant template schema fetches across cards
 const templateCache = new Map();
@@ -378,6 +379,21 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
     };
   }, [templateSchema, card.preview_data, card.hook, brandVars]);
 
+  const htmlContent = useMemo(() => {
+    if (card.preview_url || !templateSchema) return null;
+    return renderTemplateToHTML(templateSchema, {
+      headline: card.preview_data?.headline || card.hook || 'Your Headline',
+      body: card.preview_data?.body || '',
+      cta: card.preview_data?.cta || 'Learn More',
+      image_url: card.preview_data?.hero_image_url || '',
+      primary_color: brandVars.primary_color || '#1A73E8',
+      secondary_color: brandVars.secondary_color || '#34A853',
+      logo_url: brandVars.logo_url || '',
+      font_headline: brandVars.font_headline || 'Inter',
+      font_body: brandVars.font_body || 'Inter'
+    });
+  }, [card.preview_url, templateSchema, card.preview_data, card.hook, brandVars]);
+
   // Skeleton Loader State
   if (loading) {
     return (
@@ -606,12 +622,25 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
             zIndex: 99
           }} />
 
-          <TemplateCanvas
-            templateSchema={templateSchema}
-            slotData={slotData}
-            brandVariables={brandVars}
-            dimensions={dimensions}
-          />
+          {card.preview_url ? (
+            <img 
+              src={card.preview_url} 
+              alt={card.preview_data?.headline || "Post preview"} 
+              style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+            />
+          ) : htmlContent ? (
+            <div 
+              style={{ width: "100%", height: "100%", containerType: "size" }}
+              dangerouslySetInnerHTML={{ __html: htmlContent }} 
+            />
+          ) : (
+            <TemplateCanvas
+              templateSchema={templateSchema}
+              slotData={slotData}
+              brandVariables={brandVars}
+              dimensions={dimensions}
+            />
+          )}
         </div>
       </div>
 

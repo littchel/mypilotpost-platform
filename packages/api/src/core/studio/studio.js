@@ -436,6 +436,29 @@ Rules:
       source: "studio"
     };
 
+    // Generate exact template preview URL if running on Node environment
+    let preview_url = "";
+    if (typeof process !== "undefined" && process.release?.name === "node") {
+      try {
+        const { getTemplatePreview } = await import("../templates/previewService.js");
+        preview_url = await getTemplatePreview(
+          card.template_id,
+          {
+            ...previewData,
+            primary_color: visuals.primary_color || '#1A73E8',
+            secondary_color: visuals.secondary_color || '#34A853',
+            logo_url: visuals.logo_url || '',
+            font_headline: visuals.font_headline || 'Inter',
+            font_body: visuals.font_body || 'Inter'
+          },
+          auth.brand_id,
+          env
+        );
+      } catch (err) {
+        console.warn(`[STUDIO] Puppeteer exact render failed for card ${cardId}:`, err.message);
+      }
+    }
+
     return {
       ...card,
       id: `card_${cardId}`,
@@ -444,7 +467,8 @@ Rules:
       suggested_template_family: card.template_format,
       thumbnail_url: hero_image_url,
       preview_data: previewData,
-      draft_payload: draftPayload
+      draft_payload: draftPayload,
+      preview_url: preview_url || null
     };
   });
 
