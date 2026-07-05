@@ -505,6 +505,19 @@ export async function generateStudioPost(request, env, auth) {
   const { brand, context, brandName, visuals } = await fetchBrandCtx(db, auth.brand_id);
   const platformList = platforms.join(", ") || "Facebook, Instagram";
 
+  const template = template_id ? getTemplate(template_id) : null;
+  const constraints = [];
+  if (template && template.slots) {
+    template.slots.forEach(slot => {
+      if (slot.max_chars) {
+        constraints.push(`- Slot "${slot.content_key || slot.slot_id}": max length is ${slot.max_chars} characters.`);
+      }
+    });
+  }
+  const constraintsPrompt = constraints.length > 0
+    ? `\nVISUAL LAYOUT CHARACTER LIMITS (YOU MUST STRICTLY COMPLY WITH THESE LENGTHS TO PREVENT TEXT CLIPPING):\n${constraints.join("\n")}\n`
+    : "";
+
   const prompt = `You are an expert copywriter generating a complete content post or script.
 
 BRAND CONTEXT:
@@ -514,7 +527,7 @@ FRAMEWORK: ${framework}
 CONCEPT: ${idea || ""}
 HOOK: ${hook || ""}
 PLATFORMS: ${platformList}
-
+${constraintsPrompt}
 Write the complete post. Return ONLY this JSON:
 {
   "body": "complete post text ready to use — formatted as requested",
@@ -770,6 +783,12 @@ ${websiteSummary}
 BRAND/PRODUCT DATA:
 ${inputSummary}
 
+VISUAL CONSTRAINTS (YOU MUST COMPLY WITH THESE SLIDES LENGTHS TO PREVENT TEXT CLIPPING):
+- Title/headline text: max 24 characters
+- Category/pre-headline tags: max 20 characters
+- CTA text: max 20 characters
+- Slide body text: max 100 characters
+
 Generate exactly ${cardCount} content cards for this playbook. Return ONLY this JSON:
 {
   "summary": "2-sentence plan overview specific to this brand",
@@ -866,6 +885,12 @@ CAMPAIGN: ${campaign_name}
 OFFER: ${offer}
 GOAL: ${goal || "increase awareness and drive conversions"}
 CHANNELS: ${channelList}
+
+VISUAL CONSTRAINTS (YOU MUST COMPLY WITH THESE SLIDES LENGTHS TO PREVENT TEXT CLIPPING):
+- Title/headline text: max 24 characters
+- Category/pre-headline tags: max 20 characters
+- CTA text: max 20 characters
+- Slide body text: max 100 characters
 
 Generate a set of campaign content cards. Return ONLY this JSON:
 {

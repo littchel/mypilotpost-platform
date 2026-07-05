@@ -208,6 +208,52 @@ export async function publish({ content, connection, env }) {
   }
 
   // ── STANDARD FACEBOOK POSTS (FEED) ────────────────────────────────────
+  if (media && media.length > 1 && !isVideo) {
+    const photoIds = [];
+    for (let i = 0; i < media.length; i++) {
+      const item = media[i];
+      const asset = await fetchMediaAsset(item, env);
+
+      const formData = new FormData();
+      formData.append("source", new Blob([asset.data], { type: asset.mimeType || "image/png" }));
+      formData.append("published", "false");
+      formData.append("access_token", access_token);
+      if (proof) formData.append("appsecret_proof", proof);
+
+      console.log(`[FB_CAROUSEL] Uploading photo ${i + 1}/${media.length} as unpublished`);
+      const res = await fetch(
+        `https://graph.facebook.com/v19.0/${account_id}/photos`,
+        { method: "POST", body: formData }
+      );
+      const data = await handleFacebookResponse(res, `FACEBOOK_CAROUSEL_PHOTO_UPLOAD_FAILED_INDEX_${i}`);
+      photoIds.push(data.id);
+    }
+
+    console.log(`[FB_CAROUSEL] Creating final feed post linking photo IDs: ${photoIds.join(", ")}`);
+    const attachedMedia = photoIds.map(id => ({ media_fbid: id }));
+    
+    const feedRes = await fetch(
+      `https://graph.facebook.com/v19.0/${account_id}/feed`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: text,
+          attached_media: attachedMedia,
+          access_token,
+          ...(proof ? { appsecret_proof: proof } : {})
+        })
+      }
+    );
+    const postData = await handleFacebookResponse(feedRes, "FACEBOOK_CAROUSEL_POST_FAILED");
+    
+    return {
+      success: true,
+      external_id: postData.id,
+      post_id: postData.id
+    };
+  }
+
   if (primaryMedia) {
     // Hard fail if media fetch fails — no silent text fallback.
     const asset = await fetchMediaAsset(primaryMedia, env);

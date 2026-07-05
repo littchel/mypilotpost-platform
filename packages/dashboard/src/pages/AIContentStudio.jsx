@@ -258,153 +258,11 @@ function AccordionRow({ label, body, open, onToggle }) {
 // ── Obsolete Preview Modal Removed (using TemplatePreviewModal) ────────────────
 
 // ── Route Modal — enriched prefill including image ────────────────────────────
-function generateBrandOverlay(opp, imageUrl, activeBrand, brandDna) {
-  if (!imageUrl) return null;
-
-  const hookText = opp.hook || opp.title || opp.idea || "";
-  if (!hookText) return null;
-
-  const ctaText = opp.cta || opp._cta || "";
-  const logoUrl = activeBrand?.logo_url || null;
-
-  const vi = brandDna?.visual || {};
-  const primaryColor = vi.primary_color || "#2563eb";
-
-  const mt = (opp.media_type || opp.format || opp.type || "").toLowerCase();
-  const isVideo = mt.includes("video") || mt.includes("reel") || mt.includes("tiktok");
-  const isStory = mt.includes("story");
-  const isBlog = opp.content_type === "blog" || opp.platforms?.includes("blog");
-
-  let aspect = "1:1";
-  if (isVideo || isStory) aspect = "9:16";
-  else if (isBlog) aspect = "16:9";
-
-  const textLayers = [];
-  const imageLayers = [];
-
-  // 1. Logo Watermark Layer (bottom-right/top-middle)
-  if (logoUrl) {
-    imageLayers.push({
-      id: `logo_${Date.now()}`,
-      url: logoUrl,
-      x: aspect === "9:16" ? 44 : 80,
-      y: aspect === "9:16" ? 8 : 82,
-      w: 12,
-      h: 12,
-      imgAr: 1.0,
-      rotation: 0,
-      opacity: 0.9,
-      z: 5,
-      isLogo: true
-    });
-  }
-
-  // 2. Hook Text & Banners
-  if (aspect === "9:16") {
-    imageLayers.push({
-      id: `banner_${Date.now()}`,
-      isShape: true,
-      shapeType: "rectangle",
-      x: 10,
-      y: 40,
-      w: 80,
-      h: 16,
-      rotation: 0,
-      opacity: 0.85,
-      color: "#0f172a",
-      z: 1
-    });
-
-    textLayers.push({
-      id: `text_${Date.now()}`,
-      text: hookText.toUpperCase(),
-      x: 15,
-      y: 44,
-      w: 70,
-      rotation: 0,
-      fontSize: 5.5,
-      fontFamily: "Outfit",
-      color: "#ffffff",
-      opacity: 1,
-      align: "center",
-      bold: true,
-      italic: false,
-      z: 2
-    });
-  } else {
-    imageLayers.push({
-      id: `banner_${Date.now()}`,
-      isShape: true,
-      shapeType: "rectangle",
-      x: 0,
-      y: 75,
-      w: 100,
-      h: 25,
-      rotation: 0,
-      opacity: 0.9,
-      color: "#0f172a",
-      z: 1
-    });
-
-    textLayers.push({
-      id: `text_${Date.now()}`,
-      text: hookText,
-      x: 8,
-      y: 83,
-      w: logoUrl ? 50 : 62,
-      rotation: 0,
-      fontSize: 4.2,
-      fontFamily: "Inter",
-      color: "#ffffff",
-      opacity: 1,
-      align: "left",
-      bold: true,
-      italic: false,
-      z: 2
-    });
-
-    if (ctaText) {
-      textLayers.push({
-        id: `cta_${Date.now()}`,
-        text: ctaText.toUpperCase(),
-        x: logoUrl ? 60 : 70,
-        y: 81,
-        w: 22,
-        rotation: 0,
-        fontSize: 3.5,
-        fontFamily: "Inter",
-        color: "#ffffff",
-        opacity: 1,
-        align: "center",
-        bold: true,
-        italic: false,
-        z: 3,
-        isCTA: true,
-        ctaBgColor: primaryColor,
-        ctaBorderRadius: 8,
-        ctaPadding: 8
-      });
-    }
-  }
-
-  return {
-    background: {
-      url: imageUrl,
-      fit: "cover",
-      color: "#111827"
-    },
-    overlay_text: textLayers,
-    overlay_image: imageLayers,
-    aspectRatio: aspect
-  };
-}
-
 // ── Route Modal — enriched prefill including image ────────────────────────────
 function RouteModal({ opp, imageUrl, activeBrand, brandDna, switchTab, onClose }) {
   function route(tab) {
     try {
       if (imageUrl) trackImageImported({ url: imageUrl, provider: 'pexels' });
-      const generatedOverlays = generateBrandOverlay(opp, imageUrl, activeBrand, brandDna);
       
       if (opp.draft_payload) {
         sessionStorage.setItem("studio_idea_prefill", JSON.stringify(opp.draft_payload));
@@ -445,7 +303,7 @@ function RouteModal({ opp, imageUrl, activeBrand, brandDna, switchTab, onClose }
           calendar_context:    opp.calendar_event || null,
           brand_context:       opp.objective || opp.suggested_because || "",
           generationMeta:      { source: opp.source || "studio", playbook_type: opp.playbook_type || null },
-          overlays:            generatedOverlays || null,
+          overlays:            null,
           layout_manifest:     layoutManifest,
           source:              "studio",
         }));

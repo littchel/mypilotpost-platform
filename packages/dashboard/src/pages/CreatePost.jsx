@@ -1673,6 +1673,7 @@ export default function CreatePost({
 
                 <TemplateCanvas
                   ref={templateCanvasRef}
+                  brandId={activeBrand?.id}
                   templateSchema={templateSchema}
                   slotData={slotData}
                   brandVariables={brandVariables}
@@ -1852,6 +1853,7 @@ export default function CreatePost({
             <div style={{ width: "40%", display: "flex", flexDirection: "column", minHeight: 0, gap: 12, alignItems: "center" }}>
               <TemplateCanvas
                 ref={templateCanvasRef}
+                brandId={activeBrand?.id}
                 templateSchema={templateSchema}
                 slotData={slotData}
                 brandVariables={brandVariables}

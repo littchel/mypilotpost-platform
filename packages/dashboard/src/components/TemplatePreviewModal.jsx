@@ -391,6 +391,7 @@ export default function TemplatePreviewModal({
                 justifyContent: "center"
               }}>
                 <TemplateCanvas
+                  brandId={activeBrand?.id}
                   templateSchema={templateSchema}
                   slotData={slotData}
                   brandVariables={brandVars}

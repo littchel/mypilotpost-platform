@@ -76,3 +76,8 @@ class_name = "SupportChatRoom"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["SupportChatRoom"]
+
+[[rules]]
+type = "CompiledWasm"
+globs = ["**/*.wasm"]
+fallthrough = true

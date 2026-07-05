@@ -11,6 +11,18 @@
 import { getDB } from "../../lib/db.js";
 import { decrypt } from "../../lib/crypto.js";
 import { ensureValidConnection } from "../../integrations/refresh_manager.js";
+import { getTemplate } from "../templates/templateStore.js";
+import { renderTemplateFlat, renderTemplateSlides } from "../templates/flattenRenderer.js";
+import { resolveBrandBindings } from "../branding/resolveBrandBindings.js";
+
+function fnv1a(str) {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+  }
+  return (hash >>> 0).toString(16);
+}
 
 async function validateAndLogMedia(db, brand_id, mediaItems, env) {
   if (!mediaItems || mediaItems.length === 0) return mediaItems;
@@ -171,9 +183,9 @@ export async function resolveDeliveryData(env, job) {
   // Validate media URLs are publicly accessible before handing to adapters
   const validatedMedia = await validateAndLogMedia(db, job.brand_id, resolvedMedia, env);
 
-  // Retrieve post metadata from content_vault
+  // Retrieve post metadata, layout_manifest, and template_id from content_vault
   const vaultItem = await db.prepare(
-    `SELECT metadata FROM content_vault WHERE id = ? AND brand_id = ?`
+    `SELECT layout_manifest, template_id, metadata, title FROM content_vault WHERE id = ? AND brand_id = ?`
   ).bind(job.content_id, job.brand_id).first();
 
   let metadataObj = {};
@@ -182,6 +194,109 @@ export async function resolveDeliveryData(env, job) {
       metadataObj = JSON.parse(vaultItem.metadata);
     } catch (e) {
       metadataObj = {};
+    }
+  }
+
+  let manifest = null;
+  if (vaultItem?.layout_manifest) {
+    try {
+      manifest = typeof vaultItem.layout_manifest === 'string'
+        ? JSON.parse(vaultItem.layout_manifest)
+        : vaultItem.layout_manifest;
+    } catch (e) {
+      console.warn("[RESOLVER] Failed to parse layout_manifest:", e);
+    }
+  }
+
+  // Intercept and flatten visual template if layout_manifest is present
+  if (manifest && manifest.template_id) {
+    try {
+      const template = getTemplate(manifest.template_id, manifest.template_variant || 'A');
+      if (template) {
+        const bindings = await resolveBrandBindings(job.brand_id, env);
+
+        // Ensure manifest has at least one slide populated
+        const inputSlides = (manifest.slides && manifest.slides.length > 0)
+          ? manifest.slides
+          : [{}];
+
+        // Retrieve template slides list
+        const templateSlidesList = template.slots && !template.slides
+          ? []
+          : (template.slides || template.stories || template.static_slides || template.carousel_slides || []);
+
+        const renderCount = templateSlidesList.length > 0
+          ? Math.min(inputSlides.length, templateSlidesList.length)
+          : 1;
+
+        // Render all slides
+        const pngBuffers = await renderTemplateSlides(template, inputSlides, job.brand_id, env);
+        
+        const replacementMediaList = [];
+
+        for (let idx = 0; idx < renderCount; idx++) {
+          const pngBuffer = pngBuffers[idx];
+          if (!pngBuffer) continue;
+
+          const slide = inputSlides[idx] || {};
+          const fallbackImg = resolvedMedia?.[idx]?.preview_url || resolvedMedia?.[0]?.preview_url || '';
+
+          const flatContent = {
+            headline: slide.headline || slide.text || (idx === 0 ? (vaultItem.title || asset.title) : '') || '',
+            pre_headline: slide.pre_headline || '',
+            body: slide.body || (idx === 0 ? (asset.caption || asset.text) : '') || '',
+            cta: slide.cta || 'Learn More',
+            handle: slide.handle || '@mypilotpost',
+            image_url: slide.image_url || slide.media_url || fallbackImg
+          };
+
+          // Deterministic FNV-1a hash of the inputs
+          const hashInput = JSON.stringify({
+            template_id: manifest.template_id,
+            variant: manifest.template_variant || 'A',
+            slideIndex: idx,
+            bindings,
+            flatContent
+          });
+          const hash = fnv1a(hashInput);
+          const r2Key = `renders/${job.content_id}-slide-${idx}-${hash}.png`;
+          
+          const publicBaseUrl = env.BASE_URL || 'https://api.mypilotpost.com';
+          const expectedUrl = `${publicBaseUrl}/api/media/file/${r2Key}`;
+
+          if (env.MEDIA_BUCKET) {
+            // Check cache
+            const existing = await env.MEDIA_BUCKET.head(r2Key).catch(() => null);
+            if (existing) {
+              console.log(`[RESOLVER] Reused existing flattened slide render: ${r2Key}`);
+            } else {
+              await env.MEDIA_BUCKET.put(r2Key, pngBuffer, {
+                httpMetadata: { contentType: 'image/png' }
+              });
+              console.log(`[RESOLVER] Stored new flattened slide render in R2: ${r2Key}`);
+            }
+          }
+
+          replacementMediaList.push({
+            id: crypto.randomUUID(),
+            preview_url: expectedUrl,
+            mime_type: 'image/png',
+            provider: 'direct',
+            external_id: `${job.content_id}-slide-${idx}-${hash}.png`,
+            r2_key: r2Key,
+            role: idx === 0 ? 'primary' : 'secondary',
+            validation_status: 'valid'
+          });
+        }
+
+        if (replacementMediaList.length > 0) {
+          // Replace validatedMedia completely with the flattened sequence of slides
+          validatedMedia.length = 0;
+          validatedMedia.push(...replacementMediaList);
+        }
+      }
+    } catch (err) {
+      console.error("[RESOLVER] Visual flattening pipeline encountered an error:", err);
     }
   }
 

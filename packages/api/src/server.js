@@ -266,6 +266,7 @@ import {
 import { generateCampaignPlan, generatePostIdea, generateRecommendation, generateVisualBrief, getTemplateById } from "./core/templates/templates.js";
 import { getTemplateWithVariant } from "./core/templates/templateRoutes.js";
 import { getStudioOpportunities, generateStudioPost, runPlaybook, generateCampaignContent, getStudioVault, scrapeWebsite } from "./core/studio/studio.js";
+import { resolveBrandBindings } from "./core/branding/resolveBrandBindings.js";
 
 /* ======================================================
    ADMIN — CAMPAIGNS & EMAILS
@@ -1923,6 +1924,19 @@ export default {
 
         if (method === "GET" && path === "/api/customer/brands")
           return withCors(request, listBrands(request, env, auth));
+
+        if (method === "GET" && path.startsWith("/api/customer/brands/") && path.endsWith("/bindings")) {
+          const parts = path.split("/");
+          const brandId = parts[parts.length - 2];
+          return withCors(request, async () => {
+            try {
+              const bindings = await resolveBrandBindings(brandId, env);
+              return json(bindings);
+            } catch (err) {
+              return error(err.message, 500);
+            }
+          });
+        }
 
         if (method === "POST" && path === "/api/customer/brands/switch")
           return withCors(request, switchBrand(request, env, auth));

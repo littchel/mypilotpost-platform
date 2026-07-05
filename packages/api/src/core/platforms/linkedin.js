@@ -40,63 +40,82 @@ export async function publish({ content, connection, env }) {
   }
 
   // 2. Media Upload
-  let mediaUrn = null;
+  const mediaUrns = [];
   const primaryMedia = media.find(m => m.role === 'primary' || m.position === 0);
   const isVideo = primaryMedia && (primaryMedia.mime_type?.startsWith("video/") || primaryMedia.preview_url?.includes(".mp4") || primaryMedia.preview_url?.includes(".mov"));
 
-  if (primaryMedia) {
-    try {
-      const asset = await fetchMediaAsset(primaryMedia, env);
-      const recipe = isVideo ? "urn:li:digitalmediaRecipe:feedshare-video" : "urn:li:digitalmediaRecipe:feedshare-image";
+  if (media && media.length > 0) {
+    for (let i = 0; i < media.length; i++) {
+      const item = media[i];
+      try {
+        const asset = await fetchMediaAsset(item, env);
+        const itemIsVideo = item.mime_type?.startsWith("video/") || item.preview_url?.includes(".mp4") || item.preview_url?.includes(".mov");
+        const recipe = itemIsVideo ? "urn:li:digitalmediaRecipe:feedshare-video" : "urn:li:digitalmediaRecipe:feedshare-image";
 
-      // Register
-      const regRes = await fetch("https://api.linkedin.com/v2/assets?action=registerUpload", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${access_token}`,
-          "X-Restli-Protocol-Version": "2.0.0",
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          registerUploadRequest: {
-            recipes: [recipe],
-            owner: authorUrn,
-            serviceRelationships: [{ relationshipType: "OWNER", identifier: "urn:li:userGeneratedContent" }]
-          }
-        })
-      });
-
-      if (regRes.ok) {
-        const regData = await regRes.json();
-        const uploadUrl = regData.value.uploadMechanism["com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest"].uploadUrl;
-        mediaUrn = regData.value.asset;
-
-        await fetch(uploadUrl, {
-          method: "PUT",
-          headers: { Authorization: `Bearer ${access_token}` },
-          body: asset.data
+        console.log(`[LINKEDIN] Registering upload for media item ${i + 1}/${media.length}`);
+        const regRes = await fetch("https://api.linkedin.com/v2/assets?action=registerUpload", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${access_token}`,
+            "X-Restli-Protocol-Version": "2.0.0",
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            registerUploadRequest: {
+              recipes: [recipe],
+              owner: authorUrn,
+              serviceRelationships: [{ relationshipType: "OWNER", identifier: "urn:li:userGeneratedContent" }]
+            }
+          })
         });
+
+        if (regRes.ok) {
+          const regData = await regRes.json();
+          const uploadUrl = regData.value.uploadMechanism["com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest"].uploadUrl;
+          const currentUrn = regData.value.asset;
+
+          console.log(`[LINKEDIN] Uploading binary for media item ${i + 1}/${media.length}`);
+          const putRes = await fetch(uploadUrl, {
+            method: "PUT",
+            headers: { Authorization: `Bearer ${access_token}` },
+            body: asset.data
+          });
+
+          if (putRes.ok) {
+            mediaUrns.push({
+              urn: currentUrn,
+              isVideo: itemIsVideo
+            });
+          } else {
+            console.error(`[LINKEDIN] Uploader upload PUT failed for index ${i}: Status ${putRes.status}`);
+          }
+        } else {
+          console.error(`[LINKEDIN] Asset registration failed for index ${i}: ${await regRes.text()}`);
+        }
+      } catch (err) {
+        console.error(`LinkedIn Adapter: Media upload failed at index ${i}`, err);
       }
-    } catch (err) {
-      console.error("LinkedIn Adapter: Media upload failed", err);
     }
   }
 
   // 3. Publish
-  const mediaCategory = isVideo ? "VIDEO" : "IMAGE";
+  const mediaCategory = isVideo ? "VIDEO" : (mediaUrns.length > 0 ? "IMAGE" : "NONE");
+  
+  const shareMediaList = mediaUrns.map((item, idx) => ({
+    status: "READY",
+    description: { text: item.isVideo ? "Video Content" : "Image Content" },
+    media: item.urn,
+    title: { text: item.isVideo ? `Video ${idx + 1}` : `Image ${idx + 1}` }
+  }));
+
   const payload = {
     author: authorUrn,
     lifecycleState: "PUBLISHED",
     specificContent: {
       "com.linkedin.ugc.ShareContent": {
         shareCommentary: { text },
-        shareMediaCategory: mediaUrn ? mediaCategory : "NONE",
-        media: mediaUrn ? [{
-          status: "READY",
-          description: { text: isVideo ? "Post Video" : "Post Image" },
-          media: mediaUrn,
-          title: { text: isVideo ? "Video Content" : "Image Content" }
-        }] : undefined
+        shareMediaCategory: mediaCategory,
+        media: shareMediaList.length > 0 ? shareMediaList : undefined
       }
     },
     visibility: { "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC" }

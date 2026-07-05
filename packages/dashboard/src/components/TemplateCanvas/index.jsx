@@ -22,7 +22,17 @@ const AVAILABLE_TEMPLATES = [
 
 const API_BASE = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 
+const resolveValue = (raw, bindings) => {
+  if (!bindings) return raw;
+  if (typeof raw === 'string' && raw.startsWith('brand.')) {
+    const key = raw.slice('brand.'.length);
+    return bindings[key] ?? raw;
+  }
+  return raw;
+};
+
 const TemplateCanvas = forwardRef(({
+  brandId,
   templateSchema,
   slotData = {},
   brandVariables = {},
@@ -37,15 +47,53 @@ const TemplateCanvas = forwardRef(({
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [activeColorPickerSlot, setActiveColorPickerSlot] = useState(null); // { slotId, color }
+  const [bindings, setBindings] = useState(null);
+
+  // Fetch brand bindings from customer API endpoint
+  useEffect(() => {
+    if (!brandId) return;
+    const token = localStorage.getItem("mpp_token");
+    fetch(`${API_BASE}/api/customer/brands/${brandId}/bindings`, {
+      headers: { Authorization: token ? `Bearer ${token}` : "" }
+    })
+      .then(res => {
+        if (!res.ok) throw new Error("Bindings fetch failed");
+        return res.json();
+      })
+      .then(data => setBindings(data))
+      .catch(err => console.warn("[TEMPLATE CANVAS] Bindings fetch error:", err));
+  }, [brandId]);
 
   const slides = templateSchema?.slides || [];
   const activeSlide = slides[activeSlideIndex];
 
-  // Colors & fonts overrides from props
-  const primaryColor = brandVariables?.primary_color || "#1A1A1A";
-  const secondaryColor = brandVariables?.secondary_color || "#F5F5F5";
-  const fontStack = brandVariables?.font_stack || "Inter, sans-serif";
-  const logoUrl = brandVariables?.logo_url || "";
+  // Colors & fonts overrides from bindings/props
+  const primaryColor = bindings?.primary_color || brandVariables?.primary_color || "#1A1A1A";
+  const secondaryColor = bindings?.secondary_color || brandVariables?.secondary_color || "#F5F5F5";
+  const fontStack = bindings?.body_font || brandVariables?.font_stack || "Inter, sans-serif";
+  const logoUrl = bindings?.logo_url || brandVariables?.logo_url || "";
+
+  // Normalize slot layout list for V1/V2 template support
+  const isV2 = templateSchema && Array.isArray(templateSchema.slots);
+  const slotsList = isV2 
+    ? templateSchema.slots 
+    : (activeSlide?.components || []).map((comp, idx) => ({
+        slot_id: comp.id || `slot_${idx}`,
+        type: comp.type,
+        content_key: comp.type === 'headline' ? 'headline' : comp.type === 'body' ? 'body' : comp.type === 'cta_button' ? 'cta' : 'text',
+        x: comp.position?.x !== undefined ? `${comp.position.x}%` : '0%',
+        y: comp.position?.y !== undefined ? `${comp.position.y}%` : '0%',
+        width: comp.position?.width !== undefined ? `${comp.position.width}%` : '100%',
+        height: comp.position?.height !== undefined ? `${comp.position.height}%` : '100%',
+        z_index: comp.position?.z_index || 0,
+        font: comp.font || 'brand.body_font',
+        size: comp.size,
+        color: comp.color || 'brand.contrast_on_light',
+        fill: comp.fill || 'brand.primary_color',
+        source: comp.source || 'brand.logo_url',
+        text: comp.text,
+        max_chars: comp.max_chars
+      }));
 
   // Initialize and dispose Fabric Canvas
   useEffect(() => {
@@ -64,7 +112,7 @@ const TemplateCanvas = forwardRef(({
     const fCanvas = new Canvas(canvasRef.current, {
       width: dimensions.width,
       height: dimensions.height,
-      backgroundColor: secondaryColor,
+      backgroundColor: resolveValue(secondaryColor, bindings),
       preserveObjectStacking: true,
       selection: false
     });
@@ -103,29 +151,28 @@ const TemplateCanvas = forwardRef(({
       fCanvas.dispose();
       fabricCanvasRef.current = null;
     };
-  }, [dimensions, secondaryColor, onSlotEdit, onSlotMediaClick]);
+  }, [dimensions, secondaryColor, onSlotEdit, onSlotMediaClick, bindings]);
 
   // Redraw Canvas when props or active slide changes
   useEffect(() => {
     const fCanvas = fabricCanvasRef.current;
-    if (!fCanvas || !activeSlide) return;
+    if (!fCanvas) return;
 
     fCanvas.clear();
-    fCanvas.backgroundColor = secondaryColor;
+    const bgFill = resolveValue(secondaryColor, bindings);
+    fCanvas.backgroundColor = bgFill;
     fCanvas.requestRenderAll();
 
     const drawSlide = async () => {
-      const components = activeSlide.components || [];
       const canvasWidth = dimensions.width;
       const canvasHeight = dimensions.height;
 
-      const slotId = activeSlide.slot_id;
-      const currentSlot = slotData[slotId] || {};
-      const palette = currentSlot.palette || {};
+      const activeSlotId = activeSlide?.slot_id || "slide_1";
+      const currentSlotData = slotData[activeSlotId] || {};
 
-      // 1. Draw Background Rect first (and flag it as background for color clicks)
-      const bgFill = palette.background || secondaryColor;
-      fCanvas.backgroundColor = bgFill;
+      // 1. Draw Background Rect first
+      const rectFill = resolveValue(currentSlotData.palette?.background || secondaryColor, bindings);
+      fCanvas.backgroundColor = rectFill;
       fCanvas.requestRenderAll();
 
       const bgRect = new Rect({
@@ -133,7 +180,7 @@ const TemplateCanvas = forwardRef(({
         top: 0,
         width: canvasWidth,
         height: canvasHeight,
-        fill: bgFill,
+        fill: rectFill,
         selectable: true,
         hasControls: false,
         hasBorders: false,
@@ -141,24 +188,27 @@ const TemplateCanvas = forwardRef(({
         lockMovementY: true,
         hoverCursor: 'pointer'
       });
-      bgRect.slotId = slotId;
+      bgRect.slotId = activeSlotId;
       bgRect.componentType = 'background';
       fCanvas.add(bgRect);
 
-      // 2. Draw other elements sequentially based on position z_index
-      const sortedComps = [...components]
-        .filter(c => c.type !== 'background')
-        .sort((a, b) => (a.position?.z_index || 0) - (b.position?.z_index || 0));
+      // 2. Draw sorted elements sequentially
+      const sortedSlots = [...slotsList].sort((a, b) => (a.z_index || 0) - (b.z_index || 0));
 
-      for (const comp of sortedComps) {
-        const pos = comp.position || { x: 0, y: 0, width: 100, height: 100 };
-        const left = (pos.x / 100) * canvasWidth;
-        const top = (pos.y / 100) * canvasHeight;
-        const w = (pos.width / 100) * canvasWidth;
-        const h = (pos.height / 100) * canvasHeight;
+      for (const slot of sortedSlots) {
+        const leftPct = parseFloat(slot.x) || 0;
+        const topPct = parseFloat(slot.y) || 0;
+        const wPct = parseFloat(slot.width) || 100;
+        const hPct = parseFloat(slot.height) || 100;
 
-        if (comp.type === 'image') {
-          const imgUrl = currentSlot.image_url || "https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=640&q=80";
+        const left = (leftPct / 100) * canvasWidth;
+        const top = (topPct / 100) * canvasHeight;
+        const w = (wPct / 100) * canvasWidth;
+        const h = (hPct / 100) * canvasHeight;
+
+        if (slot.type === 'image') {
+          const rawUrl = currentSlotData[slot.content_key] || currentSlotData.image_url || slot.text || "https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=640&q=80";
+          const imgUrl = resolveValue(rawUrl, bindings);
           await new Promise((resolve) => {
             Image.fromURL(imgUrl, (fImg) => {
               if (!fImg) return resolve();
@@ -175,7 +225,7 @@ const TemplateCanvas = forwardRef(({
                 lockMovementY: true,
                 hoverCursor: 'pointer'
               });
-              fImg.slotId = slotId;
+              fImg.slotId = activeSlotId;
               fImg.componentType = 'image';
 
               const scaleX = w / fImg.width;
@@ -197,19 +247,34 @@ const TemplateCanvas = forwardRef(({
             }, { crossOrigin: 'anonymous' });
           });
         } 
-        
-        else if (['headline', 'subtitle', 'body', 'hashtags'].includes(comp.type)) {
-          const textVal = (comp.type === 'headline' ? currentSlot.headline :
-                           comp.type === 'body' ? currentSlot.body :
-                           comp.type === 'subtitle' ? currentSlot.subtitle : null) ||
-                           currentSlot.text || 
-            (comp.type === 'headline' ? 'Bold Narrative Headline' : 
-             comp.type === 'subtitle' ? 'Subheading contextual copy goes here' : 'Standard copy block');
+        else if (slot.type === 'shape') {
+          const fill = resolveValue(slot.fill || 'brand.secondary_color', bindings);
+          const rect = new Rect({
+            left,
+            top,
+            width: w,
+            height: h,
+            fill,
+            opacity: slot.opacity ?? 1,
+            rx: slot.radius || 0,
+            ry: slot.radius || 0,
+            selectable: false
+          });
+          fCanvas.add(rect);
+        }
+        else if (['headline', 'body', 'subtitle', 'text'].includes(slot.type)) {
+          const textVal = (slot.content_key === 'headline' ? currentSlotData.headline :
+                           slot.content_key === 'body' ? currentSlotData.body :
+                           slot.content_key === 'cta' ? currentSlotData.cta : null) ||
+                           currentSlotData[slot.content_key] ||
+                           currentSlotData.text ||
+                           slot.text || 'Standard copy block';
           
-          const fill = palette.text_contrast || primaryColor;
+          const fill = resolveValue(slot.color || 'brand.contrast_on_light', bindings);
+          const font = resolveValue(slot.font || 'brand.body_font', bindings);
           
-          const maxChars = comp.max_chars || 100;
-          const baseSize = comp.type === 'headline' ? Math.round(canvasHeight * 0.05) : Math.round(canvasHeight * 0.03);
+          const maxChars = slot.max_chars || 100;
+          const baseSize = slot.size || (slot.content_key === 'headline' ? Math.round(canvasHeight * 0.05) : Math.round(canvasHeight * 0.03));
           const scaledSize = textVal.length > maxChars ? Math.round(baseSize * (maxChars / textVal.length)) : baseSize;
 
           const textBox = new Textbox(textVal, {
@@ -217,53 +282,55 @@ const TemplateCanvas = forwardRef(({
             top,
             width: w,
             fontSize: Math.max(scaledSize, 16),
-            fontFamily: fontStack,
+            fontFamily: font,
             fill,
-            fontWeight: comp.type === 'headline' ? 'bold' : 'normal',
-            textAlign: comp.type === 'headline' ? 'center' : 'left',
+            fontWeight: slot.weight || 'normal',
+            textAlign: slot.align || 'left',
             splitByGrapheme: true,
             originX: 'left',
             originY: 'top',
-            editable: true,                // Enable direct inline text editing
+            editable: true,
             hasControls: false,
             hasBorders: true,
             lockMovementX: true,
             lockMovementY: true
           });
-          textBox.slotId = slotId;
+          textBox.slotId = activeSlotId;
           textBox.componentType = 'text';
 
           fCanvas.add(textBox);
         }
+        else if (slot.type === 'logo') {
+          const src = resolveValue(slot.source || 'brand.logo_url', bindings);
+          if (src) {
+            await new Promise((resolve) => {
+              Image.fromURL(src, (fLogo) => {
+                if (!fLogo) return resolve();
+                
+                fLogo.set({
+                  left,
+                  top,
+                  originX: 'left',
+                  originY: 'top',
+                  selectable: false
+                });
 
-        else if (comp.type === 'logo' && logoUrl) {
-          await new Promise((resolve) => {
-            Image.fromURL(logoUrl, (fLogo) => {
-              if (!fLogo) return resolve();
-              
-              fLogo.set({
-                left,
-                top,
-                originX: 'left',
-                originY: 'top',
-                selectable: false
-              });
+                const scaleX = w / fLogo.width;
+                const scaleY = h / fLogo.height;
+                const scale = Math.min(scaleX, scaleY);
+                fLogo.scale(scale);
 
-              const scaleX = w / fLogo.width;
-              const scaleY = h / fLogo.height;
-              const scale = Math.min(scaleX, scaleY);
-              fLogo.scale(scale);
-
-              fCanvas.add(fLogo);
-              resolve();
-            }, { crossOrigin: 'anonymous' });
-          });
+                fCanvas.add(fLogo);
+                resolve();
+              }, { crossOrigin: 'anonymous' });
+            });
+          }
         }
-
-        else if (comp.type === 'cta_button') {
-          const btnText = currentSlot.cta || currentSlot.cta_text || currentSlot.text || "Learn More";
-          const btnBgColor = palette.accent || primaryColor;
-          const btnTextColor = getContrastColor(btnBgColor);
+        else if (slot.type === 'cta_button') {
+          const btnText = resolveValue(currentSlotData[slot.content_key] || currentSlotData.cta || slot.text || "Learn More", bindings);
+          const btnBgColor = resolveValue(slot.fill || 'brand.accent_color', bindings);
+          const btnTextColor = resolveValue(slot.text_color || 'brand.contrast_on_accent', bindings);
+          const font = resolveValue(slot.font || 'brand.body_font', bindings);
 
           const bgRectObj = new Rect({
             left,
@@ -271,8 +338,8 @@ const TemplateCanvas = forwardRef(({
             width: w,
             height: h,
             fill: btnBgColor,
-            rx: 8,
-            ry: 8,
+            rx: slot.radius || 8,
+            ry: slot.radius || 8,
             originX: 'left',
             originY: 'top',
             selectable: false
@@ -282,7 +349,7 @@ const TemplateCanvas = forwardRef(({
             left: left + w / 2,
             top: top + h / 2,
             fontSize: Math.round(h * 0.4),
-            fontFamily: fontStack,
+            fontFamily: font,
             fill: btnTextColor,
             fontWeight: 'bold',
             originX: 'center',
@@ -318,7 +385,7 @@ const TemplateCanvas = forwardRef(({
     };
 
     drawSlide();
-  }, [activeSlideIndex, templateSchema, slotData, brandVariables, dimensions, secondaryColor, primaryColor, fontStack, logoUrl]);
+  }, [activeSlideIndex, templateSchema, slotsList, slotData, dimensions, secondaryColor, primaryColor, fontStack, logoUrl, bindings]);
 
   // Handle template selection and re-mapping text to new slots
   const handleTemplateSelect = async (newTemplateId) => {
@@ -358,8 +425,8 @@ const TemplateCanvas = forwardRef(({
           text: matchedText,
           image_url: matchedImage,
           palette: {
-            dominant: brandVariables.primary_color || "#1A1A1A",
-            accent: brandVariables.secondary_color || "#EF233C",
+            dominant: primaryColor,
+            accent: secondaryColor,
             background: "#F5F5F5",
             text_contrast: "#FFFFFF"
           }
