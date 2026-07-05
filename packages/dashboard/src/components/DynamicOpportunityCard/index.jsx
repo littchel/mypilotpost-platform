@@ -34,7 +34,7 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
 
     // Fetch template schema, supporting variant suffix
     const endpoint = variant 
-      ? `/api/customer/templates/${templateId}-${variant}`
+      ? `/api/customer/templates/${templateId}/${variant}`
       : `/api/customer/templates/${templateId}`;
 
     apiRequest(endpoint)
@@ -67,6 +67,19 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
     font_stack: brandDna?.visual?.typography_main || "Inter, sans-serif",
     logo_url: activeBrand?.logo_url || brandDna?.visual?.logo_url || ""
   }), [brandDna, activeBrand]);
+
+  const getFormatLabel = (fmt) => {
+    const clean = (fmt || card.suggested_template_family || card.template_family || card.format || "").toLowerCase();
+    if (clean.includes("carousel")) return "Carousel";
+    if (clean.includes("story")) return "Story";
+    if (clean.includes("reel")) return "Reel";
+    return "Post";
+  };
+
+  const getVariantLabel = (v) => {
+    if (!v) return "";
+    return `Design ${v}`;
+  };
 
   // Format dimensions (mini canvas sizes: 280x280 for feed, 280x400 for carousels/stories)
   const isFeed = !card.template_format || card.template_format === "feed_post" || card.template_format === "quote_card";
@@ -150,11 +163,11 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
             <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>
-              {card.template_format || "FEED POST"}
+              {getFormatLabel(card.template_format)}
             </span>
             {variant && (
               <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--pilot-blue)", background: "rgba(26,115,232,0.06)", padding: "2px 6px", borderRadius: 4 }}>
-                Var {variant}
+                {getVariantLabel(variant)}
               </span>
             )}
           </div>
@@ -243,7 +256,7 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
             borderRadius: "4px",
             textTransform: "uppercase"
           }}>
-            {card.template_format || "FEED"}
+            {getFormatLabel(card.template_format)}
           </span>
           {variant && (
             <span style={{
@@ -254,7 +267,7 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
               padding: "3px 8px",
               borderRadius: "4px"
             }}>
-              VAR {variant}
+              {getVariantLabel(variant)}
             </span>
           )}
         </div>
