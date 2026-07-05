@@ -461,6 +461,9 @@ Rules:
     }
   }
 
+  console.log(`[studio] Generated ${enrichedOpps.length} cards for brand ${auth.brand_id}`);
+  console.log(`[studio] Sample card preview_data:`, enrichedOpps[0]?.preview_data);
+
   return json(responseData);
 }
 

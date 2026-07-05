@@ -60,6 +60,10 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
     };
   }, [templateId, variant, cacheKey]);
 
+  if (!card.preview_data) {
+    console.warn('[DynamicOpportunityCard] Missing preview_data for card:', card.id);
+  }
+
   // Compute card variables
   const brandVars = useMemo(() => ({
     primary_color: brandDna?.visual?.primary_color || "#1A1A1A",
@@ -165,11 +169,6 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
             <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>
               {getFormatLabel(card.template_format)}
             </span>
-            {variant && (
-              <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--pilot-blue)", background: "rgba(26,115,232,0.06)", padding: "2px 6px", borderRadius: 4 }}>
-                {getVariantLabel(variant)}
-              </span>
-            )}
           </div>
           <h4 style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--text-main)", marginBottom: 8, lineHeight: 1.3 }}>
             {card.idea || "Idea Draft"}
@@ -258,18 +257,6 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
           }}>
             {getFormatLabel(card.template_format)}
           </span>
-          {variant && (
-            <span style={{
-              fontSize: "0.6rem",
-              fontWeight: 800,
-              color: "#fff",
-              background: "var(--pilot-blue)",
-              padding: "3px 8px",
-              borderRadius: "4px"
-            }}>
-              {getVariantLabel(variant)}
-            </span>
-          )}
         </div>
 
         {/* Phone Mockup Frame wrapper */}

@@ -611,7 +611,7 @@ function PostsTab({ activeBrand, brandDna: initialBrandDna, connectedPlatforms, 
       layout_manifest: card.draft_payload?.layout_manifest || card.layout_manifest
     };
     sessionStorage.setItem("studio_idea_prefill", JSON.stringify(payload));
-    switchTab("editor");
+    switchTab("social");
   }, [switchTab]);
 
   const handleSave = useCallback(async (card) => {
@@ -787,7 +787,7 @@ function PostsTab({ activeBrand, brandDna: initialBrandDna, connectedPlatforms, 
             setPreview({ opp: nextOpp, imageUrl: nextImgData.url || null });
           }}
           onClose={() => setPreview(null)}
-          onUseIdea={o => { setPreview(null); switchTab("editor"); }} 
+          onUseIdea={o => { setPreview(null); switchTab("social"); }} 
         />
       )}
       {routing && (
@@ -830,7 +830,7 @@ function AssetCardGrid({ cards, activeBrand, brandDna, switchTab, source }) {
       layout_manifest: card.draft_payload?.layout_manifest || card.layout_manifest
     };
     sessionStorage.setItem("studio_idea_prefill", JSON.stringify(payload));
-    switchTab("editor");
+    switchTab("social");
   }, [switchTab]);
 
   useEffect(() => {
@@ -942,7 +942,7 @@ function AssetCardGrid({ cards, activeBrand, brandDna, switchTab, source }) {
             setPreview({ opp: nextOpp, imageUrl: nextImgData.url || null });
           }}
           onClose={() => setPreview(null)}
-          onUseIdea={o => { setPreview(null); switchTab("editor"); }} 
+          onUseIdea={o => { setPreview(null); switchTab("social"); }} 
         />
       )}
       {routing && (
