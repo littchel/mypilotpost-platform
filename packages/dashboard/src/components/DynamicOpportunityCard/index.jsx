@@ -320,19 +320,18 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
   }
 
   // Compute card variables
-  const brandVars = useMemo(() => ({
-    primary_color: brandDna?.visual?.primary_color || "#1A1A1A",
-    secondary_color: brandDna?.visual?.secondary_color || "#F5F5F5",
-    font_stack: brandDna?.visual?.typography_main || "Inter, sans-serif",
-    logo_url: activeBrand?.logo_url || brandDna?.visual?.logo_url || ""
-  }), [brandDna, activeBrand]);
+  const brand = activeBrand || brandDna?.visual || {};
+  const brandVars = {
+    primary_color: brand.primary_color || '#1A73E8',
+    secondary_color: brand.secondary_color || '#34A853',
+    font_headline: brand.font_headline || brand.typography_main || 'Inter',
+    font_body: brand.font_body || brand.typography_main || 'Inter',
+    logo_url: brand.logo_url || ''
+  };
 
   const getFormatLabel = (fmt) => {
-    const clean = (fmt || card.suggested_template_family || card.template_family || card.format || "").toLowerCase();
-    if (clean.includes("carousel")) return "Carousel";
-    if (clean.includes("story")) return "Story";
-    if (clean.includes("reel")) return "Reel";
-    return "Post";
+    const map = { 'feed_post': 'Post', 'carousel': 'Carousel', 'story': 'Story', 'reel': 'Reel' };
+    return map[fmt?.toLowerCase()] || 'Post';
   };
 
   const getVariantLabel = (v) => {
@@ -340,11 +339,15 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
     return `Design ${v}`;
   };
 
-  // Format dimensions (mini canvas sizes: 280x280 for feed, 280x400 for carousels/stories)
-  const isFeed = !card.template_format || card.template_format === "feed_post" || card.template_format === "quote_card";
+  // Format dimensions (mini canvas sizes: 280x280 for feed, 280x350 for carousels/stories)
+  const format = card.template_format;
+  const isFeed = !format || format === "feed_post" || format === "quote_card";
   const dimensions = useMemo(() => {
-    return isFeed ? { width: 280, height: 280 } : { width: 280, height: 400 };
-  }, [isFeed]);
+    return {
+      width: 280,
+      height: format === 'carousel' || format === 'story' ? 350 : 280
+    };
+  }, [format]);
 
   // Map slot data
   const slotData = useMemo(() => {
@@ -352,18 +355,18 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
     const activeSlideId = templateSchema.slides?.[0]?.slot_id || "slide_1";
     
     // Support preview_data from backend copy generators
-    const headlineText = card.preview_data?.headline || card.hook || card.idea || "";
-    const bodyText = card.preview_data?.body || card.caption || "";
-    const ctaText = card.preview_data?.cta || "Learn More";
-    const bgImage = card.preview_data?.hero_image_url || imageUrl || card.thumbnail_url || "";
+    const dataObj = {
+      headline: card.preview_data?.headline || card.hook || 'Your Headline',
+      body: card.preview_data?.body || '',
+      cta: card.preview_data?.cta || 'Learn More',
+      image_url: card.preview_data?.hero_image_url || ''
+    };
 
     return {
+      ...dataObj,
       [activeSlideId]: {
-        text: headlineText,
-        headline: headlineText,
-        body: bodyText,
-        cta: ctaText,
-        image_url: bgImage,
+        ...dataObj,
+        text: dataObj.headline,
         palette: {
           dominant: brandVars.primary_color,
           accent: brandVars.secondary_color,
@@ -372,7 +375,7 @@ function DynamicOpportunityCard({ card, imageUrl, activeBrand, brandDna, onPrevi
         }
       }
     };
-  }, [templateSchema, card.preview_data, card.hook, card.idea, card.caption, imageUrl, card.thumbnail_url, brandVars]);
+  }, [templateSchema, card.preview_data, card.hook, brandVars]);
 
   // Skeleton Loader State
   if (loading) {
