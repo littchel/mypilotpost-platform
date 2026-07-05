@@ -208,6 +208,7 @@ async function processCardThumbnail(card, suggestedTemplateId, visuals, auth, en
 }
 
 // ── GET /api/customer/studio/opportunities ────────────────────────────────────
+// ── GET /api/customer/studio/opportunities ────────────────────────────────────
 export async function getStudioOpportunities(request, env, auth) {
   if (!auth?.brand_id) return error("Unauthorized", 401);
 
@@ -220,7 +221,13 @@ export async function getStudioOpportunities(request, env, auth) {
     try {
       const cached = await env.REDIS_CLIENT.get(redisKey);
       if (cached) {
-        return json(JSON.parse(cached));
+        const parsed = JSON.parse(cached);
+        if (parsed && Array.isArray(parsed.opportunities) && parsed.opportunities.length > 0) {
+          console.log(`[STUDIO INFO] Redis cache hit for key: ${redisKey}`);
+          return json(parsed);
+        } else {
+          console.warn(`[STUDIO WARNING] Redis cache hit for key: ${redisKey} but opportunities array was empty or invalid.`);
+        }
       }
     } catch (err) {
       console.warn("[STUDIO FEED] Redis read failed:", err.message);
@@ -292,16 +299,80 @@ Rules:
 - hooks must be surprising, specific, contrarian — never "Are you ready?" or "Did you know?"
 - Respond with valid JSON only. No markdown.`;
 
-  const result = await trackedRunLLM(env, {
-    brand: brand || {},
-    prompt,
-    brand_id: auth.brand_id,
-    user_id: auth.user_id || null,
-    content_type: "studio_opportunities",
-    options: { mode: "deep", systemPromptType: "campaign" },
-  });
+  if (!env.GROQ_API_KEY) {
+    console.error("[STUDIO ERROR] GROQ_API_KEY is missing in the worker environment! Local Dev/Workers will use stubs or emergency fallbacks.");
+  }
 
-  const opps = result?.opportunities || [];
+  let result = null;
+  try {
+    result = await trackedRunLLM(env, {
+      brand: brand || {},
+      prompt,
+      brand_id: auth.brand_id,
+      user_id: auth.user_id || null,
+      content_type: "studio_opportunities",
+      options: { mode: "deep", systemPromptType: "campaign" },
+    });
+  } catch (err) {
+    console.error("[STUDIO ERROR] LLM prompt execution encountered an error:", err.message, err.stack);
+  }
+
+  let opps = result?.opportunities || [];
+  let fallbackUsed = false;
+
+  if (!result || opps.length === 0) {
+    console.error("[STUDIO ERROR] opportunities array is empty or LLM failed. Activating emergency visual fallback generator.");
+    fallbackUsed = true;
+  }
+
+  if (opps.length < 20) {
+    console.warn(`[STUDIO WARNING] opportunities count (${opps.length}) is less than 20. Padding to 20 using visual fallback templates.`);
+    fallbackUsed = true;
+
+    const templatesList = [
+      "hero_headline_feed", "quote_card_feed", "split_layout_feed", "product_showcase_feed", "minimal_text_feed",
+      "carousel_list_005", "carousel_story_006", "carousel_comparison_004", "carousel_faq_005", "carousel_data_008",
+      "story_fullscreen", "story_split", "story_poll", "reel_hook", "reel_loop"
+    ];
+    
+    const fallbackCategories = [
+      { framework: "trending moment", media_type: "single_image", titleSuffix: "Industry Trend Analysis" },
+      { framework: "high_conversion lead generation", media_type: "single_image", titleSuffix: "Exclusive Lead Offer" },
+      { framework: "thought_leadership authority", media_type: "quote_card", titleSuffix: "Executive Insights" },
+      { framework: "seasonal holiday", media_type: "single_image", titleSuffix: "Seasonal Overview" },
+      { framework: "carousel_ideas", media_type: "carousel", titleSuffix: "Step-by-Step Playbook" },
+      { framework: "blog_ideas article draft", media_type: "text_only", titleSuffix: "Comprehensive Guide" }
+    ];
+
+    const needed = 20 - opps.length;
+    for (let index = 0; index < needed; index++) {
+      const fallbackIndex = (opps.length) % fallbackCategories.length;
+      const cat = fallbackCategories[fallbackIndex];
+      
+      const tplId = templatesList[Math.floor(Math.random() * templatesList.length)];
+      const variantSelected = ["A", "B", "C"][Math.floor(Math.random() * 3)];
+      const cardNum = opps.length + 1;
+      
+      opps.push({
+        id: cardNum,
+        framework: cat.framework,
+        idea: `${industry || "Business"} ${cat.titleSuffix} #${cardNum}`,
+        hook: `Understanding the dynamics of ${industry || "our space"}: visual guide.`,
+        caption: `HOOK: Understanding the dynamics of ${industry || "our space"}.\n\nSTORY: We are tracking the latest changes to streamline your work and drive better outcomes.\n\nCTA: Learn more on our website.`,
+        headline: `${industry || "Business"} Update #${cardNum}`,
+        body: "This is a fallback generated post. Update your brand DNA to personalize this.",
+        cta_text: "Learn More",
+        cta: "Learn More",
+        hashtags: ["#strategy", `#${(industry || "business").toLowerCase().replace(/\s+/g, "")}`, "#growth"],
+        platforms: activePlatforms.length ? activePlatforms : ["instagram", "facebook", "linkedin"],
+        media_type: cat.media_type,
+        effort: "low",
+        template_id: tplId,
+        template_variant: variantSelected,
+        template_format: tplId.includes("carousel") ? "carousel" : (tplId.includes("story") ? "story" : "feed_post")
+      });
+    }
+  }
   
   // Assign template layouts deterministically based on seed
   const routedOpps = await assignTemplatesToCards(opps.slice(0, 20), auth.brand_id, env, preferredTemplateId);
@@ -380,10 +451,11 @@ Rules:
   const enrichedOpps = await Promise.all(enrichedPromises);
   const responseData = { opportunities: enrichedOpps };
 
-  // Write to Redis cache (24-hour TTL)
+  // Write to Redis cache
   if (env.REDIS_CLIENT) {
     try {
-      await env.REDIS_CLIENT.setEx(redisKey, 86400, JSON.stringify(responseData));
+      const ttl = fallbackUsed ? 3600 : 86400; // 1 hour if fallback was used, 24 hours if fully successful
+      await env.REDIS_CLIENT.setEx(redisKey, ttl, JSON.stringify(responseData));
     } catch (err) {
       console.warn("[STUDIO FEED] Redis write failed:", err.message);
     }
