@@ -7,6 +7,7 @@ import { PreviewOverlays } from "../components/publishing/PlatformPreviewPanel";
 import IndustryAutoSuggest from "../components/shared/IndustryAutoSuggest";
 import TemplateCanvas from "../components/TemplateCanvas";
 import TemplatePreviewModal from "../components/TemplatePreviewModal";
+import DynamicOpportunityCard from "../components/DynamicOpportunityCard";
 
 const CSS = `
 @keyframes cs-spin    { to { transform:rotate(360deg) } }
@@ -722,7 +723,7 @@ function PostsTab({ activeBrand, brandDna: initialBrandDna, connectedPlatforms, 
               {visible.map((opp, i) => {
                 const imgData = imageMap[opp._index] || {};
                 return (
-                  <DiscoveryCard key={opp.id || i} opp={opp} imageUrl={imgData.url || null} imgReady={!!imgData.ready}
+                  <DynamicOpportunityCard key={opp.id || i} card={opp} imageUrl={imgData.url || null}
                     activeBrand={activeBrand} brandDna={brandDna}
                     onPreview={(o, u) => setPreview({ opp: o, imageUrl: u })}
                     onUseIdea={o => setRouting({ opp: o, imageUrl: imgData.url || null })} />
@@ -840,7 +841,7 @@ function AssetCardGrid({ cards, activeBrand, brandDna, switchTab, source }) {
           };
           const imgData = imageMap[i] || {};
           return (
-            <DiscoveryCard key={card.id || i} opp={opp} imageUrl={imgData.url || null} imgReady={!!imgData.ready}
+            <DynamicOpportunityCard key={card.id || i} card={opp} imageUrl={imgData.url || null}
               activeBrand={activeBrand} brandDna={brandDna}
               onPreview={(o, u) => setPreview({ opp: o, imageUrl: u })}
               onUseIdea={o => setRouting({ opp: o, imageUrl: imgData.url || null })}
