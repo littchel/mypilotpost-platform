@@ -1,18 +1,61 @@
-/**
- * myPilotPost — Unified Scheduling Engine
- * File: packages/api/src/core/content/scheduling.js
- */
-
 import { json, error } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
 import { isValidUUID, isValidISO8601 } from "../../lib/validation.js";
 import { normalizeForSQLite, hasConflict } from "../schedule/schedule.js";
 import { completeReferral } from "../promotions/promotions.js";
 import { checkAndIncrement } from "../billing/enforcement.js";
+import crypto from "crypto";
 
 /* =====================================================
    CORE SCHEDULING LOGIC
    ===================================================== */
+
+/**
+ * Triggers high-resolution template asset generation and maps URLs to media_assets/content_media_links.
+ */
+async function processAssetGeneration(db, content_id, brand_id, user_id, platforms, env) {
+  const row = await db.prepare("SELECT layout_manifest FROM content_vault WHERE id = ? AND brand_id = ?").bind(content_id, brand_id).first();
+  if (!row || !row.layout_manifest) return;
+
+  let manifest;
+  try {
+    manifest = JSON.parse(row.layout_manifest);
+  } catch (e) {
+    console.warn("[SCHEDULER] Failed to parse layout_manifest:", e.message);
+    return;
+  }
+
+  const { generateFinalAsset } = await import("../templates/assetGenerator.js");
+  const targetPlatform = platforms[0] || "instagram";
+  const jobId = crypto.randomUUID();
+
+  try {
+    const { asset_urls } = await generateFinalAsset(manifest, brand_id, targetPlatform, jobId, env);
+
+    // Clear existing media links for this content (replacing preview media with finalized templates)
+    await db.prepare("DELETE FROM content_media_links WHERE content_id = ? AND brand_id = ?").bind(content_id, brand_id).run();
+
+    for (let idx = 0; idx < asset_urls.length; idx++) {
+      const url = asset_urls[idx];
+      const media_id = crypto.randomUUID();
+
+      // 1. Insert into media_assets
+      await db.prepare(`
+        INSERT INTO media_assets (id, brand_id, provider, external_id, preview_url, type, created_at)
+        VALUES (?, ?, 'upload', ?, ?, 'image', CURRENT_TIMESTAMP)
+      `).bind(media_id, brand_id, `deliveries/${jobId}/${idx}`, url).run();
+
+      // 2. Link in content_media_links
+      await db.prepare(`
+        INSERT INTO content_media_links (content_id, brand_id, media_id, position, role)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(content_id, brand_id, media_id, idx, idx === 0 ? 'primary' : 'secondary').run();
+    }
+  } catch (err) {
+    console.error("[SCHEDULER] generateFinalAsset failed:", err.message);
+    throw new Error(`failed_asset_generation: ${err.message}`);
+  }
+}
 
 /**
  * Creates delivery jobs for a content item across platforms.
@@ -54,6 +97,13 @@ export async function scheduleContent(request, env, auth) {
   }
 
   const campaignId = asset.campaign_id || null;
+
+  // Trigger high-resolution asset generation if layout_manifest is present
+  try {
+    await processAssetGeneration(db, content_id, brand_id, auth.user_id, platforms, env);
+  } catch (err) {
+    return error(`Failed to generate template asset: ${err.message}`, "ASSET_GENERATION_FAILED", null, 500);
+  }
 
   // 4. Quota Enforcement — check posts_per_month_limit before creating delivery jobs
   await checkAndIncrement(db, auth.user_id, 'posts');
@@ -136,6 +186,13 @@ export async function postNow(request, env, auth) {
   const db = getDB(env);
   const nowUtc = new Date().toISOString();
   const normalizedNow = normalizeForSQLite(nowUtc);
+
+  // Trigger high-resolution asset generation if layout_manifest is present
+  try {
+    await processAssetGeneration(db, content_id, brand_id, auth.user_id, platforms, env);
+  } catch (err) {
+    return error(`Failed to generate template asset: ${err.message}`, "ASSET_GENERATION_FAILED", null, 500);
+  }
 
   const batch = [];
   let createdCount = 0;
