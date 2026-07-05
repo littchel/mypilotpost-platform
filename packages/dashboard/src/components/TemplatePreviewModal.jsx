@@ -1,88 +1,232 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { apiRequest } from "../lib/api/client";
 import TemplateCanvas from "./TemplateCanvas";
-import { Monitor, Smartphone, LayoutGrid, CheckCircle } from "lucide-react";
+import { fetchMediaSuggestions } from "../services/mediaSuggestions";
+import { Monitor, Smartphone, LayoutGrid, CheckCircle, Sparkles, ChevronLeft, ChevronRight, X } from "lucide-react";
 
-// Pre-defined templates for Versions A, B, C, D depending on format
-const FEED_POST_VERSIONS = [
-  { id: "hero_headline_feed", label: "Version A (Hero)" },
-  { id: "split_layout_feed", label: "Version B (Split)" },
-  { id: "quote_card_feed", label: "Version C (Quote)" },
-  { id: "minimal_text_feed", label: "Version D (Minimal)" }
-];
+// Local static cache to avoid redundant schema fetches in-session
+const previewSchemaCache = new Map();
 
-const CAROUSEL_VERSIONS = [
-  { id: "carousel_list_005", label: "Version A (Listicle)" },
-  { id: "carousel_comparison_004", label: "Version B (Comparison)" },
-  { id: "carousel_faq_005", label: "Version C (FAQ)" },
-  { id: "carousel_data_008", label: "Version D (Data)" }
-];
+// Template pools categorized by format format
+const TEMPLATE_POOLS = {
+  feed_post: [
+    "hero_headline_feed",
+    "quote_card_feed",
+    "split_layout_feed",
+    "product_showcase_feed",
+    "minimal_text_feed"
+  ],
+  carousel: [
+    "carousel_list_005",
+    "carousel_story_006",
+    "carousel_comparison_004",
+    "carousel_faq_005",
+    "carousel_data_008"
+  ],
+  story: [
+    "story_fullscreen",
+    "story_split",
+    "story_poll"
+  ],
+  reel: [
+    "reel_hook",
+    "reel_loop"
+  ]
+};
 
-export default function TemplatePreviewModal({ opp, imageUrl, activeBrand, brandDna, onClose, onUseIdea }) {
-  const isCarousel = (opp.media_type || opp.format || "").toLowerCase().includes("carousel");
-  const versionsList = isCarousel ? CAROUSEL_VERSIONS : FEED_POST_VERSIONS;
-
-  // Selected state settings
-  const [selectedTemplateId, setSelectedTemplateId] = useState(opp.suggested_template_id || versionsList[0].id);
+export default function TemplatePreviewModal({ 
+  opp, 
+  imageUrl: initialImageUrl, 
+  activeBrand, 
+  brandDna, 
+  allOpps = [], 
+  currentIndex = -1, 
+  onNavigate, 
+  onClose, 
+  onUseIdea 
+}) {
+  // ── 1. CORE OPP & IMAGE STATES ─────────────────────────────────────────────
+  const [currentOpp, setCurrentOpp] = useState(opp);
+  const [selectedImage, setSelectedImage] = useState(initialImageUrl || opp.thumbnail_url || "");
+  const [loadingSchema, setLoadingSchema] = useState(true);
   const [templateSchema, setTemplateSchema] = useState(null);
-  
-  const draft = opp.draft_payload || {};
-  const [headline, setHeadline] = useState(draft.hook || opp.hook || opp.idea || "");
-  const [ctaText, setCtaText] = useState(draft.cta || opp.cta || "Learn More");
-  
-  // Platform aspect ratio toggle
-  const [platform, setPlatform] = useState((draft.platforms && draft.platforms[0]) || "instagram");
-  const [dimensions, setDimensions] = useState({ width: 1080, height: 1080 });
 
-  // 1. Fetch template schema when selectedTemplateId changes
+  // Sync state if card navigator switches the active card
+  useEffect(() => {
+    setCurrentOpp(opp);
+    setSelectedImage(initialImageUrl || opp.thumbnail_url || "");
+  }, [opp, initialImageUrl]);
+
+  const templateId = currentOpp.template_id || currentOpp.suggested_template_id || "hero_headline_feed";
+  const [selectedTemplateId, setSelectedTemplateId] = useState(templateId);
+  const [selectedVariant, setSelectedVariant] = useState(currentOpp.template_variant || currentOpp.suggested_template_variant || "A");
+
+  useEffect(() => {
+    setSelectedTemplateId(templateId);
+    setSelectedVariant(currentOpp.template_variant || currentOpp.suggested_template_variant || "A");
+  }, [currentOpp, templateId]);
+
+  // ── 2. EDITABLE CONTENT STATES (DEBOUNCED FOR LIVE CANVAS DRAWING) ─────────
+  const [headlineInput, setHeadlineInput] = useState(currentOpp.hook || currentOpp.idea || "");
+  const [ctaInput, setCtaInput] = useState(currentOpp.cta || "Learn More");
+  
+  const [debouncedHeadline, setDebouncedHeadline] = useState(headlineInput);
+  const [debouncedCta, setDebouncedCta] = useState(ctaInput);
+
+  useEffect(() => {
+    setHeadlineInput(currentOpp.hook || currentOpp.idea || "");
+    setCtaInput(currentOpp.cta || "Learn More");
+  }, [currentOpp]);
+
+  // Debounce text inputs
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedHeadline(headlineInput);
+    }, 200);
+    return () => clearTimeout(handler);
+  }, [headlineInput]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedCta(ctaInput);
+    }, 200);
+    return () => clearTimeout(handler);
+  }, [ctaInput]);
+
+  // ── 3. PLATFORM & DIMENSIONS STATES ─────────────────────────────────────────
+  const [platform, setPlatform] = useState("instagram");
+  const isCarousel = currentOpp.template_format === "carousel";
+  
+  const dimensions = useMemo(() => {
+    if (platform === "linkedin") {
+      return { width: 1000, height: 524 }; // 1.91:1 Landscape
+    }
+    // Default to vertical format or square
+    return isCarousel ? { width: 800, height: 1000 } : { width: 800, height: 800 };
+  }, [platform, isCarousel]);
+
+  // ── 4. FETCH SCHEMA MERGED WITH VARIANT ────────────────────────────────────
+  const cacheKey = `${selectedTemplateId}-${selectedVariant}`;
+
   useEffect(() => {
     let active = true;
-    apiRequest(`/api/customer/templates/${selectedTemplateId}`)
-      .then(schema => {
-        if (active && schema) setTemplateSchema(schema);
-      })
-      .catch(err => console.error("[PREVIEW MODAL] Failed to load schema:", err));
-    return () => { active = false; };
-  }, [selectedTemplateId]);
+    setLoadingSchema(true);
 
-  // 2. Adjust dimensions based on platform selection
-  useEffect(() => {
-    if (platform === "instagram") {
-      setDimensions({ width: 1080, height: 1080 }); // Square 1:1
-    } else if (platform === "linkedin") {
-      setDimensions({ width: 1200, height: 627 });  // Landscape 1.91:1
-    } else if (platform === "facebook") {
-      setDimensions({ width: 1200, height: 630 });  // Landscape 1.91:1
+    if (previewSchemaCache.has(cacheKey)) {
+      setTemplateSchema(previewSchemaCache.get(cacheKey));
+      setLoadingSchema(false);
+      return;
     }
-  }, [platform]);
 
-  // Determine brand visual values
-  const brandVars = {
+    // Call merged variant endpoint
+    const endpoint = selectedVariant
+      ? `/api/customer/templates/${selectedTemplateId}/${selectedVariant}`
+      : `/api/customer/templates/${selectedTemplateId}`;
+
+    apiRequest(endpoint)
+      .then(schema => {
+        if (!active) return;
+        if (schema) {
+          previewSchemaCache.set(cacheKey, schema);
+          setTemplateSchema(schema);
+        }
+      })
+      .catch(err => {
+        console.error(`[PREVIEW MODAL] Schema load failed for ${cacheKey}:`, err);
+      })
+      .finally(() => {
+        if (active) setLoadingSchema(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedTemplateId, selectedVariant, cacheKey]);
+
+  // ── 5. BRAND OVERRIDES ─────────────────────────────────────────────────────
+  const brandVars = useMemo(() => ({
     primary_color: brandDna?.visual?.primary_color || "#1A1A1A",
     secondary_color: brandDna?.visual?.secondary_color || "#F5F5F5",
     font_stack: brandDna?.visual?.font_pairing_body || "Inter",
     logo_url: activeBrand?.logo_url || ""
-  };
+  }), [brandDna, activeBrand]);
 
-  // Maps headline and cta to canvas slot data structure
-  const activeSlideId = templateSchema?.slides?.[0]?.slot_id || "slide_1";
-  const slotData = {
-    [activeSlideId]: {
-      text: headline,
-      image_url: imageUrl || opp.thumbnail_url || "",
-      palette: {
-        dominant: brandVars.primary_color,
-        accent: brandVars.secondary_color,
-        background: "#F5F5F5",
-        text_contrast: "#FFFFFF"
+  // Slot rendering payload mapping
+  const slotData = useMemo(() => {
+    if (!templateSchema) return null;
+    const activeSlideId = templateSchema.slides?.[0]?.slot_id || "slide_1";
+    return {
+      [activeSlideId]: {
+        text: debouncedHeadline,
+        image_url: selectedImage,
+        palette: {
+          dominant: brandVars.primary_color,
+          accent: brandVars.secondary_color,
+          background: "#F5F5F5",
+          text_contrast: "#FFFFFF"
+        }
       }
+    };
+  }, [templateSchema, debouncedHeadline, selectedImage, brandVars]);
+
+  // ── 6. INTERACTIVE CONTROLS ────────────────────────────────────────────────
+
+  // Reroll layout variant and images deterministically on demand
+  const handleSurpriseMe = async () => {
+    const currentFormat = currentOpp.template_format || "feed_post";
+    const pool = TEMPLATE_POOLS[currentFormat] || TEMPLATE_POOLS.feed_post;
+    
+    // Pick different template ID
+    const available = pool.filter(id => id !== selectedTemplateId);
+    const newTplId = available.length > 0 
+      ? available[Math.floor(Math.random() * available.length)] 
+      : pool[Math.floor(Math.random() * pool.length)];
+
+    // Pick random variant (A, B, or C)
+    const variants = ["A", "B", "C"];
+    const newVariant = variants[Math.floor(Math.random() * variants.length)];
+
+    setSelectedTemplateId(newTplId);
+    setSelectedVariant(newVariant);
+
+    // Fetch a new context-related hero image using search query from inputs
+    try {
+      const suggestions = await fetchMediaSuggestions({
+        platform,
+        contentType: isCarousel ? 'carousel' : 'social',
+        brand: activeBrand?.name || "",
+        industry: activeBrand?.industry || "",
+        batch: [{ id: currentOpp.id, title: currentOpp.idea || "", caption: headlineInput }]
+      });
+      const newImg = suggestions?.[0]?.url;
+      if (newImg) {
+        setSelectedImage(newImg);
+      }
+    } catch (e) {
+      console.warn("[SURPRISE ME] Failed to fetch new image suggestion:", e);
     }
   };
 
-  // Build prefill payload and route to Create Post page
+  // Stepper controls
+  const handlePrevCard = () => {
+    if (currentIndex > 0 && onNavigate) {
+      const prevOpp = allOpps[currentIndex - 1];
+      onNavigate(prevOpp, prevOpp.thumbnail_url || "");
+    }
+  };
+
+  const handleNextCard = () => {
+    if (currentIndex < allOpps.length - 1 && onNavigate) {
+      const nextOpp = allOpps[currentIndex + 1];
+      onNavigate(nextOpp, nextOpp.thumbnail_url || "");
+    }
+  };
+
+  // Prefill & Routing Submission
   const handleProceed = () => {
     const finalManifest = {
       template_id: selectedTemplateId,
+      template_variant: selectedVariant,
       brand_overrides: {
         primary_color: brandVars.primary_color,
         secondary_color: brandVars.secondary_color,
@@ -90,24 +234,22 @@ export default function TemplatePreviewModal({ opp, imageUrl, activeBrand, brand
         logo_url: brandVars.logo_url
       },
       slides: [
-        { text_anchor: "headline" },
-        { text_anchor: "body_paragraph_0" },
-        { text_anchor: "cta_text" }
+        { slot_id: templateSchema?.slides?.[0]?.slot_id || "cover", text: headlineInput, image_url: selectedImage }
       ]
     };
 
     const finalPrefill = {
-      idea_id: opp.id || opp.title,
-      title: opp.idea || opp.framework || "",
-      caption: opp.caption || opp._caption || "",
-      hook: headline,
-      cta: ctaText,
-      hashtags: opp.hashtags || [],
+      idea_id: currentOpp.id || currentOpp.title,
+      title: currentOpp.idea || currentOpp.framework || "",
+      caption: currentOpp.caption || currentOpp._caption || "",
+      hook: headlineInput,
+      cta: ctaInput,
+      hashtags: currentOpp.hashtags || [],
       platforms: [platform],
       contentType: isCarousel ? "carousel" : "social",
-      image: imageUrl || opp.thumbnail_url || "",
+      image: selectedImage,
       imageSource: "pexels",
-      suggested_structure: opp.framework || "",
+      suggested_structure: currentOpp.framework || "",
       layout_manifest: finalManifest,
       source: "studio"
     };
@@ -115,7 +257,7 @@ export default function TemplatePreviewModal({ opp, imageUrl, activeBrand, brand
     sessionStorage.setItem("studio_idea_prefill", JSON.stringify(finalPrefill));
     onClose();
     if (onUseIdea) {
-      onUseIdea(opp);
+      onUseIdea(currentOpp);
     }
   };
 
@@ -123,126 +265,202 @@ export default function TemplatePreviewModal({ opp, imageUrl, activeBrand, brand
     <div style={{
       position: "fixed",
       inset: 0,
-      background: "rgba(15,23,42,0.65)",
-      backdropFilter: "blur(4px)",
+      background: "rgba(15, 23, 42, 0.8)",
+      backdropFilter: "blur(8px)",
       zIndex: 5000,
       display: "flex",
       alignItems: "center",
-      justifyContent: "center"
+      justifyContent: "center",
+      animation: "cs-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards"
     }}>
+      {/* Main Modal Wrapper */}
       <div style={{
-        width: "92vw",
-        height: "88vh",
+        width: "94vw",
+        maxWidth: 1400,
+        height: "90vh",
         background: "var(--surface-primary)",
         border: "1px solid var(--border-subtle)",
-        borderRadius: "var(--radius-lg)",
-        boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
+        borderRadius: "var(--radius-xl)",
+        boxShadow: "0 25px 50px -12px rgba(15,23,42,0.3)",
         display: "flex",
+        position: "relative",
         overflow: "hidden"
       }}>
-        
-        {/* 60% Left Section: Preview Area */}
+        {/* Absolute Exit button */}
+        <button 
+          onClick={onClose}
+          style={{
+            position: "absolute",
+            top: 20,
+            right: 20,
+            zIndex: 100,
+            background: "var(--surface-secondary)",
+            border: "1px solid var(--border-subtle)",
+            borderRadius: "50%",
+            width: 36,
+            height: 36,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "var(--text-main)",
+            cursor: "pointer",
+            transition: "all 0.15s"
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = "var(--hover-bg)"}
+          onMouseLeave={(e) => e.currentTarget.style.background = "var(--surface-secondary)"}
+        >
+          <X size={16} />
+        </button>
+
+        {/* ── LEFT SECTION: LIVE CANVAS PREVIEW ───────────────────────────────── */}
         <div style={{
           flex: 0.6,
           background: "var(--surface-secondary)",
           display: "flex",
           flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
           position: "relative",
-          borderRight: "1px solid var(--border-subtle)",
-          padding: 24
+          borderRight: "1px solid var(--border-subtle)"
         }}>
-          <button 
-            type="button" 
-            onClick={onClose} 
-            style={{
+          {/* Card Carousel Stepper Controls */}
+          {currentIndex !== -1 && (
+            <div style={{
               position: "absolute",
-              top: 16,
-              left: 16,
-              background: "none",
-              border: "none",
-              fontSize: 22,
-              color: "var(--text-muted)",
-              cursor: "pointer"
-            }}
-          >
-            ← Back
-          </button>
+              bottom: 24,
+              left: "50%",
+              transform: "translateX(-50%)",
+              display: "flex",
+              gap: 12,
+              alignItems: "center",
+              background: "var(--surface-primary)",
+              border: "1px solid var(--border-subtle)",
+              borderRadius: "30px",
+              padding: "6px 16px",
+              boxShadow: "0 4px 12px rgba(15,23,42,0.06)",
+              zIndex: 10
+            }}>
+              <button 
+                onClick={handlePrevCard}
+                disabled={currentIndex === 0}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: currentIndex === 0 ? "var(--text-muted)" : "var(--text-main)",
+                  cursor: currentIndex === 0 ? "default" : "pointer",
+                  display: "flex",
+                  alignItems: "center"
+                }}
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-main)", minWidth: 60, textAlign: "center" }}>
+                {currentIndex + 1} / {allOpps.length}
+              </span>
+              <button 
+                onClick={handleNextCard}
+                disabled={currentIndex === allOpps.length - 1}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: currentIndex === allOpps.length - 1 ? "var(--text-muted)" : "var(--text-main)",
+                  cursor: currentIndex === allOpps.length - 1 ? "default" : "pointer",
+                  display: "flex",
+                  alignItems: "center"
+                }}
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          )}
 
-          {/* Render Canvas */}
+          {/* Canvas Box */}
           <div style={{
-            width: "100%",
-            height: "100%",
+            flex: 1,
             display: "flex",
             alignItems: "center",
-            justifyContent: "center"
+            justifyContent: "center",
+            padding: 40,
+            overflow: "hidden"
           }}>
-            {templateSchema ? (
-              <TemplateCanvas
-                templateSchema={templateSchema}
-                slotData={slotData}
-                brandVariables={brandVars}
-                dimensions={dimensions}
-              />
+            {!loadingSchema && templateSchema ? (
+              <div style={{
+                transform: "scale(0.85)",
+                transformOrigin: "center center",
+                animation: "cs-in 0.25s ease-out forwards",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+              }}>
+                <TemplateCanvas
+                  templateSchema={templateSchema}
+                  slotData={slotData}
+                  brandVariables={brandVars}
+                  dimensions={dimensions}
+                />
+              </div>
             ) : (
-              <div style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>
-                Loading canvas layout preview...
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+                <div style={{
+                  width: 32,
+                  height: 32,
+                  border: "3px solid var(--border-subtle)",
+                  borderTopColor: "var(--pilot-blue)",
+                  borderRadius: "50%",
+                  animation: "cs-spin 0.8s infinite linear"
+                }} />
+                <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: 600 }}>
+                  Generating live Canvas layout...
+                </span>
               </div>
             )}
           </div>
         </div>
 
-        {/* 40% Right Section: Configuration Sidebar */}
+        {/* ── RIGHT SECTION: SIDEBAR CONFIGURATOR ─────────────────────────────── */}
         <div style={{
           flex: 0.4,
           display: "flex",
           flexDirection: "column",
-          padding: "32px 28px",
           background: "var(--surface-primary)",
-          overflowY: "auto"
+          overflowY: "auto",
+          padding: "36px 32px"
         }}>
-          <div style={{ marginBottom: 24 }}>
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 800, color: "var(--text-main)", marginBottom: 4 }}>
-              Customize Layout
+          {/* Header Title */}
+          <div style={{ marginBottom: 28 }}>
+            <h3 style={{ fontSize: "1.2rem", fontWeight: 850, color: "var(--text-main)", marginBottom: 6, display: "flex", alignItems: "center", gap: 8 }}>
+              Layout Configurator
             </h3>
-            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-              Fine-tune the copy, platform aspect ratio, and layout style versions.
+            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
+              Customize and preview template changes instantly before starting social posts drafts.
             </p>
           </div>
 
-          {/* 1. Version Switcher (A, B, C, D) */}
-          <div style={{ marginBottom: 28 }}>
-            <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 10 }}>
-              Layout Versions
+          {/* 1. Version Switcher */}
+          <div style={{ marginBottom: 24 }}>
+            <label style={{ fontSize: "0.65rem", fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 10 }}>
+              Layout Overrides (Variants)
             </label>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-              {versionsList.map(v => {
-                const isActive = v.id === selectedTemplateId;
+            <div style={{ display: "flex", gap: 8 }}>
+              {["A", "B", "C", "D"].map(v => {
+                const isActive = selectedVariant === v;
                 return (
                   <button
-                    key={v.id}
-                    type="button"
-                    onClick={() => setSelectedTemplateId(v.id)}
+                    key={v}
+                    onClick={() => setSelectedVariant(v)}
                     style={{
-                      padding: "10px 12px",
+                      flex: 1,
+                      padding: "10px 0",
                       borderRadius: "var(--radius-md)",
                       border: "1px solid",
                       borderColor: isActive ? "var(--pilot-blue)" : "var(--border-subtle)",
                       background: isActive ? "rgba(26,115,232,0.06)" : "var(--surface-secondary)",
                       color: isActive ? "var(--pilot-blue)" : "var(--text-main)",
                       fontSize: "0.75rem",
-                      fontWeight: isActive ? 700 : 600,
+                      fontWeight: 750,
                       cursor: "pointer",
-                      textAlign: "left",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      transition: "all 0.15s ease"
+                      transition: "all 0.15s"
                     }}
                   >
-                    {v.label}
-                    {isActive && <CheckCircle className="w-3.5 h-3.5 text-blue-500" />}
+                    Variant {v}
                   </button>
                 );
               })}
@@ -250,22 +468,21 @@ export default function TemplatePreviewModal({ opp, imageUrl, activeBrand, brand
           </div>
 
           {/* 2. Platform Selector */}
-          <div style={{ marginBottom: 28 }}>
-            <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 10 }}>
-              Target Platform Ratio
+          <div style={{ marginBottom: 24 }}>
+            <label style={{ fontSize: "0.65rem", fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 10 }}>
+              Dimensions & Platform
             </label>
             <div style={{ display: "flex", gap: 8 }}>
               {[
-                { id: "instagram", label: "Instagram (1:1)", icon: Smartphone },
-                { id: "linkedin", label: "LinkedIn (1.91:1)", icon: Monitor },
-                { id: "facebook", label: "Facebook (1.91:1)", icon: LayoutGrid }
+                { id: "instagram", label: "Instagram", icon: Smartphone },
+                { id: "linkedin", label: "LinkedIn", icon: Monitor },
+                { id: "facebook", label: "Facebook", icon: LayoutGrid }
               ].map(p => {
-                const isActive = p.id === platform;
+                const isActive = platform === p.id;
                 const Icon = p.icon;
                 return (
                   <button
                     key={p.id}
-                    type="button"
                     onClick={() => setPlatform(p.id)}
                     style={{
                       flex: 1,
@@ -273,7 +490,7 @@ export default function TemplatePreviewModal({ opp, imageUrl, activeBrand, brand
                       flexDirection: "column",
                       alignItems: "center",
                       gap: 6,
-                      padding: "10px 8px",
+                      padding: "10px 0",
                       borderRadius: "var(--radius-md)",
                       border: "1px solid",
                       borderColor: isActive ? "var(--pilot-blue)" : "var(--border-subtle)",
@@ -285,7 +502,7 @@ export default function TemplatePreviewModal({ opp, imageUrl, activeBrand, brand
                       transition: "all 0.15s"
                     }}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon size={14} />
                     {p.label}
                   </button>
                 );
@@ -293,15 +510,15 @@ export default function TemplatePreviewModal({ opp, imageUrl, activeBrand, brand
             </div>
           </div>
 
-          {/* 3. Text Editor Fields */}
-          <div style={{ flex: 1 }}>
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 6 }}>
-                Headline Text
+          {/* 3. Text Editors */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, flex: 1, minHeight: 180 }}>
+            <div>
+              <label style={{ fontSize: "0.65rem", fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>
+                Headline Editor
               </label>
               <textarea
-                value={headline}
-                onChange={e => setHeadline(e.target.value)}
+                value={headlineInput}
+                onChange={e => setHeadlineInput(e.target.value)}
                 rows={3}
                 style={{
                   width: "100%",
@@ -312,20 +529,20 @@ export default function TemplatePreviewModal({ opp, imageUrl, activeBrand, brand
                   color: "var(--text-main)",
                   fontSize: "0.8rem",
                   lineHeight: 1.4,
-                  resize: "vertical",
-                  fontFamily: "inherit"
+                  resize: "none",
+                  outline: "none"
                 }}
               />
             </div>
 
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 6 }}>
-                Call-To-Action (CTA)
+            <div>
+              <label style={{ fontSize: "0.65rem", fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>
+                CTA Text
               </label>
               <input
                 type="text"
-                value={ctaText}
-                onChange={e => setCtaText(e.target.value)}
+                value={ctaInput}
+                onChange={e => setCtaInput(e.target.value)}
                 style={{
                   width: "100%",
                   padding: "10px 12px",
@@ -334,54 +551,75 @@ export default function TemplatePreviewModal({ opp, imageUrl, activeBrand, brand
                   background: "var(--surface-secondary)",
                   color: "var(--text-main)",
                   fontSize: "0.8rem",
-                  fontFamily: "inherit"
+                  outline: "none"
                 }}
               />
             </div>
           </div>
 
-          {/* Action Footer */}
-          <div style={{
-            display: "flex",
-            gap: 12,
-            borderTop: "1px solid var(--border-subtle)",
-            paddingTop: 20,
-            marginTop: 20
-          }}>
+          {/* 4. Action Sidebar Row */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 20 }}>
+            {/* Surprise Me Reroll */}
             <button
-              type="button"
-              onClick={onClose}
+              onClick={handleSurpriseMe}
               style={{
-                flex: 1,
-                border: "1px solid var(--border-subtle)",
+                width: "100%",
                 background: "var(--surface-secondary)",
-                color: "var(--text-main)",
+                border: "1px solid var(--border-subtle)",
                 borderRadius: "var(--radius-md)",
-                padding: "12px 0",
-                fontSize: "0.85rem",
-                fontWeight: 600,
-                cursor: "pointer"
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleProceed}
-              style={{
-                flex: 1.4,
-                border: "none",
-                background: "var(--pilot-blue)",
-                color: "#fff",
-                borderRadius: "var(--radius-md)",
-                padding: "12px 0",
-                fontSize: "0.85rem",
+                padding: "11px 0",
+                fontSize: "0.8rem",
                 fontWeight: 700,
-                cursor: "pointer"
+                color: "var(--text-main)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                cursor: "pointer",
+                transition: "all 0.15s"
               }}
+              onMouseEnter={(e) => e.currentTarget.style.background = "var(--hover-bg)"}
+              onMouseLeave={(e) => e.currentTarget.style.background = "var(--surface-secondary)"}
             >
-              Continue to Editor →
+              <Sparkles size={14} className="text-amber-500" />
+              Surprise Me (Reroll)
             </button>
+
+            {/* Split CTA footer */}
+            <div style={{ display: "flex", gap: 10, borderTop: "1px solid var(--border-subtle)", paddingTop: 16 }}>
+              <button
+                onClick={onClose}
+                style={{
+                  flex: 1,
+                  background: "var(--surface-primary)",
+                  border: "1px solid var(--border-subtle)",
+                  borderRadius: "var(--radius-md)",
+                  padding: "12px 0",
+                  fontSize: "0.8rem",
+                  fontWeight: 600,
+                  color: "var(--text-muted)",
+                  cursor: "pointer"
+                }}
+              >
+                Close
+              </button>
+              <button
+                onClick={handleProceed}
+                style={{
+                  flex: 1.5,
+                  background: "var(--pilot-blue)",
+                  border: "none",
+                  borderRadius: "var(--radius-md)",
+                  padding: "12px 0",
+                  fontSize: "0.8rem",
+                  fontWeight: 700,
+                  color: "#fff",
+                  cursor: "pointer"
+                }}
+              >
+                Continue to Editor →
+              </button>
+            </div>
           </div>
         </div>
 

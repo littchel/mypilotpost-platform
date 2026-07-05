@@ -738,9 +738,21 @@ function PostsTab({ activeBrand, brandDna: initialBrandDna, connectedPlatforms, 
       )}
 
       {preview && (
-        <TemplatePreviewModal opp={preview.opp} imageUrl={preview.imageUrl} activeBrand={activeBrand} brandDna={brandDna}
+        <TemplatePreviewModal 
+          opp={preview.opp} 
+          imageUrl={preview.imageUrl} 
+          activeBrand={activeBrand} 
+          brandDna={brandDna}
+          allOpps={visible}
+          currentIndex={visible.findIndex(o => o.id === preview.opp.id)}
+          onNavigate={(nextOpp, nextImg) => {
+            const idx = visible.findIndex(o => o.id === nextOpp.id);
+            const nextImgData = imageMap[visible[idx]._index] || {};
+            setPreview({ opp: nextOpp, imageUrl: nextImgData.url || null });
+          }}
           onClose={() => setPreview(null)}
-          onUseIdea={o => { setPreview(null); switchTab("editor"); }} />
+          onUseIdea={o => { setPreview(null); switchTab("editor"); }} 
+        />
       )}
       {routing && (
         <RouteModal opp={routing.opp} imageUrl={routing.imageUrl} activeBrand={activeBrand} brandDna={brandDna} switchTab={switchTab} onClose={() => setRouting(null)} />
@@ -852,9 +864,21 @@ function AssetCardGrid({ cards, activeBrand, brandDna, switchTab, source }) {
       </div>
 
       {preview && (
-        <TemplatePreviewModal opp={preview.opp} imageUrl={preview.imageUrl} activeBrand={activeBrand} brandDna={brandDna}
+        <TemplatePreviewModal 
+          opp={preview.opp} 
+          imageUrl={preview.imageUrl} 
+          activeBrand={activeBrand} 
+          brandDna={brandDna}
+          allOpps={cards.map(c => ({ ...c, idea: c.title, hook: c.hook, template_id: c.suggested_template_id || c.template_id }))}
+          currentIndex={cards.findIndex(c => c.id === preview.opp.id)}
+          onNavigate={(nextOpp, nextImg) => {
+            const idx = cards.findIndex(c => c.id === nextOpp.id);
+            const nextImgData = imageMap[idx] || {};
+            setPreview({ opp: nextOpp, imageUrl: nextImgData.url || null });
+          }}
           onClose={() => setPreview(null)}
-          onUseIdea={o => { setPreview(null); switchTab("editor"); }} />
+          onUseIdea={o => { setPreview(null); switchTab("editor"); }} 
+        />
       )}
       {routing && (
         <RouteModal opp={routing.opp} imageUrl={routing.imageUrl} activeBrand={activeBrand} brandDna={brandDna} switchTab={switchTab} onClose={() => setRouting(null)} />
