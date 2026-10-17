@@ -61,7 +61,8 @@ export const PROVIDERS = {
     type: "publishing",
     capabilities: ["publish_social"],
     auth: "oauth2",
-    scopes: "w_member_social",
+    credential_key: "LINKEDIN",
+    scopes: "openid profile email w_member_social",
     endpoints: {
       auth: "https://www.linkedin.com/oauth/v2/authorization",
       token: "https://www.linkedin.com/oauth/v2/accessToken"
@@ -74,7 +75,8 @@ export const PROVIDERS = {
     type: "publishing",
     capabilities: ["publish_social"],
     auth: "oauth2",
-    scopes: "w_member_social,w_organization_social,rw_organization_admin",
+    credential_key: "LINKEDIN",
+    scopes: "openid profile email w_member_social w_organization_social rw_organization_admin",
     endpoints: {
       auth: "https://www.linkedin.com/oauth/v2/authorization",
       token: "https://www.linkedin.com/oauth/v2/accessToken"
