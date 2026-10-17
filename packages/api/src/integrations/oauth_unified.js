@@ -197,9 +197,10 @@ export async function handleUnifiedCallback(request, env) {
   const { brand_id, user_id, platform: storedPlatform, code_verifier, timestamp } = stateData;
   await env.OAUTH_STATE.delete(`state:${state}`); // Consume state
 
-  if (!brand_id || typeof brand_id !== "string" ||
-      !user_id || typeof user_id !== "string" ||
-      !storedPlatform || typeof storedPlatform !== "string") {
+  // Validate required context fields (must be non-empty strings)
+  if (!brand_id || typeof brand_id !== "string" || !brand_id.trim() ||
+      !user_id || typeof user_id !== "string" || !user_id.trim() ||
+      !storedPlatform || typeof storedPlatform !== "string" || !storedPlatform.trim()) {
     throw new Error("Invalid OAuth state: missing required context");
   }
 

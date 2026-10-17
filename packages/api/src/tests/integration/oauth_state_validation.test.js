@@ -2,7 +2,7 @@ import { test, describe } from "node:test";
 import assert from "node:assert";
 import { handleUnifiedCallback } from "../../integrations/oauth_unified.js";
 
-// Mock environment generator
+// Mock environment generator with isolated in-memory KV and database
 function createMockEnv(initialKv = {}) {
   const kvStore = new Map(Object.entries(initialKv));
   const dbRows = [];
@@ -80,7 +80,8 @@ describe("OAUTH-001: Shared OAuth Callback State Validation", () => {
       assert.strictEqual(res.status, 302);
       const location = res.headers.get("Location");
       assert.match(location, /oauth_error=Missing%20code%20or%20state/);
-      assert.strictEqual(tokenExchangeAttempted, false, "Token exchange must not be attempted when state is missing");
+      assert.strictEqual(tokenExchangeAttempted, false, "Token exchange must not be called when code/state is missing");
+      assert.strictEqual(env.mypilotpost.rows.length, 0, "No connection should be persisted");
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -101,13 +102,14 @@ describe("OAUTH-001: Shared OAuth Callback State Validation", () => {
       assert.strictEqual(res.status, 302);
       const location = res.headers.get("Location");
       assert.match(location, /OAuth%20error%20from%20facebook%3A%20access_denied/);
-      assert.strictEqual(tokenExchangeAttempted, false, "Token exchange must not be attempted when provider returns error");
+      assert.strictEqual(tokenExchangeAttempted, false, "Token exchange must not be called when provider reports error");
+      assert.strictEqual(env.mypilotpost.rows.length, 0, "No connection should be persisted");
     } finally {
       globalThis.fetch = originalFetch;
     }
   });
 
-  test("Non-existent state in KV redirects with Invalid or expired state error without attempting token exchange", async () => {
+  test("Non-existent state in KV redirects with error without attempting token exchange", async () => {
     let tokenExchangeAttempted = false;
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async () => {
@@ -122,13 +124,14 @@ describe("OAUTH-001: Shared OAuth Callback State Validation", () => {
       assert.strictEqual(res.status, 302);
       const location = res.headers.get("Location");
       assert.match(location, /Invalid%20or%20expired%20OAuth%20state/);
-      assert.strictEqual(tokenExchangeAttempted, false, "Token exchange must not be attempted for non-existent state");
+      assert.strictEqual(tokenExchangeAttempted, false, "Token exchange must not be called for non-existent state");
+      assert.strictEqual(env.mypilotpost.rows.length, 0, "No connection should be persisted");
     } finally {
       globalThis.fetch = originalFetch;
     }
   });
 
-  test("State replay is prevented (consumed state cannot be reused)", async () => {
+  test("Sequential replay is prevented: consumed state cannot be reused", async () => {
     const stateId = "test-replay-state";
     const env = createMockEnv({
       [`state:${stateId}`]: JSON.stringify({
@@ -160,18 +163,24 @@ describe("OAUTH-001: Shared OAuth Callback State Validation", () => {
     };
 
     try {
+      // First attempt: valid state
       const req1 = new Request(`https://api.mypilotpost.com/api/oauth/facebook/callback?code=validcode&state=${stateId}`);
       const res1 = await handleUnifiedCallback(req1, env);
       assert.strictEqual(res1.status, 302);
       assert.match(res1.headers.get("Location"), /oauth_success=facebook/);
       assert.strictEqual(tokenExchangeCalls, 1);
+      assert.strictEqual(env.mypilotpost.rows.length, 1);
 
-      // Second attempt with exact same state must be rejected because it was consumed
+      // Verify state was consumed from KV
+      assert.strictEqual(await env.OAUTH_STATE.get(`state:${stateId}`), null);
+
+      // Second attempt: replaying consumed state must fail
       const req2 = new Request(`https://api.mypilotpost.com/api/oauth/facebook/callback?code=validcode&state=${stateId}`);
       const res2 = await handleUnifiedCallback(req2, env);
       assert.strictEqual(res2.status, 302);
       assert.match(res2.headers.get("Location"), /Invalid%20or%20expired%20OAuth%20state/);
       assert.strictEqual(tokenExchangeCalls, 1, "Token exchange must not be called again on replayed state");
+      assert.strictEqual(env.mypilotpost.rows.length, 1, "No additional connection should be persisted");
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -196,14 +205,16 @@ describe("OAUTH-001: Shared OAuth Callback State Validation", () => {
         })
       });
 
-      // Callback is invoked on 'facebook' callback route
+      // Callback invoked on 'facebook' route with state for 'pinterest'
       const req = new Request(`https://api.mypilotpost.com/api/oauth/facebook/callback?code=malicious-code&state=${stateId}`);
       const res = await handleUnifiedCallback(req, env);
 
       assert.strictEqual(res.status, 302);
       const location = res.headers.get("Location");
-      assert.match(location, /mismatch/i, `Expected location to report provider mismatch, got: ${location}`);
+      assert.match(location, /mismatch/i);
       assert.strictEqual(tokenExchangeAttempted, false, "Token exchange must never be triggered on provider mismatch");
+      assert.strictEqual(env.mypilotpost.rows.length, 0, "No connection should be persisted");
+      assert.strictEqual(await env.OAUTH_STATE.get(`state:${stateId}`), null, "Mismatched state must be consumed/invalidated");
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -228,15 +239,19 @@ describe("OAUTH-001: Shared OAuth Callback State Validation", () => {
       assert.strictEqual(res.status, 302);
       const location = res.headers.get("Location");
       assert.match(location, /Malformed%20OAuth%20state/);
-      assert.strictEqual(tokenExchangeAttempted, false);
-      // Malformed state must be deleted from KV
-      assert.strictEqual(await env.OAUTH_STATE.get(`state:${stateId}`), null);
+      assert.strictEqual(tokenExchangeAttempted, false, "Token exchange must not be called on malformed state");
+      assert.strictEqual(env.mypilotpost.rows.length, 0, "No connection should be persisted");
+      assert.strictEqual(await env.OAUTH_STATE.get(`state:${stateId}`), null, "Corrupt state must be purged from KV");
     } finally {
       globalThis.fetch = originalFetch;
     }
   });
 
-  test("State with missing required context fields is rejected", async () => {
+  /* ─────────────────────────────────────────────────────────────
+     Task B — Independent Required-Field Regression Tests
+  ───────────────────────────────────────────────────────────── */
+
+  test("Task B.1: Missing brand_id in state is rejected", async () => {
     let tokenExchangeAttempted = false;
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async () => {
@@ -245,10 +260,10 @@ describe("OAUTH-001: Shared OAuth Callback State Validation", () => {
     };
 
     try {
-      const stateId = "missing-context-state";
+      const stateId = "missing-brand-id";
       const env = createMockEnv({
         [`state:${stateId}`]: JSON.stringify({
-          // brand_id is missing
+          // brand_id is undefined
           user_id: "user-456",
           platform: "facebook",
           timestamp: Date.now()
@@ -260,11 +275,186 @@ describe("OAUTH-001: Shared OAuth Callback State Validation", () => {
       assert.strictEqual(res.status, 302);
       const location = res.headers.get("Location");
       assert.match(location, /missing%20required%20context/i);
-      assert.strictEqual(tokenExchangeAttempted, false);
+      assert.strictEqual(tokenExchangeAttempted, false, "Token exchange must not be called when brand_id is missing");
+      assert.strictEqual(env.mypilotpost.rows.length, 0, "No connection should be persisted");
+      assert.strictEqual(await env.OAUTH_STATE.get(`state:${stateId}`), null, "State must be consumed");
     } finally {
       globalThis.fetch = originalFetch;
     }
   });
+
+  test("Task B.2: Missing user_id in state is rejected", async () => {
+    let tokenExchangeAttempted = false;
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => {
+      tokenExchangeAttempted = true;
+      return new Response("OK");
+    };
+
+    try {
+      const stateId = "missing-user-id";
+      const env = createMockEnv({
+        [`state:${stateId}`]: JSON.stringify({
+          brand_id: "brand-123",
+          // user_id is undefined
+          platform: "facebook",
+          timestamp: Date.now()
+        })
+      });
+
+      const req = new Request(`https://api.mypilotpost.com/api/oauth/facebook/callback?code=abc&state=${stateId}`);
+      const res = await handleUnifiedCallback(req, env);
+      assert.strictEqual(res.status, 302);
+      const location = res.headers.get("Location");
+      assert.match(location, /missing%20required%20context/i);
+      assert.strictEqual(tokenExchangeAttempted, false, "Token exchange must not be called when user_id is missing");
+      assert.strictEqual(env.mypilotpost.rows.length, 0, "No connection should be persisted");
+      assert.strictEqual(await env.OAUTH_STATE.get(`state:${stateId}`), null, "State must be consumed");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("Task B.3: Missing platform in state is rejected", async () => {
+    let tokenExchangeAttempted = false;
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => {
+      tokenExchangeAttempted = true;
+      return new Response("OK");
+    };
+
+    try {
+      const stateId = "missing-platform";
+      const env = createMockEnv({
+        [`state:${stateId}`]: JSON.stringify({
+          brand_id: "brand-123",
+          user_id: "user-456",
+          // platform is undefined
+          timestamp: Date.now()
+        })
+      });
+
+      const req = new Request(`https://api.mypilotpost.com/api/oauth/facebook/callback?code=abc&state=${stateId}`);
+      const res = await handleUnifiedCallback(req, env);
+      assert.strictEqual(res.status, 302);
+      const location = res.headers.get("Location");
+      assert.match(location, /missing%20required%20context/i);
+      assert.strictEqual(tokenExchangeAttempted, false, "Token exchange must not be called when platform is missing");
+      assert.strictEqual(env.mypilotpost.rows.length, 0, "No connection should be persisted");
+      assert.strictEqual(await env.OAUTH_STATE.get(`state:${stateId}`), null, "State must be consumed");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("Task B.4: Empty brand_id (empty string or whitespace) in state is rejected", async () => {
+    let tokenExchangeAttempted = false;
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => {
+      tokenExchangeAttempted = true;
+      return new Response("OK");
+    };
+
+    try {
+      for (const emptyBrand of ["", "   "]) {
+        tokenExchangeAttempted = false;
+        const stateId = `empty-brand-${Date.now()}-${Math.random()}`;
+        const env = createMockEnv({
+          [`state:${stateId}`]: JSON.stringify({
+            brand_id: emptyBrand,
+            user_id: "user-456",
+            platform: "facebook",
+            timestamp: Date.now()
+          })
+        });
+
+        const req = new Request(`https://api.mypilotpost.com/api/oauth/facebook/callback?code=abc&state=${stateId}`);
+        const res = await handleUnifiedCallback(req, env);
+        assert.strictEqual(res.status, 302);
+        const location = res.headers.get("Location");
+        assert.match(location, /missing%20required%20context/i);
+        assert.strictEqual(tokenExchangeAttempted, false, `Token exchange must not be called when brand_id is '${emptyBrand}'`);
+        assert.strictEqual(env.mypilotpost.rows.length, 0, "No connection should be persisted");
+        assert.strictEqual(await env.OAUTH_STATE.get(`state:${stateId}`), null, "State must be consumed");
+      }
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("Task B.5: Empty user_id (empty string or whitespace) in state is rejected", async () => {
+    let tokenExchangeAttempted = false;
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => {
+      tokenExchangeAttempted = true;
+      return new Response("OK");
+    };
+
+    try {
+      for (const emptyUser of ["", "   "]) {
+        tokenExchangeAttempted = false;
+        const stateId = `empty-user-${Date.now()}-${Math.random()}`;
+        const env = createMockEnv({
+          [`state:${stateId}`]: JSON.stringify({
+            brand_id: "brand-123",
+            user_id: emptyUser,
+            platform: "facebook",
+            timestamp: Date.now()
+          })
+        });
+
+        const req = new Request(`https://api.mypilotpost.com/api/oauth/facebook/callback?code=abc&state=${stateId}`);
+        const res = await handleUnifiedCallback(req, env);
+        assert.strictEqual(res.status, 302);
+        const location = res.headers.get("Location");
+        assert.match(location, /missing%20required%20context/i);
+        assert.strictEqual(tokenExchangeAttempted, false, `Token exchange must not be called when user_id is '${emptyUser}'`);
+        assert.strictEqual(env.mypilotpost.rows.length, 0, "No connection should be persisted");
+        assert.strictEqual(await env.OAUTH_STATE.get(`state:${stateId}`), null, "State must be consumed");
+      }
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("Task B.6: Empty platform (empty string or whitespace) in state is rejected", async () => {
+    let tokenExchangeAttempted = false;
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => {
+      tokenExchangeAttempted = true;
+      return new Response("OK");
+    };
+
+    try {
+      for (const emptyPlatform of ["", "   "]) {
+        tokenExchangeAttempted = false;
+        const stateId = `empty-platform-${Date.now()}-${Math.random()}`;
+        const env = createMockEnv({
+          [`state:${stateId}`]: JSON.stringify({
+            brand_id: "brand-123",
+            user_id: "user-456",
+            platform: emptyPlatform,
+            timestamp: Date.now()
+          })
+        });
+
+        const req = new Request(`https://api.mypilotpost.com/api/oauth/facebook/callback?code=abc&state=${stateId}`);
+        const res = await handleUnifiedCallback(req, env);
+        assert.strictEqual(res.status, 302);
+        const location = res.headers.get("Location");
+        assert.match(location, /missing%20required%20context/i);
+        assert.strictEqual(tokenExchangeAttempted, false, `Token exchange must not be called when platform is '${emptyPlatform}'`);
+        assert.strictEqual(env.mypilotpost.rows.length, 0, "No connection should be persisted");
+        assert.strictEqual(await env.OAUTH_STATE.get(`state:${stateId}`), null, "State must be consumed");
+      }
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  /* ─────────────────────────────────────────────────────────────
+     Timestamp Bounds Regression Tests
+  ───────────────────────────────────────────────────────────── */
 
   test("State with invalid timestamp type is rejected", async () => {
     let tokenExchangeAttempted = false;
@@ -290,7 +480,9 @@ describe("OAUTH-001: Shared OAuth Callback State Validation", () => {
       assert.strictEqual(res.status, 302);
       const location = res.headers.get("Location");
       assert.match(location, /invalid%20timestamp/i);
-      assert.strictEqual(tokenExchangeAttempted, false);
+      assert.strictEqual(tokenExchangeAttempted, false, "Token exchange must not be called on invalid timestamp");
+      assert.strictEqual(env.mypilotpost.rows.length, 0, "No connection should be persisted");
+      assert.strictEqual(await env.OAUTH_STATE.get(`state:${stateId}`), null, "State must be consumed");
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -311,7 +503,7 @@ describe("OAUTH-001: Shared OAuth Callback State Validation", () => {
           brand_id: "brand-123",
           user_id: "user-456",
           platform: "facebook",
-          timestamp: Date.now() + 120000 // 2 minutes in the future (> 1 min skew tolerance)
+          timestamp: Date.now() + 120000 // 2 minutes in the future (> 60s skew tolerance)
         })
       });
 
@@ -320,13 +512,15 @@ describe("OAUTH-001: Shared OAuth Callback State Validation", () => {
       assert.strictEqual(res.status, 302);
       const location = res.headers.get("Location");
       assert.match(location, /future/i);
-      assert.strictEqual(tokenExchangeAttempted, false);
+      assert.strictEqual(tokenExchangeAttempted, false, "Token exchange must not be called on future timestamp");
+      assert.strictEqual(env.mypilotpost.rows.length, 0, "No connection should be persisted");
+      assert.strictEqual(await env.OAUTH_STATE.get(`state:${stateId}`), null, "State must be consumed");
     } finally {
       globalThis.fetch = originalFetch;
     }
   });
 
-  test("State exceeding 10-minute lifetime is rejected", async () => {
+  test("State exceeding 10-minute lifetime (600,000ms) is rejected", async () => {
     let tokenExchangeAttempted = false;
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async () => {
@@ -350,7 +544,58 @@ describe("OAUTH-001: Shared OAuth Callback State Validation", () => {
       assert.strictEqual(res.status, 302);
       const location = res.headers.get("Location");
       assert.match(location, /expired/i);
-      assert.strictEqual(tokenExchangeAttempted, false);
+      assert.strictEqual(tokenExchangeAttempted, false, "Token exchange must not be called on expired timestamp");
+      assert.strictEqual(env.mypilotpost.rows.length, 0, "No connection should be persisted");
+      assert.strictEqual(await env.OAUTH_STATE.get(`state:${stateId}`), null, "State must be consumed");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("Valid callback completes token exchange and persists social connection", async () => {
+    const stateId = "valid-full-flow-state";
+    const env = createMockEnv({
+      [`state:${stateId}`]: JSON.stringify({
+        brand_id: "brand-xyz",
+        user_id: "user-abc",
+        platform: "facebook",
+        timestamp: Date.now()
+      })
+    });
+
+    let tokenExchangeCalled = false;
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async (url) => {
+      const u = typeof url === 'string' ? url : url.url;
+      if (u.includes("graph.facebook.com") && u.includes("oauth/access_token")) {
+        tokenExchangeCalled = true;
+        return new Response(JSON.stringify({
+          access_token: "mock-valid-fb-token",
+          token_type: "bearer",
+          expires_in: 5184000
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (u.includes("me/accounts")) {
+        return new Response(JSON.stringify({
+          data: [{ id: "page_456", name: "Primary Brand Page", category: "Brand", tasks: ["MANAGE"], access_token: "page_token_456" }]
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response("Not found", { status: 404 });
+    };
+
+    try {
+      const req = new Request(`https://api.mypilotpost.com/api/oauth/facebook/callback?code=valid-auth-code&state=${stateId}`);
+      const res = await handleUnifiedCallback(req, env);
+      assert.strictEqual(res.status, 302);
+      const location = res.headers.get("Location");
+      assert.match(location, /oauth_success=facebook/);
+      assert.strictEqual(tokenExchangeCalled, true, "Token exchange must be executed for valid state");
+      assert.strictEqual(env.mypilotpost.rows.length, 1, "Connection must be persisted in database");
+      assert.strictEqual(env.mypilotpost.rows[0].brand_id, "brand-xyz");
+      assert.strictEqual(env.mypilotpost.rows[0].user_id, "user-abc");
+      assert.strictEqual(env.mypilotpost.rows[0].platform, "facebook");
+      assert.strictEqual(env.mypilotpost.rows[0].account_id, "page_456");
+      assert.strictEqual(await env.OAUTH_STATE.get(`state:${stateId}`), null, "State must be consumed upon successful completion");
     } finally {
       globalThis.fetch = originalFetch;
     }
