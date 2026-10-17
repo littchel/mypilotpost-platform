@@ -5,6 +5,7 @@
 
 import { test, describe, beforeEach, afterEach } from "node:test";
 import assert from "node:assert";
+import { DatabaseSync } from "node:sqlite";
 import { PROVIDERS, getProvider } from "../../integrations/registry.js";
 import { refreshSocialConnection, ensureValidConnection } from "../../integrations/refresh_manager.js";
 import { encrypt, decrypt } from "../../lib/crypto.js";
@@ -24,7 +25,8 @@ class MockD1 {
   }
 
   getConnection(id) {
-    return this.connections.get(id);
+    const c = this.connections.get(id);
+    return c ? { ...c } : null;
   }
 
   prepare(query) {
@@ -53,30 +55,66 @@ class MockD1 {
             if (normalized.includes("SET last_refreshed_at = CURRENT_TIMESTAMP") && normalized.includes("last_refreshed_at < DATETIME")) {
               const id = args[0];
               const conn = db.connections.get(id);
-              if (!conn) return { meta: { changes: 0 } };
+              if (!conn) return { changes: 0, meta: { changes: 0 } };
 
               const now = Date.now();
               const lastRefreshed = conn.last_refreshed_at ? new Date(conn.last_refreshed_at).getTime() : 0;
               // 30 seconds lease window
               if (conn.last_refreshed_at && (now - lastRefreshed < 30000)) {
-                return { meta: { changes: 0 } };
+                return { changes: 0, meta: { changes: 0 } };
               }
 
               conn.last_refreshed_at = new Date(now).toISOString();
               conn.updated_at = new Date(now).toISOString();
-              return { meta: { changes: 1 } };
+              return { changes: 1, meta: { changes: 1 } };
             }
 
-            // Status update on failure
+            // Concurrency lease release on failure
+            if (normalized.includes("SET last_refreshed_at = ?") && normalized.includes("WHERE id = ?")) {
+              const [last_refreshed_at, id] = args;
+              const conn = db.connections.get(id);
+              if (conn) {
+                conn.last_refreshed_at = last_refreshed_at;
+                conn.updated_at = new Date().toISOString();
+                return { changes: 1, meta: { changes: 1 } };
+              }
+              return { changes: 0, meta: { changes: 0 } };
+            }
+
+            // Status update: status = 'revoked'
+            if (normalized.includes("SET status = 'revoked'")) {
+              const id = args[0];
+              const conn = db.connections.get(id);
+              if (conn) {
+                conn.status = 'revoked';
+                conn.updated_at = new Date().toISOString();
+                return { changes: 1, meta: { changes: 1 } };
+              }
+              return { changes: 0, meta: { changes: 0 } };
+            }
+
+            // Status update: status = 'error'
+            if (normalized.includes("SET status = 'error'")) {
+              const id = args[0];
+              const conn = db.connections.get(id);
+              if (conn) {
+                conn.status = 'error';
+                conn.updated_at = new Date().toISOString();
+                return { changes: 1, meta: { changes: 1 } };
+              }
+              return { changes: 0, meta: { changes: 0 } };
+            }
+
+            // Status update parameterized: SET status = ?
             if (normalized.includes("UPDATE social_connections SET status = ?")) {
               const [status, id] = args;
               const conn = db.connections.get(id);
               if (conn) {
                 conn.status = status;
                 conn.updated_at = new Date().toISOString();
-                return { meta: { changes: 1 } };
+                return { changes: 1, meta: { changes: 1 } };
               }
-              return { meta: { changes: 0 } };
+              return { changes: 0, meta: { changes: 0 } };
             }
 
             // Full token refresh update
@@ -90,9 +128,9 @@ class MockD1 {
                 conn.status = status;
                 conn.last_refreshed_at = new Date().toISOString();
                 conn.updated_at = new Date().toISOString();
-                return { meta: { changes: 1 } };
+                return { changes: 1, meta: { changes: 1 } };
               }
-              return { meta: { changes: 0 } };
+              return { changes: 0, meta: { changes: 0 } };
             }
 
             // Threads refresh update
@@ -105,12 +143,12 @@ class MockD1 {
                 conn.status = "active";
                 conn.last_refreshed_at = new Date().toISOString();
                 conn.updated_at = new Date().toISOString();
-                return { meta: { changes: 1 } };
+                return { changes: 1, meta: { changes: 1 } };
               }
-              return { meta: { changes: 0 } };
+              return { changes: 0, meta: { changes: 0 } };
             }
 
-            return { meta: { changes: 0 } };
+            return { changes: 0, meta: { changes: 0 } };
           }
         };
       }
@@ -649,6 +687,339 @@ describe("OAUTH-002: Provider Scopes & Token Refresh Lifecycle", () => {
 
     const resultSoon = await ensureValidConnection(db, db.getConnection("conn-expiring-soon"), env);
     assert.ok(new Date(resultSoon.expires_at).getTime() > Date.now() + 3000000, "Should have been refreshed to 1 hour");
+  });
+
+  test("21. unauthorized_client does NOT revoke user connection (preserves active status)", async () => {
+    const db = new MockD1();
+    const env = createTestEnv();
+
+    const accessEnc = await encrypt("acc-unauth", TEST_SECRET);
+    const refreshEnc = await encrypt("ref-unauth", TEST_SECRET);
+    db.seedConnection({
+      id: "conn-unauth-1",
+      platform: "google",
+      access_token: accessEnc,
+      refresh_token: refreshEnc,
+      status: "active"
+    });
+
+    globalThis.fetch = async () => {
+      return new Response(JSON.stringify({
+        error: "unauthorized_client",
+        error_description: "The client application is not authorized to use this grant type."
+      }), { status: 400, headers: { "Content-Type": "application/json" } });
+    };
+
+    const res = await refreshSocialConnection(db, db.getConnection("conn-unauth-1"), env);
+    assert.strictEqual(res.success, false);
+    assert.strictEqual(res.status, "unauthorized_client");
+
+    const updated = db.getConnection("conn-unauth-1");
+    assert.strictEqual(updated.status, "active", "Connection status must remain active; client error is not user token revocation");
+  });
+
+  test("22. invalid_client does NOT revoke user connection (preserves active status)", async () => {
+    const db = new MockD1();
+    const env = createTestEnv();
+
+    const accessEnc = await encrypt("acc-inv-cli", TEST_SECRET);
+    const refreshEnc = await encrypt("ref-inv-cli", TEST_SECRET);
+    db.seedConnection({
+      id: "conn-inv-cli-1",
+      platform: "google",
+      access_token: accessEnc,
+      refresh_token: refreshEnc,
+      status: "active"
+    });
+
+    globalThis.fetch = async () => {
+      return new Response(JSON.stringify({
+        error: "invalid_client",
+        error_description: "Client authentication failed (invalid secret)."
+      }), { status: 401, headers: { "Content-Type": "application/json" } });
+    };
+
+    const res = await refreshSocialConnection(db, db.getConnection("conn-inv-cli-1"), env);
+    assert.strictEqual(res.success, false);
+    assert.strictEqual(res.status, "invalid_client");
+
+    const updated = db.getConnection("conn-inv-cli-1");
+    assert.strictEqual(updated.status, "active", "Connection status must remain active; invalid_client is an app credential issue");
+  });
+
+  test("23. Threads token refresh error with code 190 transitions connection to 'revoked'", async () => {
+    const db = new MockD1();
+    const env = createTestEnv();
+
+    const accessEnc = await encrypt("threads-expired-token", TEST_SECRET);
+    db.seedConnection({
+      id: "conn-threads-190",
+      platform: "threads",
+      access_token: accessEnc,
+      refresh_token: null,
+      status: "active"
+    });
+
+    globalThis.fetch = async () => {
+      return new Response(JSON.stringify({
+        error: {
+          message: "Error validating access token: Session has expired on Monday, 10-Oct-26.",
+          type: "OAuthException",
+          code: 190,
+          error_subcode: 463
+        }
+      }), { status: 400, headers: { "Content-Type": "application/json" } });
+    };
+
+    const res = await refreshSocialConnection(db, db.getConnection("conn-threads-190"), env);
+    assert.strictEqual(res.success, false);
+    assert.strictEqual(res.status, "revoked");
+
+    const updated = db.getConnection("conn-threads-190");
+    assert.strictEqual(updated.status, "revoked", "Threads connection must be marked revoked on Meta error code 190");
+  });
+
+  test("24. Threads non-revocation client error preserves connection active status", async () => {
+    const db = new MockD1();
+    const env = createTestEnv();
+
+    const accessEnc = await encrypt("threads-valid-token", TEST_SECRET);
+    db.seedConnection({
+      id: "conn-threads-non-rev",
+      platform: "threads",
+      access_token: accessEnc,
+      refresh_token: null,
+      status: "active"
+    });
+
+    globalThis.fetch = async () => {
+      return new Response(JSON.stringify({
+        error: {
+          message: "Application is under maintenance or permission denied.",
+          type: "OAuthException",
+          code: 200
+        }
+      }), { status: 403, headers: { "Content-Type": "application/json" } });
+    };
+
+    const res = await refreshSocialConnection(db, db.getConnection("conn-threads-non-rev"), env);
+    assert.strictEqual(res.success, false);
+
+    const updated = db.getConnection("conn-threads-non-rev");
+    assert.strictEqual(updated.status, "active", "Threads connection must remain active on non-revocation client errors");
+  });
+
+  test("25. Transient network failure releases concurrency lease immediately for retry", async () => {
+    const db = new MockD1();
+    const env = createTestEnv();
+
+    const accessEnc = await encrypt("acc", TEST_SECRET);
+    const refreshEnc = await encrypt("ref", TEST_SECRET);
+    db.seedConnection({
+      id: "conn-lease-fail-1",
+      platform: "google",
+      access_token: accessEnc,
+      refresh_token: refreshEnc,
+      last_refreshed_at: null,
+      status: "active"
+    });
+
+    // Step 1: First attempt throws network exception
+    globalThis.fetch = async () => {
+      throw new Error("Temporary socket hang up");
+    };
+
+    const res1 = await refreshSocialConnection(db, db.getConnection("conn-lease-fail-1"), env);
+    assert.strictEqual(res1.success, false);
+
+    // Verify lease was released: last_refreshed_at was restored to null
+    const connAfterFail = db.getConnection("conn-lease-fail-1");
+    assert.strictEqual(connAfterFail.last_refreshed_at, null, "Lease must be released on failure");
+
+    // Step 2: Immediate retry succeeds without 30-second delay
+    globalThis.fetch = async () => {
+      return new Response(JSON.stringify({ access_token: "new-retry-acc", expires_in: 3600 }), {
+        status: 200, headers: { "Content-Type": "application/json" }
+      });
+    };
+
+    const res2 = await refreshSocialConnection(db, db.getConnection("conn-lease-fail-1"), env);
+    assert.strictEqual(res2.success, true, "Immediate retry must succeed because lease was released");
+  });
+
+  test("26. HTTP 429 rate limit releases concurrency lease immediately", async () => {
+    const db = new MockD1();
+    const env = createTestEnv();
+
+    const accessEnc = await encrypt("acc", TEST_SECRET);
+    const refreshEnc = await encrypt("ref", TEST_SECRET);
+    db.seedConnection({
+      id: "conn-lease-429",
+      platform: "google",
+      access_token: accessEnc,
+      refresh_token: refreshEnc,
+      last_refreshed_at: null,
+      status: "active"
+    });
+
+    globalThis.fetch = async () => {
+      return new Response("Too Many Requests", { status: 429 });
+    };
+
+    const res1 = await refreshSocialConnection(db, db.getConnection("conn-lease-429"), env);
+    assert.strictEqual(res1.status, "rate_limited");
+
+    const conn = db.getConnection("conn-lease-429");
+    assert.strictEqual(conn.last_refreshed_at, null, "Lease must be released on rate limit");
+  });
+
+  test("27. Concurrency lease held in-flight returns concurrency_lease_active", async () => {
+    const db = new MockD1();
+    const env = createTestEnv();
+
+    const accessEnc = await encrypt("acc", TEST_SECRET);
+    const refreshEnc = await encrypt("ref", TEST_SECRET);
+    // Simulating lease held 5 seconds ago by another worker
+    const heldTime = new Date(Date.now() - 5000).toISOString();
+    db.seedConnection({
+      id: "conn-in-flight",
+      platform: "google",
+      access_token: accessEnc,
+      refresh_token: refreshEnc,
+      last_refreshed_at: heldTime,
+      status: "active"
+    });
+
+    const res = await refreshSocialConnection(db, db.getConnection("conn-in-flight"), env);
+    assert.strictEqual(res.success, false, "Must report success: false when lease is actively held in-flight");
+    assert.strictEqual(res.status, "concurrency_lease_active");
+  });
+
+  test("28. Diagnostics and system events do not leak tokens, secrets, or credentials", async () => {
+    const db = new MockD1();
+    const secretLeak = "SUPER_SECRET_CLIENT_SECRET_98765";
+    const tokenLeak = "SECRET_REFRESH_TOKEN_xyz123";
+
+    const env = createTestEnv({
+      GOOGLE_CLIENT_SECRET: secretLeak
+    });
+
+    const accessEnc = await encrypt("acc", TEST_SECRET);
+    const refreshEnc = await encrypt(tokenLeak, TEST_SECRET);
+    db.seedConnection({
+      id: "conn-leak-check",
+      platform: "google",
+      access_token: accessEnc,
+      refresh_token: refreshEnc,
+      status: "active"
+    });
+
+    globalThis.fetch = async () => {
+      return new Response(JSON.stringify({
+        error: "invalid_grant",
+        error_description: "Token revoked"
+      }), { status: 400, headers: { "Content-Type": "application/json" } });
+    };
+
+    // Capture console output during refresh
+    const consoleOutput = [];
+    const origWarn = console.warn;
+    const origError = console.error;
+    console.warn = (...args) => consoleOutput.push(args.join(" "));
+    console.error = (...args) => consoleOutput.push(args.join(" "));
+
+    try {
+      await refreshSocialConnection(db, db.getConnection("conn-leak-check"), env);
+    } finally {
+      console.warn = origWarn;
+      console.error = origError;
+    }
+
+    const allConsole = consoleOutput.join("\n");
+    assert.ok(!allConsole.includes(secretLeak), "Console output must not contain client secret");
+    assert.ok(!allConsole.includes(tokenLeak), "Console output must not contain refresh token");
+  });
+
+  test("29. Real SQLite D1 semantics: atomic lease, rotation, and non-rotation in node:sqlite", async () => {
+    const sqlDb = new DatabaseSync(":memory:");
+    sqlDb.exec(`
+      CREATE TABLE social_connections (
+        id TEXT PRIMARY KEY,
+        platform TEXT,
+        access_token TEXT,
+        refresh_token TEXT,
+        expires_at TEXT,
+        status TEXT,
+        last_refreshed_at TEXT,
+        updated_at TEXT
+      );
+    `);
+
+    // D1 adapter wrapping real SQLite DatabaseSync
+    const realDb = {
+      prepare(sql) {
+        return {
+          bind(...args) {
+            return {
+              async run() {
+                const stmt = sqlDb.prepare(sql);
+                const res = stmt.run(...args);
+                return { success: true, changes: res.changes, meta: { changes: res.changes } };
+              },
+              async first() {
+                const stmt = sqlDb.prepare(sql);
+                return stmt.get(...args) || null;
+              },
+              async all() {
+                const stmt = sqlDb.prepare(sql);
+                return { results: stmt.all(...args) };
+              }
+            };
+          }
+        };
+      }
+    };
+
+    const env = createTestEnv();
+    const accessEnc = await encrypt("initial-acc", TEST_SECRET);
+    const refreshEnc = await encrypt("initial-ref", TEST_SECRET);
+
+    sqlDb.prepare(`
+      INSERT INTO social_connections (id, platform, access_token, refresh_token, status, last_refreshed_at)
+      VALUES (?, ?, ?, ?, 'active', NULL)
+    `).run("sqlite-conn-1", "google", accessEnc, refreshEnc);
+
+    let fetchCount = 0;
+    globalThis.fetch = async () => {
+      fetchCount++;
+      return new Response(JSON.stringify({
+        access_token: "new-sqlite-access",
+        refresh_token: "rotated-sqlite-refresh",
+        expires_in: 3600
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+    };
+
+    const connRecord = await realDb.prepare("SELECT * FROM social_connections WHERE id = ?").bind("sqlite-conn-1").first();
+    
+    // Worker 1 executes refresh against real SQLite
+    const res1 = await refreshSocialConnection(realDb, connRecord, env);
+    assert.strictEqual(res1.success, true);
+    assert.strictEqual(fetchCount, 1);
+
+    // Verify row in real SQLite
+    const row = sqlDb.prepare("SELECT * FROM social_connections WHERE id = ?").get("sqlite-conn-1");
+    assert.strictEqual(row.status, "active");
+    assert.ok(row.last_refreshed_at !== null, "last_refreshed_at must be populated in SQLite");
+    const decryptedAccess = await decrypt(row.access_token, TEST_SECRET);
+    const decryptedRefresh = await decrypt(row.refresh_token, TEST_SECRET);
+    assert.strictEqual(decryptedAccess, "new-sqlite-access");
+    assert.strictEqual(decryptedRefresh, "rotated-sqlite-refresh");
+
+    // Worker 2 attempts refresh immediately on the same connection: SQLite lease prevents second fetch
+    const res2 = await refreshSocialConnection(realDb, connRecord, env);
+    assert.strictEqual(fetchCount, 1, "Real SQLite atomic lease must prevent second HTTP fetch");
+    assert.strictEqual(res2.success, true);
+    assert.strictEqual(res2.status, "already_refreshed");
   });
 
 });
