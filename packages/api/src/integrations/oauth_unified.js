@@ -186,8 +186,44 @@ export async function handleUnifiedCallback(request, env) {
   const storedState = await env.OAUTH_STATE.get(`state:${state}`);
   if (!storedState) throw new Error("Invalid or expired OAuth state");
   
-  const { brand_id, user_id, code_verifier } = JSON.parse(storedState);
+  let stateData;
+  try {
+    stateData = JSON.parse(storedState);
+  } catch (err) {
+    await env.OAUTH_STATE.delete(`state:${state}`);
+    throw new Error("Malformed OAuth state");
+  }
+
+  const { brand_id, user_id, platform: storedPlatform, code_verifier, timestamp } = stateData;
   await env.OAUTH_STATE.delete(`state:${state}`); // Consume state
+
+  // Validate required context fields (must be non-empty strings)
+  if (!brand_id || typeof brand_id !== "string" || !brand_id.trim() ||
+      !user_id || typeof user_id !== "string" || !user_id.trim() ||
+      !storedPlatform || typeof storedPlatform !== "string" || !storedPlatform.trim()) {
+    throw new Error("Invalid OAuth state: missing required context");
+  }
+
+  if (storedPlatform !== platform) {
+    console.error(`[OAUTH_STATE_MISMATCH] Stored platform "${storedPlatform}" does not match callback platform "${platform}"`);
+    throw new Error(`OAuth state provider mismatch (expected ${storedPlatform}, got ${platform})`);
+  }
+
+  const now = Date.now();
+  const MAX_STATE_AGE_MS = 600000; // 10 minutes
+  const CLOCK_SKEW_TOLERANCE_MS = 60000; // 1 minute allowance for clock skew
+
+  if (typeof timestamp !== "number" || isNaN(timestamp)) {
+    throw new Error("Invalid OAuth state: invalid timestamp");
+  }
+
+  if (timestamp > now + CLOCK_SKEW_TOLERANCE_MS) {
+    throw new Error("Invalid OAuth state: timestamp is in the future");
+  }
+
+  if (now - timestamp > MAX_STATE_AGE_MS) {
+    throw new Error("OAuth state expired");
+  }
 
   const provider = getProvider(platform);
   if (!provider) throw new Error(`Unsupported platform: ${platform}`);
