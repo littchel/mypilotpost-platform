@@ -15,26 +15,213 @@ export async function refreshSocialConnection(db, connection, env) {
   const provider = getProvider(connection.platform);
   const secret = env.ENCRYPTION_SECRET;
 
-  // Connections without a refresh_token (e.g. Meta long-lived tokens) cannot be refreshed
-  // via standard grant. Return early — do NOT set status='error'.
+  if (!secret) {
+    throw new Error("ENCRYPTION_SECRET not set in Worker environment");
+  }
+
+  // Threads uses long-lived access tokens (60 days) refreshed via th_refresh_token grant
+  if (connection.platform === 'threads') {
+    if (!connection.access_token) {
+      console.warn(`[REFRESH_SKIP] threads:${connection.id} — no access_token, skipping`);
+      return { success: false, status: 'no_access_token' };
+    }
+
+    const originalLastRefreshedAt = connection.last_refreshed_at || null;
+
+    try {
+      // Atomic concurrency lease: Ensure only one worker refreshes within 30 seconds
+      const lease = await db.prepare(`
+        UPDATE social_connections
+        SET last_refreshed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ? AND (last_refreshed_at IS NULL OR last_refreshed_at < DATETIME('now', '-30 seconds'))
+      `).bind(connection.id).run();
+
+      const leaseAcquired = (lease?.meta?.changes ?? lease?.changes ?? 0) > 0;
+      if (!leaseAcquired) {
+        console.log(`[REFRESH_CONCURRENCY] Connection ${connection.id} refreshed recently or lease is held by another process.`);
+        const latest = await db.prepare("SELECT * FROM social_connections WHERE id = ?").bind(connection.id).first();
+        const isAlreadyRefreshed = latest && (
+          (latest.access_token !== connection.access_token) ||
+          (latest.expires_at && connection.expires_at && new Date(latest.expires_at) > new Date(connection.expires_at)) ||
+          (latest.expires_at && new Date(latest.expires_at).getTime() - Date.now() > 86400000 && latest.last_refreshed_at && (Date.now() - new Date(latest.last_refreshed_at).getTime() < 30000))
+        );
+
+        if (isAlreadyRefreshed) {
+          return { success: true, status: 'already_refreshed', connection: latest };
+        }
+        return { success: false, status: 'concurrency_lease_active' };
+      }
+
+      const releaseLease = async () => {
+        try {
+          await db.prepare(`
+            UPDATE social_connections
+            SET last_refreshed_at = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+          `).bind(originalLastRefreshedAt, connection.id).run();
+        } catch {}
+      };
+
+      const accessToken = await decrypt(connection.access_token, secret);
+      const threadsUrl = new URL("https://graph.threads.net/refresh_access_token");
+      threadsUrl.searchParams.set("grant_type", "th_refresh_token");
+      threadsUrl.searchParams.set("access_token", accessToken);
+
+      const res = await fetch(threadsUrl.toString(), { method: "GET" });
+      let data = {};
+      try {
+        data = await res.json();
+      } catch {}
+
+      if (!res.ok) {
+        if (res.status === 429) {
+          console.warn(`[REFRESH_RATE_LIMITED] threads:${connection.id} — status 429`);
+          await releaseLease();
+          return { success: false, status: 'rate_limited' };
+        }
+        if (res.status >= 500) {
+          console.warn(`[REFRESH_PROVIDER_OUTAGE] threads:${connection.id} — status ${res.status}`);
+          await releaseLease();
+          return { success: false, status: 'transient_outage' };
+        }
+
+        // Meta/Threads error classification:
+        // Meta Graph API error code 190 represents expired or invalid user token (revocation).
+        // If code is not 190 (e.g. client application error, app rate limit, or unauthorized client),
+        // do not mark connection revoked.
+        const isRevoked = data?.error?.code === 190 || 
+                          (typeof data?.error?.message === 'string' && 
+                           (data.error.message.toLowerCase().includes('expired') || 
+                            data.error.message.toLowerCase().includes('error validating access token')));
+
+        if (isRevoked) {
+          await db.prepare("UPDATE social_connections SET status = 'revoked', updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+            .bind(connection.id).run();
+          writeSystemEvent(env, {
+            severity: 'critical',
+            source: 'oauth',
+            message: `Token revoked for threads (connection ${connection.id})`,
+            metadata: JSON.stringify({ platform: 'threads', connection_id: connection.id, error_code: data?.error?.code, error_subcode: data?.error?.error_subcode })
+          }).catch(() => {});
+          return { success: false, status: 'revoked' };
+        }
+
+        // Client/app authorization error or other error: preserve user's connection status
+        await releaseLease();
+        const errType = data?.error?.type || 'error';
+        writeSystemEvent(env, {
+          severity: 'warning',
+          source: 'oauth',
+          message: `Threads token refresh non-revocation error: ${connection.id}`,
+          metadata: JSON.stringify({ platform: 'threads', connection_id: connection.id, error_type: errType, error_code: data?.error?.code })
+        }).catch(() => {});
+        return { success: false, status: errType, error: data?.error?.message };
+      }
+
+      if (!data.access_token || typeof data.access_token !== 'string') {
+        await releaseLease();
+        throw new Error("Threads refresh response missing valid access_token");
+      }
+
+      const access_enc = await encrypt(data.access_token, secret);
+      const expires_at = data.expires_in
+        ? new Date(Date.now() + data.expires_in * 1000).toISOString()
+        : new Date(Date.now() + 60 * 86400 * 1000).toISOString();
+
+      await db.prepare(`
+        UPDATE social_connections SET
+          access_token = ?,
+          expires_at = ?,
+          status = 'active',
+          last_refreshed_at = CURRENT_TIMESTAMP,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).bind(access_enc, expires_at, connection.id).run();
+
+      return { success: true };
+    } catch (err) {
+      console.error(`[REFRESH_EXCEPTION] threads:${connection.id}`, err.message);
+      try {
+        await db.prepare(`
+          UPDATE social_connections
+          SET last_refreshed_at = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `).bind(connection.last_refreshed_at || null, connection.id).run();
+      } catch {}
+      return { success: false, error: err.message };
+    }
+  }
+
+  // Connections without a refresh_token (e.g. Meta Facebook/Instagram Page tokens)
+  // cannot be refreshed via standard refresh_token grant. Return early — do NOT set status='error'.
   if (!connection.refresh_token) {
     console.warn(`[REFRESH_SKIP] ${connection.platform}:${connection.id} — no refresh_token, skipping`);
     return { success: false, status: 'no_refresh_token' };
   }
 
+  const originalLastRefreshedAt = connection.last_refreshed_at || null;
+
   try {
+    // Atomic concurrency lease: Ensure only one worker refreshes within 30 seconds
+    const lease = await db.prepare(`
+      UPDATE social_connections
+      SET last_refreshed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND (last_refreshed_at IS NULL OR last_refreshed_at < DATETIME('now', '-30 seconds'))
+    `).bind(connection.id).run();
+
+    const leaseAcquired = (lease?.meta?.changes ?? lease?.changes ?? 0) > 0;
+    if (!leaseAcquired) {
+      console.log(`[REFRESH_CONCURRENCY] Connection ${connection.id} refreshed recently or lease is held by another process.`);
+      const latest = await db.prepare("SELECT * FROM social_connections WHERE id = ?").bind(connection.id).first();
+      const isAlreadyRefreshed = latest && (
+        (latest.access_token !== connection.access_token) ||
+        (latest.expires_at && connection.expires_at && new Date(latest.expires_at) > new Date(connection.expires_at)) ||
+        (latest.expires_at && new Date(latest.expires_at).getTime() - Date.now() > 300000 && latest.last_refreshed_at && (Date.now() - new Date(latest.last_refreshed_at).getTime() < 30000))
+      );
+
+      if (isAlreadyRefreshed) {
+        return { success: true, status: 'already_refreshed', connection: latest };
+      }
+      return { success: false, status: 'concurrency_lease_active' };
+    }
+
+    const releaseLease = async () => {
+      try {
+        await db.prepare(`
+          UPDATE social_connections
+          SET last_refreshed_at = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `).bind(originalLastRefreshedAt, connection.id).run();
+      } catch {}
+    };
+
     const refreshToken = await decrypt(connection.refresh_token, secret);
 
-    const credKey = (provider.credential_key || connection.platform).toUpperCase();
-    let client_id = env[`${credKey}_CLIENT_ID`];
-    let client_secret = env[`${credKey}_CLIENT_SECRET`];
+    const credKey = (provider?.credential_key || connection.platform).toUpperCase();
+    let client_id = env[`${connection.platform.toUpperCase()}_CLIENT_ID`] || env[`${credKey}_CLIENT_ID`];
+    let client_secret = env[`${connection.platform.toUpperCase()}_CLIENT_SECRET`] || env[`${credKey}_CLIENT_SECRET`];
+
+    if (connection.platform === 'tiktok') {
+      client_id = client_id || env.TIKTOK_CLIENT_KEY || env.TIKTOK_CLIENT_ID;
+      client_secret = client_secret || env.TIKTOK_CLIENT_SECRET;
+    }
+    if (connection.platform === 'threads') {
+      client_id = client_id || env.THREADS_CLIENT_ID || env.THREADS_APP_ID || env.META_CLIENT_ID || env.FACEBOOK_APP_ID || env.FACEBOOK_CLIENT_ID;
+      client_secret = client_secret || env.THREADS_CLIENT_SECRET || env.THREADS_APP_SECRET || env.META_CLIENT_SECRET || env.FACEBOOK_APP_SECRET || env.FACEBOOK_CLIENT_SECRET;
+    }
     if (connection.platform === 'pinterest') {
       client_id = client_id || env.PINTEREST_CLIENT_ID || env.PINTEREST_APP_ID;
       client_secret = client_secret || env.PINTEREST_CLIENT_SECRET || env.PINTEREST_APP_SECRET;
     }
 
-    // X and Pinterest require HTTP Basic auth — credentials must NOT appear in body
-    const useBasicAuth = connection.platform === 'x' || connection.platform === 'pinterest';
+    if (!client_id || !client_secret) {
+      console.error(`[REFRESH_MISSING_CREDENTIALS] ${connection.platform}:${connection.id} — client credentials missing in env`);
+      await releaseLease();
+      return { success: false, status: 'missing_credentials' };
+    }
+
+    // X, Pinterest, and Canva require HTTP Basic auth — credentials must NOT appear in body
+    const useBasicAuth = connection.platform === 'x' || connection.platform === 'pinterest' || connection.platform === 'canva';
 
     const headers = { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" };
     if (useBasicAuth) {
@@ -43,33 +230,102 @@ export async function refreshSocialConnection(db, connection, env) {
 
     const tokenParams = new URLSearchParams({ grant_type: "refresh_token", refresh_token: refreshToken });
     if (!useBasicAuth) {
-      tokenParams.set("client_id", client_id);
+      const clientIdParam = provider?.client_id_param || "client_id";
+      tokenParams.set(clientIdParam, client_id);
       tokenParams.set("client_secret", client_secret);
     }
 
-    const res = await fetch(provider.endpoints.token, {
+    const tokenEndpoint = provider?.endpoints?.token;
+    if (!tokenEndpoint) {
+      throw new Error(`No token endpoint configured for platform: ${connection.platform}`);
+    }
+
+    const res = await fetch(tokenEndpoint, {
       method: "POST",
       headers,
       body: tokenParams
     });
 
-    const data = await res.json();
+    let data = {};
+    try {
+      data = await res.json();
+    } catch {}
 
     if (!res.ok) {
-      const status = (data.error === "invalid_grant") ? "revoked" : "error";
-      await db.prepare("UPDATE social_connections SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-        .bind(status, connection.id).run();
+      // Differentiate transient provider failures / rate limits from permanent auth failures
+      if (res.status === 429) {
+        console.warn(`[REFRESH_RATE_LIMITED] ${connection.platform}:${connection.id} — rate limited (status 429)`);
+        await releaseLease();
+        writeSystemEvent(env, {
+          severity: 'warning',
+          source: 'oauth',
+          message: `Rate limited during token refresh for ${connection.platform}`,
+          metadata: JSON.stringify({ platform: connection.platform, connection_id: connection.id, status: 429 })
+        }).catch(() => {});
+        return { success: false, status: 'rate_limited' };
+      }
+
+      if (res.status >= 500) {
+        console.warn(`[REFRESH_PROVIDER_OUTAGE] ${connection.platform}:${connection.id} — provider outage (status ${res.status})`);
+        await releaseLease();
+        writeSystemEvent(env, {
+          severity: 'warning',
+          source: 'oauth',
+          message: `Provider outage during token refresh for ${connection.platform} (status ${res.status})`,
+          metadata: JSON.stringify({ platform: connection.platform, connection_id: connection.id, status: res.status })
+        }).catch(() => {});
+        return { success: false, status: 'transient_outage' };
+      }
+
+      // Permanent grant revocation vs client application misconfiguration
+      if (data.error === "invalid_grant") {
+        // Evidence indicates the user's refresh token has expired, been revoked, or already consumed.
+        await db.prepare("UPDATE social_connections SET status = 'revoked', updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+          .bind(connection.id).run();
+        writeSystemEvent(env, {
+          severity: 'critical',
+          source: 'oauth',
+          message: `Token revoked for ${connection.platform} (connection ${connection.id})`,
+          metadata: JSON.stringify({ platform: connection.platform, connection_id: connection.id, error: 'invalid_grant' })
+        }).catch(() => {});
+        return { success: false, status: 'revoked' };
+      }
+
+      if (data.error === "unauthorized_client" || data.error === "invalid_client") {
+        // Application credential or client permission issue on the provider portal, NOT user token revocation.
+        // Preserve connection status and release lease so retries/investigation can proceed.
+        await releaseLease();
+        writeSystemEvent(env, {
+          severity: 'error',
+          source: 'oauth',
+          message: `Client configuration error (${data.error}) during token refresh for ${connection.platform}`,
+          metadata: JSON.stringify({ platform: connection.platform, connection_id: connection.id, error: data.error })
+        }).catch(() => {});
+        return { success: false, status: data.error };
+      }
+
+      // Other permanent HTTP 400/401 errors: mark error, but not revoked
+      await db.prepare("UPDATE social_connections SET status = 'error', updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+        .bind(connection.id).run();
       writeSystemEvent(env, {
-        severity: status === 'revoked' ? 'critical' : 'warning',
+        severity: 'warning',
         source: 'oauth',
-        message: `Token ${status} for ${connection.platform} (connection ${connection.id})`,
-        metadata: JSON.stringify({ platform: connection.platform, connection_id: connection.id, error: data.error })
+        message: `Token refresh failed for ${connection.platform} (connection ${connection.id})`,
+        metadata: JSON.stringify({ platform: connection.platform, connection_id: connection.id, error: data.error || `HTTP_${res.status}` })
       }).catch(() => {});
-      return { success: false, status };
+      return { success: false, status: 'error' };
+    }
+
+    // Defensive check: access_token must be present and a non-empty string
+    if (!data.access_token || typeof data.access_token !== 'string') {
+      console.error(`[REFRESH_INVALID_RESPONSE] ${connection.platform}:${connection.id} — missing access_token in response`);
+      await releaseLease();
+      return { success: false, status: 'malformed_response' };
     }
 
     // Encrypt and update
     const access_enc = await encrypt(data.access_token, secret);
+    // Refresh token rotation: only overwrite refresh_token if the provider issued a new one
     const refresh_enc = data.refresh_token ? await encrypt(data.refresh_token, secret) : connection.refresh_token;
     
     const expires_at = data.expires_in 
@@ -95,9 +351,15 @@ export async function refreshSocialConnection(db, connection, env) {
 
     return { success: true };
   } catch (err) {
-    console.error(`[REFRESH_FAILED] ${connection.platform}:${connection.account_id}`, err);
-    await db.prepare("UPDATE social_connections SET status = 'error', updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-      .bind(connection.id).run();
+    console.error(`[REFRESH_FAILED] ${connection.platform}:${connection.account_id}`, err.message);
+    try {
+      await db.prepare(`
+        UPDATE social_connections
+        SET last_refreshed_at = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).bind(originalLastRefreshedAt, connection.id).run();
+    } catch {}
+    // Network errors or unexpected runtime exceptions are transient — do NOT mark connection 'error'
     writeSystemEvent(env, {
       severity: 'warning',
       source: 'oauth',
@@ -152,10 +414,13 @@ export async function ensureValidConnection(db, connection, env) {
   // Refresh ONLY when: expires_at < now + 5 minutes
   if (expiry && (expiry - now < 300000)) {
     console.log(`[REFRESH_PREEMPTIVE] Refreshing ${connection.platform}:${connection.id}`);
-    await refreshSocialConnection(db, connection, env);
-    
-    // Fetch updated record
-    return await db.prepare("SELECT * FROM social_connections WHERE id = ?").bind(connection.id).first();
+    const result = await refreshSocialConnection(db, connection, env);
+    if (result.success) {
+      if (result.connection) return result.connection;
+      // Fetch updated record
+      const updated = await db.prepare("SELECT * FROM social_connections WHERE id = ?").bind(connection.id).first();
+      return updated || connection;
+    }
   }
 
   return connection;
