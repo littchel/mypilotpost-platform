@@ -666,12 +666,13 @@ describe("OAUTH-002: Provider Scopes & Token Refresh Lifecycle", () => {
     });
 
     // Connection B: expires in 60 minutes (> 5 min) -> should not refresh
+    const freshExpiry = new Date(Date.now() + 3600000).toISOString();
     db.seedConnection({
       id: "conn-fresh",
       platform: "google",
       access_token: accessEnc,
       refresh_token: refreshEnc,
-      expires_at: new Date(Date.now() + 3600000).toISOString(),
+      expires_at: freshExpiry,
       status: "active"
     });
 
@@ -683,7 +684,7 @@ describe("OAUTH-002: Provider Scopes & Token Refresh Lifecycle", () => {
     };
 
     await ensureValidConnection(db, db.getConnection("conn-fresh"), env);
-    assert.strictEqual(db.getConnection("conn-fresh").expires_at, new Date(Date.now() + 3600000).toISOString());
+    assert.strictEqual(db.getConnection("conn-fresh").expires_at, freshExpiry);
 
     const resultSoon = await ensureValidConnection(db, db.getConnection("conn-expiring-soon"), env);
     assert.ok(new Date(resultSoon.expires_at).getTime() > Date.now() + 3000000, "Should have been refreshed to 1 hour");
