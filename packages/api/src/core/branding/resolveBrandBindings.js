@@ -23,6 +23,16 @@ export async function resolveBrandBindings(brand_id, env) {
     console.warn("[RESOLVE BRAND BINDINGS] DB query failed or columns missing, using defaults:", err);
   }
 
+  // Brand display name lives on the brands table (not the visual-identity row), so
+  // fetch it separately for brand.name bindings (e.g. an athletic header pill label).
+  let brand_name = null;
+  try {
+    const nameRow = await db.prepare(`SELECT name FROM brands WHERE id = ?`).bind(brand_id).first();
+    brand_name = nameRow?.name || null;
+  } catch (err) {
+    console.warn("[RESOLVE BRAND BINDINGS] brand name lookup failed:", err);
+  }
+
   // Simplified bindings lookup
   const primary_color      = row?.primary_color_hex     || '#2563eb';
   const secondary_color    = row?.secondary_color_hex   || '#0f172a';
@@ -40,6 +50,7 @@ export async function resolveBrandBindings(brand_id, env) {
     heading_font,
     body_font,
     logo_url,
+    name: brand_name || 'Your Brand',
     watermark_position,
     background_preference: background_pref,
 
@@ -47,6 +58,16 @@ export async function resolveBrandBindings(brand_id, env) {
     contrast_on_dark: '#FFFFFF',
     contrast_on_light: '#0f172a',
     contrast_on_accent: getContrastColor(accent_color),
+    // Contrast for text sitting directly on the primary / secondary brand colour —
+    // lets a template bind its canvas to brand.primary_color and still pick a legible
+    // text colour regardless of whether that brand colour is light or dark.
+    contrast_on_primary: getContrastColor(primary_color),
+    contrast_on_secondary: getContrastColor(secondary_color),
+    // Surface color follows the brand's background preference (light → white,
+    // dark → near-black), so a template can bind a card/panel to brand.surface_color
+    // and get a sensible base regardless of the brand's light/dark leaning.
+    surface_color: background_pref === 'dark' ? '#121212' : '#FFFFFF',
+    contrast_on_surface: background_pref === 'dark' ? '#FFFFFF' : '#111111',
   };
 }
 
@@ -57,6 +78,27 @@ export function resolveValue(raw, bindings) {
     return bindings[key] ?? raw;
   }
   return raw;
+}
+
+// Resolve a color binding and apply an optional opacity, producing an rgba() string.
+// Lets schema v3 card_layer/meta_tag tints reference a brand.* colour at reduced
+// opacity (e.g. brand.primary_color at 0.15) without inventing new template syntax.
+// Falls back to the resolved colour if no opacity is given or it can't be parsed.
+export function resolveColorWithOpacity(raw, opacity, bindings) {
+  const color = resolveValue(raw, bindings);
+  if (opacity === undefined || opacity === null || Number(opacity) === 1) return color;
+  const rgb = hexToRgb(color);
+  if (!rgb) return color;
+  const a = Math.max(0, Math.min(1, Number(opacity)));
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${a})`;
+}
+
+function hexToRgb(hex) {
+  if (typeof hex !== 'string') return null;
+  let c = hex.trim().replace('#', '');
+  if (c.length === 3) c = c.split('').map((x) => x + x).join('');
+  if (c.length !== 6 || /[^0-9a-fA-F]/.test(c)) return null;
+  return { r: parseInt(c.slice(0, 2), 16), g: parseInt(c.slice(2, 4), 16), b: parseInt(c.slice(4, 6), 16) };
 }
 
 function getContrastColor(hex) {

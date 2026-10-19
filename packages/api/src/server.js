@@ -263,7 +263,7 @@ import {
   updateCampaignStatus,
 } from "./core/campaigns/campaigns.js";
 
-import { generateCampaignPlan, generatePostIdea, generateRecommendation, generateVisualBrief, getTemplateById } from "./core/templates/templates.js";
+import { generateCampaignPlan, generatePostIdea, generateRecommendation, generateVisualBrief } from "./core/templates/templates.js";
 import { getTemplateWithVariant, getTemplatePreviewImage } from "./core/templates/templateRoutes.js";
 import { getStudioOpportunities, generateStudioPost, runPlaybook, generateCampaignContent, getStudioVault, scrapeWebsite } from "./core/studio/studio.js";
 import { resolveBrandBindings } from "./core/branding/resolveBrandBindings.js";
@@ -821,7 +821,7 @@ async function deleteAdminPromotion(request, env, auth) {
    WORKER ENTRY
 ====================================================== */
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const method = request.method;
     const path = url.pathname.replace(/\/+$/, "");
@@ -2864,7 +2864,7 @@ export default {
 
         /* ---------- TEMPLATES ---------- */
         if (method === "GET" && path === "/api/customer/templates/render-preview")
-          return withCors(request, getTemplatePreviewImage(request, env, auth));
+          return withCors(request, getTemplatePreviewImage(request, env, auth, ctx));
 
         if (method === "GET" && path.startsWith("/api/customer/templates/"))
           return withCors(request, getTemplateWithVariant(request, env, auth));
@@ -3049,6 +3049,23 @@ export default {
           } catch (err) {
             console.error("[CRON] Token refresh failed:", err?.message || err);
             writeSystemEvent(env, { severity: 'warning', source: 'cron', message: `OAuth token refresh failed: ${err?.message}` }).catch(() => {});
+          }
+
+          // Pre-warm the Discover feed: generate each active brand's daily cards and
+          // render their PNGs into R2 so the first open is a cache HIT, not a live
+          // render. Bounded batch per run (rendering is CPU-heavy WASM) — spread
+          // across the 6 daily runs of this cron via a Redis day-marker per brand.
+          try {
+            // Bounded to a few brands per run to stay within the invocation CPU budget
+            // (rendering is CPU-heavy WASM). This cron fires every 4h (6x/day) and a
+            // Redis day-marker prevents re-warming a brand twice, so ~limit x 6 brands
+            // are covered daily. A brand killed mid-run stays unmarked and is retried
+            // next run. Beyond ~18 brands/day, move to a Cloudflare Queue (1 msg/brand).
+            const { runStudioPrewarm } = await import("./core/studio/prewarm.js");
+            await runStudioPrewarm(env, { limit: 3 });
+          } catch (err) {
+            console.error("[CRON] Studio pre-warm failed:", err?.message || err);
+            writeSystemEvent(env, { severity: 'warning', source: 'cron', message: `Studio pre-warm failed: ${err?.message}` }).catch(() => {});
           }
         }
       })()
