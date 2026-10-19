@@ -11,8 +11,8 @@
 import { getDB } from "../../lib/db.js";
 import { decrypt } from "../../lib/crypto.js";
 import { ensureValidConnection } from "../../integrations/refresh_manager.js";
-import { getTemplate } from "../templates/templateStore.js";
-import { renderTemplateFlat, renderTemplateSlides } from "../templates/flattenRenderer.js";
+import { getCertifiedTemplate } from "../templates/registry.js";
+import { renderTemplateSlides } from "../templates/renderer.js";
 import { resolveBrandBindings } from "../branding/resolveBrandBindings.js";
 
 function fnv1a(str) {
@@ -211,7 +211,18 @@ export async function resolveDeliveryData(env, job) {
   // Intercept and flatten visual template if layout_manifest is present
   if (manifest && manifest.template_id) {
     try {
-      const template = getTemplate(manifest.template_id, manifest.template_variant || 'A');
+      const template = getCertifiedTemplate(manifest.template_id);
+      if (!template) {
+        const missing = new Error(`TEMPLATE_NOT_CERTIFIED: ${manifest.template_id}`);
+        missing.code = "TEMPLATE_NOT_CERTIFIED";
+        missing.details = {
+          templateId: manifest.template_id,
+          reason: "uncertified_template_cannot_publish",
+          retryable: false,
+          action: "Select a certified template. Existing media is not published as a substitute.",
+        };
+        throw missing;
+      }
       if (template) {
         const bindings = await resolveBrandBindings(job.brand_id, env);
 
@@ -236,7 +247,13 @@ export async function resolveDeliveryData(env, job) {
 
         for (let idx = 0; idx < renderCount; idx++) {
           const pngBuffer = pngBuffers[idx];
-          if (!pngBuffer) continue;
+          const signature = Buffer.from(pngBuffer || []).subarray(0, 8).toString("hex");
+          if (signature !== "89504e470d0a1a0a") {
+            const bad = new Error("TEMPLATE_RENDER_FAILED: canonical png missing or invalid");
+            bad.code = "TEMPLATE_RENDER_FAILED";
+            bad.details = { templateId: manifest.template_id, reason: "invalid_png", retryable: false };
+            throw bad;
+          }
 
           const slide = inputSlides[idx] || {};
           const fallbackImg = resolvedMedia?.[idx]?.preview_url || resolvedMedia?.[0]?.preview_url || '';
@@ -253,6 +270,7 @@ export async function resolveDeliveryData(env, job) {
           // Deterministic FNV-1a hash of the inputs
           const hashInput = JSON.stringify({
             template_id: manifest.template_id,
+            template_version: template.version || null,
             variant: manifest.template_variant || 'A',
             slideIndex: idx,
             bindings,
@@ -289,14 +307,28 @@ export async function resolveDeliveryData(env, job) {
           });
         }
 
-        if (replacementMediaList.length > 0) {
-          // Replace validatedMedia completely with the flattened sequence of slides
-          validatedMedia.length = 0;
-          validatedMedia.push(...replacementMediaList);
+        if (replacementMediaList.length !== renderCount) {
+          const incomplete = new Error("TEMPLATE_RENDER_FAILED: canonical asset set is incomplete");
+          incomplete.code = "TEMPLATE_RENDER_FAILED";
+          incomplete.details = { templateId: manifest.template_id, reason: "incomplete_asset_set", retryable: false };
+          throw incomplete;
         }
+        validatedMedia.length = 0;
+        validatedMedia.push(...replacementMediaList);
       }
     } catch (err) {
-      console.error("[RESOLVER] Visual flattening pipeline encountered an error:", err);
+      if (typeof err?.code === "string" && err.code.startsWith("TEMPLATE_")) {
+        throw err;
+      }
+      const wrapped = new Error(`TEMPLATE_RENDER_FAILED: ${err.message}`);
+      wrapped.code = "TEMPLATE_RENDER_FAILED";
+      wrapped.details = {
+        templateId: manifest.template_id,
+        reason: err.message,
+        retryable: false,
+        action: "Fix the render inputs. A failed render is not published.",
+      };
+      throw wrapped;
     }
   }
 

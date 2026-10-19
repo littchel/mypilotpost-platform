@@ -3,33 +3,38 @@
 
 import { json, error } from "../../lib/json.js";
 import { getDB } from "../../lib/db.js";
+import { kvGetJSON, kvPutJSON, kvDel } from "../../lib/kvcache.js";
 import { trackedRunLLM } from "../ai/ai_client.js";
 import { checkAndIncrement } from "../billing/enforcement.js";
 import { fetchBrandContext } from "../ai/brand_context.js";
-import { getTemplate, getTemplateForContent } from "../templates/templateStore.js";
+import { getCertifiedTemplate, requireCertifiedTemplate } from "../templates/registry.js";
+import { assignCertifiedTemplates, selectCertifiedTemplate, capacityFor, formatForCard } from "../templates/select.js";
 import { generateBrief } from "../media/brief.js";
 import { fetchPexels } from "../media/providers/pexels.js";
-import { generateOpportunityThumbnail } from "../templates/thumbnailRenderer.js";
-import { assignTemplatesToCards } from "../templates/templateRouter.js";
+import { searchAndRankMedia } from "../media/feedMedia.js";
+import { rankMediaForSlot } from "../templates/mediaMatch.js";
 
-// Helper to map frameworks to corresponding template families
-function mapFrameworkToFamily(framework) {
-  switch (framework) {
-    case "Myth vs Reality":
-      return "carousel_comparison";
-    case "Listicle":
-      return "carousel_list";
-    case "Behind the Scenes":
-      return "story_fullscreen";
-    case "Opinion Take":
-      return "quote_card";
-    case "Seasonal":
-      return "hero_headline";
-    default:
-      return "split_layout";
+// Read visual identity resiliently across the migration-153/155 window.
+// Prefer the canonical columns (primary_color_hex, migration 153) — the same source
+// resolveBrandBindings uses — and fall back to the legacy columns for any DB where
+// migration 155 hasn't dropped them yet (prod is currently in this partial state).
+// A single SQLite query can't reference a missing column, so we try/catch two shapes.
+async function fetchVisualRow(db, brand_id) {
+  try {
+    return await db.prepare(
+      "SELECT primary_color_hex AS primary_color, secondary_color_hex AS secondary_color, font_pairing_body AS typography_main FROM brand_dna_visual_identity WHERE brand_id = ?"
+    ).bind(brand_id).first();
+  } catch {
+    try {
+      return await db.prepare(
+        "SELECT primary_color, secondary_color, typography_main FROM brand_dna_visual_identity WHERE brand_id = ?"
+      ).bind(brand_id).first();
+    } catch (e) {
+      console.warn("[STUDIO] fetchVisualRow failed for both column shapes:", e?.message);
+      return null;
+    }
   }
 }
-
 
 // ── Brand context (wrapper for studio: adds active platforms) ─────────────────
 async function fetchBrandCtx(db, brand_id) {
@@ -37,7 +42,7 @@ async function fetchBrandCtx(db, brand_id) {
     fetchBrandContext(db, brand_id, 'full'),
     db.prepare("SELECT platform FROM social_connections WHERE brand_id = ? AND status = 'active'").bind(brand_id).all(),
     db.prepare("SELECT logo_url FROM brands WHERE id = ?").bind(brand_id).first(),
-    db.prepare("SELECT primary_color, secondary_color, typography_main, typography_heading FROM brand_dna_visual_identity WHERE brand_id = ?").bind(brand_id).first(),
+    fetchVisualRow(db, brand_id),
   ]);
   return {
     brand: dnaCtx.brand,
@@ -76,26 +81,14 @@ function getHash(str) {
   return Math.abs(hash).toString(16);
 }
 
-// Helper to resolve card hero image, render thumbnail, upload, and cache in Redis
+// Helper to resolve card hero image, render thumbnail, upload, and cache in KV
 async function processCardThumbnail(card, suggestedTemplateId, visuals, auth, env) {
   const cardHash = getHash(`${card.idea || ''}:${card.framework || ''}:${suggestedTemplateId}:${visuals.primary_color || ''}:${visuals.logo_url || ''}`);
   const cacheKey = `studio_thumb:${auth.brand_id}:${cardHash}`;
 
-  // 1. Try Redis cache
-  if (env.REDIS_CLIENT) {
-    try {
-      const cached = await env.REDIS_CLIENT.get(cacheKey);
-      if (cached) {
-        try {
-          return JSON.parse(cached);
-        } catch {
-          return { thumbnailUrl: cached, heroImageUrl: null };
-        }
-      }
-    } catch (e) {
-      console.warn("[STUDIO THUMBNAIL] Redis read failed:", e.message);
-    }
-  }
+  // 1. Try KV cache
+  const cachedThumb = await kvGetJSON(env.STUDIO_CACHE_KV, cacheKey);
+  if (cachedThumb) return cachedThumb;
 
   // 2. Fetch hero image (lightweight)
   let imageUrl = null;
@@ -132,55 +125,20 @@ async function processCardThumbnail(card, suggestedTemplateId, visuals, auth, en
   // 3. Generate Thumbnail and upload to R2
   let cdnUrl = "";
   try {
-    const templateSchema = await getTemplate(suggestedTemplateId, env);
+    const templateSchema = getCertifiedTemplate(suggestedTemplateId);
+    if (!templateSchema) {
+      throw new Error(`TEMPLATE_NOT_CERTIFIED: ${suggestedTemplateId}`);
+    }
     const first60Chars = (card.hook || card.idea || "").slice(0, 60);
-
-    let finalBuffer;
-    let extension = "png";
-    let contentType = "image/png";
-
-    // Attempt Puppeteer headless render if in Node environment, fallback to SVG
-    let renderOpportunityCard = null;
-    try {
-      if (typeof process !== "undefined" && process.release?.name === "node") {
-        const rendererModule = await import("../templates/headlessRenderer.js");
-        renderOpportunityCard = rendererModule.renderOpportunityCard;
-      }
-    } catch (e) {}
-
-    if (renderOpportunityCard) {
-      try {
-        const slotData = {};
-        const slotId = templateSchema.slides?.[0]?.slot_id || "slide_1";
-        slotData[slotId] = {
-          text: first60Chars,
-          image_url: imageUrl || "",
-          palette: {
-            dominant: visuals.primary_color,
-            accent: visuals.secondary_color,
-            background: "#F5F5F5",
-            text_contrast: "#FFFFFF"
-          }
-        };
-
-        finalBuffer = await renderOpportunityCard(templateSchema, slotData, visuals);
-        extension = "webp";
-        contentType = "image/webp";
-      } catch (err) {
-        console.warn("[STUDIO THUMBNAIL] Puppeteer render failed, falling back to SVG:", err.message);
-      }
-    }
-
-    if (!finalBuffer) {
-      finalBuffer = await generateOpportunityThumbnail(
-        templateSchema,
-        { headline: first60Chars, image_url: imageUrl },
-        visuals
-      );
-      const isSvg = finalBuffer.toString('utf8', 0, 5) === '<svg ';
-      extension = isSvg ? 'svg' : 'png';
-      contentType = isSvg ? 'image/svg+xml' : 'image/png';
-    }
+    const { renderTemplateFlat } = await import("../templates/renderer.js");
+    const finalBuffer = await renderTemplateFlat(
+      templateSchema.id,
+      { headline: first60Chars, image: imageUrl || "" },
+      auth.brand_id,
+      env,
+    );
+    const extension = "png";
+    const contentType = "image/png";
 
     if (env.MEDIA_BUCKET) {
       const r2Key = `opportunities/${auth.brand_id}/${cardHash}.${extension}`;
@@ -195,43 +153,48 @@ async function processCardThumbnail(card, suggestedTemplateId, visuals, auth, en
 
   const result = { thumbnailUrl: cdnUrl || null, heroImageUrl: imageUrl || null };
 
-  // 4. Save to Redis Cache (24-hour TTL)
-  if (cdnUrl && env.REDIS_CLIENT) {
-    try {
-      await env.REDIS_CLIENT.setEx(cacheKey, 24 * 60 * 60, JSON.stringify(result));
-    } catch (e) {
-      console.warn("[STUDIO THUMBNAIL] Redis set failed:", e.message);
-    }
+  // 4. Save to KV cache (24-hour TTL)
+  if (cdnUrl) {
+    await kvPutJSON(env.STUDIO_CACHE_KV, cacheKey, result, 24 * 60 * 60);
   }
 
   return result;
 }
 
 // ── GET /api/customer/studio/opportunities ────────────────────────────────────
+// Invalidate a brand's cached Discover feed (and its prewarm day-marker) so the next
+// open regenerates from CURRENT Brand DNA instead of serving content generated before
+// the update. The feed cache key is studio_feed_{brand}_{YYYY-MM-DD} (brand+day only,
+// no DNA factor), so without this a mid-day DNA edit stays stale until the date rolls
+// over. No-op when STUDIO_CACHE_KV isn't bound. Covers a ±1 day window for UTC/local
+// date-boundary safety. Cached template PNGs in R2 are NOT touched — they are
+// content-hashed and regenerate naturally once new content exists.
+export async function invalidateStudioFeedCache(env, brand_id) {
+  if (!env?.STUDIO_CACHE_KV || !brand_id) return;
+  const now = Date.now();
+  const keys = [];
+  for (let d = -1; d <= 1; d++) {
+    const day = new Date(now + d * 86400000).toISOString().split("T")[0];
+    keys.push(`studio_feed_${brand_id}_${day}`);
+    keys.push(`studio_prewarm_done_${brand_id}_${day}`);
+  }
+  await Promise.all(keys.map((k) => kvDel(env.STUDIO_CACHE_KV, k)));
+  console.log(`[STUDIO] Invalidated Discover feed cache for brand ${brand_id} (${keys.length} keys)`);
+}
+
 // ── GET /api/customer/studio/opportunities ────────────────────────────────────
 export async function getStudioOpportunities(request, env, auth) {
   if (!auth?.brand_id) return error("Unauthorized", 401);
 
   const db = getDB(env);
   
-  // 1. Check Redis Cache first (24-hour TTL, key: studio_feed_{brand_id}_{YYYY-MM-DD})
+  // 1. Check KV cache first (24-hour TTL, key: studio_feed_{brand_id}_{YYYY-MM-DD})
   const todayStr = new Date().toISOString().split("T")[0];
-  const redisKey = `studio_feed_${auth.brand_id}_${todayStr}`;
-  if (env.REDIS_CLIENT) {
-    try {
-      const cached = await env.REDIS_CLIENT.get(redisKey);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed && Array.isArray(parsed.opportunities) && parsed.opportunities.length > 0) {
-          console.log(`[STUDIO INFO] Redis cache hit for key: ${redisKey}`);
-          return json(parsed);
-        } else {
-          console.warn(`[STUDIO WARNING] Redis cache hit for key: ${redisKey} but opportunities array was empty or invalid.`);
-        }
-      }
-    } catch (err) {
-      console.warn("[STUDIO FEED] Redis read failed:", err.message);
-    }
+  const feedKey = `studio_feed_${auth.brand_id}_${todayStr}`;
+  const cached = await kvGetJSON(env.STUDIO_CACHE_KV, feedKey);
+  if (cached && Array.isArray(cached.opportunities) && cached.opportunities.length > 0) {
+    console.log(`[STUDIO INFO] KV cache hit for key: ${feedKey}`);
+    return json(cached);
   }
 
   await checkAndIncrement(db, auth.user_id, "ai");
@@ -255,7 +218,7 @@ ${context || `Brand: ${brandName}\nIndustry: ${industry}`}
 ACTIVE PLATFORMS: ${platforms}
 CURRENT MONTH: ${month}
 
-Generate exactly 20 specific content opportunities for ${brandName}. Each must be grounded in this brand, not generic.
+Generate exactly 8 specific content opportunities for ${brandName}. Each must be grounded in this brand, not generic.
 
 Return ONLY this JSON object:
 {
@@ -265,11 +228,12 @@ Return ONLY this JSON object:
       "framework": "Myth vs Reality",
       "idea": "specific post concept for this brand",
       "hook": "scroll-stopping opening line — max 12 words, never generic",
-      "caption": "complete, ready-to-publish post — 80-220 words, no placeholders, structured as requested below",
-      "headline": "headline for template rendering (max 60 chars)",
-      "body": "short description for template rendering (max 120 chars)",
+      "caption": "a 1-2 sentence preview of the post concept — punchy, no placeholders (max 200 chars). The full post is written later when the user picks this idea.",
+      "headline": "the exact headline TEXT printed on the graphic — finished, punchy, specific copy the viewer reads (max 60 chars)",
+      "body": "the exact body copy printed on the graphic — a finished sentence the viewer reads, NOT a description of the post (max 120 chars)",
       "cta_text": "CTA button text (max 30 chars)",
       "cta": "specific call to action link target/description",
+      "visual_query": "a short, concrete description of the ideal PHOTO for this post — the literal subject a stock-photo search should find, grounded in ${brandName}'s actual business/industry, NOT the headline words. e.g. for a moving company: 'movers carrying boxes into a truck', 'family unpacking in a new home'. 3-8 words, real physical scene, never abstract concepts or wordplay (max 80 chars)",
       "hashtags": ["#tag1", "#tag2", "#tag3"],
       "objective": "one short goal: build trust / generate leads / etc.",
       "platforms": ["platform1", "platform2"],
@@ -279,24 +243,19 @@ Return ONLY this JSON object:
   ]
 }
 
-Format Rules for the "caption" field depending on the "media_type" or platform:
-- If media_type is "short_video" (Reel, Story, TikTok): Format as a visual script. Example:
-  [SCENE 1: Visual detail]
-  Overlay: "Hook..."
-  Voiceover: "Voiceover script..."
-  [SCENE 2: Visual detail]
-  Voiceover: "Substance..."
-- If media_type/platforms indicates an Instagram Story: Format as a 3-slide sequence with text and layouts.
-- If platforms contains "blog": Format as a structured article draft with clear sections.
-- For standard feed posts: Format with a clear "HOOK", "STORY/VALUE", "CALL TO ACTION", and "HASHTAGS". Seamlessly incorporate the website URL from the BRAND CONTEXT if present.
+"caption" is only a SHORT preview at this stage (see its char cap) — do NOT write the
+full post, script, or hashtag block here. The complete, format-specific post is generated
+later when the user selects an idea.
 
 Rules:
-- Generate 20 items.
+- Generate exactly 8 items.
 - Use these frameworks (no repeats): Myth vs Reality, Behind the Scenes, Mistakes to Avoid, Before & After, Customer Story, FAQ, Stat + Commentary, How-To, Opinion Take, Trend Commentary, Case Study, Product Feature, Team Story, Industry News, Social Proof, Challenge, Listicle, Question, Announcement, Seasonal
 - platforms must be from: ${platforms}
-- effort values: low, medium, high  — distribute ~8/8/4
+- effort values: low, medium, high  — distribute ~3/3/2
 - media_type values: text_only, single_image, carousel, short_video, quote_card
 - hooks must be surprising, specific, contrarian — never "Are you ready?" or "Did you know?"
+- CRITICAL: "headline", "body" and "cta_text" are the LITERAL words rendered on the graphic. Write finished, ready-to-publish copy only — never a description or instruction about the post. Never begin these fields with words like "Explain", "Show", "Highlight", "Describe", "Debunk", "Discuss", "A quick look at", or "Learn about". Write what the viewer actually reads.
+- CRITICAL: "visual_query" must be a concrete, photographable SCENE from ${brandName}'s real industry (${industry}) — the literal subject a photographer would shoot. NEVER derive it from the headline's abstract words (myth, mistake, transform, error) and NEVER use wordplay, letters, signs, or text-in-image concepts. It is the search phrase that finds the right real-world photo.
 - Respond with valid JSON only. No markdown.`;
 
   if (!env.GROQ_API_KEY) {
@@ -311,71 +270,68 @@ Rules:
       brand_id: auth.brand_id,
       user_id: auth.user_id || null,
       content_type: "studio_opportunities",
-      options: { mode: "deep", systemPromptType: "campaign" },
+      // Ask for 10 (not 20): a 20-item request always overran the 6000-token completion
+      // cap and got salvaged by recoverStructured() as a truncated 'partial-recovery'
+      // (yielding a variable 3-15 items). 10 full-richness objects fit well inside 6000
+      // completion tokens, so the JSON completes untruncated. 8000 got 413'd (TPM ceiling),
+      // so 6000 stays. recoverStructured() remains a safety net, but should no longer fire.
+      options: { mode: "deep", systemPromptType: "campaign", maxTokens: 6000, timeoutMs: 30000 },
     });
   } catch (err) {
     console.error("[STUDIO ERROR] LLM prompt execution encountered an error:", err.message, err.stack);
   }
 
-  let opps = result?.opportunities || [];
-  let fallbackUsed = false;
+  const rawOpps = Array.isArray(result?.opportunities) ? result.opportunities : [];
 
-  if (!result || opps.length === 0) {
-    console.error("[STUDIO ERROR] opportunities array is empty or LLM failed. Activating emergency visual fallback generator.");
-    fallbackUsed = true;
-  }
+  // Positioning is "agency-level, ready to post". A card is only surfaced if real
+  // generation produced real content for it. We NEVER pad the feed with hardcoded
+  // placeholder text — a card that failed to generate is dropped, not faked.
+  const PLACEHOLDER_MARKERS = [
+    "fallback generated post",
+    "update your brand dna to personalize",
+    "your dynamic quote text",
+    "your headline",
+    "lorem ipsum"
+  ];
+  const isReadyToPost = (opp) => {
+    const headline = String(opp?.headline || opp?.hook || opp?.idea || "").trim();
+    const body = String(opp?.body || opp?.caption || "").trim();
+    const cta = String(opp?.cta_text || opp?.cta || "").trim();
+    if (!headline || !body || !cta) return false;
+    const blob = `${headline} ${body} ${cta}`.toLowerCase();
+    return !PLACEHOLDER_MARKERS.some((m) => blob.includes(m));
+  };
 
-  if (opps.length < 20) {
-    console.warn(`[STUDIO WARNING] opportunities count (${opps.length}) is less than 20. Padding to 20 using visual fallback templates.`);
-    fallbackUsed = true;
-
-    const templatesList = [
-      "hero_headline_feed", "quote_card_feed", "split_layout_feed", "product_showcase_feed", "minimal_text_feed",
-      "carousel_list_005", "carousel_story_006", "carousel_comparison_004", "carousel_faq_005", "carousel_data_008",
-      "story_fullscreen", "story_split", "story_poll", "reel_hook", "reel_loop"
-    ];
-    
-    const fallbackCategories = [
-      { framework: "trending moment", media_type: "single_image", titleSuffix: "Industry Trend Analysis" },
-      { framework: "high_conversion lead generation", media_type: "single_image", titleSuffix: "Exclusive Lead Offer" },
-      { framework: "thought_leadership authority", media_type: "quote_card", titleSuffix: "Executive Insights" },
-      { framework: "seasonal holiday", media_type: "single_image", titleSuffix: "Seasonal Overview" },
-      { framework: "carousel_ideas", media_type: "carousel", titleSuffix: "Step-by-Step Playbook" },
-      { framework: "blog_ideas article draft", media_type: "text_only", titleSuffix: "Comprehensive Guide" }
-    ];
-
-    const needed = 20 - opps.length;
-    for (let index = 0; index < needed; index++) {
-      const fallbackIndex = (opps.length) % fallbackCategories.length;
-      const cat = fallbackCategories[fallbackIndex];
-      
-      const tplId = templatesList[Math.floor(Math.random() * templatesList.length)];
-      const variantSelected = ["A", "B", "C"][Math.floor(Math.random() * 3)];
-      const cardNum = opps.length + 1;
-      
-      opps.push({
-        id: cardNum,
-        framework: cat.framework,
-        idea: `${industry || "Business"} ${cat.titleSuffix} #${cardNum}`,
-        hook: `Understanding the dynamics of ${industry || "our space"}: visual guide.`,
-        caption: `HOOK: Understanding the dynamics of ${industry || "our space"}.\n\nSTORY: We are tracking the latest changes to streamline your work and drive better outcomes.\n\nCTA: Learn more on our website.`,
-        headline: `${industry || "Business"} Update #${cardNum}`,
-        body: "This is a fallback generated post. Update your brand DNA to personalize this.",
-        cta_text: "Learn More",
-        cta: "Learn More",
-        hashtags: ["#strategy", `#${(industry || "business").toLowerCase().replace(/\s+/g, "")}`, "#growth"],
-        platforms: activePlatforms.length ? activePlatforms : ["instagram", "facebook", "linkedin"],
-        media_type: cat.media_type,
-        effort: "low",
-        template_id: tplId,
-        template_variant: variantSelected,
-        template_format: tplId.includes("carousel") ? "carousel" : (tplId.includes("story") ? "story" : "feed_post")
-      });
+  const opps = [];
+  let skipped = 0;
+  rawOpps.forEach((opp, i) => {
+    if (isReadyToPost(opp)) {
+      opps.push(opp);
+    } else {
+      skipped++;
+      console.warn(`[STUDIO] Dropping opportunity ${opp?.id ?? i + 1} for brand ${auth.brand_id}: generation produced empty/placeholder content — not surfacing as a ready idea.`);
     }
+  });
+
+  if (opps.length === 0) {
+    console.error(`[STUDIO] No confident opportunities for brand ${auth.brand_id} (${result ? `LLM returned ${rawOpps.length}, all dropped` : "LLM call failed"}). Returning empty feed rather than placeholders.`);
+    // Short TTL (15 min) so the next open can retry generation rather than being stuck on an empty day.
+    await kvPutJSON(env.STUDIO_CACHE_KV, feedKey, { opportunities: [] }, 900);
+    return json({
+      opportunities: [],
+      generation_status: result ? "no_confident_content" : "generation_failed",
+    });
   }
-  
-  // Assign template layouts deterministically based on seed
-  const routedOpps = await assignTemplatesToCards(opps.slice(0, 20), auth.brand_id, env, preferredTemplateId);
+  if (skipped > 0) {
+    console.warn(`[STUDIO] Surfacing ${opps.length}/${rawOpps.length} opportunities for brand ${auth.brand_id}; ${skipped} dropped for low-confidence/placeholder content.`);
+  }
+
+  // Assign template layouts deterministically based on seed; filter by brand industry
+  const preferred = getCertifiedTemplate(preferredTemplateId);
+  const routedOpps = assignCertifiedTemplates(opps.slice(0, 20), auth.brand_id)
+    .map((card) => preferred && card.template_format === preferred.format
+      ? { ...card, template_id: preferred.id }
+      : card);
 
   // Parallel fetch image suggestions and build full preview cards
   const enrichedPromises = routedOpps.map(async (card, i) => {
@@ -385,18 +341,28 @@ Rules:
     const bodyText = card.body || (card.caption ? card.caption.slice(0, 120) : "");
     const ctaText = card.cta_text || card.cta || "Learn More";
 
-    // 2. Fetch hero image using Pexels lookup based on the hook & industry
-    let hero_image_url = "https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=640&q=80";
+    // 2. Hero image: search on the card's CONCRETE visual_query (a real photo subject
+    //    grounded in the brand's industry) — NOT the abstract headline — across all
+    //    active sources (Pexels+Unsplash+Pixabay), ranked for relevance with text/word-
+    //    stock puns rejected, and cached. Falls back to the card topic if the model
+    //    didn't emit a visual_query.
+    let hero_image_url = "";
     try {
-      const photos = await fetchPexels({
-        query: `${card.hook || card.idea} ${industry}`.slice(0, 80),
-        limit: 1
-      }, env).catch(() => []);
-      if (photos && photos.length > 0) {
-        hero_image_url = photos[0].url || photos[0].preview || hero_image_url;
+      const orientation = (card.template_format === "story" || card.template_format === "reel") ? "portrait" : "landscape";
+      const ranked = await searchAndRankMedia({
+        visualQuery: card.visual_query || card.idea || headline,
+        industry,
+        orientation,
+      }, env);
+      if (ranked && ranked.length > 0) {
+        const template = getCertifiedTemplate(card.template_id);
+        const heroSlot = template?.slides?.[0]?.slots?.find((s) => s.type === "media");
+        const ordered = heroSlot ? rankMediaForSlot(ranked, heroSlot, () => 50) : ranked.map((candidate) => ({ candidate }));
+        const best = ordered[0]?.candidate || ranked[0];
+        hero_image_url = best.url || best.preview || "";
       }
     } catch (e) {
-      console.warn(`[STUDIO] Pexels suggestions lookup failed for card ${cardId}:`, e.message);
+      console.warn(`[STUDIO] Media suggestion failed for card ${cardId}:`, e.message);
     }
 
     const previewData = {
@@ -436,28 +402,22 @@ Rules:
       source: "studio"
     };
 
-    // Generate exact template preview URL if running on Node environment
     let preview_url = "";
-    if (typeof process !== "undefined" && process.release?.name === "node") {
-      try {
-        const { getTemplatePreview } = await import("../templates/previewService.js");
-        preview_url = await getTemplatePreview(
-          card.template_id,
-          card.template_variant || card.suggested_template_variant || 'A',
-          {
-            ...previewData,
-            primary_color: visuals.primary_color || '#1A73E8',
-            secondary_color: visuals.secondary_color || '#34A853',
-            logo_url: visuals.logo_url || '',
-            font_headline: visuals.font_headline || 'Inter',
-            font_body: visuals.font_body || 'Inter'
-          },
-          auth.brand_id,
-          env
-        );
-      } catch (err) {
-        console.warn(`[STUDIO] Puppeteer exact render failed for card ${cardId}:`, err.message);
+    try {
+      const { renderTemplateFlat } = await import("../templates/renderer.js");
+      const png = await renderTemplateFlat(card.template_id, {
+        headline,
+        body: bodyText,
+        cta: ctaText,
+        image: hero_image_url,
+      }, auth.brand_id, env);
+      if (png && env.MEDIA_BUCKET) {
+        const r2Key = `previews/${auth.brand_id}/${card.template_id}-${cardId}.png`;
+        await env.MEDIA_BUCKET.put(r2Key, png, { httpMetadata: { contentType: "image/png" } });
+        preview_url = `${env.BASE_URL || "https://api.mypilotpost.com"}/api/media/file/${r2Key}`;
       }
+    } catch (err) {
+      console.warn(`[STUDIO] Canonical render failed for card ${cardId}:`, err.code || err.message);
     }
 
     return {
@@ -476,20 +436,57 @@ Rules:
   const enrichedOpps = await Promise.all(enrichedPromises);
   const responseData = { opportunities: enrichedOpps };
 
-  // Write to Redis cache
-  if (env.REDIS_CLIENT) {
-    try {
-      const ttl = fallbackUsed ? 3600 : 86400; // 1 hour if fallback was used, 24 hours if fully successful
-      await env.REDIS_CLIENT.setEx(redisKey, ttl, JSON.stringify(responseData));
-    } catch (err) {
-      console.warn("[STUDIO FEED] Redis write failed:", err.message);
-    }
-  }
+  // Write to KV cache. A full batch (target feed size) caches 24h; a short/partial batch
+  // caches 1h so it can refill sooner. The target is ~10 (see the prompt), so >= 8 counts
+  // as full.
+  const ttl = enrichedOpps.length >= 8 ? 86400 : 3600;
+  await kvPutJSON(env.STUDIO_CACHE_KV, feedKey, responseData, ttl);
 
   console.log(`[studio] Generated ${enrichedOpps.length} cards for brand ${auth.brand_id}`);
   console.log(`[studio] Sample card preview_data:`, enrichedOpps[0]?.preview_data);
 
   return json(responseData);
+}
+
+// Quote content shape for quote-category templates. Generates the brand's own
+// insight (or a credible industry/customer quote) — NOT a generic inspirational
+// cliché. Respects each quote slot's max_chars and clips defensively.
+async function generateQuoteContent(env, { brand, brandName, context, template, brand_id, user_id }) {
+  const slots = template?.slots || [];
+  const slotOf = (key) => slots.find((s) => s.content_key === key);
+  const quoteMax = slotOf('quote')?.max_chars || 200;
+  const attrMax = slotOf('attribution')?.max_chars || 60;
+
+  const structure = `{ "quote_text": "the quote (max ${quoteMax} chars)", "attribution": "who said it (max ${attrMax} chars)" }`;
+
+  const prompt = `You are ${brandName}'s copywriter. Write ONE short quote-style social post that reads as ${brandName}'s own hard-won insight, or a relevant and credible industry/customer quote — NEVER a generic inspirational cliché.
+
+BRAND CONTEXT:
+${context || `Brand: ${brandName}`}
+
+Rules:
+- Grounded in this brand's actual voice, positioning, and audience — specific, not universal.
+- quote_text: at most ${quoteMax} characters. Punchy. No surrounding quotation marks, no hashtags.
+- attribution: a real-sounding source (the brand, a named role e.g. "— The ${brandName} Team", or a credible industry figure), at most ${attrMax} characters.
+Return ONLY this JSON: ${structure}`;
+
+  const result = await trackedRunLLM(env, {
+    brand: brand || {},
+    prompt,
+    brand_id,
+    user_id: user_id || null,
+    content_type: 'studio_quote',
+    options: { mode: 'deep', systemPromptType: 'studio' },
+  }).catch((e) => { console.warn('[STUDIO] quote generation failed:', e); return null; });
+
+  const clip = (s, n) => (typeof s === 'string' && s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s);
+  // Empty fields fall through to the template's authored fallback copy at render time.
+  return {
+    quote: clip(result?.quote_text || result?.quote || '', quoteMax) || undefined,
+    attribution: clip(result?.attribution || '', attrMax) || undefined,
+    serif_lines: Array.isArray(result?.serif_lines) ? result.serif_lines.slice(0, 2) : undefined,
+    script_word: result?.script_word || undefined,
+  };
 }
 
 // ── POST /api/customer/studio/generate-post ───────────────────────────────────
@@ -505,18 +502,43 @@ export async function generateStudioPost(request, env, auth) {
   const { brand, context, brandName, visuals } = await fetchBrandCtx(db, auth.brand_id);
   const platformList = platforms.join(", ") || "Facebook, Instagram";
 
-  const template = template_id ? getTemplate(template_id) : null;
-  const constraints = [];
-  if (template && template.slots) {
-    template.slots.forEach(slot => {
-      if (slot.max_chars) {
-        constraints.push(`- Slot "${slot.content_key || slot.slot_id}": max length is ${slot.max_chars} characters.`);
+  let tpl;
+  try {
+    tpl = template_id
+      ? requireCertifiedTemplate(template_id)
+      : selectCertifiedTemplate({
+          format: formatForCard({ framework }),
+          seed: `${auth.brand_id}:${framework}`,
+        });
+  } catch (err) {
+    return error(err.message, err.code || "TEMPLATE_NOT_CERTIFIED", err.details || null, 422);
+  }
+  const targetTemplateId = tpl.id;
+  const caps = capacityFor(tpl.id);
+  const constraintsPrompt = `\nCONTENT CAPACITY (do not exceed; the renderer will reject overflow):\n${
+    Object.entries(caps).map(([key, cap]) => `- ${key}: max ${cap.maxCharacters} characters, ${cap.maxLines} lines`).join("\n")
+  }\n`;
+
+  // Quote-category templates use the dedicated quote content shape instead of the
+  // standard headline/body/cta copy. The generated fields flow to the renderer's
+  // content_key slots (quote/attribution/serif_lines/script_word) via mergeSlideContent.
+  if ((tpl?.category || '').toLowerCase() === 'quote') {
+    const q = await generateQuoteContent(env, { brand, brandName, context, template: tpl, brand_id: auth.brand_id, user_id: auth.user_id });
+    const quoteText = q.quote_text || q.quote || "";
+    const slideContent = { headline: quoteText, body: quoteText, attribution: q.attribution || "" };
+    return json({
+      body: quoteText,
+      quote: quoteText,
+      attribution: q.attribution || "",
+      hashtags: "",
+      layout_manifest: {
+        template_id: targetTemplateId,
+        brand_overrides: visuals,
+        slides: [slideContent],
+        animation_preset: tpl.animation_preset || "fade_slide"
       }
     });
   }
-  const constraintsPrompt = constraints.length > 0
-    ? `\nVISUAL LAYOUT CHARACTER LIMITS (YOU MUST STRICTLY COMPLY WITH THESE LENGTHS TO PREVENT TEXT CLIPPING):\n${constraints.join("\n")}\n`
-    : "";
 
   const prompt = `You are an expert copywriter generating a complete content post or script.
 
@@ -568,51 +590,11 @@ Rules:
 
   if (!result?.body) return error("Generation failed. Try again.", 500);
 
-  // Auto-select template if not provided in the request payload
-  let targetTemplateId = template_id;
-  if (!targetTemplateId) {
-    const family = mapFrameworkToFamily(framework);
-    let format = "feed_post";
-    let pillars = ["general"];
-    let intent = ["general"];
-
-    if (family.startsWith("carousel")) {
-      format = "carousel";
-      pillars = family === "carousel_comparison" ? ["transformation", "results"] : ["educational", "guides"];
-    } else if (family === "story_fullscreen") {
-      format = "story";
-      pillars = ["lifestyle", "brand_identity"];
-    } else if (family === "quote_card") {
-      format = "feed_post";
-      intent = ["authority"];
-      pillars = ["thought_leadership"];
-    } else if (family === "hero_headline") {
-      format = "feed_post";
-      intent = ["awareness"];
-      pillars = ["showcase"];
-    } else if (family === "split_layout") {
-      format = "feed_post";
-      intent = ["education"];
-      pillars = ["product"];
-    }
-
-    const recommended = await getTemplateForContent({
-      format,
-      platform: platforms?.[0] || "instagram",
-      intent,
-      pillars
-    }, env);
-    
-    targetTemplateId = recommended?.template_id || "tpl_feed_generic_default";
-  }
-
-  // Fetch target template definitions
-  const tpl = await getTemplate(targetTemplateId, env);
-
+  // (template already resolved above as `tpl` / `targetTemplateId`)
   // Map generated copy structure to template slides slots
   const manifestSlides = [];
   let bodyParagraphIndex = 1;
-  for (const slide of (tpl.slides || [])) {
+  for (const slide of (tpl?.slides || [])) {
     const slotId = slide.slot_id || `slide_${slide.slide_index || bodyParagraphIndex}`;
     const slideMapping = {
       slot_id: slotId,
@@ -940,37 +922,30 @@ Rules:
     const postType = (c.post_type || "").toLowerCase().trim();
     
     // Map funnel stages to specific templates
-    let templateId = "split_layout_feed";
-    if (postType === "awareness") {
-      templateId = "hero_headline_feed";
-    } else if (postType === "consideration") {
-      templateId = "split_layout_feed";
-    } else if (postType === "conversion") {
-      templateId = "product_showcase_feed";
-    } else if (postType === "social proof" || postType === "social_proof") {
-      templateId = "quote_card_feed";
+    const roleFormat = postType === "awareness" || postType === "consideration"
+      ? "feed_post"
+      : postType === "conversion"
+        ? "promotional"
+        : "feed_post";
+    let tpl;
+    try {
+      tpl = selectCertifiedTemplate({
+        format: postType.includes("proof") ? "feed_post" : roleFormat,
+        seed: `${auth.brand_id}:campaign:${postType}:${i}`,
+        preferredId: postType.includes("proof") ? "mpp.feed.testimonial" : postType === "conversion" ? "mpp.promo.product" : null,
+      });
+    } catch (err) {
+      console.warn(`[STUDIO] campaign: ${err.message}`);
+      continue;
     }
-
-    const tpl = await getTemplate(templateId, env);
-
-    const manifestSlides = [];
-    let bodyParagraphIndex = 1;
-    for (const slide of (tpl.slides || [])) {
-      const slideMapping = {
-        slot_id: slide.slot_id,
-        text_anchor: "body_paragraph_" + bodyParagraphIndex
-      };
-
-      if (slide.slot_type === "hero" || slide.slot_id.includes("cover") || slide.slot_id.includes("hook")) {
-        slideMapping.text_anchor = "headline";
-      } else if (slide.slot_type === "cta" || slide.slot_id.includes("cta")) {
-        slideMapping.text_anchor = "cta_text";
-      } else {
-        bodyParagraphIndex++;
-      }
-
-      manifestSlides.push(slideMapping);
-    }
+    const templateId = tpl.id;
+    const manifestSlides = (tpl.slides || []).map((slide) => ({
+      slide_id: slide.id,
+      headline: c.hook || c.title || "",
+      body: c.caption || "",
+      cta: c.cta || "",
+      label: c.post_type || "",
+    }));
 
     cards.push({
       id: `camp_${i}`,

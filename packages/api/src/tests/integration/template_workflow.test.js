@@ -171,7 +171,20 @@ globalThis.fetch = async (url, options) => {
                     hashtags: ["#aviation", "#fuel"],
                     objective: "build trust",
                     platforms: ["instagram"],
-                    media_type: "carousel",
+                    media_type: "single_image",
+                    effort: "low"
+                  },
+                  {
+                    id: 2,
+                    framework: "Bold Statement",
+                    idea: "Aviation safety rules",
+                    hook: "Safety never takes a day off.",
+                    caption: "HOOK: Safety never takes a day off. STORY: Rigorous checks every flight. CTA: Learn more.",
+                    cta: "Learn more",
+                    hashtags: ["#aviation", "#safety"],
+                    objective: "authority",
+                    platforms: ["instagram"],
+                    media_type: "feed_post",
                     effort: "low"
                   }
                 ]
@@ -365,7 +378,7 @@ describe("Template System End-to-End Integration Suite", () => {
   test("4. Frontend - Template Rendering and Slot Updates Simulation", async () => {
     const prefill = {
       layout_manifest: {
-        template_id: "carousel_list_005",
+        template_id: "mpp.carousel.list",
         brand_overrides: { primary_color: "#1A1A1A", secondary_color: "#F5F5F5" },
         slides: [
           { slot_id: "cover", text_anchor: "headline" },
@@ -384,7 +397,7 @@ describe("Template System End-to-End Integration Suite", () => {
     const parsedPrefill = JSON.parse(raw);
     globalThis.sessionStorage.removeItem("studio_idea_prefill");
 
-    assert.equal(parsedPrefill.layout_manifest.template_id, "carousel_list_005");
+    assert.equal(parsedPrefill.layout_manifest.template_id, "mpp.carousel.list");
 
     const paragraphs = (parsedPrefill.caption || "").split("\n\n").filter(Boolean);
     const defaultPalette = {
@@ -425,8 +438,8 @@ describe("Template System End-to-End Integration Suite", () => {
     
     // a. Record template performance telemetry - using a real template ID that exists in registries
     mockDb.store.template_performance.push(
-      { id: "1", brand_id: "test-brand-123", template_id: "tpl_feed_generic_default", platform: "instagram", impressions: 1000, engagements: 50 },
-      { id: "2", brand_id: "test-brand-123", template_id: "tpl_carousel_premium_brand_story", platform: "instagram", impressions: 1000, engagements: 220 }
+      { id: "1", brand_id: "test-brand-123", template_id: "mpp.feed.editorial", platform: "instagram", impressions: 1000, engagements: 50 },
+      { id: "2", brand_id: "test-brand-123", template_id: "mpp.feed.bold", platform: "instagram", impressions: 1000, engagements: 220 }
     );
 
     // b. Run brand intelligence engine analysis
@@ -436,14 +449,14 @@ describe("Template System End-to-End Integration Suite", () => {
     // c. Verify top performer updated in brand_memory
     const memoryRow = mockDb.store.brand_memory.find(m => m.brand_id === "test-brand-123" && m.preferred_template_id);
     assert.ok(memoryRow);
-    assert.equal(memoryRow.preferred_template_id, "tpl_carousel_premium_brand_story");
+    assert.equal(memoryRow.preferred_template_id, "mpp.feed.bold");
 
     // d. Generate content opportunities and verify bias suggestions
     const requestOpps = new Request("http://localhost/api/customer/studio/opportunities");
     const resOpps = await getStudioOpportunities(requestOpps, env, { brand_id: "test-brand-123", user_id: "test-user-123" });
     const oppsBody = await resOpps.json();
 
-    const biased = oppsBody.opportunities.some(o => o.suggested_template_id === "tpl_carousel_premium_brand_story");
+    const biased = oppsBody.opportunities.some(o => o.template_id === "mpp.feed.bold");
     assert.ok(biased);
   });
 });

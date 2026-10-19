@@ -9,8 +9,5 @@
     "deploy": "wrangler deploy",
     "deploy:app": "wrangler pages deploy packages/dashboard/dist --project-name=mypilotpost-app",
     "deploy:admin": "wrangler pages deploy packages/api/admin-portal --project-name=mypilotpost-admin"
-  },
-  "dependencies": {
-    "puppeteer": "^24.42.0"
   }
 }
