@@ -1,9 +1,19 @@
-let sharp = null;
-try {
-  const lib = "sharp";
-  const mod = await import(lib);
-  sharp = mod.default || mod;
-} catch {}
+let sharpInstance = null;
+let sharpChecked = false;
+
+async function getSharp() {
+  if (sharpChecked) return sharpInstance;
+  sharpChecked = true;
+  try {
+    const lib = "sharp";
+    const mod = await import(lib);
+    sharpInstance = mod.default || mod;
+  } catch {
+    sharpInstance = null;
+  }
+  return sharpInstance;
+}
+
 import { templateError, TEMPLATE_MEDIA_UNAVAILABLE } from "./errors.js";
 
 export function coverExtractRect(imageW, imageH, slotW, slotH, focal = { x: 0.5, y: 0.5 }) {
@@ -52,6 +62,7 @@ export async function prepareSlotImage(src, slot) {
   if (!bytes) {
     return { src, cropped: false, reason: "remote_url_not_measured" };
   }
+  const sharp = await getSharp();
   if (!sharp) {
     return { src, cropped: false, reason: "sharp_unavailable_in_runtime" };
   }
