@@ -60,7 +60,7 @@ export async function publish({ content, connection, env }) {
     ? await appSecretProof(access_token, env.META_CLIENT_SECRET)
     : null;
 
-  const primaryMedia = media.find(m => m.role === "primary" || m.position === 1);
+  const primaryMedia = (media || []).find(m => m.role === "primary" || m.position === 1 || m.position === 0) || (media || [])[0];
   const isVideo = primaryMedia && (primaryMedia.mime_type?.startsWith("video/") || primaryMedia.preview_url?.includes(".mp4") || primaryMedia.preview_url?.includes(".mov"));
 
   if (content.platform === "facebook" && isVideo) {

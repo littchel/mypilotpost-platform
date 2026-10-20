@@ -16,7 +16,7 @@ export async function publish({ content, connection, env }) {
   const { text, media } = content;
   const { access_token } = connection;
 
-  const primaryMedia = media.find(m => m.role === "primary" || m.position === 1);
+  const primaryMedia = (media || []).find(m => m.role === "primary" || m.position === 1 || m.position === 0) || (media || [])[0];
   if (!primaryMedia) throw new Error("GOOGLE_REQUIRES_MEDIA");
 
   // Fetch video binary

@@ -126,6 +126,25 @@ export async function resolveDeliveryData(env, job) {
   `).bind(job.content_id, job.brand_id).all();
 
   // 3. Resolve Connection (canonical table: social_connections)
+  const platformCandidates = [job.platform];
+  if (job.platform.startsWith("instagram")) {
+    platformCandidates.push("instagram");
+  } else if (job.platform.startsWith("facebook")) {
+    platformCandidates.push("facebook");
+  } else if (job.platform === "youtube") {
+    platformCandidates.push("google");
+  } else if (job.platform === "google") {
+    platformCandidates.push("youtube");
+  } else if (job.platform === "x" || job.platform === "twitter") {
+    platformCandidates.push("x", "twitter");
+  } else if (job.platform === "linkedin_personal") {
+    platformCandidates.push("linkedin");
+  } else if (job.platform === "linkedin") {
+    platformCandidates.push("linkedin_personal");
+  }
+  const uniqueCandidates = [...new Set(platformCandidates)];
+  const placeholders = uniqueCandidates.map(() => '?').join(',');
+
   const connection = await db.prepare(`
     SELECT
       id,
@@ -141,10 +160,10 @@ export async function resolveDeliveryData(env, job) {
       selected_resource_name,
       resource_type
     FROM social_connections
-    WHERE brand_id = ? AND platform = ? AND status = 'active'
-    ORDER BY updated_at DESC
+    WHERE brand_id = ? AND platform IN (${placeholders}) AND status = 'active'
+    ORDER BY CASE WHEN platform = ? THEN 0 ELSE 1 END, updated_at DESC
     LIMIT 1
-  `).bind(job.brand_id, queryPlatform).first();
+  `).bind(job.brand_id, ...uniqueCandidates, job.platform).first();
 
   if (!connection) throw new Error(`CONNECTION_NOT_FOUND: ${job.platform}`);
 

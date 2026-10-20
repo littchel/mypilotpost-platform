@@ -11,7 +11,7 @@ export async function publish({ content, connection, env }) {
   const { text, media } = content;
   const { access_token } = connection;
 
-  const primaryMedia = media.find(m => m.role === "primary" || m.position === 1);
+  const primaryMedia = (media || []).find(m => m.role === "primary" || m.position === 1 || m.position === 0) || (media || [])[0];
   if (!primaryMedia) throw new Error("TIKTOK_REQUIRES_VIDEO");
 
   if (!primaryMedia.preview_url) throw new Error("TIKTOK_NO_MEDIA_URL");

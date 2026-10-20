@@ -81,7 +81,10 @@ export async function publish({ content, connection, env }) {
   }
 
   // Update classification metadata in delivery_jobs table prior to publish
-  const db = getDB(env);
+  let db = null;
+  try {
+    db = getDB(env);
+  } catch {}
   if (content.job_id && db) {
     const metaString = JSON.stringify({ media_class: mediaClass });
     await db.prepare("UPDATE delivery_jobs SET metadata = ? WHERE id = ?")
