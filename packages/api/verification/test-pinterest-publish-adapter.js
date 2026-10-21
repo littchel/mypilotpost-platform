@@ -121,7 +121,7 @@ async function runTests() {
     PINTEREST_CLIENT_ID: "pin-client-id",
     PINTEREST_CLIENT_SECRET: "pin-client-secret",
     OAUTH_STATE: {
-      get: async () => JSON.stringify({ brand_id: "brand-1", user_id: "user-1" }),
+      get: async () => JSON.stringify({ brand_id: "brand-1", user_id: "user-1", platform: "pinterest", timestamp: Date.now() }),
       delete: async () => {}
     }
   };
@@ -356,7 +356,7 @@ async function runTests() {
           return {
             run: async () => {
               refreshDbUpdates.push({ sql, args });
-              return { success: true };
+              return { success: true, meta: { changes: 1 } };
             },
             first: async () => {
               // Return connection with active status

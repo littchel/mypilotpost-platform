@@ -12,7 +12,7 @@ export async function publish({ content, connection, env }) {
   let mediaId = null;
 
   // 1. Media Handling (if primary image exists)
-  const primaryMedia = media.find(m => m.role === 'primary' || m.position === 0);
+  const primaryMedia = (media || []).find(m => m.role === 'primary' || m.position === 0) || (media || [])[0];
   if (primaryMedia) {
     try {
       const asset = await fetchMediaAsset(primaryMedia, env);

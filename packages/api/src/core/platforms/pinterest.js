@@ -12,6 +12,13 @@ export async function publish({ content, connection, env }) {
   const primaryMedia = media?.find(m => m.role === 'primary' || m.position === 0) || media?.[0];
   if (!primaryMedia) throw new Error("PINTEREST_REQUIRES_MEDIA");
 
+  // Determine media format
+  const isVideo = primaryMedia.mime_type?.startsWith("video/") || primaryMedia.preview_url?.endsWith(".mp4");
+
+  if (isVideo) {
+    throw new Error("Videos are not supported on Pinterest Pins. Please use images.");
+  }
+
   // 1. Resolve Board
   let boardId = selected_resource_id || metadata?.default_board_id;
   if (!boardId) {
@@ -27,13 +34,6 @@ export async function publish({ content, connection, env }) {
       throw new Error("PINTEREST_NO_BOARDS_FOUND");
     }
     boardId = boards.items[0].id;
-  }
-
-  // Determine media format
-  const isVideo = primaryMedia.mime_type?.startsWith("video/") || primaryMedia.preview_url?.endsWith(".mp4");
-
-  if (isVideo) {
-    throw new Error("Videos are not supported on Pinterest Pins. Please use images.");
   }
 
   let createPayload = {

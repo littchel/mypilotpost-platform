@@ -39,6 +39,7 @@ const ADAPTERS = {
   linkedin_personal: linkedin, // personal profile — same adapter, split at OAuth level
   tiktok,
   x,
+  twitter: x,
   google,
   youtube: google, // delivery_jobs use platform='youtube'; adapter lives in google.js
   pinterest,

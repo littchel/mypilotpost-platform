@@ -41,7 +41,7 @@ export async function publish({ content, connection, env }) {
 
   // 2. Media Upload
   const mediaUrns = [];
-  const primaryMedia = media.find(m => m.role === 'primary' || m.position === 0);
+  const primaryMedia = (media || []).find(m => m.role === 'primary' || m.position === 0) || (media || [])[0];
   const isVideo = primaryMedia && (primaryMedia.mime_type?.startsWith("video/") || primaryMedia.preview_url?.includes(".mp4") || primaryMedia.preview_url?.includes(".mov"));
 
   if (media && media.length > 0) {
